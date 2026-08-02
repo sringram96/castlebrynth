@@ -1,0 +1,21 @@
+id: H000
+title: Root acceptance — refuses, then opens
+goal: >
+  The executable definition of P0 done, authored at convention time.
+  Black-box through GameAPI with the compiled shore bundle. The assigned
+  agent's only job is to verify green and report (AGENTS.md law 2).
+context: [P0.md, GAME.md, LAWS.md]
+deps: [H004, H006]
+scope: [tests/acceptance/H000.root.test.ts]
+non_goals: ["No implementation code; this card owns only the root test."]
+allows_deps: []
+acceptance:
+  spec: >
+    Through newRun/act/getView only: the book's read action refuses with
+    the canon line and the refusal is ledgered; studying the stone sets
+    knowledge; the same read then opens, sets read_book, and the journal
+    gains the procession; the scene's object id set never changes across
+    the run; identical seed and action script replay to identical state
+    JSON.
+  commands:
+    - npx vitest run tests/acceptance/H000.root.test.ts

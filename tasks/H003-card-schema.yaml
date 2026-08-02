@@ -1,0 +1,26 @@
+id: H003
+title: Card schema + the shore fixture
+goal: >
+  The TypeScript types for content cards (scenes, objects, actions,
+  gated responses per VOCAB.md) and content/shore.yaml - the reference
+  scene: stone (study teaches knows_glyph), book (read refuses, then
+  opens per the skill example), pool, self, and a path exit. The shore
+  is the fixture every downstream card tests against.
+context: [VOCAB.md, skill:content, skill:engine, CANON.md, GAME.md]
+deps: [H001]
+scope:
+  - src/core/cards.ts
+  - src/core/cards.test.ts
+  - content/shore.yaml
+  - tests/acceptance/H003.schema.test.ts
+non_goals: ["No loader, no lint, no engine - shapes and one scene only."]
+allows_deps: []
+acceptance:
+  spec: >
+    Card types express exactly VOCAB.md - gates flags/items, the delta
+    set, response lists with mandatory gateless fallback. shore.yaml
+    parses into those types; the book object matches the refuses-then-
+    opens shape; every action ends in a fallback; canon voice per
+    CANON.md (spot-checked in test via banned-word scan).
+  commands:
+    - npx vitest run tests/acceptance/H003.schema.test.ts

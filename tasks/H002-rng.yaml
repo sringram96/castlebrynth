@@ -1,0 +1,20 @@
+id: H002
+title: Seeded RNG - state as data
+goal: >
+  mulberry32 over uint32. seedRng(seed) and nextInt(rng, n) returning
+  [value, rng2]. Pure, serializable, frozen goldens.
+context: [RULES.md, skill:engine]
+deps: [H001]
+scope:
+  - src/core/rng.ts
+  - src/core/rng.test.ts
+  - tests/acceptance/H002.rng.test.ts
+non_goals: ["No weighted helpers; later waves build those."]
+allows_deps: []
+acceptance:
+  spec: >
+    Same seed yields the identical sequence (5-draw golden for seed 42
+    frozen in the test); different seeds diverge; inputs never mutated;
+    10k draws of nextInt(_,4) each bucket within 22-28%.
+  commands:
+    - npx vitest run tests/acceptance/H002.rng.test.ts
