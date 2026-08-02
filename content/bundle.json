@@ -1,5 +1,108 @@
 {
   "scenes": {
+    "gate": {
+      "id": "gate",
+      "line": "The path ends at iron. The hill has been cut open and shut again.",
+      "objects": [
+        {
+          "actions": {
+            "open": [
+              {
+                "gate": {
+                  "flag": [
+                    "gate_open"
+                  ]
+                },
+                "say": "The gate stands where you left it, swung in. The cold coming through it is older than the cold on this side."
+              },
+              {
+                "gate": {
+                  "item": [
+                    "rusted_key"
+                  ]
+                },
+                "removeItem": [
+                  "rusted_key"
+                ],
+                "say": "The key turns once, hard, and something in the iron lets go. The gate swings in as far as the hinges will carry it. The key stays in the slot, and you leave it there.",
+                "setFlag": [
+                  "gate_open"
+                ]
+              },
+              {
+                "refuse": "The gate does not move. The keyway is a slot the length of your finger, cut for a key you are not carrying."
+              }
+            ]
+          },
+          "id": "iron_gate",
+          "name": "a gate of black iron"
+        },
+        {
+          "actions": {
+            "search": [
+              {
+                "addItem": [
+                  "rusted_key"
+                ],
+                "gate": {
+                  "notFlag": [
+                    "bearer_searched"
+                  ]
+                },
+                "journal": [
+                  "bearer"
+                ],
+                "say": "He went down sitting and stayed sitting. The straps are still over his shoulders and the pack under them is empty. In the fold of his belt is a key, rusted through at the ring and whole where it has to be.",
+                "setFlag": [
+                  "bearer_searched"
+                ]
+              },
+              {
+                "say": "There is nothing more on him. His hands are turned up and open."
+              }
+            ]
+          },
+          "id": "dead_bearer",
+          "name": "a bearer, sat against the stone"
+        },
+        {
+          "actions": {
+            "read": [
+              {
+                "gate": {
+                  "flag": [
+                    "knows_glyph"
+                  ],
+                  "notFlag": [
+                    "toll_read"
+                  ]
+                },
+                "journal": [
+                  "toll"
+                ],
+                "say": "The mark from the stone runs all through it, and once you hold one mark the rest come loose. It is a procession. Every figure walks to the water carrying something, and walks out of it carrying nothing. The line cut under them is a price, and the price is the crossing itself: what you pay to come over is the memory of coming over.",
+                "setFlag": [
+                  "toll_read"
+                ]
+              },
+              {
+                "gate": {
+                  "flag": [
+                    "knows_glyph"
+                  ]
+                },
+                "say": "The procession runs the way it ran before. The wall has said its one thing."
+              },
+              {
+                "say": "The carving goes from the floor to above your head. Figures in a line, and marks between them that will not hold still long enough to be marks."
+              }
+            ]
+          },
+          "id": "mural",
+          "name": "a mural cut into the wall"
+        }
+      ]
+    },
     "shore": {
       "id": "shore",
       "line": "Grey water, and no far side to it.",
@@ -74,6 +177,7 @@
                     "book_open"
                   ]
                 },
+                "goto": "gate",
                 "say": "The path climbs off the shingle and inland. It runs the way the names run in the book."
               },
               {

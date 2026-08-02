@@ -4,8 +4,8 @@
 # opens. P0 left the path as a door that was open and not walked through —
 # there was no second scene, and a goto with no scene behind it fails the lint
 # (H005). The v3 scenes it briefly led to (hall, stair) went out with the v3
-# world (H116), so the path is a door standing open again until H110 hangs the
-# gate behind it. Nothing else on this shore moves.
+# world (H116); H110 hung the gate behind it, and the path leads there again.
+# Nothing else on this shore moves.
 id: shore
 line: "Grey water, and no far side to it."
 objects:
@@ -43,5 +43,6 @@ objects:
     actions:
       follow:
         - gate: { flag: book_open }
+          goto: gate
           say: "The path climbs off the shingle and inland. It runs the way the names run in the book."
         - refuse: "The path goes up into the dark. You have no name for what is at the top of it."
