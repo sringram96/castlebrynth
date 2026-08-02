@@ -85,7 +85,7 @@ describe('normalisation', () => {
     expect(Object.keys(first({ say: 'A line.' }))).toEqual(['say'])
   })
 
-  it('survives the JSON round trip a bundle is stored as (RULES.md §2)', () => {
+  it('survives the JSON round trip a bundle is stored as (.llm/rules/state-is-json.mdc)', () => {
     const s = parseScene(one({ gate: { flag: 'lit' }, setFlag: 'a', say: 'x' }))
     expect(JSON.parse(JSON.stringify(s))).toEqual(s)
     expect(structuredClone(s)).toEqual(s)
@@ -99,7 +99,7 @@ describe('normalisation', () => {
   })
 })
 
-describe('unknown words name the path to themselves (RULES.md §3)', () => {
+describe('unknown words name the path to themselves (.llm/rules/vocabulary.mdc)', () => {
   it('at the scene', () => {
     expect(() => parseScene({ ...scene({}), start: 'shore' })).toThrow(/^start — unknown/)
   })

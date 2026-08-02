@@ -20,4 +20,4 @@ goal: |
     loadBundle(JSON.parse(JSON.stringify(b))) equals b
 notes: |
   "load" means validate, not read from disk. src/core does no I/O
-  (RULES.md 1) — the caller supplies the parsed JSON.
+  (.llm/rules/purity.mdc) — the caller supplies the parsed JSON.

@@ -62,7 +62,7 @@ describe('nextInt', () => {
     expect(new Set(seen).size).toBe(seen.length)
   })
 
-  it('survives the JSON round trip a save will put it through (RULES.md §2)', () => {
+  it('survives the JSON round trip a save will put it through (.llm/rules/state-is-json.mdc)', () => {
     const [, rng2] = nextInt(seedRng(42), 6)
     const revived: number = JSON.parse(JSON.stringify({ rng: rng2 })).rng
     expect(nextInt(revived, 6)).toEqual(nextInt(rng2, 6))

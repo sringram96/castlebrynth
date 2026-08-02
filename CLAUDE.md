@@ -25,7 +25,7 @@ Node 20 (`.nvmrc`). `nvm use` before anything.
 ## layout
 
 ```
-src/core/      the engine — pure, JSON-safe, deterministic (RULES.md §1–2)
+src/core/      the engine — pure, JSON-safe, deterministic (.llm/rules/purity.mdc and state-is-json.mdc)
 content/       *.yaml authored scenes → bundle.json (compiled, committed)
 scripts/       build-content, content-lint, task-lint, board, progress, play
 tasks/         the cards — one yaml per card, with scope and deps

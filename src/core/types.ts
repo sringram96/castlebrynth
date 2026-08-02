@@ -1,7 +1,7 @@
 // H001a · the state half of the contract.
 //
 // GameState is data and nothing else. It survives JSON.stringify and
-// structuredClone deep-equal (RULES.md §2), which is what lets a save be the
+// structuredClone deep-equal (.llm/rules/state-is-json.mdc), which is what lets a save be the
 // state and the state be a save. Collections are arrays in insertion order
 // because a Set does not survive the round trip, and order is the difference
 // between two runs from one seed being identical and being merely similar.
@@ -68,7 +68,7 @@ export function refKey(ref: { readonly object: string; readonly action: string }
 }
 
 // Membership is de-duplicated and insertion-ordered: append only when absent,
-// and never in place — the caller's list is not ours to touch (RULES.md §1).
+// and never in place — the caller's list is not ours to touch (.llm/rules/purity.mdc).
 function withMember(list: readonly string[], member: string): string[] {
   return list.includes(member) ? [...list] : [...list, member]
 }

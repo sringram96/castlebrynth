@@ -17,7 +17,7 @@ goal: |
 
   Validate through parseScene (H003a) so the compiler and the engine can
   never disagree about the vocabulary. An unknown word fails the build with
-  a message naming the file AND the path inside it (RULES.md 3):
+  a message naming the file AND the path inside it (.llm/rules/vocabulary.mdc):
 
     tests/fixtures/bad-vocab.yaml: objects.book.read[0].setFlagg - unknown vocabulary word
 

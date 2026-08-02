@@ -1,6 +1,6 @@
 # LAWS.md — laws of the world
 
-These are not engineering rules (see RULES.md). These are the promises
+These are not engineering rules (see .llm/rules/). These are the promises
 the world makes to the person inside it. Breaking one is a content bug
 even when every test is green.
 

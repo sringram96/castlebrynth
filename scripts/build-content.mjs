@@ -17,7 +17,7 @@
 // parseScene (src/core/cards.ts, H003a) so the compiler and the engine can
 // never disagree about a word. It cannot. That module is not on main, and a
 // plain .mjs under Node 20 cannot import a .ts one without a loader this repo
-// does not have and may not grow (RULES.md §7). What follows is parseScene's
+// does not have and may not grow (.llm/rules/no-dead-scaffolding.mdc). What follows is parseScene's
 // gate copied word for word from VOCAB.md, with the same paths in the same
 // messages. It is a second copy of a thing that is meant to have one, and it
 // should be deleted in favour of the import the moment one is reachable.
@@ -71,7 +71,7 @@ function main() {
     try {
       scene = parseScene(yaml.load(readFileSync(resolve(ROOT, file), 'utf8')))
     } catch (e) {
-      // RULES.md §3 — the file, then the path inside it, then what is wrong.
+      // .llm/rules/vocabulary.mdc — the file, then the path inside it, then what is wrong.
       errors.push(`${file}: ${e.message}`)
       continue
     }

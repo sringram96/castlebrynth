@@ -9,7 +9,7 @@ they outrank your judgement about what the repo needs.
 You work the card you were given. You do not fix the neighbouring bug,
 tidy the adjacent file, or start the next card because it is obvious.
 Anything outside your card's `scope` is off limits — `task-lint` will
-fail you for touching it (RULES.md §4), and it is right to.
+fail you for touching it (.llm/rules/scope.mdc), and it is right to.
 
 If working your card requires a change outside your scope, **stop** and
 say so in the PR body. That is a finding, not a failure.
@@ -41,7 +41,7 @@ Your own tests go beside your code: `src/core/rng.test.ts`.
 
 ## law 4 · the vocabulary is closed
 
-Content speaks only VOCAB.md (RULES.md §3). If your card needs a word
+Content speaks only VOCAB.md (.llm/rules/vocabulary.mdc). If your card needs a word
 that is not there, you do not add it — you stop and say so. The
 vocabulary is one of the three frozen things in P0 and it does not move
 for a single card.
@@ -77,7 +77,7 @@ Then open one PR, titled `H00X · <card title>`, body per law 6.
 
 | file | what it governs |
 | --- | --- |
-| `RULES.md` | engineering law — CI enforces it |
+| `.llm/rules/` | engineering law — CI enforces it |
 | `VOCAB.md` | the closed gate/delta word set |
 | `LAWS.md` | the world's promises to the person in it |
 | `CANON.md` | voice; banned words are scanned |

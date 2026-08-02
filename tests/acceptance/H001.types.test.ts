@@ -11,7 +11,7 @@ import {
 } from '../../src/core/types'
 
 // H001 · the contract hub. State must be data — nothing here may depend on
-// a class, a clock, or a live object graph (RULES.md §1–2).
+// a class, a clock, or a live object graph (.llm/rules/purity.mdc and state-is-json.mdc).
 
 const STATE_KEYS = ['scene', 'flags', 'items', 'journal', 'refused', 'rng', 'seed'] as const
 
@@ -54,7 +54,7 @@ describe('H001a · GameState is data', () => {
       }
       expect(
         Object.getPrototypeOf(v) === Object.prototype,
-        `${path} is not a plain JSON value (RULES.md §2)`,
+        `${path} is not a plain JSON value (.llm/rules/state-is-json.mdc)`,
       ).toBe(true)
       for (const [k, x] of Object.entries(v as Record<string, unknown>)) walk(x, `${path}.${k}`)
     }

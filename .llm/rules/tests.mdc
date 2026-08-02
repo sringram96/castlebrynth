@@ -1,0 +1,30 @@
+---
+description: Acceptance tests are the definition of done and are not yours to edit. Unit tests are.
+globs: tests/**/*.ts,src/**/*.test.ts
+alwaysApply: false
+---
+
+# Tests
+
+Two kinds, and the difference is absolute.
+
+**Co-located unit tests** — `src/core/rng.test.ts`. Yours. Write as many as
+you like. They are typechecked by `npm run law` because they live under
+`src/`, which is what makes type-level assertions there real rather than
+decorative.
+
+**Acceptance tests** — `tests/acceptance/*.test.ts`. **Not yours.** They are
+the card's definition of done and they are authored *before* the card is
+dispatched.
+
+You may not edit, skip, weaken, retitle, or delete one. Not to "make it match
+the implementation". Not to fix a typo.
+
+If an acceptance test looks wrong, **stop and say so in the PR**. Do not fix
+it. `task-lint` fails any diff touching `tests/acceptance/`, and a card that
+edits its own definition of done has proven nothing.
+
+Run your acceptance **first**, before writing code. If it is already green,
+you are done — change nothing and report `already satisfied`. A card whose
+acceptance passes on arrival is a card whose work was carried by a dependency,
+and the correct output is the observation.

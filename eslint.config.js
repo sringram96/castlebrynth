@@ -15,32 +15,32 @@ export default tseslint.config(
     },
   },
   {
-    // RULES.md §1 — src/core is pure. The law, as a lint rule.
+    // .llm/rules/purity.mdc — src/core is pure. The law, as a lint rule.
     files: ['src/core/**/*.ts'],
     ignores: ['src/core/**/*.test.ts'],
     rules: {
       'no-restricted-globals': [
         'error',
-        { name: 'process', message: 'src/core is pure (RULES.md §1).' },
-        { name: 'console', message: 'src/core is pure (RULES.md §1).' },
+        { name: 'process', message: 'src/core is pure (.llm/rules/purity.mdc).' },
+        { name: 'console', message: 'src/core is pure (.llm/rules/purity.mdc).' },
       ],
       'no-restricted-syntax': [
         'error',
         {
           selector: "CallExpression[callee.object.name='Math'][callee.property.name='random']",
-          message: 'Randomness is state as data — use seedRng/nextInt (RULES.md §1).',
+          message: 'Randomness is state as data — use seedRng/nextInt (.llm/rules/purity.mdc).',
         },
         {
           selector: "NewExpression[callee.name='Date']",
-          message: 'src/core is pure — no clock (RULES.md §1).',
+          message: 'src/core is pure — no clock (.llm/rules/purity.mdc).',
         },
         {
           selector: "CallExpression[callee.object.name='Date'][callee.property.name='now']",
-          message: 'src/core is pure — no clock (RULES.md §1).',
+          message: 'src/core is pure — no clock (.llm/rules/purity.mdc).',
         },
         {
           selector: "NewExpression[callee.name=/^(Set|Map|WeakSet|WeakMap)$/]",
-          message: 'GameState is JSON (RULES.md §2) — use arrays.',
+          message: 'GameState is JSON (.llm/rules/state-is-json.mdc) — use arrays.',
         },
       ],
     },

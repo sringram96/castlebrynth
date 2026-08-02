@@ -1,0 +1,25 @@
+---
+description: src/core is pure. No I/O, no clock, no hidden randomness — two runs from one seed are byte-identical.
+globs: src/core/**/*.ts
+alwaysApply: false
+---
+
+# Purity and determinism
+
+`src/core` is pure. No I/O, no `Date`, no `Math.random`, no module-level
+mutable state, no `process`. Everything the engine needs is in the
+`GameState` it was handed.
+
+Randomness is **state as data**: `seedRng(seed)` produces an `Rng`, and
+`nextInt(rng, n)` returns `[k, rng2]`. There is no hidden generator. Two runs
+from one seed and one tap list are byte-identical, on any machine, forever.
+
+`act` and `getView` never mutate their arguments. They return new state. The
+acceptance suite deep-freezes inputs and will catch you.
+
+`eslint.config.js` enforces the mechanical half of this — `Math.random`,
+`new Date`, `Date.now`, `process`, `console`, and `new Set/Map` are all
+restricted syntax inside `src/core`. The lint is a floor, not the rule.
+
+> "load" means validate, not read from disk. A `src/core` function takes the
+> parsed value; the caller does the reading.

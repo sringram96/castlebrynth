@@ -10,7 +10,7 @@ acceptance: tests/acceptance/H002.rng.test.ts
 done_when: npx vitest run tests/acceptance/H002.rng.test.ts
 goal: |
   mulberry32 over uint32. There is no generator object — an Rng is a number
-  you thread through (RULES.md 1).
+  you thread through (.llm/rules/purity.mdc).
 
     seedRng(seed: number): Rng
     nextInt(rng: Rng, n: number): [k: number, rng2: Rng]   // k in [0, n)

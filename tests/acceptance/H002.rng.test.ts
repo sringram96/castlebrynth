@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { seedRng, nextInt } from '../../src/core/rng'
 
-// H002 · randomness is state as data (RULES.md §1). There is no generator
+// H002 · randomness is state as data (.llm/rules/purity.mdc). There is no generator
 // object — an Rng is a uint32 you thread through.
 
 const draw = (seed: number, count: number, n: number): number[] => {

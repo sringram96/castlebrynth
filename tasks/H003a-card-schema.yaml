@@ -30,4 +30,4 @@ goal: |
       (VOCAB.md refuse purity)
 notes: |
   parseScene is pure — it takes an already-parsed value, never a file path.
-  src/core does no I/O (RULES.md 1).
+  src/core does no I/O (.llm/rules/purity.mdc).

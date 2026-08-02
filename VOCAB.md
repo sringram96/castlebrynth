@@ -1,7 +1,7 @@
 # VOCAB.md — the closed word set
 
 Frozen. Content may only speak these words. The compiler rejects any
-other key and names the offending path (RULES.md §3). Adding a word is a
+other key and names the offending path (.llm/rules/vocabulary.mdc). Adding a word is a
 deliberate act: edit this file, edit the schema, edit the compiler, in
 one PR.
 

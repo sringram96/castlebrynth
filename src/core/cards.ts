@@ -1,6 +1,6 @@
 // H003a · the content schema — the shape agents author in, forever.
 //
-// The vocabulary is closed (RULES.md §3). A scene may speak the words in
+// The vocabulary is closed (.llm/rules/vocabulary.mdc). A scene may speak the words in
 // VOCAB.md and no others, and a word this file does not know is a failure that
 // names the path to it. parseScene is that gate, and it is the only one: the
 // builder (H004a) and the loader (H004b) both come through here, so the
@@ -9,7 +9,7 @@
 // It normalises as well as validates, so everything downstream sees one shape.
 // An author writes `setFlag: lamp_lit`; resolve reads `['lamp_lit']` and never
 // asks which of the two the file said. What comes out is JSON — no undefined
-// members, no absent word made explicit (RULES.md §2).
+// members, no absent word made explicit (.llm/rules/state-is-json.mdc).
 
 /** The gate words, as VOCAB.md lists them. A gate is a conjunction of these. */
 export const GATE_WORDS = ['flag', 'notFlag', 'item', 'notItem'] as const
@@ -88,7 +88,7 @@ const NAMES = 'must be a name or a list of names'
 /**
  * Validates and normalises one already-parsed scene, or throws naming the path.
  *
- * The argument is a value, never a path — src/core does no I/O (RULES.md §1).
+ * The argument is a value, never a path — src/core does no I/O (.llm/rules/purity.mdc).
  * The caller that read the file prefixes its name:
  * `content/shore.yaml: objects.book.read[0].setFlagg — unknown vocabulary word`.
  */

@@ -19,7 +19,7 @@
 //
 // Every failure is reported, not just the first: a scene is authored in one
 // pass and should be fixable in one pass. Each names the file and the path
-// inside it, in build-content's shape (RULES.md §3).
+// inside it, in build-content's shape (.llm/rules/vocabulary.mdc).
 //
 // Checks 1 and 3 look across every file given at once — a flag is set in one
 // scene and wanted in another, and a goto leaves the file it is written in.

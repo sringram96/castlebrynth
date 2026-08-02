@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// RULES.md §4 — a card may only touch the paths it declared.
+// .llm/rules/scope.mdc — a card may only touch the paths it declared.
 //
 // This is the guarantee that lets a whole wave of agents merge in any order:
 // within a wave, scopes are disjoint by construction, so there is nothing to

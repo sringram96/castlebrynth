@@ -1,4 +1,4 @@
-// H002 · randomness is state as data (RULES.md §1).
+// H002 · randomness is state as data (.llm/rules/purity.mdc).
 //
 // mulberry32, exactly as published. The generator is not an object with a
 // hidden cursor — it is a uint32 that lives in GameState and gets threaded

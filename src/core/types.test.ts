@@ -35,7 +35,7 @@ describe('emptyState', () => {
   })
 })
 
-describe('JSON safety (RULES.md §2)', () => {
+describe('JSON safety (.llm/rules/state-is-json.mdc)', () => {
   it('round-trips a lived-in state through JSON', () => {
     const s = lived()
     expect(JSON.parse(JSON.stringify(s))).toEqual(s)

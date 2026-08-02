@@ -13,7 +13,7 @@
 // to loadBundle (src/core/bundle.ts, H004b) and play through the API
 // (src/core/api.ts, H006b). It cannot. Neither module is on main, and a plain
 // .mjs under Node 20 could not import a .ts one even if they were, without a
-// loader this repo does not have and may not grow (RULES.md §7).
+// loader this repo does not have and may not grow (.llm/rules/no-dead-scaffolding.mdc).
 // build-content.mjs stands in the same place and took the same way out. What
 // follows is the smallest engine that plays VOCAB.md as written — first
 // passing gate, deltas in DELTA_ORDER, a refusal ledgered once and changing
@@ -289,7 +289,7 @@ function refKey(ref) {
   return `${ref.object}.${ref.action}`
 }
 
-// Never in place: the state handed in is not ours to touch (RULES.md §1).
+// Never in place: the state handed in is not ours to touch (.llm/rules/purity.mdc).
 function withMember(list, member) {
   return list.includes(member) ? list : [...list, member]
 }

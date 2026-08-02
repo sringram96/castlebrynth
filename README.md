@@ -48,14 +48,14 @@ in any order: within a wave, scopes are disjoint by construction.
 | file | what it governs |
 | --- | --- |
 | [AGENTS.md](AGENTS.md) | how a card gets worked — read this first |
-| [RULES.md](RULES.md) | engineering law; CI enforces it |
+| [.llm/rules/](.llm/rules) | engineering law; CI enforces it |
 | [VOCAB.md](VOCAB.md) | the closed gate/delta word set content may speak |
 | [LAWS.md](LAWS.md) | the world's promises to the person inside it |
 | [CANON.md](CANON.md) | the voice; banned words are scanned |
 | [P0.md](P0.md) | this phase — what is being built, and why |
 
 Three things are frozen and expensive to change: **VOCAB.md**, the
-**GameAPI**, and **RULES.md**. Everything else is disposable.
+**GameAPI**, and **`.llm/rules/`**. Everything else is disposable.
 
 ## the shape of it
 

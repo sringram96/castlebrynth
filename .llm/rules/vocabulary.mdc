@@ -1,0 +1,37 @@
+---
+description: Content may speak only the words in VOCAB.md. Unknown words fail the build, naming the path.
+globs: content/**/*.yaml,scripts/build-content.mjs,scripts/content-lint.mjs,src/core/cards.ts
+alwaysApply: false
+---
+
+# The closed vocabulary
+
+Content may use **only** the words in `VOCAB.md`. `build-content` fails on any
+other key and the error **names the path** to the offending node:
+
+```
+content/shore.yaml: objects.book.read[0].setFlagg — unknown vocabulary word
+```
+
+A message that does not name the path is a failing build message.
+
+Gates: `flag`, `notFlag`, `item`, `notItem`. A gate is a conjunction; an empty
+or absent gate is the fallback and always passes.
+
+Deltas apply in **`DELTA_ORDER`**, never in the order the keys appear in the
+file. That is what makes two content authors produce the same run:
+
+```
+refuse · setFlag · clearFlag · addItem · removeItem · addObject · removeObject · journal · goto
+```
+
+Two invariants the lint exists to protect:
+
+- **Refuse purity** — a response carrying `refuse` carries no other delta. A
+  refusal changes nothing about the world except the ledger.
+- **Mandatory fallback** — every response list ends with a gateless response.
+  Resolution takes the *first* passing gate, not the best one.
+
+The vocabulary is one of the three frozen things in P0. If your card needs a
+word that is not there, you do not add it — you stop and say so. Adding a word
+is a deliberate act: this file, the schema, and the compiler, in one PR.

@@ -1,4 +1,4 @@
-# A fixture that must fail the build with a path-precise error (RULES.md §3).
+# A fixture that must fail the build with a path-precise error (.llm/rules/vocabulary.mdc).
 # `setFlagg` is not a word. The compiler must say so, and say where.
 id: badvocab
 line: "Grey water, and no far side to it."
