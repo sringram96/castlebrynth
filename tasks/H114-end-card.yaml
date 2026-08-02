@@ -1,0 +1,25 @@
+id: H114
+title: The end card - the slice closes
+goal: >
+  Render the end of a slice as its own card over the frame - the line
+  the world ends on, and a begin-again control. It draws an end effect
+  the engine emitted; it never decides that the slice ended and never
+  reads a content flag by name to infer it.
+context: [GAME.md, VOCAB.md, AGENTS.md]
+deps: [H105]
+scope:
+  - src/shell/end.ts
+  - src/shell/end.test.ts
+  - tests/acceptance/H114.end.test.ts
+non_goals:
+  - "No Book of Ends, no death reel - later phases."
+  - "No save clearing here; H109 owns begin-again's state effects."
+allows_deps: []
+acceptance:
+  spec: >
+    The end card is absent until an end effect arrives and present after,
+    carrying that effect's line. It never appears from a flag. The
+    begin-again control fires its callback exactly once. The card does
+    not occlude the strip, and end.ts names no scene id and no flag.
+  commands:
+    - npx vitest run tests/acceptance/H114.end.test.ts

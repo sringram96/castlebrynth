@@ -1,0 +1,27 @@
+id: H108
+title: Shell persistence - the run survives being closed
+goal: >
+  The save seam between the shell and src/core/save.ts. save(storage,
+  state) and restore(storage, bundle), taking Storage as a parameter so
+  it is testable without a browser. A corrupt or absent save is a new
+  run, quietly - never an error the person sees. This card owns the
+  seam only; H109 owns the boot flow that uses it.
+context: [RULES.md, GAME.md, AGENTS.md, skill:engine]
+deps: [H101, H007]
+scope:
+  - src/shell/persist.ts
+  - src/shell/persist.test.ts
+  - tests/acceptance/H108.persist.test.ts
+non_goals:
+  - "No second envelope - src/core/save.ts owns the format."
+  - "No boot or resume logic; that is H109."
+allows_deps: []
+acceptance:
+  spec: >
+    A saved state restores deep-equal. Every malformed input - absent,
+    empty, truncated, wrong version, missing fields - returns a fresh run
+    at the bundle's start scene and never throws, including across every
+    truncation of a real save. The key is exported so tests cannot pass
+    vacuously. persist.ts never names a global storage object.
+  commands:
+    - npx vitest run tests/acceptance/H108.persist.test.ts

@@ -1,0 +1,27 @@
+id: H111
+title: Content - the waking place and the corridor
+goal: >
+  The first authored rooms the shell renders: the Crossing where you
+  wake with no memory, and a corridor that ends in the dark crossing.
+  Canon voice per CANON.md, tier T0 - physical residue only, never the
+  words child or brother. Telegraph law holds: anything that will harm
+  has a free tap in the same room that signals it.
+context: [CANON.md, LAWS.md, VOCAB.md, TRUTH.md, skill:content]
+deps: [H003, H004, H005]
+scope:
+  - content/crossing.yaml
+  - content/corridor.yaml
+  - tests/acceptance/H111.content.test.ts
+non_goals:
+  - "No fights, no merchant, no dice - the Lots is not open yet."
+  - "No tier above T0."
+allows_deps: []
+acceptance:
+  spec: >
+    Both scenes compile and pass content-lint including the banned-word
+    scan. Every action's response list ends in a gateless fallback. The
+    refuses-then-opens beat is present and provable: an action refuses,
+    is ledgered, a second thing teaches, and the same tap then succeeds.
+    Every object carries a free-tap description.
+  commands:
+    - npx vitest run tests/acceptance/H111.content.test.ts

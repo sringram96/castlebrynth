@@ -1,0 +1,31 @@
+id: H101
+title: Shell bootstrap - mount the engine on a page
+goal: >
+  The shell's first frame. index.html with one mount point, a vite dev
+  setup, and src/shell/app.ts that loads the compiled bundle, calls
+  newRun or resumes, and mounts. It draws the scene line and nothing
+  else this card - H102 gives it a frame, H104 renders objects. The
+  shell consumes GameAPI only; it never imports resolve and never reads
+  bundle.scenes to decide what to draw.
+context: [GAME.md, RULES.md, AGENTS.md, skill:engine]
+deps: [H005, H006]
+scope:
+  - index.html
+  - vite.config.ts
+  - src/shell/app.ts
+  - src/shell/app.test.ts
+  - package.json
+  - tests/acceptance/H101.shell.test.ts
+non_goals:
+  - "No frame, no panel, no object rendering - later cards own those."
+  - "No persistence; H108 owns the save seam."
+allows_deps: [vite, jsdom]
+acceptance:
+  spec: >
+    index.html holds exactly one mount element. app.ts exports mount(root,
+    game) and renders the current scene's line into it. Importing any
+    src/shell module never reaches src/core/resolve and never reads
+    .scenes - asserted by reading the source. npm run dev serves; the
+    page is not blank.
+  commands:
+    - npx vitest run tests/acceptance/H101.shell.test.ts

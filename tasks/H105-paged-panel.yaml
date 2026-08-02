@@ -1,0 +1,27 @@
+id: H105
+title: The paged panel - ACTIONS, SKILLS, ITEMS
+goal: >
+  The panel's insides per GAME.md #frame - paged left/right through
+  ACTIONS, SKILLS and ITEMS, with the permanent strip above it. Paging
+  is a swipe or the arrows; selecting anything in the scene snaps the
+  pager to ACTIONS. The panel reads state directly for what the person
+  carries and knows; everything about the room still comes from getView.
+context: [GAME.md, CANON.md, AGENTS.md]
+deps: [H104]
+scope:
+  - src/shell/panel.ts
+  - src/shell/panel.test.ts
+  - tests/acceptance/H105.panel.test.ts
+non_goals:
+  - "No QTE overlay (H209), no fight screen (D006), no settings pane yet."
+  - "No engine bookkeeping on screen - reserved flags never render."
+allows_deps: []
+acceptance:
+  spec: >
+    Three panes reachable both directions and stable under redraw; a
+    scene selection snaps to ACTIONS. The strip shows HP, Might, Will,
+    tithes and depth and never a sanity number. An empty pane reads as
+    empty rather than as a message about being empty. No flag, no
+    reserved engine key and no seed ever reaches the screen.
+  commands:
+    - npx vitest run tests/acceptance/H105.panel.test.ts

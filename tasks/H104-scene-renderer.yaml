@@ -1,0 +1,28 @@
+id: H104
+title: Scene renderer - tappable objects, free tap
+goal: >
+  Render View.objects as labeled tappable blocks inside H102's frame,
+  with a selection highlight. THE FREE TAP IS LAW (GAME.md #descent):
+  tapping an object describes it and surfaces its actions, and never
+  advances, costs or harms. Only an explicit action dispatches through
+  act. Renders state; computes nothing; never mutates.
+context: [GAME.md, LAWS.md, AGENTS.md]
+deps: [H101, H102]
+scope:
+  - src/shell/scene.ts
+  - src/shell/scene.test.ts
+  - tests/acceptance/H104.scene.test.ts
+non_goals:
+  - "No panel, no fight screen, no end card."
+  - "No animation; scene changes are cuts (GAME.md #frame)."
+allows_deps: []
+acceptance:
+  spec: >
+    Objects render 1:1 with View.objects, each carrying its id and its
+    actions. Tapping an object mutates no state - proven by comparing a
+    deep clone of the state across the tap - and surfaces that object's
+    actions; only an action tap invokes the callback, exactly once, with
+    the right ref. Every tappable is at least 44px. A redraw leaves no
+    stale objects behind.
+  commands:
+    - npx vitest run tests/acceptance/H104.scene.test.ts

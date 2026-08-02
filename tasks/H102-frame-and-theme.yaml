@@ -1,0 +1,29 @@
+id: H102
+title: The frame - still, writing, panel, vignette
+goal: >
+  GAME.md #frame as layout law. Full-bleed still behind; one or two
+  lines of writing on top; a fixed bottom panel region; a permanent
+  strip carrying HP, Might, Will, tithes and depth. Sanity is the
+  VIGNETTE - a closing dark border - and no sanity bar exists anywhere.
+  Theme tokens live in one place so H115's art pass is a token edit,
+  not a rewrite. Layout contracts only; panes are H105's.
+context: [GAME.md, CANON.md, AGENTS.md]
+deps: [H101]
+scope:
+  - src/shell/theme.css
+  - src/shell/frame.ts
+  - src/shell/frame.test.ts
+  - tests/acceptance/H102.frame.test.ts
+non_goals:
+  - "No pane content and no paging - H105 owns the panel's insides."
+  - "No real art; wireframe tokens, replaced by H115."
+allows_deps: []
+acceptance:
+  spec: >
+    At 390x844 the strip and panel region are within the bottom 40% and
+    the still fills the rest; nothing overlaps or clips at 320x568
+    either. The vignette renders as a border overlay driven by a sanity
+    value and never occludes the panel. No element anywhere prints a
+    sanity number. Every theme value resolves from a token in theme.css.
+  commands:
+    - npx vitest run tests/acceptance/H102.frame.test.ts
