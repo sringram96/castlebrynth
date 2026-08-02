@@ -23,6 +23,10 @@ jobs:
       - name: law
         run: npm run law
 
+      # Reporting, not a gate. `progress` exits non-zero until every card is
+      # green, which is the normal state for most of a phase — letting it fail
+      # the job would make `law` red for the whole build-out.
       - name: progress
         if: always()
+        continue-on-error: true
         run: npm run progress
