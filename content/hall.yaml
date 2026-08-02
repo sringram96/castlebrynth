@@ -1,0 +1,30 @@
+# content/hall.yaml — the hall. Where the procession in the book was going (P105).
+#
+# This is where the arc that opened on a stone closes. The door carries the
+# same mark, and `study` splits on `knows_glyph` exactly as the book's `read`
+# split on it: the reader who learned the mark on the shore recognises it here,
+# and the one who did not gets a refusal that points at their own thumb rather
+# than at the door (LAWS.md §refusal).
+id: hall
+line: "A long room, and the far end of it is not lit."
+objects:
+  - id: floor
+    name: "the floor"
+    actions:
+      look:
+        - say: "The stone is worn low down the middle, a band two strides wide. It runs from the steps to the dark."
+
+  - id: door
+    name: "a door at the end of the room"
+    actions:
+      study:
+        - gate: { flag: knows_glyph }
+          journal: "the same mark"
+          say: "The mark cut into the door is the mark cut into the stone. Your thumb has it before your eyes do."
+        - refuse: "Something is cut into the door, deep and worn shallow. Your thumb goes over it and takes nothing."
+
+  - id: dark
+    name: "the dark at the end"
+    actions:
+      listen:
+        - say: "It does not move and it does not breathe. It holds the cold the way the pool held the water."
