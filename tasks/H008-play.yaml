@@ -1,0 +1,25 @@
+id: H008
+card: H008
+title: Terminal play harness
+lane: factory
+deps: [H006b]
+scope:
+  - scripts/play.mjs
+acceptance: tests/acceptance/H008.play.test.ts
+done_when: npx vitest run tests/acceptance/H008.play.test.ts
+goal: |
+  scripts/play.mjs — the loop in your hands before any pixel. Ugly on
+  purpose.
+
+    node scripts/play.mjs [--seed 42]
+
+  Print the narrator line, then a numbered list of objects and their
+  actions, from getView. Read stdin. Accept either a menu number or
+  `<object> <action>`; `quit` exits 0. Unknown input reprints the menu
+  rather than crashing.
+
+  Print effects as they come: say lines, refusal lines, and journal
+  additions (visibly — the acceptance greps for "procession").
+notes: |
+  Reads content/bundle.json itself and hands the parsed value to loadBundle.
+  This is a script, not src/core — I/O is fine here.

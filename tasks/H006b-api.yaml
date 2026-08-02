@@ -1,0 +1,29 @@
+id: H006b
+card: H006
+half: B
+title: GameAPI implementation
+lane: factory
+deps: [H006a]
+scope:
+  - src/core/api.ts
+  - src/core/api.test.ts
+acceptance: tests/acceptance/H006.engine.test.ts
+done_when: npx vitest run tests/acceptance/H006.engine.test.ts
+goal: |
+  src/core/api.ts over resolve.
+
+    newRun(seed: number, bundle: Bundle): GameState
+    createGame(bundle: Bundle): {
+      newRun(seed): GameState
+      act(state, ref, input?): { state, effects }
+      getView(state): View
+    }
+
+  act and getView never mutate. An unknown object or action is a no-op that
+  returns the state unchanged — not a throw. Determinism replay holds: same
+  seed, same taps, same state, byte for byte.
+notes: |
+  createGame exists because act(state, ref) in P0.md has no bundle parameter
+  and GameState may not carry the bundle (RULES.md 2 — saves stay small).
+  Binding the bundle at construction is the only way to honour both. The
+  standalone newRun(seed, bundle) keeps P0.md's literal signature available.

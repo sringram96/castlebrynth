@@ -1,0 +1,44 @@
+id: H006a
+card: H006
+half: A
+title: Resolve engine
+lane: factory
+deps: [H001b, H002, H004b]
+scope:
+  - src/core/resolve.ts
+  - src/core/resolve.test.ts
+acceptance: npm run law
+done_when: npm run law green (the resolve unit suite); H006.engine.test.ts H006a blocks pass
+goal: |
+  The heart. src/core/resolve.ts.
+
+    - selection: the FIRST response whose gate passes. Not the best, not the
+      most specific. A gate is a conjunction; an empty or absent gate passes.
+    - application: deltas apply in DELTA_ORDER (VOCAB.md), never in the order
+      the keys appear in the file. This is what makes two authors agree.
+    - refusal: `refuse` applies and stops. Ledger refKey(ref) into
+      state.refused, once — never a duplicate. Nothing else changes.
+    - object sets: the visible set is scene.objects (minus any marked
+      `hidden`) plus every addObject, minus every removeObject applied so
+      far. Nothing else moves it (LAWS.md affordance).
+
+  Pure. No mutation of the state handed in. No clock, no Math.random.
+notes: |
+  Where do addObject/removeObject persist? GameState has seven keys and that
+  is frozen (H001a) — you may not add an eighth.
+
+  Record them in `flags`, under a reserved prefix:
+
+      addObject: ash     ->  flag "obj+:ash"
+      removeObject: pool ->  flag "obj-:pool"
+
+  The visible set is then a pure function of the scene and the flags:
+
+      scene.objects.filter(o => !o.hidden || flags.has("obj+:" + o.id))
+                   .filter(o => !flags.has("obj-:" + o.id))
+
+  JSON-safe, deterministic, inside the frozen shape. Flags are the world's
+  memory — this is what they are for.
+
+  Reserved prefixes are engine-owned: content-lint should never see an author
+  write one by hand, and `setFlag: "obj+:x"` in content is a content bug.

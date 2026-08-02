@@ -1,0 +1,32 @@
+id: H001b
+card: H001
+half: B
+title: GameAPI contract types
+lane: factory
+deps: [H001a, H003a]
+scope:
+  - src/core/api-types.ts
+  - src/core/api-types.test.ts
+acceptance: npm run law
+done_when: npm run law green, including the API-shape assertions in src/core/api-types.test.ts
+goal: |
+  The API half of the contract. Types only — H006b implements them.
+
+    ActionRef { object, action }
+    Effect    — a discriminated union on `kind`: say | refused | journal | enter
+    ViewObject{ id, actions: string[] }
+    View      { enter?, line, scene, objects: ViewObject[] }
+
+  And the signatures P1 will consume forever:
+
+    newRun(seed: number, bundle: Bundle): GameState
+    act(state, ref, input?): { state: GameState; effects: Effect[] }
+    getView(state): View
+
+  Write the shape assertions as typed consts in src/core/api-types.test.ts.
+  That file lives under src/, so `npm run typecheck` checks it — which is
+  what makes these assertions real rather than decorative.
+notes: |
+  Depends on H003a because the newRun signature names Bundle, which cards.ts
+  owns. This is one dep more than the P0.md table shows; it is the price of
+  keeping Bundle in exactly one place.

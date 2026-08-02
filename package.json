@@ -1,0 +1,31 @@
+{
+  "name": "castlebrynth",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test:unit": "vitest run src --passWithNoTests",
+    "test:acceptance": "vitest run tests/acceptance --passWithNoTests",
+    "task-lint": "node scripts/task-lint.mjs",
+    "law": "npm run typecheck && npm run lint && npm run test:unit && npm run task-lint",
+    "build:content": "node scripts/build-content.mjs",
+    "board": "node scripts/board.mjs",
+    "progress": "node scripts/progress.mjs",
+    "play": "node scripts/play.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.13.0",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^20.16.0",
+    "eslint": "^9.13.0",
+    "js-yaml": "^4.1.0",
+    "typescript": "^5.6.0",
+    "typescript-eslint": "^8.11.0",
+    "vitest": "^2.1.0"
+  }
+}

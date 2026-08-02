@@ -1,0 +1,30 @@
+id: H003b
+card: H003
+half: B
+title: The shore fixture
+lane: factory
+deps: [H003a]
+scope:
+  - content/shore.yaml
+acceptance: tests/acceptance/H003.schema.test.ts
+done_when: npx vitest run tests/acceptance/H003.schema.test.ts
+goal: |
+  The reference scene. Five objects: stone, book, pool, self, path.
+
+    stone · study  -> setFlag knows_glyph, and a line about warmth
+    book  · read   -> gated on knows_glyph: journal "procession", setFlag
+                      book_open; fallback: refuse
+    pool  · look   -> a line
+    self  · listen -> a line
+    path  · follow -> gated on book_open; fallback: a refusal that points
+
+  Voice is CANON.md and the acceptance scans for banned words. Refusals name
+  what you lack in the world's terms — never "yet", never "you can't"
+  (LAWS.md refusal).
+
+  The canonical lines the root acceptance and the play harness look for:
+    refusal : must contain "marks swim"
+    teaching: must contain "warm where nothing else is"
+notes: |
+  One scene only. `path.follow` does not goto anywhere — P0 has one scene, and
+  a dangling goto fails H005's lint.

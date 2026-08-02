@@ -1,0 +1,27 @@
+id: H001a
+card: H001
+half: A
+title: State types
+lane: factory
+deps: []
+scope:
+  - src/core/types.ts
+  - src/core/types.test.ts
+acceptance: tests/acceptance/H001.types.test.ts
+done_when: npx vitest run tests/acceptance/H001.types.test.ts
+goal: |
+  The state half of the contract hub.
+
+  GameState { scene, flags, items, journal, refused, rng, seed } — exactly
+  those seven keys, no more. It must survive JSON.stringify and
+  structuredClone deep-equal (RULES.md 2): arrays, not Sets; numbers, not
+  Dates; plain objects only.
+
+  Plus tiny pure helpers beside it: emptyState(scene, seed), hasFlag,
+  hasItem, withFlag, withoutFlag, withItem, withoutItem, refKey. Every
+  `with*` returns new state and never touches its argument. Membership is
+  insertion-ordered and de-duplicated.
+
+  refKey({object, action}) is the ledger key: "book.read".
+notes: |
+  `rng` is a plain uint32 — H002 owns how it advances, you only declare it.

@@ -1,0 +1,12 @@
+# A fixture that must fail the build with a path-precise error (RULES.md §3).
+# `setFlagg` is not a word. The compiler must say so, and say where.
+id: badvocab
+line: "Grey water, and no far side to it."
+objects:
+  - id: book
+    name: book
+    actions:
+      read:
+        - setFlagg: knows_glyph
+          say: "The glyphs settle."
+        - refuse: "The marks swim. You cannot hold them."

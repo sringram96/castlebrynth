@@ -1,0 +1,23 @@
+id: H004b
+card: H004
+half: B
+title: Bundle loader
+lane: factory
+deps: [H004a]
+scope:
+  - src/core/bundle.ts
+  - src/core/bundle.test.ts
+acceptance: tests/acceptance/H004.compiler.test.ts
+done_when: npx vitest run tests/acceptance/H004.compiler.test.ts
+goal: |
+  src/core/bundle.ts — loadBundle(raw: unknown): Bundle.
+
+  Takes an already-parsed JSON value and validates it into a typed Bundle,
+  or throws. Rejects: non-objects, wrong v, missing scenes, a `start` that
+  names no scene. Validates every scene through parseScene.
+
+  A compiled bundle must round-trip deep-equal:
+    loadBundle(JSON.parse(JSON.stringify(b))) equals b
+notes: |
+  "load" means validate, not read from disk. src/core does no I/O
+  (RULES.md 1) — the caller supplies the parsed JSON.

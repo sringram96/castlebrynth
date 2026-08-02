@@ -1,0 +1,28 @@
+name: law
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  law:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: law
+        run: npm run law
+
+      - name: progress
+        if: always()
+        run: npm run progress

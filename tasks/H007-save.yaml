@@ -1,0 +1,23 @@
+id: H007
+card: H007
+title: Save envelope v1
+lane: factory
+deps: [H001a]
+scope:
+  - src/core/save.ts
+  - src/core/save.test.ts
+acceptance: tests/acceptance/H007.save.test.ts
+done_when: npx vitest run tests/acceptance/H007.save.test.ts
+goal: |
+  src/core/save.ts.
+
+    SAVE_VERSION = 1
+    serialize(state): { v: 1, state }
+    parse(raw: string): GameState | null
+
+  parse is the boundary with the outside world and the outside world lies.
+  It NEVER throws — malformed JSON, wrong version, missing or mistyped
+  fields all return null. Validate every one of the seven keys and the
+  element types inside the arrays.
+notes: |
+  The acceptance fuzzes every truncation of a valid save. Wrap the JSON.parse.
