@@ -8,7 +8,6 @@
   },
   "scripts": {
     "law": "tsc --noEmit && eslint . && vitest run src --passWithNoTests",
-    "progress": "node scripts/board.mjs",
     "build:content": "node scripts/build-content.mjs",
     "play": "node scripts/play.mjs",
     "test": "vitest"
