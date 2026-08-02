@@ -1,0 +1,28 @@
+# content/stair.yaml — the stair. Between the shore and the hall (P105).
+#
+# Nothing is learned here and nothing is refused here. The stair is the cost of
+# the hall: it is cold, it is long, and the only thing it says is that a great
+# many people went up it before you — the wall is worn where their shoulders
+# were. The procession the book named has left its mark on the way, not just at
+# the end of it.
+id: stair
+line: "The steps go up inside the rock, and the cold comes down them."
+objects:
+  - id: steps
+    name: "the steps"
+    actions:
+      climb:
+        - goto: hall
+          say: "You go up. The turn is always the same turn, and then the steps stop."
+
+  - id: wall
+    name: "the wall at your shoulder"
+    actions:
+      touch:
+        - say: "Cut stone, wet under the hand. It is rubbed smooth at the height of a shoulder, the whole way up."
+
+  - id: air
+    name: "the air"
+    actions:
+      listen:
+        - say: "Cold comes down the steps and goes out behind you to the water. Nothing comes down with it."
