@@ -92,7 +92,15 @@ try {
 const inScope = (path) =>
   card.scope.some((s) => (s.endsWith('/') ? path.startsWith(s) : s === path))
 
+// A bounce is a success state (AGENTS.md), and the way you bounce is to add
+// `tasks/questions/<id>.md` and nothing else. Without this line the lint failed
+// the one file the law tells a blocked agent to write — so the correct move
+// looked like a broken one, and the agent that took it got a red board for
+// obeying. Only your own question file: the exemption is not a door.
+const bounce = `tasks/questions/${card.id}.md`
+
 for (const path of changed) {
+  if (path === bounce) continue
   if (!inScope(path)) {
     fail(
       `${card.id} touched ${path}, which is not in its scope.\n` +

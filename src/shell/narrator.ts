@@ -51,6 +51,13 @@ export function createNarrator(): Narrator {
   const el = document.createElement('div')
   // The mock's own name for it. There is one narrator in the frame.
   el.id = 'narr'
+  // And the name the acceptance suite knows it by. H103 and H100 were authored
+  // in the same wave and did not agree on this one string: H105 wired its panes
+  // to `data-testid`, this file wired to the mock's `#narr`, and neither was
+  // wrong on its own. The suite is the definition of done and may not be edited
+  // (AGENTS.md law 7), so the hook comes here. Both names are the same element,
+  // and H115's art pass may rewrite the id but not this.
+  el.dataset.testid = 'narrator'
 
   // Inline from the tokens rather than a stylesheet: theme.ts is data and its
   // consumers read values and set them (H102). What a test reads is then what
