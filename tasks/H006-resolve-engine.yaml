@@ -1,0 +1,27 @@
+id: H006
+title: Resolve engine + GameAPI implementation
+goal: >
+  The heart. src/core/resolve.ts - first-passing-gate response
+  selection, deltas applied in VOCAB order, refused ledger, affordance
+  changes only via addObject/removeObject with cause. src/core/api.ts -
+  newRun(seed, bundle), act, getView per H001's contract.
+context: [VOCAB.md, RULES.md, GAME.md, LAWS.md, skill:engine]
+deps: [H001, H002, H004]
+scope:
+  - src/core/resolve.ts
+  - src/core/resolve.test.ts
+  - src/core/api.ts
+  - src/core/api.test.ts
+  - tests/acceptance/H006.engine.test.ts
+non_goals: ["No dice, death, QTE, or economy words - reserved (VOCAB.md)."]
+allows_deps: []
+acceptance:
+  spec: >
+    Against the shore bundle plus inline fixtures: gate ordering picks
+    the first passing response; fallback fires when none pass; every
+    VOCAB delta observably applies; refuse ledgers and implies no other
+    delta; object sets change only through the two affordance deltas
+    and record their cause; tap (getView + object line) never mutates
+    state; determinism replay across a scripted run.
+  commands:
+    - npx vitest run tests/acceptance/H006.engine.test.ts

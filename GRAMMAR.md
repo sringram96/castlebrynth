@@ -10,7 +10,7 @@ Engine code knows HOOKS and EFFECT VERBS — nothing else. Every die,
 face, joker, spell, skill, and boss rule is a data element that
 attaches effects to hooks. Adding or removing an element is a data
 edit, never an engine edit. Adding a new effect VERB is an engine
-amendment (vocabulary closure, .llm/rules/two-languages.mdc). This is the same law the
+amendment (vocabulary closure, RULES.md 3). This is the same law the
 room engine already lives under, applied to combat.
 
 ## the turn pipeline (the fixed hooks)

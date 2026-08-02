@@ -1,0 +1,25 @@
+id: H001
+title: State types + GameAPI contract
+goal: >
+  The contract hub. GameState (scene, flags, items, journal, refused
+  ledger, rng, seed), the card/bundle type surface the engine consumes,
+  and the GameAPI types the shell will consume in P1 - newRun, act,
+  getView, View, Effect. Types and tiny pure helpers only.
+context: [VOCAB.md, RULES.md, skill:engine]
+deps: []
+scope:
+  - src/core/types.ts
+  - src/core/types.test.ts
+  - tests/acceptance/H001.types.test.ts
+non_goals: ["No behavior. H006 implements the API against these types."]
+allows_deps: []
+acceptance:
+  spec: >
+    Exports GameState with flags as a string set serializable to JSON,
+    items list, journal list, refused list, rng number, scene id;
+    ActionRef {object, action}; Effect union (say at minimum); View
+    {enter?, line, scene, objects:[{id, actions:[id]}]}. GameState
+    survives structuredClone + JSON round-trip. A kind-switch never
+    guard compiles (vocabulary exhaustiveness hook for H006).
+  commands:
+    - npx vitest run tests/acceptance/H001.types.test.ts

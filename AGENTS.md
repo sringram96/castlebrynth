@@ -1,67 +1,60 @@
 # AGENTS.md — law for autonomous agents (v2)
 
-You are one agent among several building **castlebrynth**. You work exactly one
-task card from `tasks/`. You coordinate with this file and what it cites —
-never with other agents.
+You are one agent among several building **castlebrynth**. You work
+exactly one task card from `tasks/`. You coordinate with this file and
+what it cites — never with other agents.
 
 ## the law
 
 1. **One card, one PR.** Touch only your card's `scope`. Branch
-   `factory/<ID>`, PR title `<ID>: <title>`. `task-lint` compares your diff to
-   the scope and fails on anything outside it — that is what makes a whole wave
-   safe to merge in any order.
-2. **Idempotency first.** Run your card's acceptance before writing anything.
-   Green → stop, change nothing, report **"already satisfied."** That is a
-   correct outcome, not a failure: it means a dependency carried the work, and
-   the observation is the deliverable.
-3. **`.llm/rules/` is engineering law** — purity, determinism, the two closed
-   languages, manifest discipline, layering, the F-laws, testing, no-takebacks,
-   the two ledgers, saves. CI's `law` job enforces it; do not fight the lint.
-4. **Design law:** `GAME.md` (ratified mechanics), `VISION.md` (rationale),
-   `LAWS.md` (content fairness), `CANON.md` (voice and tiers), `TRUTH.md`
-   (spoilers, tiered). Ambiguity that changes behaviour → **bounce**, never
-   guess.
-5. **Two languages, one doorway.** The Descent speaks `VOCAB.md`; the Lots
-   speaks `GRAMMAR.md`; `fight:` is the only crossing. Never mix them.
-6. **Combat content goes in the manifest, never in engine code.** A new die,
-   joker, face or enemy rule is a `grammar.yaml` edit plus tests. A new effect
-   verb or pipeline hook is an engine amendment card — rare and loud.
-7. **Dependencies** enter only through your card's `allows_deps`. A card that
-   adds one owns `package.json` **and** `package-lock.json`; CI runs `npm ci`
-   and fails on a lock that has drifted.
-8. **The acceptance test is not yours.** Never edit, weaken, skip or delete
-   anything under `tests/acceptance/`. The card's `acceptance.spec` is the
-   authority, not your code.
+   `factory/<ID>`, PR title `<ID>: <title>`.
+2. **Idempotency first.** Run your card's acceptance before writing
+   anything. Green → stop, report "already satisfied."
+3. **RULES.md v2 is engineering law** — purity, determinism, the TWO
+   closed languages (VOCAB.md for the Descent, GRAMMAR.md for the
+   Lots), manifest discipline, F-laws as CI, the two-ledger type law.
+4. **Design law:** GAME.md v5 (ratified), VISION.md v1.1 (rationale),
+   LAWS.md (content fairness), CANON.md (voice). Ambiguity that
+   changes behavior → bounce, never guess.
+5. **Combat content goes in the manifest, never in engine code.** A
+   new die, joker, or enemy rule is a grammar.yaml edit + tests. A new
+   hook or effect verb is an engine amendment card — rare and loud.
+6. Dependencies enter only through `allows_deps`.
 
 ## the ritual
 
-Read the card → read every `context` reference it names → run the acceptance
-(expect red) → write or complete the acceptance to match the card's spec →
-implement inside scope → `npm run law` green, including the F-laws when the
-manifest changed → your acceptance green → **merge** → PR body: what, how
-verified, judgment calls made.
-
-Do not stop at a commit. A card left unmerged starves everything downstream of
-it, and the next agent has no way to know why its dependency is missing.
+Read card → read every `context` reference → run acceptance (expect
+red) → write/complete the acceptance to match the card's spec →
+implement inside scope → `npm run law` green (includes F-laws when the
+manifest changed) → acceptance green → PR: what, how verified,
+judgment calls.
 
 ## bouncing
 
-You cannot ask questions mid-run. On an ambiguity that changes behaviour, end
-the run **blocked**: a PR adding only `tasks/questions/<ID>.md`, and nothing
-else.
+On ambiguity, end blocked: PR adding only `tasks/questions/<ID>.md`.
+A bounce is a success state; a guess is not.
 
-**A bounce is a success state; a guess is not.** This is worth believing rather
-than merely obeying — the expensive failures on this project have all been
-guesses that looked reasonable, and the cheap ones have all been bounces.
+## the playtester
 
-If your acceptance test looks self-contradictory, if a law is silent on the
-case in front of you, if the card's scope cannot contain the work it describes:
-bounce. Do not widen the scope, do not soften the test, do not invent the word.
+A standing agent role, dispatched after any wave touching src/shell or
+content/. You play the build and report; you never write feature code.
 
-## what never changes
-
-The first tap is free (`GAME.md` #input) — it describes and surfaces actions,
-and never advances the world. Objects change only by delta with a cause
-(`LAWS.md` #affordance). Dice land and stand (`.llm/rules/dice.mdc`). Same
-seed, same run (`.llm/rules/determinism.mdc`). Death touches the run ledger
-only (`.llm/rules/ledgers.mdc`).
+- Setup: npm run build (or vite dev), serve it, drive with Playwright
+  (add as devDependency if absent; chromium headless; viewport
+  390x844, deviceScaleFactor 3; also spot-check 320x568).
+- Script the paths the landed cards claim work: boot -> resume/new;
+  the content's happy path; a deliberate death; a fight if the Lots
+  screen exists (throw, hold, gather when enabled).
+- Screenshot every key beat to playtests/<date>/<beat>.png: first
+  frame, a room with objects, each panel pane, the fight screen with
+  dice visible, the death wake, the end card.
+- UI checks, each PASS/FAIL with screenshot evidence: every tappable
+  >=44px; panel one-thumb reachable (bottom 40%); text readable
+  against its background; nothing clipped or overlapping at either
+  viewport; the vignette never occludes the panel; the free-tap law
+  holds (tapping alone never mutates state - verify via the exposed
+  state hook).
+- File findings as tasks/questions/PLAYTEST-<date>-<n>.md (repro +
+  screenshot path) and a summary at playtests/<date>/REPORT.md.
+  Commit screenshots and reports - they are evidence.
+- Never fix what you find. You are the eyes, not the hands.

@@ -87,4 +87,4 @@ spent in the skill_window after dice land).
 
 A run is fully determined by save seed + death count + inputs (leans
 draw from the seeded stream). Same seed, same casts, same doors,
-forever (.llm/rules/determinism.mdc).
+forever (RULES.md).

@@ -1,0 +1,23 @@
+id: H004
+title: Content compiler - YAML to bundle
+goal: >
+  scripts/build-content.mjs compiles content/*.yaml into
+  content/bundle.json; src/core/bundle.ts types, validates, and loads
+  it. Unknown vocabulary words fail the build with the offending path.
+context: [VOCAB.md, RULES.md, skill:engine]
+deps: [H003]
+scope:
+  - scripts/build-content.mjs
+  - src/core/bundle.ts
+  - src/core/bundle.test.ts
+  - tests/acceptance/H004.compiler.test.ts
+non_goals: ["No linting beyond vocabulary closure - H005 owns law checks."]
+allows_deps: []
+acceptance:
+  spec: >
+    Building the repo's content yields a bundle the loader accepts; a
+    fixture with an unknown delta word fails with a path-precise error;
+    the compiled shore round-trips deep-equal through JSON; npm script
+    build:content exists and is wired.
+  commands:
+    - npx vitest run tests/acceptance/H004.compiler.test.ts
