@@ -8,7 +8,7 @@ scope:
   - src/core/resolve.ts
   - src/core/resolve.test.ts
 acceptance: npm run law
-done_when: npm run law green (the resolve unit suite); H006.engine.test.ts H006a blocks pass
+done_when: npm run law green — your own resolve unit suite in src/core/resolve.test.ts is the proof
 goal: |
   The heart. src/core/resolve.ts.
 
@@ -42,3 +42,9 @@ notes: |
 
   Reserved prefixes are engine-owned: content-lint should never see an author
   write one by hand, and `setFlag: "obj+:x"` in content is a content bug.
+
+verify_note: |
+  tests/acceptance/H006.engine.test.ts cannot run until H006b lands — it
+  imports createGame. Your proof is src/core/resolve.test.ts, and it must be
+  a real suite: first-passing-gate, DELTA_ORDER application, refusal ledger
+  (no duplicates), object-set folding, and no mutation of the input state.

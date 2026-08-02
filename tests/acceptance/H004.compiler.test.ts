@@ -2,7 +2,11 @@ import { describe, it, expect, beforeAll } from 'vitest'
 import { execFileSync } from 'node:child_process'
 import { readFileSync, existsSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { loadBundle } from '../../src/core/bundle'
+
+// Imported lazily: H004a (the builder) must be able to run its own blocks
+// before H004b (the loader) exists.
+const importLoadBundle = async () =>
+  (await import('../../src/core/bundle')).loadBundle
 
 // H004 · YAML in, bundle out, and a loader that refuses to trust it.
 
@@ -58,24 +62,28 @@ describe('H004a · the content builder', () => {
 })
 
 describe('H004b · the bundle loader', () => {
-  it('loads the compiled shore', () => {
+  it('loads the compiled shore', async () => {
+    const loadBundle = await importLoadBundle()
     const b = loadBundle(JSON.parse(readFileSync(bundlePath, 'utf8')))
     expect(b.v).toBe(1)
     expect(b.scenes['shore']).toBeDefined()
   })
 
-  it('round-trips deep-equal through JSON', () => {
+  it('round-trips deep-equal through JSON', async () => {
+    const loadBundle = await importLoadBundle()
     const b = loadBundle(JSON.parse(readFileSync(bundlePath, 'utf8')))
     expect(loadBundle(JSON.parse(JSON.stringify(b)))).toEqual(b)
   })
 
-  it('rejects a bundle that is not one', () => {
+  it('rejects a bundle that is not one', async () => {
+    const loadBundle = await importLoadBundle()
     for (const junk of [null, undefined, 42, 'x', [], {}, { v: 2 }, { v: 1 }]) {
       expect(() => loadBundle(junk), `accepted ${JSON.stringify(junk)}`).toThrow()
     }
   })
 
-  it('rejects a bundle whose start scene is missing', () => {
+  it('rejects a bundle whose start scene is missing', async () => {
+    const loadBundle = await importLoadBundle()
     expect(() => loadBundle({ v: 1, start: 'nowhere', scenes: {} })).toThrow(/start|nowhere/i)
   })
 })

@@ -7,7 +7,7 @@ deps: [H003b]
 scope:
   - scripts/build-content.mjs
 acceptance: tests/acceptance/H004.compiler.test.ts
-done_when: npx vitest run tests/acceptance/H004.compiler.test.ts (the H004a blocks)
+done_when: npx vitest run tests/acceptance/H004.compiler.test.ts -t H004a
 goal: |
   scripts/build-content.mjs compiles content/*.yaml -> content/bundle.json.
 

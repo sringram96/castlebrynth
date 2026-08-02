@@ -8,7 +8,7 @@ scope:
   - src/core/cards.ts
   - src/core/cards.test.ts
 acceptance: tests/acceptance/H003.schema.test.ts
-done_when: npm run law green (schema type tests); the H003a blocks of the acceptance pass
+done_when: npm run law green, and npx vitest run tests/acceptance/H003.schema.test.ts -t H003a
 goal: |
   The shape agents will author content in, forever.
 
