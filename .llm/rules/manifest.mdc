@@ -1,0 +1,35 @@
+---
+description: All combat content lives in grammar.yaml and experiment overlays. Engine code never names a specific die, joker or enemy.
+globs: grammar.yaml,experiments/**/*.yaml,src/core/lots/**/*.ts,src/core/**/*.ts
+alwaysApply: false
+---
+
+# Manifest discipline
+
+**All combat content** — dice, leans, gilded faces, jokers, spells, skills,
+enemy rules, economy toggles — lives in **`grammar.yaml`** plus experiment
+overlays. Nothing else holds any of it.
+
+**Engine code never names a specific die or joker.** Not in a constant, not in
+a switch, not in a comment that a later reader will treat as a list. The engine
+knows hooks and effect verbs; the manifest attaches verbs to hooks.
+
+The test is simple: **adding or removing a die must be a data edit.** If it
+takes an engine change, the abstraction has already failed.
+
+```
+grammar.yaml            the live set — tiers, faces, dice, jokers, spells,
+                        skills, enemy_rules, and the `enabled` list
+experiments/exp-NNN.yaml  base overrides ONLY — enable/disable lists and
+                        numeric tweaks. Nothing else changes anywhere.
+```
+
+## the two kinds of change
+
+- **A new die, joker, face, spell, skill or enemy rule** is a `grammar.yaml`
+  edit plus tests. Ordinary work.
+- **A new effect verb or a new pipeline hook** is an **engine amendment card** —
+  rare, loud, and argued. It widens a closed language
+  (`.llm/rules/two-languages.mdc`).
+
+This is the same law the room engine already lives under, applied to combat.

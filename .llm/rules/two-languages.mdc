@@ -1,0 +1,39 @@
+---
+description: Two closed languages — VOCAB.md for the Descent, GRAMMAR.md for the Lots. Unknown words fail at load. New words by amendment card only.
+globs: src/core/**/*.ts,content/**/*.yaml,grammar.yaml,experiments/**/*.yaml,scripts/**/*.ts
+alwaysApply: false
+---
+
+# Two closed languages
+
+There are two engines and each speaks its own closed language. **Never mix
+them.**
+
+**The Descent** — navigation, investigation, rooms — speaks **VOCAB.md**: gates
+(`flags`, `items`) and deltas (`say`, `set`, `unset`, `give`, `take`, `adjust`,
+`journal`, `refuse`, `goto`, `addObject`, `removeObject`, `prompt`, `fight`,
+`end`).
+
+**The Lots** — dice, combat, everything it spends — speaks **GRAMMAR.md**:
+pipeline hooks (`on_roll`, `skill_window`, `on_score`, `on_hold`, `on_block`,
+`on_turn_end`) and closed effect verbs (`add`, `mult`, `mana`, `burn`, `hp`,
+`block`, `wild`, `promote`, `seal`, `curse`).
+
+**`fight:` is the only doorway.** The Descent finds what the Lots spend. A
+merchant or a dialogue resolves inside the Descent; only `fight:` crosses over,
+and it returns.
+
+## the closure rule
+
+Unknown words **fail at load, never silently at play**, and the error names the
+path to the offending node.
+
+A new word — a gate, a delta, or an effect verb — is a **VOCAB or GRAMMAR
+amendment card**: one word, its tests, its lint. It is never an inline special
+case, never a quiet `if`, and never something a content card teaches itself.
+
+`lies`, `counter` and `dropObols` are **reserved and parked**. Do not implement
+them and do not use them.
+
+If your card needs a word that is not in its language, you do not add it — you
+**bounce** (AGENTS.md).

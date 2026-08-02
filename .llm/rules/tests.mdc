@@ -1,0 +1,34 @@
+---
+description: Unit tests co-located and always green. Acceptance tests are the scoreboard — red until their card lands, never a merge gate, never yours to edit.
+globs: src/**/*.test.ts,tests/**/*.ts
+alwaysApply: false
+---
+
+# Testing
+
+**Unit tests** live beside their code (`src/core/resolve.test.ts`). `npm run
+law` runs them and they are **always green**. They are yours — write as many as
+you like. Prefer table-driven `{name, given, when, then}` rows, golden fixtures
+for resolve ordering, and a determinism replay test on anything touching RNG.
+
+**Acceptance tests** (`tests/acceptance/`) are the **scoreboard**. They are
+**red until their card lands**, and they are **never a merge gate** — `law`
+does not run them.
+
+They are authored *ahead* of the card they define, and the card's
+`acceptance.spec` is the authority, not your implementation. You may not edit,
+skip, weaken, retitle or delete one to make it match what you built. If an
+acceptance test looks wrong, **bounce** — open `tasks/questions/<ID>.md` and
+stop.
+
+**Every bugfix lands with the case that caught it.** A fix without a test is a
+fix that will be made again.
+
+Two failure modes worth naming, because both have happened:
+
+- A test that locates prose with `search()` or `toMatch` finds the **first**
+  occurrence, so a line emitted twice reads as a pass. Count occurrences when
+  the claim is about how often something happens.
+- A test whose fixture is near-identical to one another test requires to be
+  *rejected* is a contradiction no implementation can satisfy. Check fixtures
+  against each other before dispatch, not after.

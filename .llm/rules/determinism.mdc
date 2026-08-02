@@ -1,0 +1,25 @@
+---
+description: All randomness flows from RNG state on GameState. Same seed, same run, forever. State survives a JSON round-trip.
+globs: src/core/**/*.ts,scripts/**/*.ts
+alwaysApply: false
+---
+
+# Determinism
+
+All randomness — room draws, lean-weighted casts, enemy intents — flows from
+**RNG state carried on `GameState`**. Drawing returns the value *and* the next
+state: `next(rng) => [value, rng2]`. There is no hidden generator anywhere.
+
+`GameState` survives a JSON round-trip and `structuredClone` **deep-equal**. No
+`Set`, no `Map`, no `Date`, no class instances, no `undefined` members.
+
+**Draw in the order the spec defines, and never speculatively.** A loaded die's
+lean draws from the run's seeded stream in a fixed order; a room draw takes its
+values in the order the walker asks for them. Two implementations that draw the
+same values in a different order are two different games.
+
+Determinism is not tidiness here — it is load-bearing three times over:
+
+- the fight sim can only prove F1–F7 because a seed reproduces a fight exactly
+- a player can be asked to report a seed when something goes wrong
+- replay is the only way to tell a balance problem from a bug
