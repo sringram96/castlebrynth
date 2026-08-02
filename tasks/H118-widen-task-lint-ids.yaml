@@ -1,0 +1,30 @@
+id: H118
+title: Factory - widen task-lint ids to [HLD]###
+goal: >
+  task-lint requires card ids to match H###, so every L/D card id
+  (L001, D001, ...) is rejected and the L/D wave can never author the
+  matching repo card its ritual demands. Widen the pattern to
+  ^[HLD]\d{3}$ - widen, not renumber, per FACTORY UPDATE 1. Nothing
+  else about the lint moves: schema, dep closure, cycle detection and
+  the scope-collision rule are untouched. This card gates the whole
+  L/D era; no L or D card may start before it lands.
+context: [FACTORY.md, AGENTS.md]
+deps: []
+scope:
+  - scripts/task-lint.mjs
+  - tests/acceptance/H118.taskid.test.ts
+non_goals:
+  - "No renumbering of any existing card - widening is the ruling."
+  - "No other lint rule changes; this is one regex and its proof."
+allows_deps: []
+acceptance:
+  spec: >
+    Ids L001 and D001 are accepted; H001 still is; an id outside
+    [HLD]### (lowercase prefix, wrong digit count, or another letter)
+    is still rejected by id, naming the file. Proven by running the
+    real script against temporary tasks/ fixtures outside the repo, so
+    the live queue is never mutated. The eighteen live cards still pass
+    unchanged, and every other lint rule still fires on a violating
+    fixture.
+  commands:
+    - npx vitest run tests/acceptance/H118.taskid.test.ts
