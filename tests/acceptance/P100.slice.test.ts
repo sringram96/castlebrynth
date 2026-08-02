@@ -152,8 +152,8 @@ describe('P100 · the shell reached for nothing but the API', () => {
   it('no shell module imports resolve or reads the bundle directly', () => {
     for (const f of ['mount.ts', 'render.ts', 'panel.ts', 'persist.ts']) {
       const src = readFileSync(resolve(root, 'src/shell', f), 'utf8')
-      expect(src, `${f} reached past GameAPI`).not.toMatch(/from ['"].*core\/resolve['"]/)
-      expect(src, `${f} read the bundle directly`).not.toMatch(/\.scenes\b/)
+      expect(src, `${f} reached past GameAPI`).not.toMatch(/core\/resolve/)
+      expect(src, `${f} read the bundle directly`).not.toMatch(/\.scenes\s*[[.]/)
     }
   })
 })

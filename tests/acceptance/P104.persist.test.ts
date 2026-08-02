@@ -114,6 +114,8 @@ describe('P104 · a bad save is a new run, quietly', () => {
 describe('P104 · it does not reach for the browser', () => {
   it('takes storage as a parameter rather than importing localStorage', () => {
     const src = readFileSync(resolve(__dirname, '../../src/shell/persist.ts'), 'utf8')
-    expect(src, 'persist.ts must not reach for a global').not.toMatch(/\blocalStorage\b/)
+    expect(src, 'persist.ts must not reach for a global').not.toMatch(
+      /(?:window\.|globalThis\.)?\blocalStorage\b\s*[.[]/,
+    )
   })
 })

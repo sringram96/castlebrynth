@@ -7,13 +7,16 @@ deps: [P103, P104, P105]
 scope:
   - capacitor.config.ts
   - package.json
+  - package-lock.json
   - .gitignore
+  - android/
 acceptance: tests/acceptance/P107.capacitor.test.ts
 done_when: npx vitest run tests/acceptance/P107.capacitor.test.ts
 goal: |
   Wrap the built shell for a phone.
 
-  Add @capacitor/core, @capacitor/cli and @capacitor/android. capacitor.config.ts
+  Add @capacitor/core, @capacitor/cli and @capacitor/android at ^7 -- 8.x requires
+  Node 22 and .nvmrc pins 20. capacitor.config.ts
   names the app (appId com.castlebrynth.app, appName "Castle Brynth",
   webDir "dist").
 

@@ -10,6 +10,7 @@ scope:
   - src/shell/mount.ts
   - src/shell/mount.test.ts
   - package.json
+  - package-lock.json
 acceptance: tests/acceptance/P101.shell.test.ts
 done_when: npx vitest run tests/acceptance/P101.shell.test.ts
 goal: |
@@ -20,12 +21,15 @@ goal: |
     src/shell/mount.ts  mount(root: HTMLElement, game): void  — the single entry
                         the renderer (P102) will fill in
 
-  package.json gains: `vite` + `happy-dom` devDependencies, and the scripts
+  package.json gains: `vite@^5` + `happy-dom` devDependencies. Pin vite to ^5 --
+  vitest 2.1.9's peer is vite ^5 and node_modules already holds 5.4.21, so an
+  unpinned install pulls a major and ERESOLVEs, and the scripts
   `dev` (vite), `build` (tsc --noEmit && vite build), `preview` (vite preview).
 
-  vitest must be able to run DOM tests: add an `environmentMatchGlobs` (or
-  per-file `@vitest-environment`) so src/shell and tests touching the DOM run
-  under happy-dom while src/core stays in node.
+  vitest must be able to run DOM tests. Use the per-file pragma
+  `// @vitest-environment happy-dom` at the top of any test needing a document --
+  vitest.config.ts is in no card's scope, so environmentMatchGlobs is not
+  reachable from here. tsconfig already has the DOM lib; you do not need to add it.
 
   mount() renders the scene line and nothing else this card. P102 makes it a
   renderer. Keep it that small — .llm/rules/no-dead-scaffolding.mdc.

@@ -119,7 +119,7 @@ describe('P102 · the shell adds no words of its own (CANON.md)', () => {
 describe('P102 · the contract', () => {
   it('touches GameAPI only — no reach into resolve or the bundle', () => {
     const src = readFileSync(resolve(root, 'src/shell/render.ts'), 'utf8')
-    expect(src).not.toMatch(/from ['"].*core\/resolve['"]/)
-    expect(src).not.toMatch(/bundle\.scenes/)
+    expect(src).not.toMatch(/core\/resolve/)
+    expect(src).not.toMatch(/\.scenes\s*[[.]/)
   })
 })

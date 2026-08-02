@@ -3,7 +3,7 @@ import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
   {
-    ignores: ['node_modules', 'content/bundle.json', 'coverage'],
+    ignores: ['node_modules', 'content/bundle.json', 'coverage', 'dist', 'android'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -22,6 +22,9 @@ export default tseslint.config(
       'no-restricted-globals': [
         'error',
         { name: 'process', message: 'src/core is pure (.llm/rules/purity.mdc).' },
+        { name: 'document', message: 'src/core has no DOM — that is the shell (P1.md).' },
+        { name: 'window', message: 'src/core has no DOM — that is the shell (P1.md).' },
+        { name: 'localStorage', message: 'src/core does no I/O (.llm/rules/purity.mdc).' },
         { name: 'console', message: 'src/core is pure (.llm/rules/purity.mdc).' },
       ],
       'no-restricted-syntax': [

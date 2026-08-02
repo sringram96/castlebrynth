@@ -12,8 +12,9 @@ scope:
   - scripts/content-lint.ts
   - scripts/play.ts
   - package.json
+  - package-lock.json
 acceptance: tests/acceptance/P106.scripts.test.ts
-done_when: npx vitest run tests/acceptance/P106.scripts.test.ts && npm run law
+done_when: npx vitest run tests/acceptance/P106.scripts.test.ts tests/acceptance/H004.compiler.test.ts tests/acceptance/H005.lint.test.ts tests/acceptance/H008.play.test.ts && npm run law
 goal: |
   Pay P0's debt. Delete both hand-copied engines.
 

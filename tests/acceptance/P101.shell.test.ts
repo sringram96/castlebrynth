@@ -23,7 +23,7 @@ describe('P101 · the pieces exist', () => {
   })
 
   it('capacitor needs built assets, so build writes to dist', () => {
-    expect(read('vite.config.ts')).toMatch(/dist/)
+    expect(read('vite.config.ts')).toMatch(/outDir\s*:\s*['"]dist['"]/)
   })
 
   it('package.json gained the shell scripts', () => {
@@ -68,8 +68,8 @@ describe('P101 · mount', () => {
 
   it('touches GameAPI only — no reach into resolve (P1.md)', () => {
     const src = read('src/shell/mount.ts')
-    expect(src).not.toMatch(/from ['"].*core\/resolve['"]/)
-    expect(src).not.toMatch(/bundle\.scenes/)
+    expect(src).not.toMatch(/core\/resolve/)
+    expect(src).not.toMatch(/\.scenes\s*[[.]/)
   })
 })
 

@@ -22,8 +22,10 @@ const byId = new Map(cards.map((c) => [c.id, c]))
 const seen = new Map()
 for (const c of cards) {
   for (const p of c.scope) {
-    // package.json is deliberately shared (H005 appends to the law line).
-    if (p === 'package.json') continue
+    // package.json is deliberately shared (H005 appends to the law line), and
+    // package-lock.json is its generated companion — every card that adds a
+    // dependency rewrites it, and npm ci fails if it drifts from package.json.
+    if (p === 'package.json' || p === 'package-lock.json') continue
     if (seen.has(p) && !related(seen.get(p), c.id)) {
       fail(`scope collision: ${p} claimed by both ${seen.get(p)} and ${c.id}`)
     }
@@ -85,9 +87,13 @@ try {
     .filter(Boolean)
 }
 
-const allowed = new Set(card.scope)
+// A scope entry ending in `/` claims the directory: a generated tree like
+// android/ is hundreds of files nobody is going to enumerate by hand.
+const inScope = (path) =>
+  card.scope.some((s) => (s.endsWith('/') ? path.startsWith(s) : s === path))
+
 for (const path of changed) {
-  if (!allowed.has(path)) {
+  if (!inScope(path)) {
     fail(
       `${card.id} touched ${path}, which is not in its scope.\n` +
         `      scope: ${card.scope.length ? card.scope.join(', ') : '(empty — this card writes no code)'}\n` +

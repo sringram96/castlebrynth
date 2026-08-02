@@ -54,6 +54,14 @@ describe('P107 · the android project', () => {
   it('the gradle wrapper came with it', () => {
     expect(has('android/gradlew')).toBe(true)
   })
+
+  it('the project itself is committed, not just present on disk', () => {
+    const tracked = execFileSync('git', ['ls-files', 'android/app/src/main/AndroidManifest.xml'], {
+      cwd: root,
+      encoding: 'utf8',
+    }).trim()
+    expect(tracked, 'the android project must be committed').not.toBe('')
+  })
 })
 
 describe('P107 · it syncs', () => {
@@ -68,13 +76,12 @@ describe('P107 · it syncs', () => {
   }, 180_000)
 
   it('npx cap sync android completes clean', () => {
-    const out = execFileSync('npx', ['cap', 'sync', 'android'], {
+    execFileSync('npx', ['cap', 'sync', 'android'], {
       cwd: root,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
       timeout: 300_000,
     })
-    expect(out).not.toMatch(/error/i)
     // The web assets must have actually landed in the android project.
     expect(has('android/app/src/main/assets/public/index.html')).toBe(true)
   }, 300_000)

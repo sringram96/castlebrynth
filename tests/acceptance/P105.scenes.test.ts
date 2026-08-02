@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { execFileSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { loadBundle } from '../../src/core/bundle'
 import { createGame } from '../../src/core/api'
@@ -116,10 +116,12 @@ describe('P105 · the hall is actually reachable', () => {
     for (const tap of [
       { object: 'stone', action: 'study' },
       { object: 'book', action: 'read' },
+      { object: 'path', action: 'follow' },
     ]) {
       s = g.act(s, tap).state
     }
     expect(s.journal).toContain('procession')
+    expect(s.scene, 'the opened book must open the path').toBe('stair')
   })
 })
 
@@ -135,16 +137,20 @@ describe('P105 · the law', () => {
   })
 
   it('the compiled bundle matches the sources — someone rebuilt it', () => {
-    const before = readFileSync(resolve(root, 'content/bundle.json'), 'utf8')
+    const committed = readFileSync(resolve(root, 'content/bundle.json'), 'utf8')
     execFileSync('npm', ['run', 'build:content'], {
       cwd: root,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
     })
+    const rebuilt = readFileSync(resolve(root, 'content/bundle.json'), 'utf8')
+    // Put back what was committed either way, so a failing run does not leave a
+    // rebuilt bundle behind and quietly pass on the retry.
+    writeFileSync(resolve(root, 'content/bundle.json'), committed, 'utf8')
     expect(
-      readFileSync(resolve(root, 'content/bundle.json'), 'utf8'),
+      rebuilt,
       'content/bundle.json is stale — run npm run build:content and commit it',
-    ).toBe(before)
+    ).toBe(committed)
   })
 
   it('speaks no banned word (CANON.md)', () => {

@@ -37,8 +37,10 @@ const withScene = (yamlText: string, run: (path: string) => void): void => {
 const scene = (body: string) => `id: probe\nline: "Grey water, and no far side to it."\nobjects:\n${body}`
 
 describe('H005 · the shore passes its own lint', () => {
-  it('content/shore.yaml is clean', () => {
-    const r = lint(['content/shore.yaml'])
+  it('the authored content is clean', () => {
+    // All of content/, not shore alone: once a scene gotos another file, linting
+    // one file in isolation reports a dangling target that is not dangling.
+    const r = lint([])
     expect(r.ok, `shore failed lint:\n${r.output}`).toBe(true)
   })
 })
