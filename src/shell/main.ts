@@ -7,9 +7,22 @@
 // mounts. The v3 build learned this the expensive way (P1.md) and the boundary
 // is kept here from the first commit.
 //
-// It stands on nothing yet. There is no engine import, no bundle, no storage —
-// H107 replaces the placeholder below with `mount`, and this file keeps its one
-// job: find the element, hand it over.
+// H107 replaced the placeholder with the thing itself, and the file kept its
+// one job: find the element, hand it over. There is no third line of work here
+// and there will not be one — which run is opened is `mount`'s business and
+// then H109's (resume, or a new seed), and no decision about a run should need
+// the entry rewritten again.
+
+import { loadBundle } from '../core/bundle'
+import { mount } from './app'
+// The compiled world, imported and not fetched. It is a build artefact that is
+// committed (CLAUDE.md), so Vite can inline it, and a phone opening the app
+// with no network has nothing to fetch it from (H112 wraps this in a WebView).
+// `loadBundle` is still the gate: an artefact can be stale or hand-edited, so
+// it is checked as untrusted input every time (H004b) — a bundle this build
+// cannot read is a broken build, and it should say so at the top of the page's
+// life rather than at the first tap.
+import compiled from '../../content/bundle.json'
 
 // In the page this is the div index.html declares. In a test there is no #app
 // unless the test built one, so importing this module does nothing at all —
@@ -18,15 +31,10 @@
 const app = document.getElementById('app')
 
 if (app !== null) {
-  // A placeholder root, not a frame. GAME.md #frame wants writing on top, a
-  // full-bleed still, and a fixed panel below; H103, H104 and H105 build those
-  // as modules and H107 composes them. Standing their containers up here would
-  // be scaffolding those cards have to unpick, so what mounts is one element
-  // that says the shell is alive and admits it is empty.
-  const root = document.createElement('div')
-  root.className = 'shell-root'
-  root.textContent = 'castlebrynth — the shell stands. Nothing is mounted in it yet.'
-  app.replaceChildren(root)
+  // `mount` empties the element and draws the frame into it, so the entry
+  // neither builds a root of its own nor clears one: it owns the element, and
+  // owning it here means handing it over whole.
+  mount(app, loadBundle(compiled))
 }
 
 // No exports, deliberately: nothing may import the entry, because importing it
