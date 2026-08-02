@@ -3,7 +3,18 @@ import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
   {
-    ignores: ['node_modules', 'content/bundle.json', 'coverage', 'dist', 'android'],
+    // .claude/worktrees is where the harness parks a factory agent's isolated
+    // checkout. It is a whole second copy of this repo sitting inside the
+    // first one, so without this line every agent lints its siblings' work and
+    // the whole wave reports a red law it did not cause.
+    ignores: [
+      'node_modules',
+      'content/bundle.json',
+      'coverage',
+      'dist',
+      'android',
+      '.claude/worktrees',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
