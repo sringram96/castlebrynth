@@ -1,0 +1,92 @@
+{
+  "scenes": {
+    "shore": {
+      "id": "shore",
+      "line": "Grey water, and no far side to it.",
+      "objects": [
+        {
+          "actions": {
+            "study": [
+              {
+                "say": "The stone is warm where nothing else is. A mark is cut into the top of it, deep enough to read with your thumb.",
+                "setFlag": [
+                  "knows_glyph"
+                ]
+              }
+            ]
+          },
+          "id": "stone",
+          "name": "a flat stone"
+        },
+        {
+          "actions": {
+            "read": [
+              {
+                "gate": {
+                  "flag": [
+                    "knows_glyph"
+                  ]
+                },
+                "journal": [
+                  "procession"
+                ],
+                "say": "The marks hold still. They are names in a line, all walking the same way.",
+                "setFlag": [
+                  "book_open"
+                ]
+              },
+              {
+                "refuse": "The marks swim. You cannot hold them."
+              }
+            ]
+          },
+          "id": "book",
+          "name": "a book, face up in the shingle"
+        },
+        {
+          "actions": {
+            "look": [
+              {
+                "say": "The pool is shallow and clear. Your face does not arrive in it."
+              }
+            ]
+          },
+          "id": "pool",
+          "name": "a pool in the rock"
+        },
+        {
+          "actions": {
+            "listen": [
+              {
+                "say": "You hold still and listen. There is your breath, and the water, and nothing under either."
+              }
+            ]
+          },
+          "id": "self",
+          "name": "yourself"
+        },
+        {
+          "actions": {
+            "follow": [
+              {
+                "gate": {
+                  "flag": [
+                    "book_open"
+                  ]
+                },
+                "say": "The path climbs off the shingle and inland. It runs the way the names run in the book."
+              },
+              {
+                "refuse": "The path goes up into the dark. You have no name for what is at the top of it."
+              }
+            ]
+          },
+          "id": "path",
+          "name": "a path inland"
+        }
+      ]
+    }
+  },
+  "start": "shore",
+  "v": 1
+}
