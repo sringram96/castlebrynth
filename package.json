@@ -7,7 +7,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "law": "tsc --noEmit && eslint . && vitest run src --passWithNoTests && node scripts/task-lint.mjs",
+    "law": "tsc --noEmit && eslint . && vitest run src --passWithNoTests && node scripts/task-lint.mjs && node scripts/content-lint.mjs",
     "progress": "node scripts/board.mjs",
     "board": "node scripts/board.mjs --static",
     "build:content": "node scripts/build-content.mjs",
