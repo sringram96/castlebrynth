@@ -19,6 +19,17 @@
 // that edits mount.ts — P102, P103 or P104 — may relax the assertion
 // (.llm/rules/scope.mdc). Wiring the loop needs that scope fixed first.
 //
+// P104 · and P104 was the last of those three, so the scope was never fixed and
+// the loop is still not here. `save`/`restore` are built and green in
+// ./persist.ts and nothing in this file calls them: saving happens after an
+// act, there is no act to happen after, and a `restore` wired on its own would
+// be reading a key nothing ever writes (.llm/rules/no-dead-scaffolding.mdc).
+// The verified failure is `src/shell/mount.test.ts:57` — `expect(el.textContent)
+// .toBe('A door, <b>shut</b>.')` against 'A door, <b>shut</b>.stone study'.
+// P100 fails its four tap tests for the same one reason. A card that owns
+// src/shell/mount.ts *and* src/shell/mount.test.ts closes all of it at once;
+// nothing else in P1 can.
+//
 // The panel clears that same bar rather than dodging it: on a fresh run there
 // is nothing journalled and nothing carried, so it puts no word on the screen.
 // It is present as a place, drawn by the stylesheet, and it fills with the
