@@ -11,7 +11,16 @@
 // hangs the panel beside it and P104 gives it a save; building any of that
 // now would be scaffolding for a card that has not run yet
 // (.llm/rules/no-dead-scaffolding.mdc).
+//
+// P102 · the tap loop is not here, and it is not an oversight. `render` and
+// `renderEffects` are built and green in ./render.ts, but the moment `mount`
+// draws a control, `src/shell/mount.test.ts` fails: it pins this element's
+// whole textContent to the scene line with `toBe`, and any control adds its
+// label to that string. That file is claimed by P101 alone, so no card that
+// edits mount.ts — P102, P103 or P104 — may relax the assertion
+// (.llm/rules/scope.mdc). Wiring the loop needs that scope fixed first.
 
+import './styles.css'
 import type { Game } from '../core/api'
 
 // Nothing in VOCAB.md draws from the generator yet, so every run is the same
