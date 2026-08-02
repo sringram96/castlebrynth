@@ -9,8 +9,10 @@
   </head>
   <body>
     <div id="app"></div>
-    <!-- boot, not mount: the entry has a side effect (it draws), and mount is
-         imported by tests that must not have one fire on them (boot.ts). -->
-    <script type="module" src="/src/shell/boot.ts"></script>
+    <!-- main, not app: the entry has a side effect (it draws), and app.ts is
+         imported by tests that must not have one fire on them. H101 stands it
+         up; until then this points at a file that is not there yet, which is
+         the same red the acceptance suite carries. -->
+    <script type="module" src="/src/shell/main.ts"></script>
   </body>
 </html>

@@ -1,11 +1,11 @@
-# GAME.md — CASTLEBRYNTH (design constitution, v4)
+# GAME.md — CASTLEBRYNTH (design constitution, v4.1)
 
 A still-frame, tap-driven dungeon-crawl roguelike for phones. Full-screen
 pixel scenes, a line of writing on top, a paged panel below, dice
 underneath, memory on the line. The labyrinth is bleak, claustrophobic,
 and refuses to be learned. Cards cite this doc by anchor.
-(v4 pivot: cult story, procedural maze, pager panel, tithes/Effigies,
-the Communion, everything-XP. Supersedes v3.)
+(v4.1 — MVP ratified: slice = spec; death is wipe-except-kept; XP removed;
+Effigy/tithe-drop, Communion, generator, glimpses all deferred post-MVP.)
 
 ## frame (#frame)
 
@@ -44,15 +44,14 @@ the Communion, everything-XP. Supersedes v3.)
 - HP 0 → the fall (#death). Sanity 0 → the Communion (#communion).
   Both end with waking at the Crossing.
 
-## xp & levels (#xp)
+## improvements (#improvements)
 
-- **XP flows from everything** — kills, rites, discoveries, situations,
-  glimpses — but **weighted**: repeatables trickle, firsts gush, and
-  yields scale with depth, so the fastest XP is always deeper, never
-  circling. Numbers always move; grinding is merely slow.
-- Levels (soft cap ~10) grant one choice at rest: +1 Might, +1 Will,
-  +2 max HP, or +2 max Sanity. XP and levels survive everything.
-- Content never gates on level number; stats gate, levels shape stats.
+- **No XP, no levels (MVP ruling).** Growth comes from the world: items,
+  weapons, armor, and **grants** — helpful rooms that give freely (the
+  quiet font) and evil tradeoffs that charge (the black altar). Grants
+  modify stats and maxima and persist through death.
+- XP/levels are parked post-MVP (task H144, deferred). If ever revisited,
+  content still never gates on a level number.
 
 ## items (#items)
 
@@ -96,6 +95,9 @@ risk; inside, a readable cue precedes any kill (LAWS.md #telegraph).
 
 ## the maze (#maze)
 
+- **MVP simple mode:** one corridor slot with a two-room variant pool,
+  swapping on death; landmarks hold. The full generator below is the
+  post-MVP form (GENERATOR.md, tasks H130-H132 deferred).
 - **Authored rooms, procedural arrangement.** Every room is a
   hand-written, linted card from the pool; a seeded generator lays the
   corridor graph. See GENERATOR.md.
@@ -152,15 +154,18 @@ risk; inside, a readable cue precedes any kill (LAWS.md #telegraph).
 
 ## death (#death)
 
-- **Every death ends the same way: you wake at the Crossing.** The
-  world keeps every door-flag, glyph, item, skill, and level; the
-  corridors have moved (#maze); only you got smaller.
-- The fall (HP 0) drops your **tithes** where you fell. Reclaim them by
-  returning; die again first and an **Effigy** rises wearing them
-  (−1 max HP mark until it is broken or you are cleansed).
-- **Every death pays** (#death-pays, LAWS.md 11): each fall or
-  Communion unlocks at least one new line somewhere. Dying always
-  advances the story of being known.
+- **Every death ends the same way: you wake at the Crossing** with bars
+  and skill uses restored. The world keeps every door-flag, glyph,
+  learned skill, and grant.
+- **MVP wipe rule:** your pack is taken — all items lost **except** key
+  items (✦), items marked *kept* (the rusted knife, for now), and one
+  random survivor your hands refuse to drop. Consumables and tithes are
+  lost.
+- The corridor slot redraws from its variant pool on each wake
+  (#maze, simple mode). Landmarks hold.
+- **Deferred post-MVP:** the tithe-drop / Effigy reclamation loop
+  (H206/H207) may later replace or layer onto the wipe rule.
+- **Every death pays** (#death-pays, LAWS.md 11) remains law.
 
 ## progress (#progress)
 
@@ -194,4 +199,4 @@ died to — the death reel included.
 
 A run is fully determined by **save seed + death count + inputs** (QTE
 inputs included). Maze layouts, dice, spawns — all replayable exactly
-(.llm/rules/determinism.mdc, GENERATOR.md).
+(RULES.md 2, GENERATOR.md).

@@ -1,0 +1,26 @@
+id: H105
+card: H105
+phase: P1
+title: Static bottom panel
+lane: factory
+deps: [H101, H102]
+scope:
+  - src/shell/panel.ts
+  - src/shell/panel.test.ts
+acceptance: src/shell/panel.test.ts
+done_when: law green; jsdom test — tabs always present, panes swap, LOG shows journal + refused
+goal: |
+  src/shell/panel.ts — the fixed-height panel (GAME.md #frame).
+
+    strip   permanent: location + carried count (stats arrive with H204)
+    tabs    always visible: ACT / PACK / LOG / SET
+    ACT     the current selection and its actions
+    PACK    items
+    LOG     journal, and the refused ledger under it
+    SET     the outline toggle
+
+  Nothing collapses. The panel is the same height whatever pane is showing,
+  because a panel that resized would move the scene under the thumb.
+notes: |
+  H120 later replaces the tab row with a left/right pager and amends this
+  card's tests rather than forking them. Do not build the pager here.

@@ -1,0 +1,21 @@
+id: H106
+card: H106
+phase: P1
+title: Input wiring
+lane: factory
+deps: [H104, H105]
+scope:
+  - src/shell/input.ts
+  - src/shell/input.test.ts
+acceptance: src/shell/input.test.ts
+done_when: law green; jsdom test — tap-select-act round trip fires once; no dispatch on bare tap
+goal: |
+  src/shell/input.ts — tap an object, it selects and the panel flips to ACT
+  with that object's actions. Press an action, and only then act() runs.
+
+  Keyboard fallback: Enter and number keys, for the terminal-shaped among us
+  and for tests that would rather not synthesise touch.
+
+  Exactly one dispatch per gesture. Not zero (a press that does nothing is a
+  bug) and never two (a double-fired act would spend a turn the person did
+  not spend). The bare tap dispatches nothing at all — the first tap is free.

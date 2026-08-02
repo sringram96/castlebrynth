@@ -1,0 +1,29 @@
+id: H110
+card: H110
+phase: P1
+title: "Content: the gate"
+lane: factory
+deps: [H003b, H004a, H005, H116]
+scope:
+  - content/gate.yaml
+  - content/shore.yaml
+  - content/bundle.json
+acceptance: tests/acceptance/H110.gate.test.ts
+done_when: npx vitest run tests/acceptance/H110.gate.test.ts
+goal: |
+  content/gate.yaml — the second scene.
+
+    iron gate    locked. `open` without the key refuses, and the refusal
+                 wants the key by name. With rusted_key: consumes it, sets
+                 gate_open, and the gate opens. Once.
+    dead bearer  `search` once -> gives rusted_key, and a journal entry
+    mural        fallback for a script you cannot read; with knows_glyph a
+                 deep read gives a T1 toll-lore journal entry
+
+  The shore's `path follow` regains its goto and points at the gate.
+
+  Stay inside the tier (CANON.md, TRUTH.md): the mural may say what the toll
+  was, and may not say who takes it.
+notes: |
+  The acceptance is authored ahead of you and is not yours to edit
+  (AGENTS.md law 7). Read it first — it names the ids.

@@ -1,55 +1,5 @@
 {
   "scenes": {
-    "hall": {
-      "id": "hall",
-      "line": "A long room, and the far end of it is not lit.",
-      "objects": [
-        {
-          "actions": {
-            "look": [
-              {
-                "say": "The stone is worn low down the middle, a band two strides wide. It runs from the steps to the dark."
-              }
-            ]
-          },
-          "id": "floor",
-          "name": "the floor"
-        },
-        {
-          "actions": {
-            "study": [
-              {
-                "gate": {
-                  "flag": [
-                    "knows_glyph"
-                  ]
-                },
-                "journal": [
-                  "the same mark"
-                ],
-                "say": "The mark cut into the door is the mark cut into the stone. Your thumb has it before your eyes do."
-              },
-              {
-                "refuse": "Something is cut into the door, deep and worn shallow. Your thumb goes over it and takes nothing."
-              }
-            ]
-          },
-          "id": "door",
-          "name": "a door at the end of the room"
-        },
-        {
-          "actions": {
-            "listen": [
-              {
-                "say": "It does not move and it does not breathe. It holds the cold the way the pool held the water."
-              }
-            ]
-          },
-          "id": "dark",
-          "name": "the dark at the end"
-        }
-      ]
-    },
     "shore": {
       "id": "shore",
       "line": "Grey water, and no far side to it.",
@@ -124,7 +74,6 @@
                     "book_open"
                   ]
                 },
-                "goto": "stair",
                 "say": "The path climbs off the shingle and inland. It runs the way the names run in the book."
               },
               {
@@ -134,46 +83,6 @@
           },
           "id": "path",
           "name": "a path inland"
-        }
-      ]
-    },
-    "stair": {
-      "id": "stair",
-      "line": "The steps go up inside the rock, and the cold comes down them.",
-      "objects": [
-        {
-          "actions": {
-            "climb": [
-              {
-                "goto": "hall",
-                "say": "You go up. The turn is always the same turn, and then the steps stop."
-              }
-            ]
-          },
-          "id": "steps",
-          "name": "the steps"
-        },
-        {
-          "actions": {
-            "touch": [
-              {
-                "say": "Cut stone, wet under the hand. It is rubbed smooth at the height of a shoulder, the whole way up."
-              }
-            ]
-          },
-          "id": "wall",
-          "name": "the wall at your shoulder"
-        },
-        {
-          "actions": {
-            "listen": [
-              {
-                "say": "Cold comes down the steps and goes out behind you to the water. Nothing comes down with it."
-              }
-            ]
-          },
-          "id": "air",
-          "name": "the air"
         }
       ]
     }

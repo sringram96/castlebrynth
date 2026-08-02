@@ -1,0 +1,26 @@
+id: H107
+card: H107
+phase: P1
+title: App loop (mount)
+lane: factory
+deps: [H103, H106]
+scope:
+  - src/shell/app.ts
+  - src/shell/app.test.ts
+  - src/shell/main.ts
+acceptance: src/shell/app.test.ts
+done_when: law green; jsdom test — the mounted app advances state exactly as core act does for the same seed
+goal: |
+  src/shell/app.ts — the composition, and the only place the run lives.
+
+    mount(el, bundle, saved?) -> { getState, dispatch, dispose }
+
+  Composes narrator + scene + panel + input over GameAPI, re-renders after
+  every act, and leaves an autosave hook point after each one for H109 to
+  fill. The shell touches newRun / act / getView and nothing else: no import
+  of resolve.ts, and nothing here reads bundle.scenes to decide what to draw.
+
+  main.ts is rewired from H101's placeholder to this mount.
+notes: |
+  The proof that matters: drive the mounted app and drive core act directly
+  with the same seed and the same taps, and the two states are equal.

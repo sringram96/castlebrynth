@@ -1,0 +1,48 @@
+id: H116
+card: H116
+phase: P1
+title: Retire the v3 P1 build
+lane: orchestrator
+kind: hygiene
+deps: []
+scope:
+  - index.html
+  - content/shore.yaml
+  - content/bundle.json
+  - content/hall.yaml
+  - content/stair.yaml
+  - src/shell/mount.ts
+  - src/shell/mount.test.ts
+  - src/shell/render.ts
+  - src/shell/render.test.ts
+  - src/shell/panel.ts
+  - src/shell/panel.test.ts
+  - src/shell/persist.ts
+  - src/shell/persist.test.ts
+  - src/shell/boot.ts
+  - src/shell/boot.test.ts
+  - src/shell/styles.css
+acceptance: npm run law
+done_when: npm run law green with the v3 cards and their acceptance gone
+goal: |
+  Deletion only. The v3 world was retired (CLAUDE.md) but its build was not,
+  and it stood in the way of the v4 P1 set two ways:
+
+    1. scope collision — P101/P102/P103/P104/P107 claim index.html,
+       src/shell/panel.ts, src/shell/boot.ts, capacitor.config.ts and
+       android/, which H101/H105/H109/H112 need. task-lint fails a wave that
+       claims a path twice, so the v4 cards could not be authored at all.
+    2. a red-suite trap — H110 re-points the shore's path at the gate, which
+       turns tests/acceptance/P100 and P105 red. No agent may touch
+       tests/acceptance (AGENTS.md law 7), so the wave would have deadlocked
+       on a suite nobody was allowed to retire.
+
+  Removed: tasks/P100..P108, tests/acceptance/P100..P107, the superseded
+  shell modules (mount, render, panel, persist, boot, styles.css) and the
+  retired scenes (hall, stair). The shore's `follow` loses `goto: stair` and
+  is a door standing open again, as it was in P0, until H110 hangs the gate
+  behind it. index.html points at src/shell/main.ts, which H101 stands up.
+notes: |
+  Not a factory card — no agent works this one. It landed ahead of the P1
+  wave so the wave had somewhere to stand. Nothing in src/core was touched:
+  the engine is the one thing the pivot did not move.

@@ -1,0 +1,28 @@
+id: H112
+card: H112
+phase: P1
+title: Capacitor wrap (iOS + Android)
+lane: factory
+deps: [H107]
+scope:
+  - capacitor.config.ts
+  - android/
+  - ios/
+  - docs/RUN-ON-DEVICE.md
+  - package.json
+  - package-lock.json
+allows_deps: ["@capacitor/core", "@capacitor/cli", "@capacitor/ios", "@capacitor/android"]
+acceptance: npm run build
+done_when: npm run build && npx cap sync succeeds; the doc walks a clean machine to a device install
+goal: |
+  capacitor.config.ts pointing at dist, ios/ and android/ platform dirs, and
+  viewport-fit / safe-area handling so the panel is not under the home bar.
+
+  docs/RUN-ON-DEVICE.md walks a clean machine to an install, in Xcode and in
+  Android Studio, in the order a person actually does it.
+
+  CI stays web-only. Native builds are local — nothing here may make `law`
+  depend on a toolchain a Linux runner does not have.
+notes: |
+  android/ already exists from the v3 wrap and survived H116. Re-sync it
+  rather than regenerating it if the sync is clean.

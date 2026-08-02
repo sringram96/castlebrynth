@@ -1,0 +1,25 @@
+id: H109
+card: H109
+phase: P1
+title: Resume & new-run flow
+lane: factory
+deps: [H107, H108]
+scope:
+  - src/shell/boot.ts
+  - src/shell/boot.test.ts
+  - src/shell/app.ts
+acceptance: src/shell/boot.test.ts
+done_when: law green; jsdom test — act then remount resumes identical state; begin-again yields a different seed
+goal: |
+  src/shell/boot.ts — the boot decision.
+
+    a saved run exists -> resume it
+    otherwise          -> newRun with a fresh entropy seed, recorded in state
+
+  Entropy lives in the shell and never in core: the engine is handed a seed
+  and is the same forever after. Autosave fires after every act through
+  H107's hook. The end card offers begin-again, which clears the save and
+  starts a new seed.
+notes: |
+  "A different seed" is the assertion, not "a random-looking seed". Two
+  begin-agains in the same millisecond must still differ.

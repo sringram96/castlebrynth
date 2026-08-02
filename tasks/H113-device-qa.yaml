@@ -1,0 +1,16 @@
+id: H113
+card: H113
+phase: P1
+title: Device QA + thumb-feel notes
+lane: human
+deps: [H109, H111, H112]
+scope: []
+done_when: notes captured; a go/no-go call on feel before P2 investment
+goal: |
+  Run the slice on your actual phone. Judge what no harness can: tap sizes,
+  panel reach, narrator rhythm, boredom.
+
+  File bounces in tasks/questions/ for anything ambiguous, and open follow-up
+  cards for feel changes rather than editing anything in place.
+notes: |
+  scope is empty on purpose — no agent works this card.

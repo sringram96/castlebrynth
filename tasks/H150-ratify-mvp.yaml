@@ -1,0 +1,33 @@
+id: H150
+card: H150
+phase: MVP
+title: Ratify MVP (slice = spec) + commit v4.1 docs
+lane: human
+deps: []
+scope:
+  - GAME.md
+  - MVP.md
+  - mock/slice-mvp.html
+acceptance: npm run law
+done_when: docs + slice on main; law green
+goal: |
+  The human's ruling, committed. GAME.md v4.1, MVP.md, and the playable
+  mock/slice-mvp.html — which IS the specification. Ship parity with it
+  through the factory, nothing more.
+
+  Rulings encoded:
+    NO XP / no levels. Improvements are items and grants (GAME.md
+      #improvements).
+    Death = wipe-except-kept: wake at the Crossing, bars and skill uses
+      restored; the pack is taken except key items (✦), items marked kept
+      (the rusted knife), and one random survivor; consumables and tithes
+      lost; flags, skills and grants persist (#death).
+    The corridor slot swaps variant on each wake — simple maze mode (#maze).
+    Deferred behind H199: Effigy/tithe-drop, the Communion, the generator,
+      glimpses, economy, counters, lies/Fraying content, complicity, XP.
+
+  This trims H200: state v2 keeps stats, tithes, slots and the kept flag,
+  and EXCLUDES xp and level fields.
+notes: |
+  Not a factory card — the human authored these and the orchestrator landed
+  them. Every MVP card below cites MVP.md or this doc set by anchor.

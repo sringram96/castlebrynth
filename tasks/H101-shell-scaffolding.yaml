@@ -1,0 +1,34 @@
+id: H101
+card: H101
+phase: P1
+title: Shell scaffolding (vite)
+lane: factory
+deps: [H001b, H116]
+scope:
+  - vite.config.ts
+  - index.html
+  - vitest.config.ts
+  - src/shell/main.ts
+  - src/shell/main.test.ts
+  - package.json
+  - package-lock.json
+allows_deps: [vite, jsdom]
+acceptance: src/shell/main.test.ts
+done_when: npm run build produces dist; law green; a jsdom shell test runs
+goal: |
+  The web shell skeleton, standing on nothing yet.
+
+    vite.config.ts     the build Capacitor wraps (H112 reads webDir: dist)
+    index.html         the entry, already pointing at /src/shell/main.ts
+    src/shell/main.ts  mounts a placeholder root into #app
+    vitest.config.ts   a jsdom environment for src/shell/*.test.ts
+
+  The v3 shell was retired by H116, so this is a fresh stand-up rather than a
+  rename. main.ts is the one module with a side effect: it reaches for #app
+  and draws. Nothing else in src/shell may touch the document on import, so
+  the acceptance files that import the shell do not have a boot fire on them.
+notes: |
+  vitest.config.ts currently runs everything under `environment: node`. The
+  shell needs a DOM. Prefer per-file environment (`environmentMatchGlobs` or
+  a docblock) over flipping the whole suite — src/core is pure and proves it
+  under node.

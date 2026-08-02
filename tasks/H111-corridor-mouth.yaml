@@ -1,0 +1,25 @@
+id: H111
+card: H111
+phase: P1
+title: "Content: the corridor mouth"
+lane: factory
+deps: [H110]
+scope:
+  - content/corridor.yaml
+  - content/gate.yaml
+  - content/bundle.json
+acceptance: tests/acceptance/H111.corridor.test.ts
+done_when: npx vitest run tests/acceptance/H111.corridor.test.ts
+goal: |
+  content/corridor.yaml — the third scene, and the end of the P1 slice.
+
+    dust floor    inspect -> a telegraphed journal line, sets floor_seen.
+                  The P2 trap (H210) hangs off this; do not build the trap.
+    dark crossing P1: an `end` delta, which the shell draws as the end card
+    lamp alcove   a placeholder object the P2 merchant (H212) will occupy
+    exit          back to the gate
+
+  The gate gains its own exit into the corridor, gated on gate_open.
+notes: |
+  Telegraph law (LAWS.md): the floor says what it is before it costs
+  anything. Nothing in P1 may spring.

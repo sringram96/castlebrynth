@@ -1,0 +1,20 @@
+id: H103
+card: H103
+phase: P1
+title: Narrator line
+lane: factory
+deps: [H101, H102]
+scope:
+  - src/shell/narrator.ts
+  - src/shell/narrator.test.ts
+acceptance: src/shell/narrator.test.ts
+done_when: law green; jsdom test proves the line updates on say/enter and never stacks
+goal: |
+  src/shell/narrator.ts — the single top line (GAME.md #frame).
+
+    swap on change          the line is replaced, never appended to
+    scene enter-line on goto the arrival stands above where you now are
+    say effects in order     what this tap did, in the order the world did it
+
+  One line, cleared by the next turn. A narrator that stacked would be a log,
+  and the log is a pane (H105).

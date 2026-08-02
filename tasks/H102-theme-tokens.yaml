@@ -1,0 +1,23 @@
+id: H102
+card: H102
+phase: P1
+title: Theme tokens + view helpers
+lane: factory
+deps: [H001b, H116]
+scope:
+  - src/shell/theme.ts
+  - src/shell/theme.test.ts
+  - src/shell/viewmap.ts
+  - src/shell/viewmap.test.ts
+acceptance: src/shell/theme.test.ts
+done_when: law green; helpers unit-tested (pure, idempotent)
+goal: |
+  src/shell/theme.ts — wireframe design tokens (colours, spacing, type) that
+  the human re-skins in H115 without touching a single layout decision.
+
+  src/shell/viewmap.ts — pure helpers mapping View to render structs. Zero
+  game rules: no gate is evaluated here, no action is decided here, nothing
+  is remembered between calls. getView already said what is true; this only
+  says how it is shaped for a screen.
+notes: |
+  Idempotent means f(f(x)) draws the same as f(x). The tests should say so.

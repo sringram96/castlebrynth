@@ -1,0 +1,27 @@
+id: H108
+card: H108
+phase: P1
+title: Platform storage driver
+lane: factory
+deps: [H007, H116]
+scope:
+  - src/platform/storage.ts
+  - src/platform/storage.test.ts
+  - package.json
+  - package-lock.json
+allows_deps: ["@capacitor/core", "@capacitor/preferences"]
+acceptance: src/platform/storage.test.ts
+done_when: law green; round-trip via the fallback driver byte-identical; loadRun null on empty/garbage
+goal: |
+  src/platform/storage.ts — Capacitor Preferences with a localStorage
+  fallback and an in-memory fallback under that, so the suite runs headless.
+
+    saveRun(state): Promise<void>
+    loadRun(bundle): Promise<GameState | null>
+    clearRun(): Promise<void>
+
+  Wraps H007's envelope rather than inventing a second one. Types come from
+  src/core only (RULES.md layering) — this file may not import resolve.ts.
+
+  A corrupt save is not a crash and not a half-run: loadRun returns null and
+  the caller starts fresh, quietly.

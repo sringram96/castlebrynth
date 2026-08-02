@@ -1,0 +1,23 @@
+id: H104
+card: H104
+phase: P1
+title: Scene renderer
+lane: factory
+deps: [H101, H102]
+scope:
+  - src/shell/scene.ts
+  - src/shell/scene.test.ts
+acceptance: src/shell/scene.test.ts
+done_when: law green; jsdom test — objects render 1:1 with View, tap fires selection callback only
+goal: |
+  src/shell/scene.ts — View.objects as labelled tappable blocks, wireframe
+  placeholder art per H102's tokens, a selection highlight, and an
+  outline-toggle hook.
+
+  Renders state; computes nothing; never mutates. The first tap is free
+  (GAME.md #input) — tapping a block selects and describes, and dispatches
+  no act. Affordance permanence (LAWS.md): a block's tappability is constant
+  for its lifetime on screen.
+notes: |
+  H121 later replaces the blocks with pixel stills and authored hotspots.
+  Keep the block path a clean fallback rather than something to unpick.

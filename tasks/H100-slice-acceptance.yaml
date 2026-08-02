@@ -1,0 +1,31 @@
+id: H100
+card: H100
+phase: P1
+title: Author P1 slice acceptance
+lane: orchestrator
+kind: acceptance
+deps: [H006b, H116]
+scope:
+  - tests/acceptance/H100.slice.test.ts
+acceptance: tests/acceptance/H100.slice.test.ts
+done_when: the file is merged and executes under law (red until H114)
+goal: |
+  tests/acceptance/H100.slice.test.ts — the P1 scoreboard, authored ahead of
+  the cards that turn it green.
+
+  A jsdom E2E through the shell, not through the engine: mount the app over
+  the real bundle and drive it with taps.
+
+    tap the book        -> the refusal is rendered, and appears in the LOG pane
+    study the stone     -> knows_glyph
+    read the book again -> the procession lands in the journal, and in LOG
+    walk shore -> gate -> corridor mouth
+    the dark crossing   -> the end card is shown
+
+  Written against planned content ids (gate, corridor) and the planned shell
+  surface (narrator line, scene blocks, ACT/PACK/LOG/SET panel). Red until
+  H114 says otherwise, and that is the correct state for it to be in.
+notes: |
+  Authored by the orchestrator, not a factory agent: task-lint fails any
+  factory branch that touches tests/acceptance (AGENTS.md law 7), so the
+  scoreboard cannot be written from inside the wave it scores.

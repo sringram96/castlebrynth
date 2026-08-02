@@ -1,0 +1,18 @@
+id: H115
+card: H115
+phase: P1
+title: Art pass v0
+lane: human
+deps: [H104, H105]
+scope:
+  - src/shell/theme.ts
+  - src/shell/scene.ts
+done_when: you like how it looks on the device
+goal: |
+  Replace the wireframe look by editing H102's tokens and H104's block
+  rendering with your real visual direction.
+
+  Layout contracts stay; only the skin changes. This card blocks nothing
+  downstream — land it whenever.
+notes: |
+  Non-blocking by construction. Nothing depends on it, and nothing should.

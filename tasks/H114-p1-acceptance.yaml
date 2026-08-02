@@ -1,0 +1,22 @@
+id: H114
+card: H114
+phase: P1
+title: P1 acceptance goes green
+lane: factory
+kind: verification
+deps: [H100, H109, H111]
+scope: []
+acceptance: tests/acceptance/H100.slice.test.ts
+done_when: npx vitest run tests/acceptance/H100.slice.test.ts green on main
+goal: |
+  VERIFY ONLY. Write no code.
+
+  Run the slice acceptance first (AGENTS.md law 2). If green: change nothing,
+  report "already satisfied", open no diff. The work was carried by
+  H101..H112 and the observation is the output.
+
+  If RED: do not fix it. File a precise bounce in tasks/questions/H114.md
+  naming which assertion failed and which card owns the code behind it. That
+  is a finding, and it is worth more than a patch.
+notes: |
+  scope is empty on purpose. task-lint fails you for touching anything.
