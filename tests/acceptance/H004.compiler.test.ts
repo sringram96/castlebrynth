@@ -15,7 +15,7 @@ const bundlePath = resolve(root, 'content/bundle.json')
 
 const build = (args: string[] = []): { ok: boolean; output: string } => {
   try {
-    const output = execFileSync('node', ['scripts/build-content.mjs', ...args], {
+    const output = execFileSync('npm', ['run', 'build:content', ...(args.length ? ['--', ...args] : [])], {
       cwd: root,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],

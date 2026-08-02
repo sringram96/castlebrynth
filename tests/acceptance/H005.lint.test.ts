@@ -11,7 +11,7 @@ const root = resolve(__dirname, '../..')
 
 const lint = (paths: string[]): { ok: boolean; output: string } => {
   try {
-    const output = execFileSync('node', ['scripts/content-lint.mjs', ...paths], {
+    const output = execFileSync('npm', ['run', 'content-lint', '--', ...paths], {
       cwd: root,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],

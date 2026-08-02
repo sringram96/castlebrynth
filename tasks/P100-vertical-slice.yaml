@@ -1,0 +1,21 @@
+id: P100
+card: P100
+phase: P1
+title: Vertical slice acceptance
+lane: factory
+kind: verification
+deps: [P105, P107]
+scope: []
+acceptance: tests/acceptance/P100.slice.test.ts
+done_when: npx vitest run tests/acceptance/P100.slice.test.ts
+goal: |
+  VERIFY ONLY. Write no code.
+
+  Run it first (AGENTS.md law 2). If green: change nothing, report
+  "already satisfied", open no diff. The work was carried by P101..P107 and
+  the observation is the output.
+
+  If RED: do not fix it. Report which assertion failed and which card owns the
+  code behind it. That is a finding and it is worth more than a patch.
+notes: |
+  scope is empty on purpose. task-lint fails you for touching anything.

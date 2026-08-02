@@ -1,0 +1,38 @@
+id: P104
+card: P104
+phase: P1
+title: Save and restore
+lane: factory
+deps: [P103]
+scope:
+  - src/shell/persist.ts
+  - src/shell/persist.test.ts
+  - src/shell/mount.ts
+acceptance: tests/acceptance/P104.persist.test.ts
+done_when: npx vitest run tests/acceptance/P104.persist.test.ts
+goal: |
+  The run survives the app closing.
+
+    SAVE_KEY = 'castlebrynth.run'                          // exported; the acceptance imports it
+    save(storage: Storage, state: GameState): void
+    restore(storage: Storage, bundle: Bundle): GameState   // falls back to a new run
+
+  One key, overwritten. Not a history.
+
+  Use serialize/parse from src/core/save.ts — do not write a second envelope.
+  parse never throws and returns null on anything malformed; restore turns
+  that null into a fresh newRun rather than a crash or an empty screen.
+
+  Save after every act. A person who closes the app mid-scene reopens exactly
+  where they were, journal and refusal ledger intact.
+
+  Take `Storage` as a parameter, do not reach for `localStorage` directly —
+  that is what makes this testable without a browser.
+notes: |
+  A corrupt save is not an error state the person should ever see. It is a
+  new run. Quietly.
+
+dep_note: |
+  Depends on P103 rather than P102 only because both cards edit
+  src/shell/mount.ts. Sibling cards that share a path are not disjoint, and
+  task-lint is right to reject that -- so they run in sequence instead.

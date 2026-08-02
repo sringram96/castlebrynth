@@ -10,6 +10,13 @@ import { loadCards, ROOT } from './cards.mjs'
 
 const cards = loadCards() // throws on a malformed card, an unknown dep, or a cycle
 
+// Declared before the collision scan below, which calls fail(). A `const` in
+// the temporal dead zone throws on access, so this must not drift downward.
+const errors = []
+function fail(msg) {
+  errors.push(msg)
+}
+
 // Scopes within a wave must not overlap, or the guarantee is a lie.
 const byId = new Map(cards.map((c) => [c.id, c]))
 const seen = new Map()
@@ -33,11 +40,6 @@ function related(a, b) {
     return acc
   }
   return reach(a).has(b) || reach(b).has(a)
-}
-
-const errors = []
-function fail(msg) {
-  errors.push(msg)
 }
 
 // Which card is this branch working?

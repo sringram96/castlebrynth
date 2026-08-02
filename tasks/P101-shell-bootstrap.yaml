@@ -1,0 +1,34 @@
+id: P101
+card: P101
+phase: P1
+title: Shell bootstrap (Vite)
+lane: factory
+deps: []
+scope:
+  - vite.config.ts
+  - index.html
+  - src/shell/mount.ts
+  - src/shell/mount.test.ts
+  - package.json
+acceptance: tests/acceptance/P101.shell.test.ts
+done_when: npx vitest run tests/acceptance/P101.shell.test.ts
+goal: |
+  Stand the shell up. No game yet — a build that works and a mount point.
+
+    index.html          one <div id="app">, no inline script beyond the module tag
+    vite.config.ts      root at repo root, build.outDir = "dist"
+    src/shell/mount.ts  mount(root: HTMLElement, game): void  — the single entry
+                        the renderer (P102) will fill in
+
+  package.json gains: `vite` + `happy-dom` devDependencies, and the scripts
+  `dev` (vite), `build` (tsc --noEmit && vite build), `preview` (vite preview).
+
+  vitest must be able to run DOM tests: add an `environmentMatchGlobs` (or
+  per-file `@vitest-environment`) so src/shell and tests touching the DOM run
+  under happy-dom while src/core stays in node.
+
+  mount() renders the scene line and nothing else this card. P102 makes it a
+  renderer. Keep it that small — .llm/rules/no-dead-scaffolding.mdc.
+notes: |
+  No UI framework (P1.md). The shell imports from src/core/api only.
+  package.json is a shared path; touch only the lines this card names.

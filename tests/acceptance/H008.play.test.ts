@@ -9,7 +9,7 @@ const root = resolve(__dirname, '../..')
 
 const play = (script: string): string => {
   try {
-    return execFileSync('node', ['scripts/play.mjs', '--seed', '42'], {
+    return execFileSync('npm', ['run', 'play', '--', '--seed', '42'], {
       cwd: root,
       input: script,
       encoding: 'utf8',

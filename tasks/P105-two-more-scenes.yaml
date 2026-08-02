@@ -1,0 +1,38 @@
+id: P105
+card: P105
+phase: P1
+title: Two more scenes
+lane: factory
+deps: [H003b, H004a]
+scope:
+  - content/stair.yaml
+  - content/hall.yaml
+  - content/shore.yaml
+  - content/bundle.json
+acceptance: tests/acceptance/P105.scenes.test.ts
+done_when: npx vitest run tests/acceptance/P105.scenes.test.ts
+goal: |
+  The path off the shore leads somewhere, twice.
+
+    shore · path follow   gains `goto: stair` on its gated branch (the one
+                          behind book_open). The refusal fallback stays.
+    stair                 between. Cold, and a long way up. At least two
+                          objects, one of which affords going on to `hall`.
+    hall                  where the procession in your journal was going.
+                          At least two objects. One of them recognises the
+                          glyph you learned on the shore — a gate on
+                          knows_glyph that pays off the whole arc.
+
+  Then rebuild: `npm run build:content`, and commit the regenerated
+  content/bundle.json.
+
+  Voice is CANON.md; content-lint scans for banned words, dangling gotos,
+  unsatisfiable gates and impure refusals. Run `npm run law` — content-lint
+  is part of it now.
+notes: |
+  You own shore.yaml for this card only to add the goto. Do not touch its
+  book, stone or pool — H003b's acceptance still pins them and it must stay
+  green.
+
+  Every gate you write must be satisfiable from a fresh run: content-lint
+  walks it and will fail you for a flag nothing sets.

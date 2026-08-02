@@ -1,0 +1,34 @@
+id: P102
+card: P102
+phase: P1
+title: Scene renderer
+lane: factory
+deps: [P101]
+scope:
+  - src/shell/render.ts
+  - src/shell/render.test.ts
+  - src/shell/mount.ts
+  - src/shell/styles.css
+acceptance: tests/acceptance/P102.render.test.ts
+done_when: npx vitest run tests/acceptance/P102.render.test.ts
+goal: |
+  Draw a View, and send taps back.
+
+    render(root: HTMLElement, view: View, onTap: (ref: ActionRef) => void): void
+
+  - the narrator line as a <p>, and view.enter above it when present
+  - one control per object/action pair, labelled "<object> <action>", each
+    carrying data-object and data-action
+  - a tap calls onTap({object, action}); the shell then calls act() and
+    re-renders from the new getView()
+  - effects are shown: `say` text appears, a `refused` line appears and is
+    marked as a refusal, a `journal` addition is visible
+
+  Full redraw every tap. No diffing, no keys, no virtual anything.
+
+  styles.css is plain CSS: legible at phone width, tap targets not smaller
+  than 44px, dark. CANON.md is the voice; the shell must not add words of its
+  own — no "Nothing happens", no "Try something else".
+notes: |
+  The shell touches GameAPI only (P1.md). Do not import resolve.ts. Do not
+  read bundle.scenes to decide what to draw — getView already told you.
