@@ -1,0 +1,56 @@
+id: H117
+card: H117
+phase: P1
+title: "Engine: the end delta"
+lane: factory
+deps: [H001b, H003a, H006a, H006b, H111]
+scope:
+  - src/core/cards.ts
+  - src/core/cards.test.ts
+  - src/core/resolve.ts
+  - src/core/resolve.test.ts
+  - src/core/api-types.ts
+  - src/core/api-types.test.ts
+  - content/corridor.yaml
+  - content/bundle.json
+acceptance: tests/acceptance/H111.corridor.test.ts
+done_when: npx vitest run tests/acceptance/H111.corridor.test.ts and the H100 end-card assertions pass
+goal: |
+  Close the gap between the closed vocabulary and the engine that implements it.
+
+  VOCAB.md line 25 declares `end: {line, note}` — end the slice. The engine
+  does not have it: `DELTA_ORDER` in src/core/cards.ts is nine words and none
+  of them is `end`, and `parseScene` rejects the word outright as unknown
+  vocabulary. H111 hit this while authoring the dark crossing and spelled the
+  ending in existing words instead — `setFlag: crossing_taken` — documenting
+  in the file header why, rather than guessing at an engine change outside its
+  scope. That was the correct bounce-shaped move and it is why this card
+  exists.
+
+  This is NOT a VOCAB amendment. The word is already law; the engine is
+  simply behind its own spec.
+
+  Implement it:
+    - `end` joins DELTA_ORDER, last — it is the delta after which nothing
+      else in the response can matter.
+    - The card schema takes `end: { line: string, note?: string }`.
+    - `resolve` emits an `end` Effect carrying line and note. It ends the
+      slice; it does not `goto`, and there is no scene below in P1.
+    - api-types.ts gains the `end` Effect to the Effect union, so the shell
+      can render it without knowing a single content flag by name.
+
+  Then re-point content/corridor.yaml: `dark_crossing.cross` speaks `end`
+  rather than setting `crossing_taken`, and the bundle is rebuilt.
+notes: |
+  WHY THE SHELL CANNOT DO THIS INSTEAD: H100's acceptance requires
+  `[data-testid="end-card"]` to be absent until the crossing is taken and
+  present after. Without an `end` Effect the only signal is a content flag,
+  and a shell that read `crossing_taken` by name would be a shell that knows
+  a game rule — .llm/rules/layering.mdc, and the exact thing the P1 split
+  exists to prevent. H161 renders this same effect as the MVP victory card
+  and H158 asserts it, so the word has to work before either.
+
+  This adds a member to the Effect union, which is part of the GameAPI —
+  frozen and expensive to change (AGENTS.md, README). It is additive: no
+  existing Effect changes shape, and every existing consumer still compiles.
+  Flagged on the board for the human rather than done quietly.
