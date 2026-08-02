@@ -6,6 +6,7 @@ lane: factory
 deps: [H003b]
 scope:
   - scripts/build-content.mjs
+  - content/bundle.json
 acceptance: tests/acceptance/H004.compiler.test.ts
 done_when: npx vitest run tests/acceptance/H004.compiler.test.ts -t H004a
 goal: |
