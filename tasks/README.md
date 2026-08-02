@@ -1,8 +1,9 @@
 # tasks/ — the queue
 
-Card schema (YAML, one per file, `H0XX-slug.yaml`): `id` (H###),
-`title` (≤60), `goal` (2–5 sentences), `context` (docs/skills to read),
-`deps` (card ids), `scope` (only paths the agent may touch),
+Card schema (YAML, one per file, `<ID>-slug.yaml`): `id` (`[HLD]###` —
+`H` for the engine and shell waves, `L` for the Lots, `D` for the
+Descent), `title` (≤60), `goal` (2–5 sentences), `context` (docs/skills
+to read), `deps` (card ids), `scope` (only paths the agent may touch),
 `non_goals` (≥1), `allows_deps` (runtime deps permitted, usually []),
 `acceptance.spec` (prose contract) and `acceptance.commands`
 (executable definition of done). `scripts/task-lint.mjs` enforces all
