@@ -1,5 +1,73 @@
 {
   "scenes": {
+    "corridor": {
+      "id": "corridor",
+      "line": "Past the gate the passage runs straight, and then runs out of light.",
+      "objects": [
+        {
+          "actions": {
+            "inspect": [
+              {
+                "gate": {
+                  "notFlag": [
+                    "floor_seen"
+                  ]
+                },
+                "journal": [
+                  "dust"
+                ],
+                "say": "The dust lies even from wall to wall and nothing has walked it. Halfway down, a band of flagstones sits a finger lower than the rest, and the dust has run off their edges into the seams. The stone on either side of the band is worn hollow, the way a step is worn by being taken.",
+                "setFlag": [
+                  "floor_seen"
+                ]
+              },
+              {
+                "say": "The band of stone sits where it sat. The dust over it has not moved."
+              }
+            ]
+          },
+          "id": "dust_floor",
+          "name": "the floor, under a skin of dust"
+        },
+        {
+          "actions": {
+            "look": [
+              {
+                "say": "The alcove is cut at shoulder height and it is empty. The stone at the back of it is black with smoke, and the black stops in a clean line, the way it does where something stood in front of it for a long time."
+              }
+            ]
+          },
+          "id": "lamp_alcove",
+          "name": "an alcove cut in the wall"
+        },
+        {
+          "actions": {
+            "cross": [
+              {
+                "say": "You walk to where the light stops, and keep walking. The floor tilts down under you and goes on tilting. The cold coming up is the cold that was on the far side of the gate, and it has been standing here the whole while.",
+                "setFlag": [
+                  "crossing_taken"
+                ]
+              }
+            ]
+          },
+          "id": "dark_crossing",
+          "name": "the dark, where the corridor gives out"
+        },
+        {
+          "actions": {
+            "follow": [
+              {
+                "goto": "gate",
+                "say": "You go back up the passage and stand in the gateway. The iron has kept its own cold and gives you none of yours back."
+              }
+            ]
+          },
+          "id": "exit",
+          "name": "the way back to the gate"
+        }
+      ]
+    },
     "gate": {
       "id": "gate",
       "line": "The path ends at iron. The hill has been cut open and shut again.",
@@ -100,6 +168,26 @@
           },
           "id": "mural",
           "name": "a mural cut into the wall"
+        },
+        {
+          "actions": {
+            "follow": [
+              {
+                "gate": {
+                  "flag": [
+                    "gate_open"
+                  ]
+                },
+                "goto": "corridor",
+                "say": "You step through into the hill. The cut goes on past the iron, squared and floored, and it goes down."
+              },
+              {
+                "refuse": "The gate is shut across the way on, wall to wall, and there is no going round iron."
+              }
+            ]
+          },
+          "id": "exit",
+          "name": "the way on, past the gate"
         }
       ]
     },

@@ -12,7 +12,7 @@
 # the memory it costs. It may not carry who takes it — that is T2 and above,
 # and LAWS.md #spoiler is not a taste.
 #
-# H111 hangs an `exit` here, gated on gate_open. It is not built in this file.
+# H111 hung the `exit` here, gated on gate_open, and the corridor behind it.
 id: gate
 line: "The path ends at iron. The hill has been cut open and shut again."
 objects:
@@ -56,3 +56,16 @@ objects:
         # Gateless, and it is a whole answer: a wall of writing is a wall of
         # writing whether or not you can hold it.
         - say: "The carving goes from the floor to above your head. Figures in a line, and marks between them that will not hold still long enough to be marks."
+
+  # H111. The way on, and it is a door in both directions — the corridor's own
+  # exit walks back here, and an opened gate stays walked-through-able
+  # (GAME.md #progress). The gate itself is the key and it is standing right
+  # there, so the refusal names it and nothing else (LAWS.md #gates).
+  - id: exit
+    name: "the way on, past the gate"
+    actions:
+      follow:
+        - gate: { flag: gate_open }
+          goto: corridor
+          say: "You step through into the hill. The cut goes on past the iron, squared and floored, and it goes down."
+        - refuse: "The gate is shut across the way on, wall to wall, and there is no going round iron."
