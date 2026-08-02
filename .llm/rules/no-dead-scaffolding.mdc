@@ -1,5 +1,5 @@
 ---
-description: Build the ninth card's needs in the ninth card. No speculative abstraction.
+description: Build the card in front of you. No speculative abstraction, no dependency that saves eight lines.
 alwaysApply: true
 ---
 
@@ -8,12 +8,14 @@ alwaysApply: true
 Do not add a dependency, a config, an abstraction layer, or a "we'll need this
 later" export.
 
-P0 is nine cards long. Build the ninth card's needs **in the ninth card**.
-
 - No option nobody passes.
 - No interface with one implementer added "for testing".
 - No helper exported because it might be useful.
-- No dependency that saves eight lines.
+- No reserved vocabulary word implemented early — `VOCAB.md` names six that are
+  reserved, and each arrives with its own card, its tests and its lint.
 
-The cheapest code to maintain is the code you did not write, and the second
+The cheapest code to maintain is the code you did not write; the second
 cheapest is the code you deleted when its card turned out not to need it.
+
+*(A local rule, beyond the eight in `.llm/rules/`. It has never conflicted with
+them.)*

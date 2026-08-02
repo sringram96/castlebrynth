@@ -1,25 +1,20 @@
 ---
-description: src/core is pure. No I/O, no clock, no hidden randomness — two runs from one seed are byte-identical.
+description: src/core has no DOM, no I/O, no clock, no hidden randomness. It imports only src/core.
 globs: src/core/**/*.ts
 alwaysApply: false
 ---
 
-# Purity and determinism
+# Purity
 
-`src/core` is pure. No I/O, no `Date`, no `Math.random`, no module-level
-mutable state, no `process`. Everything the engine needs is in the
-`GameState` it was handed.
+`src/core` has **no DOM, no I/O, no Capacitor, no `Date`, no `Math.random`,
+no `console`.** It imports only `src/core`.
 
-Randomness is **state as data**: `seedRng(seed)` produces an `Rng`, and
-`nextInt(rng, n)` returns `[k, rng2]`. There is no hidden generator. Two runs
-from one seed and one tap list are byte-identical, on any machine, forever.
+Everything the engine needs arrives in the `GameState` it was handed, or in
+the bundle bound to it. Nothing is read from the world at play time.
 
-`act` and `getView` never mutate their arguments. They return new state. The
-acceptance suite deep-freezes inputs and will catch you.
-
-`eslint.config.js` enforces the mechanical half of this — `Math.random`,
-`new Date`, `Date.now`, `process`, `console`, and `new Set/Map` are all
-restricted syntax inside `src/core`. The lint is a floor, not the rule.
+The lint enforces the mechanical half — `Math.random`, `new Date`, `Date.now`,
+`process`, `console`, `document`, `window` and `localStorage` are restricted
+syntax inside `src/core`. The lint is a floor, not the rule.
 
 > "load" means validate, not read from disk. A `src/core` function takes the
-> parsed value; the caller does the reading.
+> already-parsed value; the caller does the reading.

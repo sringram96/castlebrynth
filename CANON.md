@@ -1,62 +1,56 @@
-# CANON.md — the voice
+# CANON.md - the world, for content agents (v2)
 
-Castle Brynth is old, quiet, and indifferent to you. It is not hostile.
-It is not helpful. It was here first.
+Spoiler-free world law for the cult labyrinth. TRUTH.md (spoilered)
+governs revelation. Content cards cite both by tier.
 
-## person and tense
+## premise, as the player meets it
 
-Second person, present tense. "You put your hand on the stone." Never
-past, never first person, never a narrator with opinions about you.
+You wake in a dead portal chamber - the Crossing - with no memory. A
+labyrinth leads down. Something in you pulls that way. Nothing more is
+ever stated; the premise is only found.
 
-## the narrator does not exist
+## the world
 
-There is no voice explaining the world. There is only the world,
-observed. The narrator never:
+- The labyrinth is close, stone, wet, and wrong: corridors that were
+  not there yesterday, walls that listen. Bleak and claustrophobic -
+  torch-dark pixel stills, never open sky.
+- **The maze refuses to be learned.** Its corridors move; only
+  landmarks hold still. Residents treat this as weather.
+- **The cult** keeps the deep places. Robed, patient, organized. Some
+  fight; many would rather talk. They name their coming lord only as
+  **the Morning King**. The plain name is never written below tier T3.
+- **Tithes** are the labyrinth's coin - the cult's word for what is
+  owed. **Effigies** are its statues; some of them used to be people's
+  debts, and some of them stand up.
+- The labyrinth remembers everything done in it; word travels. The
+  player is the only one here who forgets.
 
-- addresses the person as a player ("you'll need to…")
-- refers to the medium ("this game", "a level", "your quest")
-- promises ("if you find the key, you can…")
-- reassures ("don't worry", "that's okay")
-- jokes at the world's expense
+## tone
 
-## register
+- Quiet, concrete, unsentimental. Dread through specificity. The
+  narrator observes; it does not explain, judge, or joke - until the
+  Fraying, when it turns familiar and hungry (that register is
+  tier-gated content, not a style everyone may use).
+- Lines are short. Present tense. Banned: "suddenly", "you feel",
+  "mysterious", "evil", "creepy", "satan"/"devil"/"lucifer" (below
+  T3), any meta reference to games, stats, or UI.
+- Horror is implied and off-frame; on-frame horror is still, not gory.
+  The child is never shown harmed - only *changed*, in stills.
 
-Plain words, short sentences, concrete nouns. Cold rather than lush.
-Prefer *stone* to *ancient masonry*, *water* to *shimmering pool*. One
-image per line. Let the reader supply the dread.
+## knowledge tiers
 
-Length: a line is one or two sentences. Anything longer is a paragraph
-the person will skip, and the thing you buried in it is lost.
+- **T0 - waking:** the Crossing, survival, the maze's customs. Residue
+  only: scraped hands, a weight your arms remember, a cry in dreams.
+  Never the word "child" or "brother".
+- **T1 - descent:** you came here on purpose; the crossing takes
+  memory as toll; some residents half-recognize your gait.
+- **T2 - the rite:** an infant is being prepared; the cult's purpose;
+  they knew you - or you knew them. All T2 content must sustain both
+  readings (complicity superposition).
+- **T3 - the truth:** TRUTH.md only. Final chamber and endings.
 
-## banned words
+## recurring figures
 
-Scanned by `content-lint` (H005), case-insensitive, whole-word. These are
-banned in all authored content strings — `say`, `refuse`, `journal`,
-`line`, `enter`.
-
-**Meta** — breaks the frame:
-`player`, `game`, `gameplay`, `level`, `quest`, `xp`, `inventory`,
-`checkpoint`, `respawn`, `tutorial`, `unlock`, `unlocked`, `menu`
-
-**Anachronism** — Brynth has none of these:
-`computer`, `phone`, `email`, `internet`, `okay`, `ok`
-
-**Intensifiers** — the world does not editorialise:
-`very`, `really`, `truly`, `literally`, `suddenly`, `somehow`,
-`amazing`, `awesome`, `incredible`, `epic`, `mysterious`, `eerie`
-
-**Deferral** — the tell of a refusal that is a wall, not information
-(LAWS.md §refusal):
-`yet`, `not now`, `later`, `come back`
-
-## the shore, as reference
-
-The shore is the canonical scene. When in doubt about voice, match it.
-
-> Grey water, and no far side to it.
-
-> The stone is warm where nothing else is.
-
-> The marks swim. You cannot hold them.
-
-Three lines: a place, a wrongness, a refusal that points somewhere.
+One wary resident at the Crossing (trade, warnings). Cultists with
+recognition dialogue that scales with the hidden ledger. The child:
+glimpses only, one per depth, escalating (GAME.md #the-child).

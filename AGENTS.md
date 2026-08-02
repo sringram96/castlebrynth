@@ -1,84 +1,60 @@
-# AGENTS.md — how a card gets worked
+# AGENTS.md — law for autonomous agents
 
-You have been given exactly one card: a file in `tasks/`. Read it, read
-the documents it names, and work only it. These laws are absolute and
-they outrank your judgement about what the repo needs.
+You are one agent among several building **castlebrynth**. You work exactly
+one task card from `tasks/`. Other agents are working other cards right now;
+you never coordinate with them — you coordinate with this file and what it
+cites.
 
-## law 1 · one card
+## The law
 
-You work the card you were given. You do not fix the neighbouring bug,
-tidy the adjacent file, or start the next card because it is obvious.
-Anything outside your card's `scope` is off limits — `task-lint` will
-fail you for touching it (.llm/rules/scope.mdc), and it is right to.
+1. **One card, one PR.** Touch only paths in your card's `scope`. Branch
+   `factory/<id>`, PR title `<id> · <card title>`. `task-lint` compares your
+   diff to the scope and fails on anything outside it — that is what makes a
+   whole wave safe to merge in any order.
+2. **Idempotency first.** Before writing anything, run your card's acceptance
+   commands. Already green → stop, change nothing, report **"already
+   satisfied."** That is a correct and valuable outcome, not a failure — it
+   means a dependency carried the work, and the observation is the output.
+3. **`.llm/rules/` is engineering law.** Purity, determinism, vocabulary
+   closure, layering, testing, no-takebacks, affordance, saves. CI's `law` job
+   enforces it; do not fight the lint.
+4. **`VOCAB.md` is the closed word set.** The engine implements exactly those
+   gates and deltas. A new word requires a **VOCAB amendment card** — never an
+   inline special case.
+5. **Design law lives in `GAME.md`, `LAWS.md`, `CANON.md`, and `TRUTH.md`.**
+   If your card's cited law is ambiguous about behaviour, do not invent —
+   bounce.
+6. **Dependencies** enter only through your card's `allows_deps`. A card that
+   adds a dependency owns `package.json` **and** `package-lock.json`; CI runs
+   `npm ci` and fails on a lock that has drifted.
+7. **The acceptance test is not yours.** Never edit, weaken, skip or delete
+   anything under `tests/acceptance/`. If one looks wrong, bounce and say so.
 
-If working your card requires a change outside your scope, **stop** and
-say so in the PR body. That is a finding, not a failure.
+## The ritual
 
-## law 2 · acceptance first
+1. Read your card fully, then every `context` reference it names.
+2. Run the acceptance commands (expect red; green means stop — law 2).
+3. Implement inside `scope`. Unit tests live next to code.
+4. `npm run law` green, then your acceptance green.
+5. Commit, merge to main, and confirm `law` still green there. **Do not stop
+   at a commit** — a card left unmerged starves everything downstream of it.
+6. PR body: what, how verified, judgment calls made.
 
-Before you write a line of code, run your card's acceptance test.
+## Bouncing
 
-```bash
-npx vitest run tests/acceptance/<YOUR>.test.ts
-```
+You cannot ask questions mid-run. On an ambiguity that changes behaviour, end
+the run **blocked**: add `tasks/questions/<id>.md` with your question, and
+nothing else.
 
-If it is **already green**, you are done. Change nothing. Report
-`already satisfied` and open no code diff. This is not a trick and it is
-not laziness — a card whose acceptance passes on arrival is a card whose
-work was carried by a dependency, and the correct output is the
-observation.
+**A bounce is a success state; a guess is not.** This has been proven here
+more than once — an agent found a self-contradictory acceptance test and
+refused to proceed rather than "fix" it, and three agents in a row hit the
+same blocked scope and reported it instead of working around it. Each time the
+bounce cost a round trip and saved a silently broken build.
 
-If it is red, you now know exactly what done means. Read the failure
-before you read the card again.
+## What never changes
 
-## law 3 · the acceptance test is not yours
-
-You may not edit, skip, weaken, retitle, or delete anything in
-`tests/acceptance/`. Not to "make it match the implementation", not to
-fix a typo. If it is wrong, say so in the PR and stop.
-
-Your own tests go beside your code: `src/core/rng.test.ts`.
-
-## law 4 · the vocabulary is closed
-
-Content speaks only VOCAB.md (.llm/rules/vocabulary.mdc). If your card needs a word
-that is not there, you do not add it — you stop and say so. The
-vocabulary is one of the three frozen things in P0 and it does not move
-for a single card.
-
-## law 5 · leave the tree green
-
-`npm run law` must pass before you open the PR. Not "pass except for a
-pre-existing failure" — if it was red when you arrived, say that in the
-PR as the first line, then decide whether your card can honestly proceed.
-
-## law 6 · report what you actually did
-
-The PR body says what you changed, what you ran, and what came back. If
-a test is flaky, say flaky. If you could not verify something, say you
-could not verify it. A card reported green that is not green costs the
-next five cards their afternoon.
-
-Never describe work you did not do.
-
-## the loop
-
-```bash
-git checkout -b factory/H00X
-npx vitest run tests/acceptance/H00X.<name>.test.ts   # law 2 — first
-# ... work the card, inside scope ...
-npm run law                                           # law 5
-npx vitest run tests/acceptance/H00X.<name>.test.ts   # green
-```
-
-Then open one PR, titled `H00X · <card title>`, body per law 6.
-
-## the documents
-
-| file | what it governs |
-| --- | --- |
-| `.llm/rules/` | engineering law — CI enforces it |
-| `VOCAB.md` | the closed gate/delta word set |
-| `LAWS.md` | the world's promises to the person in it |
-| `CANON.md` | voice; banned words are scanned |
-| `P0.md` | the phase: what is being built and why |
+The first tap is free (`GAME.md` #input). Objects change only by delta with a
+cause (`.llm/rules/affordance.mdc`). Dice land and stand
+(`.llm/rules/dice.mdc`). Same seed, same run
+(`.llm/rules/determinism.mdc`).

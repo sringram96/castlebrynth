@@ -2,7 +2,7 @@
 //
 // A save is the state and nothing else, wrapped in a version so that a later
 // format can tell itself apart from this one. serialize is small by design:
-// GameState is already JSON (.llm/rules/state-is-json.mdc), so there is nothing to encode.
+// GameState is already JSON (.llm/rules/determinism.mdc), so there is nothing to encode.
 //
 // parse is the boundary with the outside world, and the outside world lies —
 // a half-written file, a hand-edited one, a save from a build that no longer

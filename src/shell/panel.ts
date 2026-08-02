@@ -7,7 +7,7 @@
 //
 // It shows no flags. Flags are the engine's memory, not the person's, and the
 // reserved `obj+:` / `obj-:` entries in particular are bookkeeping that stands
-// for an object appearing or going (.llm/rules/state-is-json.mdc) — a screen
+// for an object appearing or going (.llm/rules/determinism.mdc) — a screen
 // that printed them would be showing the machine. `refused`, `rng` and `seed`
 // are the same: the world remembers being asked, and the person need not.
 //

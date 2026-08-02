@@ -1,56 +1,53 @@
-# LAWS.md — laws of the world
+# LAWS.md - fairness and coherence, as checkable statements
 
-These are not engineering rules (see .llm/rules/). These are the promises
-the world makes to the person inside it. Breaking one is a content bug
-even when every test is green.
+Every law is written to be enforced by a content linter over the event
+graph, not by taste. Cards that violate these do not merge.
 
-## §affordance — the world does not rearrange itself behind you
+1. **#affordance - permanence.** An object's tappability is constant for
+   its entire lifetime in a scene. Objects may be added or removed only
+   by world-state deltas with a diegetic cause recorded on the delta.
+   Lint: no object toggles interactive across states in which it is
+   visibly present.
 
-An object's presence in a scene changes **only** through an explicit
-`addObject` / `removeObject` delta, and every such delta must have a
-cause the person can point at: something they did, one tap ago.
+2. **#gates - satisfiability.** Every response that blocks *required*
+   progress declares its key (item, flag, knowledge). Lint: the key is
+   producible by some reachable earlier content; the dependency graph of
+   keys is acyclic.
 
-Objects never appear because a flag happens to be set. They never vanish
-because the scene "moved on". If the pool is gone, it is because you
-drained it, and you were there when it drained.
+3. **#telegraph - fair harm.** Every source of death or major loss in a
+   scene has at least one free tap in that scene whose description
+   signals it. Lint: harm nodes reference their telegraph node; the
+   telegraph is unconditioned or its gate is satisfiable earlier.
+   Situation clause: a risky investigation action's free-tap description
+   must carry the scent of risk, and inside a situation at least one
+   readable cue node precedes any kill node on every path.
 
-The engine enforces the mechanism; the author owes the cause.
+11. **#death-pays - dying advances the story.** Each depth's content
+    must include at least one response gated on death or hollowing
+    counters, so every fall or break unlocks a new line somewhere.
+    Lint: per depth, >=1 gate referencing the death/hollow counters.
 
-## §refusal — a refusal is information, not a wall
+4. **#softlock - always a way.** From every reachable state there exists
+   a path to an exit, a death, or the shore. Lint: graph reachability.
 
-When the world refuses, it says *why* in the world's own terms — never
-"you can't do that". A refusal must name the thing you lack in language
-that tells you what to go find.
+5. **#visible - no pixel hunts.** All interactables are visible objects
+   with hit areas at or above the minimum size. Hidden regions are a
+   build error. Depth of response is unrestricted.
 
-> The marks swim. You cannot hold them.
+6. **#spoiler - containment.** Content at tier N may not reference
+   entities, events, or vocabulary reserved to tiers above N (TRUTH.md).
+   Lint: banned-term and entity-reference scan per tier.
 
-is a refusal. It tells you the problem is in your eyes, not in the book.
+7. **#breadcrumbs - earned revelation.** A tier-N revelation node
+   requires at least three distinct lower-tier breadcrumb nodes planted
+   on reachable paths. Lint: count and reachability.
 
-> You can't read the book yet.
+8. **#consequences - shown, not told.** Journal entries record acts and
+   scenes only. Lint: entry templates contain no cost, amends, or
+   permanence language.
 
-is not. "Yet" is the author talking to the player about the game.
+9. **#dice - no takebacks.** No content or item may grant a reroll or
+   cancel a landed die. Lint: effect vocabulary scan.
 
-A refusal is ledgered (`state.refused`). The world remembers being asked.
-An action refused once and then permitted is the shape of every good
-scene in this project — it is the thing P0 exists to prove.
-
-## §persistence — the world remembers, the person forgets
-
-Anything the person did is in state: flags, items, journal, the refusal
-ledger. Nothing about the world lives in a closure, a module variable, or
-a clock. Two runs from the same seed and the same taps are the same run,
-forever, on any machine.
-
-## §economy — the journal is not a log
-
-`journal` entries are the person's own record, in their voice, of things
-that will matter later. One word or a short phrase. If everything is
-journalled, the journal is noise and the person stops reading it.
-
-`procession` is a journal entry. `You read the book.` is not.
-
-## §naming — the world is older than you
-
-Scene, object, and flag ids are lowercase snake_case and named for what
-the thing *is*, not what it does for the plot. `stone`, not
-`tutorial_stone`. `knows_glyph`, not `book_unlocked`.
+10. **#qte - convertible.** Every QTE node declares its Will-check
+    equivalent. Lint: presence of the fallback and its DC.

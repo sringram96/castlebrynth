@@ -85,7 +85,7 @@ describe('normalisation', () => {
     expect(Object.keys(first({ say: 'A line.' }))).toEqual(['say'])
   })
 
-  it('survives the JSON round trip a bundle is stored as (.llm/rules/state-is-json.mdc)', () => {
+  it('survives the JSON round trip a bundle is stored as (.llm/rules/determinism.mdc)', () => {
     const s = parseScene(one({ gate: { flag: 'lit' }, setFlag: 'a', say: 'x' }))
     expect(JSON.parse(JSON.stringify(s))).toEqual(s)
     expect(structuredClone(s)).toEqual(s)

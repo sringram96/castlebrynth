@@ -38,7 +38,7 @@ const SEED = 1
  * Writes `state` over whatever was there.
  *
  * Called after every act, so it is the cheapest thing that can be: one
- * stringify of a state that is already JSON (.llm/rules/state-is-json.mdc).
+ * stringify of a state that is already JSON (.llm/rules/determinism.mdc).
  */
 export function save(storage: Storage, state: GameState): void {
   storage.setItem(SAVE_KEY, JSON.stringify(serialize(state)))

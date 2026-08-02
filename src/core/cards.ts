@@ -9,7 +9,7 @@
 // It normalises as well as validates, so everything downstream sees one shape.
 // An author writes `setFlag: lamp_lit`; resolve reads `['lamp_lit']` and never
 // asks which of the two the file said. What comes out is JSON — no undefined
-// members, no absent word made explicit (.llm/rules/state-is-json.mdc).
+// members, no absent word made explicit (.llm/rules/determinism.mdc).
 
 /** The gate words, as VOCAB.md lists them. A gate is a conjunction of these. */
 export const GATE_WORDS = ['flag', 'notFlag', 'item', 'notItem'] as const

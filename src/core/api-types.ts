@@ -6,7 +6,7 @@
 // reads a Response, and never learns that object sets are folded out of
 // reserved flags. Naming the boundary in its own file is what keeps that true.
 //
-// Everything here is JSON, like the state it is about (.llm/rules/state-is-json.mdc).
+// Everything here is JSON, like the state it is about (.llm/rules/determinism.mdc).
 // An effect list stringifies into a transcript, which is how the root
 // acceptance compares two runs of the same seed line for line.
 

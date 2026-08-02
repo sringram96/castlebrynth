@@ -1,30 +1,28 @@
 ---
-description: Acceptance tests are the definition of done and are not yours to edit. Unit tests are.
-globs: tests/**/*.ts,src/**/*.test.ts
+description: Unit tests co-located and always green. Acceptance tests are the scoreboard — red until their card lands, never yours to edit.
+globs: src/**/*.test.ts,tests/**/*.ts
 alwaysApply: false
 ---
 
-# Tests
+# Testing
 
-Two kinds, and the difference is absolute.
+**Unit tests** live beside their code (`src/core/resolve.test.ts`). The `law`
+job runs them and they are **always green**. They are yours — write as many as
+you like.
 
-**Co-located unit tests** — `src/core/rng.test.ts`. Yours. Write as many as
-you like. They are typechecked by `npm run law` because they live under
-`src/`, which is what makes type-level assertions there real rather than
-decorative.
+**Acceptance tests** (`tests/acceptance/`) are the **scoreboard**. They are
+red until their card lands, and they are **never a merge gate** — `npm run law`
+does not run them; `npm run progress` reports them.
 
-**Acceptance tests** — `tests/acceptance/*.test.ts`. **Not yours.** They are
-the card's definition of done and they are authored *before* the card is
-dispatched.
+They are authored *ahead* of the card they define. You may not edit, skip,
+weaken, retitle or delete one. Not to make it match your implementation, not
+to fix a typo.
 
-You may not edit, skip, weaken, retitle, or delete one. Not to "make it match
-the implementation". Not to fix a typo.
+If an acceptance test looks wrong, **bounce** (AGENTS.md) — open a card
+question rather than a guess. A card that edits its own definition of done has
+proven nothing, and `task-lint` fails any diff touching `tests/acceptance/`.
 
-If an acceptance test looks wrong, **stop and say so in the PR**. Do not fix
-it. `task-lint` fails any diff touching `tests/acceptance/`, and a card that
-edits its own definition of done has proven nothing.
-
-Run your acceptance **first**, before writing code. If it is already green,
-you are done — change nothing and report `already satisfied`. A card whose
-acceptance passes on arrival is a card whose work was carried by a dependency,
-and the correct output is the observation.
+This has already earned its keep twice: an agent found a genuinely
+self-contradictory acceptance test and refused to proceed, and three agents in
+a row refused to relax a unit test that blocked them and reported the scoping
+error instead.

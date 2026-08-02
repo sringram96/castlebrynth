@@ -1,0 +1,23 @@
+---
+description: Cards are data. No rules in the shell, no content in the engine.
+alwaysApply: true
+---
+
+# Cards are data
+
+All game content is **YAML in `content/`**, passed through the content linter
+and compiled to a bundle. Nothing else is content.
+
+**No rules in the shell.** The shell draws what `getView` returns and sends
+taps back through `act`. It does not decide what an action does, what a gate
+means, or what a delta changes. If the shell needs to know something to draw
+correctly, the API must return it — that is a finding against the API, not a
+licence to reimplement the rule.
+
+**No content in the engine.** `src/core` holds no scene ids, no object names,
+no prose, no balance numbers. It knows the vocabulary and nothing about the
+labyrinth.
+
+The seam is the whole architecture: content authors write YAML without reading
+TypeScript, engine cards change behaviour without touching prose, and the maze
+generator arranges authored rooms it cannot rewrite.

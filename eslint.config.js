@@ -43,7 +43,7 @@ export default tseslint.config(
         },
         {
           selector: "NewExpression[callee.name=/^(Set|Map|WeakSet|WeakMap)$/]",
-          message: 'GameState is JSON (.llm/rules/state-is-json.mdc) — use arrays.',
+          message: 'GameState is JSON (.llm/rules/determinism.mdc) — use arrays.',
         },
       ],
     },

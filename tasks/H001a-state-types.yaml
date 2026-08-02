@@ -14,7 +14,7 @@ goal: |
 
   GameState { scene, flags, items, journal, refused, rng, seed } — exactly
   those seven keys, no more. It must survive JSON.stringify and
-  structuredClone deep-equal (.llm/rules/state-is-json.mdc): arrays, not Sets; numbers, not
+  structuredClone deep-equal (.llm/rules/determinism.mdc): arrays, not Sets; numbers, not
   Dates; plain objects only.
 
   Plus tiny pure helpers beside it: emptyState(scene, seed), hasFlag,

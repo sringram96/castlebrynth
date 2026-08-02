@@ -1,0 +1,19 @@
+---
+description: No takebacks. Nothing grants a reroll or cancels a landed die.
+globs: src/core/**/*.ts,content/**/*.yaml
+alwaysApply: false
+---
+
+# No takebacks
+
+**Nothing grants a reroll or cancels a landed die.** Not an item, not a skill,
+not a trinket, not a difficulty setting (LAWS.md #dice).
+
+Dice land and stand. The only post-roll play is a limited-use **skill**, spent
+after seeing the result, or **flee** — both of which are decisions made with
+the outcome visible, not erasures of it (GAME.md #skills, #combat).
+
+That is the whole agency layer, and it only works if the die is final. A reroll
+turns every roll into a resource check and every tense moment into arithmetic.
+
+Lint: effect-vocabulary scan. A content card offering a reroll does not merge.

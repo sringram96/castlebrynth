@@ -1,37 +1,42 @@
 ---
-description: Content may speak only the words in VOCAB.md. Unknown words fail the build, naming the path.
-globs: content/**/*.yaml,scripts/build-content.mjs,scripts/content-lint.mjs,src/core/cards.ts
+description: The engine implements exactly VOCAB.md — all of it, only it. Unknown words fail at load time. New words arrive by amendment card.
+globs: content/**/*.yaml,src/core/cards.ts,src/core/resolve.ts,scripts/build-content.ts,scripts/content-lint.ts
 alwaysApply: false
 ---
 
-# The closed vocabulary
+# Vocabulary closure
 
-Content may use **only** the words in `VOCAB.md`. `build-content` fails on any
-other key and the error **names the path** to the offending node:
+The resolve engine implements the gates and deltas in `VOCAB.md` — **all of
+them, only them.** Unknown words fail at **load time**, never silently at play
+time, and the error names the path to the offending node.
 
-```
-content/shore.yaml: objects.book.read[0].setFlagg — unknown vocabulary word
-```
+## the words
 
-A message that does not name the path is a failing build message.
-
-Gates: `flag`, `notFlag`, `item`, `notItem`. A gate is a conjunction; an empty
-or absent gate is the fallback and always passes.
-
-Deltas apply in **`DELTA_ORDER`**, never in the order the keys appear in the
-file. That is what makes two content authors produce the same run:
+Gates — all listed must hold; a response with no gate is the fallback, and
+every action must end with one:
 
 ```
-refuse · setFlag · clearFlag · addItem · removeItem · addObject · removeObject · journal · goto
+flags: [id, ...]      all set on the run
+items: [id, ...]      all currently carried
 ```
 
-Two invariants the lint exists to protect:
+Deltas, applied in VOCAB order; all optional except `say`:
 
-- **Refuse purity** — a response carrying `refuse` carries no other delta. A
-  refusal changes nothing about the world except the ledger.
-- **Mandatory fallback** — every response list ends with a gateless response.
-  Resolution takes the *first* passing gate, not the best one.
+```
+say · set · give · take · journal · refuse · goto · addObject · removeObject · end
+```
 
-The vocabulary is one of the three frozen things in P0. If your card needs a
-word that is not there, you do not add it — you stop and say so. Adding a word
-is a deliberate act: this file, the schema, and the compiler, in one PR.
+`refuse: true` logs to the refused ledger and **implies no other delta fired**.
+`addObject`/`removeObject` carry `{scene, object, cause}` and are the only legal
+way a scene's object set changes.
+
+## reserved
+
+`contest` (dice) · `dropObols` (death) · `prompt` (QTE) · `roll` (chance gate) ·
+`counter` (economies) · `lies` (sanity).
+
+**Do not implement these and do not use them.** Each arrives as its own
+amendment card in P2 — one word, its tests, its lint, one system per wave.
+
+A new word is never an inline special case. If your card needs a word that is
+not here, you do not add it — you bounce (AGENTS.md).

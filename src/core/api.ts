@@ -8,7 +8,7 @@
 //
 // `createGame` exists because P0.md freezes `act(state, ref, input?)` with no
 // bundle parameter, and GameState may not carry the bundle
-// (.llm/rules/state-is-json.mdc — a save is the state, and saves stay small).
+// (.llm/rules/determinism.mdc — a save is the state, and saves stay small).
 // Binding the content at construction is the only way to honour both. The
 // standalone `newRun(seed, bundle)` keeps P0.md's literal signature available
 // for the caller that has a bundle in hand and no game yet.

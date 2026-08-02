@@ -16,7 +16,7 @@ import { hasFlag, hasItem, refKey, withFlag, withItem, withoutFlag, withoutItem 
 import type { GameState } from './types'
 
 // Where addObject and removeObject persist. GameState has seven keys and no
-// eighth (.llm/rules/state-is-json.mdc), so the object set is not stored at
+// eighth (.llm/rules/determinism.mdc), so the object set is not stored at
 // all — it is folded back out of the flags, under a prefix the vocabulary
 // gives no author a way to write. `setFlag: "obj+:ash"` in content is a
 // content bug; these two names are the engine's.

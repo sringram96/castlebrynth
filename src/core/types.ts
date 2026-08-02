@@ -1,7 +1,7 @@
 // H001a · the state half of the contract.
 //
 // GameState is data and nothing else. It survives JSON.stringify and
-// structuredClone deep-equal (.llm/rules/state-is-json.mdc), which is what lets a save be the
+// structuredClone deep-equal (.llm/rules/determinism.mdc), which is what lets a save be the
 // state and the state be a save. Collections are arrays in insertion order
 // because a Set does not survive the round trip, and order is the difference
 // between two runs from one seed being identical and being merely similar.

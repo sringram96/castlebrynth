@@ -1,71 +1,78 @@
 # CLAUDE.md
 
-Castle Brynth — a text world built card by card by agents. Phase P0
-builds the atom: *present → tap → act → delta → present*, headless.
+**castlebrynth** — a still-frame, tap-driven dungeon-crawl roguelike for
+phones. You wake in a dead portal chamber with no memory, and a labyrinth
+leads down.
 
 ## before you touch anything
 
-Read **AGENTS.md**. It is the operating law and it is short. In
-particular: you work exactly one card from `tasks/`, you run your
-acceptance test *before* you write code, and you never edit anything in
-`tests/acceptance/`.
+Read **AGENTS.md**. It is the operating law and it is short: you work exactly
+one card from `tasks/`, you run your acceptance *before* you write code, you
+never edit `tests/acceptance/`, and on real ambiguity you **bounce** rather
+than guess.
+
+The design constitution is **GAME.md** (cited by anchor, e.g. `#input`,
+`#combat`). **LAWS.md** is fairness as eleven lintable statements.
+**CANON.md** is the world and the voice; **TRUTH.md** is the spoilered truth,
+tiered — content at tier N may not reference tier N+1. **GENERATOR.md** is how
+the maze is laid.
 
 ## commands
 
 ```bash
 npm run law        # typecheck + lint + unit tests + task-lint + content-lint — the only "green"
-npm run board      # which cards are READY (deps met, acceptance red)
-npm run progress   # the nine cards, green/red
+npm run board      # which cards are READY
+npm run progress   # the scoreboard: acceptance per card, red until its card lands
 npm run build:content   # content/*.yaml → content/bundle.json
-npm run play       # play the atom in a terminal
+npm run play       # play in a terminal
+npm run dev        # the shell, in a browser
 ```
 
-Node 20 (`.nvmrc`). `nvm use` before anything.
+Node 20 (`.nvmrc`). The system `node` on this machine is v14 and cannot run
+the toolchain — `nvm use` first, or prefix with the v20 bin path.
 
-## layout
+## the shape
 
 ```
-src/core/      the engine — pure, JSON-safe, deterministic (.llm/rules/purity.mdc and state-is-json.mdc)
-content/       *.yaml authored scenes → bundle.json (compiled, committed)
-scripts/       build-content, content-lint, task-lint, board, progress, play
-tasks/         the cards — one yaml per card, with scope and deps
-tests/acceptance/   definition of done, authored ahead of the cards
+src/core/     the engine — pure, deterministic, JSON-safe. Imports only src/core.
+src/shell/    the screen. Consumes GameAPI and nothing else.
+content/      *.yaml rooms → bundle.json (compiled, committed)
+scripts/      build-content · content-lint · task-lint · board · progress · play
+tasks/        the cards. tasks/questions/ is where a bounce lands.
+tests/acceptance/   the scoreboard, authored ahead of the cards
 ```
 
-## the shape of the thing
+`GameState` is seven keys of plain data — `{scene, flags, items, journal,
+refused, rng, seed}` — surviving `JSON.stringify` and `structuredClone`
+unchanged. Randomness is state as data: `seedRng`/`nextInt` thread a uint32
+through, so the same seed and the same taps are the same run, forever.
 
-`GameState` is data: `{scene, flags, items, journal, refused, rng, seed}`.
-It survives `JSON.stringify` and `structuredClone` unchanged. There is no
-object graph, no engine instance, no hidden generator — `seedRng`/
-`nextInt` thread the RNG through as a plain uint32.
+The engine is three functions (`src/core/api.ts`): `newRun(seed, bundle)`,
+`act(state, ref, input?)`, `getView(state)`. The shell consumes only those.
 
-The engine is three functions (`src/core/api.ts`):
+## the vocabulary is closed
 
-```ts
-newRun(seed, bundle) → GameState
-act(state, ref, input?) → { state, effects }
-getView(state) → View
-```
+Content speaks only `VOCAB.md`: gates `flags:` / `items:`, deltas `say` `set`
+`give` `take` `journal` `refuse` `goto` `addObject` `removeObject` `end`.
+Resolution takes the **first response whose gate passes**; deltas apply in
+**VOCAB order**, not file order; every action ends in a gateless fallback.
 
-P1's UI will consume only those three. Nothing else is public.
-
-Content resolution: an action holds an **ordered** response list; the
-**first** response whose gate passes wins; its deltas apply in **VOCAB.md
-order**, not file order. The last response must be a gateless fallback.
-
-## the one behaviour that matters
-
-The book refuses, then the book opens. Tap `book.read` with no
-`knows_glyph` and the world refuses and ledgers it. Study the stone.
-Tap the same action again and it opens, and the journal gains
-`procession`. Same tap, different world. That is the atom, and
-`tests/acceptance/H000.root.test.ts` is its proof.
+`contest`, `dropObols`, `prompt`, `roll`, `counter` and `lies` are **reserved**
+— dice, death, QTEs, chance gates, economies and sanity each arrive as their
+own amendment card. Do not implement or use them.
 
 ## gotchas
 
-- Deltas apply in VOCAB order. Two authors, same result. Do not "fix"
-  this to file order.
-- `refuse` is pure — a response with `refuse` carries no other delta.
-- Object sets change only via `addObject`/`removeObject`, never as a
-  side effect of a flag (LAWS.md §affordance).
-- `act` and `getView` do not mutate. Inputs are frozen in tests.
+- `refuse: true` implies no other delta fired. A refusal changes nothing but
+  the ledger.
+- `addObject`/`removeObject` are scene-scoped and carry a `cause`. Nothing else
+  moves an object set.
+- The first tap is always free — it describes and surfaces actions, never
+  advances the world. Risk lives in the explicit investigation actions.
+- `act` and `getView` never mutate. The acceptance suite deep-freezes inputs.
+
+## history
+
+`P0.md` and `P1.md` record the two phases already built — the engine, and the
+shell on a phone. They describe an earlier design (v3) whose world has been
+retired; the method they document is still exactly how this is built.

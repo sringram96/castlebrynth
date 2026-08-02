@@ -26,7 +26,7 @@ goal: |
 
   The panel never shows flags. Flags are the engine's memory, not the
   person's — and `obj+:`/`obj-:` entries in particular are engine
-  bookkeeping (.llm/rules/state-is-json.mdc) that must never reach a screen.
+  bookkeeping (.llm/rules/determinism.mdc) that must never reach a screen.
 notes: |
   Read state directly for the journal and items; that is what GameState is
   for. Everything about the scene still comes from getView.

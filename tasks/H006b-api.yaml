@@ -24,6 +24,6 @@ goal: |
   seed, same taps, same state, byte for byte.
 notes: |
   createGame exists because act(state, ref) in P0.md has no bundle parameter
-  and GameState may not carry the bundle (.llm/rules/state-is-json.mdc — saves stay small).
+  and GameState may not carry the bundle (.llm/rules/determinism.mdc — saves stay small).
   Binding the bundle at construction is the only way to honour both. The
   standalone newRun(seed, bundle) keeps P0.md's literal signature available.
