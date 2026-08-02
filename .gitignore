@@ -4,3 +4,6 @@ coverage/
 .env
 .env.*
 .DS_Store
+
+# local agent environment (Node 20 pin)
+.claude/settings.local.json

@@ -3,5 +3,8 @@
     "allow": [
       "mcp__b8ed9466-1379-4a8e-881b-ec36882c69d0__get_project"
     ]
+  },
+  "env": {
+    "PATH": "/home/nullptr/.nvm/versions/node/v20.20.2/bin:/home/nullptr/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/home/nullptr/.dotnet/tools"
   }
 }

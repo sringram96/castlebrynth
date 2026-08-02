@@ -56,7 +56,18 @@ if (!card) {
   process.exit(1)
 }
 
-const base = process.env.TASK_LINT_BASE ?? 'origin/main'
+// Prefer a local `main` when there is one (that is the truth during a local
+// factory run); fall back to origin/main, which is what CI has on a PR.
+const base = process.env.TASK_LINT_BASE ?? (resolves('main') ? 'main' : 'origin/main')
+
+function resolves(ref) {
+  try {
+    git(['rev-parse', '--verify', '--quiet', ref])
+    return true
+  } catch {
+    return false
+  }
+}
 let changed = []
 try {
   changed = git(['diff', '--name-only', `${base}...HEAD`])
