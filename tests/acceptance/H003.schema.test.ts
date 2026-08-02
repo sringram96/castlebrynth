@@ -78,6 +78,8 @@ describe('H003a · response lists', () => {
   })
 
   it('normalises scalar gate and delta arguments to arrays', () => {
+    // The gated response needs a fallback behind it, or this fixture would
+    // violate the rule asserted directly above.
     const s = parseScene({
       id: 'x',
       line: 'A line.',
@@ -85,7 +87,9 @@ describe('H003a · response lists', () => {
         {
           id: 'o',
           name: 'o',
-          actions: { poke: [{ gate: { flag: 'a' }, setFlag: 'b', say: 'hi' }] },
+          actions: {
+            poke: [{ gate: { flag: 'a' }, setFlag: 'b', say: 'hi' }, { say: 'always' }],
+          },
         },
       ],
     })
