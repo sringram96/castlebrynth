@@ -19,7 +19,7 @@ for (const f of files) {
   catch (e) { errors.push(`${f}: YAML parse error — ${e.message}`); continue; }
 
   for (const k of REQUIRED) if (!(k in c)) errors.push(`${f}: missing field "${k}"`);
-  if (!/^H\d{3}$/.test(c.id ?? "")) errors.push(`${f}: id must match H###`);
+  if (!/^[HLD]\d{3}$/.test(c.id ?? "")) errors.push(`${f}: id must match [HLD]###`);
   if (cards.has(c.id)) errors.push(`${f}: duplicate id ${c.id}`);
   if ((c.title ?? "").length > 60) errors.push(`${c.id}: title over 60 chars`);
   if (!Array.isArray(c.non_goals) || c.non_goals.length < 1)
