@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { mount } from '../../src/shell/mount'
 import { createGame } from '../../src/core/api'
@@ -150,7 +150,13 @@ describe('P100 · the run survives being closed', () => {
 
 describe('P100 · the shell reached for nothing but the API', () => {
   it('no shell module imports resolve or reads the bundle directly', () => {
-    for (const f of ['mount.ts', 'render.ts', 'panel.ts', 'persist.ts']) {
+    // Read the directory rather than a list: P108 added boot.ts after this test
+    // was authored and it escaped the check entirely. A hardcoded list silently
+    // stops covering the thing it exists to cover.
+    const shell = readdirSync(resolve(root, 'src/shell'))
+      .filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts'))
+    expect(shell.length, 'no shell modules found').toBeGreaterThan(3)
+    for (const f of shell) {
       const src = readFileSync(resolve(root, 'src/shell', f), 'utf8')
       expect(src, `${f} reached past GameAPI`).not.toMatch(/core\/resolve/)
       expect(src, `${f} read the bundle directly`).not.toMatch(/\.scenes\s*[[.]/)
