@@ -3,7 +3,7 @@ card: H117
 phase: P1
 title: "Engine: the end delta"
 lane: factory
-deps: [H001b, H003a, H006a, H006b, H111]
+deps: [H001b, H003a, H006a, H006b, H008, H103, H111]
 scope:
   - src/core/cards.ts
   - src/core/cards.test.ts
@@ -11,6 +11,9 @@ scope:
   - src/core/resolve.test.ts
   - src/core/api-types.ts
   - src/core/api-types.test.ts
+  - src/shell/narrator.ts
+  - src/shell/narrator.test.ts
+  - scripts/play.ts
   - content/corridor.yaml
   - content/bundle.json
 acceptance: tests/acceptance/H111.corridor.test.ts
@@ -41,6 +44,26 @@ goal: |
 
   Then re-point content/corridor.yaml: `dark_crossing.cross` speaks `end`
   rather than setting `crossing_taken`, and the bundle is rebuilt.
+  RULINGS, settled after the first attempt bounced:
+
+    1. tests/acceptance/H003.schema.test.ts is amended from nine delta words
+       to ten by the ORCHESTRATOR, ahead of this card. Already done — the test
+       now expects `end` last. "Frozen" in that test's title was a fact about
+       the past, not a promise about the vocabulary: VOCAB.md has listed `end`
+       the whole time, so the engine was behind its own spec rather than the
+       other way round. Amending it keeps resolve.test.ts's `oneOfEach`
+       tripwire keyed on DELTA_ORDER, which is the whole reason the table
+       exists.
+    2. The Effect union has two EXHAUSTIVE consumers and both are now in
+       scope: src/shell/narrator.ts (a no-default switch) and scripts/play.ts.
+       They stop compiling the moment a fifth kind exists, which is by design.
+       The tripwires fired correctly; one card lands the word and everything
+       that must answer it.
+    3. THE END CARD SPEAKS, THE NARRATOR DOES NOT. `writingIn` returns nothing
+       for an `end` effect. One ending, one voice, and it matches the mock,
+       where #end covers the screen and #narr is behind it. H161 renders line
+       and note on the card.
+
 notes: |
   WHY THE SHELL CANNOT DO THIS INSTEAD: H100's acceptance requires
   `[data-testid="end-card"]` to be absent until the crossing is taken and

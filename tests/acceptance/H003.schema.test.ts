@@ -17,6 +17,19 @@ describe('H003a · the vocabulary is exactly VOCAB.md', () => {
     expect(GATE_WORDS).toEqual(['flag', 'notFlag', 'item', 'notItem'])
   })
 
+  // Ten words, not the original nine. VOCAB.md line 25 has declared
+  // `end: {line, note}` the whole time and the engine simply never implemented
+  // it, so H117 is the engine catching up to its own spec rather than the
+  // vocabulary growing — "frozen" in this title was always a fact about the
+  // past, not a promise about the word set.
+  //
+  // Amended by the orchestrator on the human's ruling, after H117 bounced on
+  // this exact assertion: that agent implemented `end`, found this test red,
+  // and backed the whole change out rather than touch the definition of done
+  // (AGENTS.md law 7). That was the correct move, and this is the answer to it.
+  //
+  // `end` sits last on purpose. It is the delta after which nothing else in
+  // the response can matter, and deltas apply in this order, not file order.
   it('delta words, in the frozen application order', () => {
     expect(DELTA_ORDER).toEqual([
       'refuse',
@@ -28,6 +41,7 @@ describe('H003a · the vocabulary is exactly VOCAB.md', () => {
       'removeObject',
       'journal',
       'goto',
+      'end',
     ])
   })
 
