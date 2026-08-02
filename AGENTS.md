@@ -21,6 +21,10 @@ parallelism live on the board, not in this repo.
 6. Complete the Asana task with a one-line comment: what landed, how
    verified. COMPLETE, NEVER DELETE — deletions strand dependency
    links.
+7. Every PR body opens with `Task: <ID>` and a `Scope:` bullet list of
+   the paths from the task's SCOPE (a directory entry covers all files
+   beneath it); CI's scope-guard fails any PR changing a file outside
+   it.
 
 ## bouncing
 Ambiguity that changes behavior → do not guess. Comment the question
