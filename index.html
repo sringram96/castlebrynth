@@ -10,9 +10,8 @@
   <body>
     <div id="app"></div>
     <!-- main, not app: the entry has a side effect (it draws), and app.ts is
-         imported by tests that must not have one fire on them. H101 stands it
-         up; until then this points at a file that is not there yet, which is
-         the same red the acceptance suite carries. -->
+         imported by tests that must not have one fire on them. H101 stood it
+         up; it mounts a placeholder until H107 hands #app to `mount`. -->
     <script type="module" src="/src/shell/main.ts"></script>
   </body>
 </html>
