@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest'
 import { execFileSync } from 'node:child_process'
 import { readFileSync, existsSync } from 'node:fs'
 import { resolve } from 'node:path'
+import yaml from 'js-yaml'
 
 // P101 · the shell stands up. No game yet — a build that works and a place to
 // mount. Everything else is P102 onward.
@@ -10,6 +11,16 @@ import { resolve } from 'node:path'
 const root = resolve(__dirname, '../..')
 const read = (p: string) => readFileSync(resolve(root, p), 'utf8')
 const pkg = () => JSON.parse(read('package.json'))
+
+// The Crossing, from the scene as it was authored rather than from
+// content/bundle.json: the compiler writes the parsed Scene, whose `objects` is
+// a list, and `loadBundle` validates through `parseScene`, which reads the
+// authored shape — a mapping keyed by object id. H004 owns that disagreement.
+const crossing = (): unknown => ({
+  v: 1,
+  start: 'crossing',
+  scenes: { crossing: yaml.load(read('content/crossing.yaml')) },
+})
 
 describe('P101 · the pieces exist', () => {
   it('index.html has exactly one mount point', () => {
@@ -59,11 +70,11 @@ describe('P101 · mount', () => {
     const { createGame } = await import('../../src/core/api')
     const { loadBundle } = await import('../../src/core/bundle')
 
-    const bundle = loadBundle(JSON.parse(read('content/bundle.json')))
+    const bundle = loadBundle(crossing())
     const el = document.createElement('div')
     mount(el, createGame(bundle))
 
-    expect(el.textContent ?? '').toContain('Grey water')
+    expect(el.textContent ?? '').toContain('The ring of the portal is cold all through')
   })
 
   it('touches GameAPI only — no reach into resolve (P1.md)', () => {

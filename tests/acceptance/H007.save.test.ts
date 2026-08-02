@@ -5,7 +5,7 @@ import { emptyState, withFlag, withItem } from '../../src/core/types'
 // H007 · the save envelope. parse() is the boundary with the outside world
 // and the outside world lies. It never throws — it returns null.
 
-const sample = () => withItem(withFlag(emptyState('shore', 42), 'knows_glyph'), 'lamp')
+const sample = () => withItem(withFlag(emptyState('crossing', 42), 'knows_mark'), 'lamp')
 
 describe('H007 · serialize', () => {
   it('wraps state in a versioned envelope', () => {
@@ -36,7 +36,7 @@ describe('H007 · parse round-trips', () => {
   })
 
   it('round-trips an untouched new run', () => {
-    const s = emptyState('shore', 0)
+    const s = emptyState('crossing', 0)
     expect(parse(JSON.stringify(serialize(s)))).toEqual(s)
   })
 })
@@ -58,11 +58,11 @@ describe('H007 · parse never throws', () => {
     ['state is null', '{"v":1,"state":null}'],
     ['state is array', '{"v":1,"state":[]}'],
     ['missing scene', '{"v":1,"state":{"flags":[],"items":[],"journal":[],"refused":[],"rng":0,"seed":0}}'],
-    ['missing flags', '{"v":1,"state":{"scene":"shore","items":[],"journal":[],"refused":[],"rng":0,"seed":0}}'],
+    ['missing flags', '{"v":1,"state":{"scene":"crossing","items":[],"journal":[],"refused":[],"rng":0,"seed":0}}'],
     ['scene wrong type', '{"v":1,"state":{"scene":9,"flags":[],"items":[],"journal":[],"refused":[],"rng":0,"seed":0}}'],
-    ['flags wrong type', '{"v":1,"state":{"scene":"shore","flags":"a","items":[],"journal":[],"refused":[],"rng":0,"seed":0}}'],
-    ['flags hold non-strings', '{"v":1,"state":{"scene":"shore","flags":[1],"items":[],"journal":[],"refused":[],"rng":0,"seed":0}}'],
-    ['rng wrong type', '{"v":1,"state":{"scene":"shore","flags":[],"items":[],"journal":[],"refused":[],"rng":"x","seed":0}}'],
+    ['flags wrong type', '{"v":1,"state":{"scene":"crossing","flags":"a","items":[],"journal":[],"refused":[],"rng":0,"seed":0}}'],
+    ['flags hold non-strings', '{"v":1,"state":{"scene":"crossing","flags":[1],"items":[],"journal":[],"refused":[],"rng":0,"seed":0}}'],
+    ['rng wrong type', '{"v":1,"state":{"scene":"crossing","flags":[],"items":[],"journal":[],"refused":[],"rng":"x","seed":0}}'],
   ]
 
   for (const [name, raw] of bad) {

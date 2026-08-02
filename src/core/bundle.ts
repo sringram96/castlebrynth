@@ -45,7 +45,7 @@ export function loadBundle(raw: unknown): Bundle {
     const scene = parse(rawScenes[id], id)
     // The key is what `start` and `goto` name; the id is what the scene calls
     // itself. Two answers to "which scene is this" is one answer too many.
-    if (scene.id !== id) fail(`scenes.${id}.id`, `must be "${id}", and is "${scene.id}"`)
+    if (scene.scene !== id) fail(`scenes.${id}.id`, `must be "${id}", and is "${scene.scene}"`)
     entries.push([id, scene])
   }
 

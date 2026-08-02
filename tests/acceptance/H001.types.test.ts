@@ -17,13 +17,13 @@ const STATE_KEYS = ['scene', 'flags', 'items', 'journal', 'refused', 'rng', 'see
 
 describe('H001a · GameState is data', () => {
   it('has exactly the frozen key set', () => {
-    const s = emptyState('shore', 42)
+    const s = emptyState('crossing', 42)
     expect(Object.keys(s).sort()).toEqual([...STATE_KEYS].sort())
   })
 
   it('starts empty at the named scene with the given seed', () => {
-    const s = emptyState('shore', 42)
-    expect(s.scene).toBe('shore')
+    const s = emptyState('crossing', 42)
+    expect(s.scene).toBe('crossing')
     expect(s.seed).toBe(42)
     expect(s.flags).toEqual([])
     expect(s.items).toEqual([])
@@ -33,17 +33,17 @@ describe('H001a · GameState is data', () => {
   })
 
   it('survives JSON round-trip deep-equal', () => {
-    const s = withItem(withFlag(emptyState('shore', 7), 'knows_glyph'), 'lamp')
+    const s = withItem(withFlag(emptyState('crossing', 7), 'knows_mark'), 'lamp')
     expect(JSON.parse(JSON.stringify(s))).toEqual(s)
   })
 
   it('survives structuredClone deep-equal', () => {
-    const s = withItem(withFlag(emptyState('shore', 7), 'knows_glyph'), 'lamp')
+    const s = withItem(withFlag(emptyState('crossing', 7), 'knows_mark'), 'lamp')
     expect(structuredClone(s)).toEqual(s)
   })
 
   it('holds no non-JSON values anywhere', () => {
-    const s = withFlag(emptyState('shore', 1), 'a')
+    const s = withFlag(emptyState('crossing', 1), 'a')
     const walk = (v: unknown, path: string): void => {
       if (v === null) return
       const t = typeof v
@@ -64,31 +64,31 @@ describe('H001a · GameState is data', () => {
 
 describe('H001a · helpers are pure', () => {
   it('withFlag does not mutate its argument', () => {
-    const s = Object.freeze(emptyState('shore', 1))
-    const next = withFlag(s, 'knows_glyph')
+    const s = Object.freeze(emptyState('crossing', 1))
+    const next = withFlag(s, 'knows_mark')
     expect(s.flags).toEqual([])
-    expect(next.flags).toEqual(['knows_glyph'])
+    expect(next.flags).toEqual(['knows_mark'])
     expect(next).not.toBe(s)
   })
 
   it('withFlag is idempotent — no duplicate members', () => {
-    const s = withFlag(withFlag(emptyState('shore', 1), 'a'), 'a')
+    const s = withFlag(withFlag(emptyState('crossing', 1), 'a'), 'a')
     expect(s.flags).toEqual(['a'])
   })
 
   it('preserves insertion order', () => {
-    const s = withFlag(withFlag(withFlag(emptyState('shore', 1), 'c'), 'a'), 'b')
+    const s = withFlag(withFlag(withFlag(emptyState('crossing', 1), 'c'), 'a'), 'b')
     expect(s.flags).toEqual(['c', 'a', 'b'])
   })
 
   it('withoutFlag removes, and is a no-op when absent', () => {
-    const s = withFlag(emptyState('shore', 1), 'a')
+    const s = withFlag(emptyState('crossing', 1), 'a')
     expect(withoutFlag(s, 'a').flags).toEqual([])
     expect(withoutFlag(s, 'nope').flags).toEqual(['a'])
   })
 
   it('hasFlag / hasItem read membership', () => {
-    const s = withItem(withFlag(emptyState('shore', 1), 'a'), 'lamp')
+    const s = withItem(withFlag(emptyState('crossing', 1), 'a'), 'lamp')
     expect(hasFlag(s, 'a')).toBe(true)
     expect(hasFlag(s, 'b')).toBe(false)
     expect(hasItem(s, 'lamp')).toBe(true)
@@ -96,7 +96,7 @@ describe('H001a · helpers are pure', () => {
   })
 
   it('item helpers behave like flag helpers', () => {
-    const s = Object.freeze(emptyState('shore', 1))
+    const s = Object.freeze(emptyState('crossing', 1))
     expect(withItem(s, 'lamp').items).toEqual(['lamp'])
     expect(withItem(withItem(s, 'lamp'), 'lamp').items).toEqual(['lamp'])
     expect(withoutItem(withItem(s, 'lamp'), 'lamp').items).toEqual([])
@@ -104,6 +104,6 @@ describe('H001a · helpers are pure', () => {
   })
 
   it('refKey is the stable ledger key for an action', () => {
-    expect(refKey({ object: 'book', action: 'read' })).toBe('book.read')
+    expect(refKey({ object: 'door', action: 'open' })).toBe('door.open')
   })
 })

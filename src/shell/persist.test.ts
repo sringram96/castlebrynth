@@ -16,14 +16,21 @@ import type { Bundle } from '../core/cards'
 
 // The fixture goes through loadBundle rather than content/bundle.json, so a
 // content edit cannot turn this red — and the start scene is not the first
-// scene written, so "a fresh run" cannot pass by accident.
+// scene written, so "a fresh run" cannot pass by accident. It is written in the
+// authored shape parseScene reads: `scene`, `enter`, and `objects` as a mapping
+// keyed by object id (cards.ts). Nothing here is tapped, so both scenes are
+// empty of them.
 const twoScenes = (): Bundle =>
   loadBundle({
     v: 1,
-    start: 'shore',
+    start: 'crossing',
     scenes: {
-      water: { id: 'water', line: 'Under, and no light in it.', objects: [] },
-      shore: { id: 'shore', line: 'Grey water, and no far side to it.', objects: [] },
+      dark: { scene: 'dark', enter: 'No light here, and the steps go on down.', objects: {} },
+      crossing: {
+        scene: 'crossing',
+        enter: 'The ring of the portal is cold all through, and nothing is coming back through it.',
+        objects: {},
+      },
     },
   })
 
@@ -42,7 +49,7 @@ const fakeStorage = (seed: Record<string, string> = {}): Storage => {
   } as Storage
 }
 
-const played = () => withItem(withFlag(emptyState('shore', 42), 'knows_glyph'), 'lamp')
+const played = () => withItem(withFlag(emptyState('crossing', 42), 'knows_mark'), 'tithe')
 
 describe('P104 · the one key', () => {
   it('writes under SAVE_KEY, which is the name the shell agreed on', () => {
@@ -57,7 +64,7 @@ describe('P104 · the one key', () => {
     // a tenant there rather than the owner.
     const store = fakeStorage({ 'someone.elses': 'not ours' })
     save(store, played())
-    save(store, emptyState('shore', 1))
+    save(store, emptyState('crossing', 1))
     expect(store.getItem('someone.elses')).toBe('not ours')
     expect(store.length).toBe(2)
   })
@@ -75,7 +82,7 @@ describe('P104 · the fallback is a real fresh run', () => {
   })
 
   it('opens at the bundle\'s start scene, not the first one written', () => {
-    expect(restore(fakeStorage(), twoScenes()).scene).toBe('shore')
+    expect(restore(fakeStorage(), twoScenes()).scene).toBe('crossing')
   })
 
   it('is the same run twice — the fallback reads no clock', () => {

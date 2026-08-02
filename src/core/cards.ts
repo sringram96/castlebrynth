@@ -1,243 +1,290 @@
-// H003a · the content schema — the shape agents author in, forever.
+// The content card schema — exactly VOCAB.md, nothing else
+// (.llm/rules/vocabulary.mdc).
 //
-// The vocabulary is closed (.llm/rules/vocabulary.mdc). A scene may speak the words in
-// VOCAB.md and no others, and a word this file does not know is a failure that
-// names the path to it. parseScene is that gate, and it is the only one: the
-// builder (H004a) and the loader (H004b) both come through here, so the
-// compiler and the engine can never disagree about what a word is.
+// A scene lists objects; every object is tappable for its whole lifetime in the
+// scene (.llm/rules/affordance.mdc). An object's `tap` is the free tap: it
+// describes, and it never advances the world (GAME.md #input). Risk lives in
+// the actions the tap surfaces, never in the tap itself.
 //
-// It normalises as well as validates, so everything downstream sees one shape.
-// An author writes `setFlag: lamp_lit`; resolve reads `['lamp_lit']` and never
-// asks which of the two the file said. What comes out is JSON — no undefined
-// members, no absent word made explicit (.llm/rules/determinism.mdc).
+// parseScene is the only gate, and both the compiler and the loader come
+// through it — so the two can never disagree about what a word is. Unknown
+// words fail here, at load, naming the path. Never silently at play.
 
-/** The gate words, as VOCAB.md lists them. A gate is a conjunction of these. */
-export const GATE_WORDS = ['flag', 'notFlag', 'item', 'notItem'] as const
+/** The `if` of a response. Every condition listed must hold. */
+export const GATE_WORDS = ['flags', 'items'] as const
+export type GateWord = (typeof GATE_WORDS)[number]
 
 /**
- * The delta words in application order — VOCAB.md's table, top to bottom.
- *
- * The order is the contract. Deltas apply in it, never in the order the keys
- * happen to appear in the file, which is what makes two authors who write the
+ * The `then`, applied in this order within a response. All optional except
+ * `say`. The order is the contract: it is what makes two authors who write the
  * same response produce the same run.
  */
 export const DELTA_ORDER = [
+  'say',
+  'set',
+  'give',
+  'take',
+  'journal',
   'refuse',
-  'setFlag',
-  'clearFlag',
-  'addItem',
-  'removeItem',
+  'goto',
   'addObject',
   'removeObject',
-  'journal',
-  'goto',
+  'end',
+] as const
+export type DeltaWord = (typeof DELTA_ORDER)[number]
+
+/**
+ * Reserved for later waves — dice, death, QTEs, chance, economies, sanity.
+ * Known here only so that using one fails loudly with the reason, instead of
+ * failing as an anonymous unknown word (VOCAB.md).
+ */
+export const RESERVED_WORDS = [
+  'contest',
+  'dropObols',
+  'prompt',
+  'roll',
+  'counter',
+  'lies',
 ] as const
 
-type GateWord = (typeof GATE_WORDS)[number]
-
-/** A conjunction: every condition present must hold. Empty or absent passes. */
 export type Gate = { readonly [W in GateWord]?: readonly string[] }
 
-/** One branch of an action, normalised. Every word is optional; order is the list's. */
-export interface Response {
-  readonly gate?: Gate
-  /** The line the narrator speaks for taking this branch. Not a delta. */
-  readonly say?: string
-  /** The action does not happen. Carries no other delta (VOCAB.md refuse purity). */
-  readonly refuse?: string
-  readonly setFlag?: readonly string[]
-  readonly clearFlag?: readonly string[]
-  readonly addItem?: readonly string[]
-  readonly removeItem?: readonly string[]
-  readonly addObject?: readonly string[]
-  readonly removeObject?: readonly string[]
-  readonly journal?: readonly string[]
-  readonly goto?: string
+/** An affordance change. The `cause` is required by law, not decoration. */
+export interface ObjectDelta {
+  readonly scene: string
+  readonly object: string
+  readonly cause: string
 }
 
-/** A thing in a scene and what it affords. Action names are the author's own. */
+export interface EndDelta {
+  readonly line: string
+  readonly note?: string
+}
+
+export interface Response {
+  /** Absent or empty is the fallback, which every action must end with. */
+  readonly if?: Gate
+  readonly say: string
+  readonly set?: readonly string[]
+  readonly give?: readonly string[]
+  readonly take?: readonly string[]
+  /** A journal entry id, not prose (LAWS.md #consequences). */
+  readonly journal?: string
+  /** True logs the refusal and means nothing else fired. */
+  readonly refuse?: true
+  readonly goto?: string
+  readonly addObject?: ObjectDelta
+  readonly removeObject?: ObjectDelta
+  readonly end?: EndDelta
+}
+
 export interface ObjectCard {
   readonly id: string
-  readonly name: string
-  readonly actions: { readonly [action: string]: readonly Response[] }
-  /** In the file but not in view until an addObject brings it in (LAWS.md §affordance). */
+  /** The free tap. Describes; never advances the world (GAME.md #input). */
+  readonly tap: string
+  readonly actions: Readonly<Record<string, readonly Response[]>>
+  /** In the file but not in the scene until an addObject brings it in. */
   readonly hidden?: boolean
 }
 
-/** A place: the line on arriving, and everything standing in it. */
 export interface Scene {
-  readonly id: string
-  readonly line: string
+  readonly scene: string
+  /** The line on arriving. */
+  readonly enter: string
+  /** The knowledge tier this scene may speak from (CANON.md, LAWS.md #spoiler). */
+  readonly tier?: string
   readonly objects: readonly ObjectCard[]
 }
 
-/** Every scene, compiled, and where a run opens. */
 export interface Bundle {
   readonly v: 1
   readonly start: string
-  readonly scenes: { readonly [id: string]: Scene }
+  readonly scenes: Readonly<Record<string, Scene>>
 }
 
-const SCENE_KEYS: readonly string[] = ['id', 'line', 'objects']
-const OBJECT_KEYS: readonly string[] = ['id', 'name', 'actions', 'hidden']
-// `gate` selects the branch and `say` produces an Effect; neither is a delta.
-const RESPONSE_WORDS: readonly string[] = ['gate', 'say', ...DELTA_ORDER]
-const UNKNOWN = 'unknown vocabulary word'
-const NAMES = 'must be a name or a list of names'
+const GATES: readonly string[] = GATE_WORDS
+const DELTAS: readonly string[] = DELTA_ORDER
+const RESERVED: readonly string[] = RESERVED_WORDS
 
-/**
- * Validates and normalises one already-parsed scene, or throws naming the path.
- *
- * The argument is a value, never a path — src/core does no I/O (.llm/rules/purity.mdc).
- * The caller that read the file prefixes its name:
- * `content/shore.yaml: objects.book.read[0].setFlagg — unknown vocabulary word`.
- */
-export function parseScene(raw: unknown): Scene {
-  if (!isRecord(raw)) throw new Error('the scene is not a mapping')
-
-  for (const key of Object.keys(raw)) {
-    if (!SCENE_KEYS.includes(key)) fail(key, UNKNOWN)
-  }
-
-  const objects = raw['objects']
-  if (!Array.isArray(objects)) fail('objects', 'must be a list of objects')
-
-  return {
-    id: text(raw['id'], 'id', 'must be a scene id (string)'),
-    line: text(raw['line'], 'line', 'must be a line (string)'),
-    objects: objects.map(parseObject),
-  }
+function fail(path: string, msg: string): never {
+  throw new Error(`${path} — ${msg}`)
 }
 
-function parseObject(raw: unknown, index: number): ObjectCard {
-  // Until the id is read there is nothing to name the object by, so the path
-  // falls back to where it sits in the file.
-  const here = `objects[${index}]`
-  if (!isRecord(raw)) fail(here, 'must be a mapping')
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null && !Array.isArray(v)
 
-  const id = text(raw['id'], `${here}.id`, 'must be an object id (string)')
-  const path = `objects.${id}`
-
-  for (const key of Object.keys(raw)) {
-    if (!OBJECT_KEYS.includes(key)) fail(`${path}.${key}`, UNKNOWN)
+/** Scalar or list → list, so everything downstream sees one shape. */
+const strings = (v: unknown, path: string): readonly string[] => {
+  if (typeof v === 'string') return [v]
+  if (Array.isArray(v)) {
+    return v.map((x, i) =>
+      typeof x === 'string' ? x : fail(`${path}[${i}]`, 'expected a string'),
+    )
   }
-
-  const name = text(raw['name'], `${path}.name`, 'must be a name (string)')
-
-  const actions = raw['actions']
-  if (!isRecord(actions)) fail(`${path}.actions`, 'must be a mapping of action to responses')
-
-  const parsed: { [action: string]: readonly Response[] } = {}
-  for (const action of Object.keys(actions)) {
-    parsed[action] = parseResponses(actions[action], `${path}.${action}`)
-  }
-
-  const hidden = raw['hidden']
-  if (hidden === undefined) return { id, name, actions: parsed }
-  if (typeof hidden !== 'boolean') fail(`${path}.hidden`, 'must be true or false')
-  return { id, name, actions: parsed, hidden }
+  return fail(path, 'expected a string or a list of strings')
 }
 
-// The path here is the action's — `objects.book.read` — because the vocabulary
-// hides the `actions` key from content: an object affords `read`, it does not
-// have an `actions` that contains `read`.
-function parseResponses(raw: unknown, path: string): readonly Response[] {
-  if (!Array.isArray(raw)) fail(path, 'must be a list of responses')
+const str = (v: unknown, path: string): string =>
+  typeof v === 'string' ? v : fail(path, 'expected a string')
 
-  const responses = raw.map((response, index) => parseResponse(response, `${path}[${index}]`))
-
-  // Checked after the responses parse, so a malformed gate is reported as the
-  // malformed gate it is rather than as a missing fallback.
-  const last = responses[responses.length - 1]
-  if (last === undefined || (last.gate !== undefined && Object.keys(last.gate).length > 0)) {
-    fail(path, 'a response list must end in a gateless fallback (VOCAB.md)')
-  }
-  return responses
-}
-
-function parseResponse(raw: unknown, path: string): Response {
-  if (!isRecord(raw)) fail(path, 'must be a mapping')
-
-  for (const word of Object.keys(raw)) {
-    if (!RESPONSE_WORDS.includes(word)) fail(`${path}.${word}`, UNKNOWN)
-  }
-
-  // Assembled word by word rather than copied, so an absent word stays absent
-  // instead of becoming an explicit undefined that JSON cannot carry.
-  const response: {
-    gate?: Gate
-    say?: string
-    refuse?: string
-    setFlag?: string[]
-    clearFlag?: string[]
-    addItem?: string[]
-    removeItem?: string[]
-    addObject?: string[]
-    removeObject?: string[]
-    journal?: string[]
-    goto?: string
-  } = {}
-
-  if (raw['gate'] !== undefined) response.gate = parseGate(raw['gate'], `${path}.gate`)
-  if (raw['say'] !== undefined) response.say = text(raw['say'], `${path}.say`, 'must be a line (string)')
-
-  for (const word of DELTA_ORDER) {
-    const value = raw[word]
-    if (value === undefined) continue
-    const at = `${path}.${word}`
-    if (word === 'refuse') response.refuse = text(value, at, 'must be a line (string)')
-    else if (word === 'goto') response.goto = text(value, at, 'must be a scene id (string)')
-    // VOCAB.md writes the rest "(s)": one name or many, and journal accumulates
-    // into a list either way. The array is the shape resolve applies.
-    else response[word] = names(value, at)
-  }
-
-  if (response.refuse !== undefined) {
-    const other = DELTA_ORDER.find((word) => word !== 'refuse' && response[word] !== undefined)
-    if (other !== undefined) {
-      fail(path, `refuse may carry no other delta, and carries ${other} (VOCAB.md refuse purity)`)
+const objectDelta = (v: unknown, path: string): ObjectDelta => {
+  if (!isRecord(v)) return fail(path, 'expected {scene, object, cause}')
+  for (const key of Object.keys(v)) {
+    if (!['scene', 'object', 'cause'].includes(key)) {
+      fail(`${path}.${key}`, 'unknown key — expected scene, object, cause')
     }
   }
-
-  return response
+  return {
+    scene: str(v['scene'], `${path}.scene`),
+    object: str(v['object'], `${path}.object`),
+    cause: str(v['cause'], `${path}.cause`),
+  }
 }
 
-function parseGate(raw: unknown, path: string): Gate {
-  if (!isRecord(raw)) fail(path, 'must be a mapping of conditions')
-
-  const gate: { [W in GateWord]?: string[] } = {}
-  for (const word of Object.keys(raw)) {
-    if (!isGateWord(word)) fail(`${path}.${word}`, UNKNOWN)
-    gate[word] = names(raw[word], `${path}.${word}`)
+const parseGate = (v: unknown, path: string): Gate => {
+  if (!isRecord(v)) return fail(path, 'expected a mapping of gate words')
+  const gate: { -readonly [W in GateWord]?: readonly string[] } = {}
+  for (const [word, arg] of Object.entries(v)) {
+    if (!GATES.includes(word)) {
+      fail(`${path}.${word}`, `unknown vocabulary word (gates: ${GATES.join(', ')})`)
+    }
+    gate[word as GateWord] = strings(arg, `${path}.${word}`)
   }
   return gate
 }
 
-function isGateWord(word: string): word is GateWord {
-  return GATE_WORDS.some((known) => known === word)
+const OTHER_DELTAS = [
+  'set',
+  'give',
+  'take',
+  'journal',
+  'goto',
+  'addObject',
+  'removeObject',
+  'end',
+] as const
+
+const parseResponse = (raw: unknown, path: string): Response => {
+  if (!isRecord(raw)) return fail(path, 'expected a mapping')
+
+  for (const key of Object.keys(raw)) {
+    if (key === 'if') continue
+    if (RESERVED.includes(key)) {
+      fail(`${path}.${key}`, 'reserved for a later wave — see VOCAB.md; do not use')
+    }
+    if (!DELTAS.includes(key)) fail(`${path}.${key}`, 'unknown vocabulary word')
+  }
+
+  if (raw['say'] === undefined) fail(path, 'every response must say something')
+
+  const out: { -readonly [K in keyof Response]: Response[K] } = {
+    say: str(raw['say'], `${path}.say`),
+  }
+  if (raw['if'] !== undefined) out.if = parseGate(raw['if'], `${path}.if`)
+  if (raw['set'] !== undefined) out.set = strings(raw['set'], `${path}.set`)
+  if (raw['give'] !== undefined) out.give = strings(raw['give'], `${path}.give`)
+  if (raw['take'] !== undefined) out.take = strings(raw['take'], `${path}.take`)
+  if (raw['journal'] !== undefined) out.journal = str(raw['journal'], `${path}.journal`)
+  if (raw['goto'] !== undefined) out.goto = str(raw['goto'], `${path}.goto`)
+  if (raw['addObject'] !== undefined) {
+    out.addObject = objectDelta(raw['addObject'], `${path}.addObject`)
+  }
+  if (raw['removeObject'] !== undefined) {
+    out.removeObject = objectDelta(raw['removeObject'], `${path}.removeObject`)
+  }
+  if (raw['end'] !== undefined) {
+    const end = raw['end']
+    if (!isRecord(end)) fail(`${path}.end`, 'expected {line, note?}')
+    const parsed: { -readonly [K in keyof EndDelta]: EndDelta[K] } = {
+      line: str(end['line'], `${path}.end.line`),
+    }
+    if (end['note'] !== undefined) parsed.note = str(end['note'], `${path}.end.note`)
+    out.end = parsed
+  }
+
+  if (raw['refuse'] !== undefined) {
+    if (raw['refuse'] !== true) fail(`${path}.refuse`, 'expected true')
+    // VOCAB.md: refuse implies no other delta fired. `say` carries the line.
+    const also = OTHER_DELTAS.filter((w) => raw[w] !== undefined)
+    if (also.length > 0) {
+      fail(`${path}.refuse`, `a refusal changes nothing — drop ${also.join(', ')}`)
+    }
+    out.refuse = true
+  }
+
+  return out
 }
 
-function names(value: unknown, path: string): string[] {
-  if (typeof value === 'string') return [value]
-  if (isStringList(value)) return [...value]
-  fail(path, NAMES)
+const parseObject = (id: string, raw: unknown, path: string): ObjectCard => {
+  if (!isRecord(raw)) return fail(path, 'expected a mapping')
+  for (const key of Object.keys(raw)) {
+    if (!['tap', 'actions', 'hidden'].includes(key)) {
+      fail(`${path}.${key}`, 'unknown key — expected tap, actions, hidden')
+    }
+  }
+
+  const actionsRaw = raw['actions']
+  if (!isRecord(actionsRaw)) return fail(`${path}.actions`, 'expected a mapping of action ids')
+
+  const actions: Record<string, readonly Response[]> = {}
+  for (const [action, list] of Object.entries(actionsRaw)) {
+    const at = `${path}.${action}`
+    if (!Array.isArray(list)) fail(at, 'expected a list of responses')
+    if (list.length === 0) fail(at, 'expected at least one response')
+
+    const responses = list.map((r, i) => parseResponse(r, `${at}[${i}]`))
+    const last = responses[responses.length - 1]!
+    if (last.if !== undefined && Object.keys(last.if).length > 0) {
+      fail(`${at}[${responses.length - 1}]`, 'the last response must be a gateless fallback')
+    }
+    actions[action] = responses
+  }
+
+  const card: { -readonly [K in keyof ObjectCard]: ObjectCard[K] } = {
+    id,
+    tap: str(raw['tap'], `${path}.tap`),
+    actions,
+  }
+  if (raw['hidden'] === true) card.hidden = true
+  return card
 }
 
-function text(value: unknown, path: string, what: string): string {
-  if (typeof value !== 'string') fail(path, what)
-  return value
-}
+/**
+ * Validate an already-parsed value into a Scene. Pure — the caller does the
+ * reading (.llm/rules/purity.mdc).
+ */
+export function parseScene(raw: unknown): Scene {
+  if (!isRecord(raw)) return fail('scene', 'expected a mapping')
+  for (const key of Object.keys(raw)) {
+    if (!['scene', 'enter', 'tier', 'objects'].includes(key)) {
+      fail(key, 'unknown key — expected scene, enter, tier, objects')
+    }
+  }
 
-function fail(path: string, what: string): never {
-  throw new Error(`${path} — ${what}`)
-}
+  // Authored as a mapping keyed by object id; normalised to a list. Both are
+  // accepted, because a compiled bundle is validated by this same function and
+  // a validator that rejects its own output makes the artefact unloadable
+  // (.llm/rules/vocabulary.mdc — one gate, for the compiler and the loader).
+  const objectsRaw = raw['objects']
+  let objects: readonly ObjectCard[]
+  if (Array.isArray(objectsRaw)) {
+    objects = objectsRaw.map((o, i) => {
+      if (!isRecord(o)) return fail(`objects[${i}]`, 'expected a mapping')
+      const oid = str(o['id'], `objects[${i}].id`)
+      const rest = Object.fromEntries(Object.entries(o).filter(([k]) => k !== 'id'))
+      return parseObject(oid, rest, `objects.${oid}`)
+    })
+  } else if (isRecord(objectsRaw)) {
+    objects = Object.entries(objectsRaw).map(([oid, o]) => parseObject(oid, o, `objects.${oid}`))
+  } else {
+    return fail('objects', 'expected a mapping of object ids')
+  }
 
-// Arrays are not records: a scene written as a list has no `id` to read, and
-// reading one off would find undefined rather than say what is wrong.
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-function isStringList(value: unknown): value is readonly string[] {
-  return Array.isArray(value) && value.every((name) => typeof name === 'string')
+  const scene: { -readonly [K in keyof Scene]: Scene[K] } = {
+    scene: str(raw['scene'], 'scene'),
+    enter: str(raw['enter'], 'enter'),
+    objects,
+  }
+  if (raw['tier'] !== undefined) scene.tier = str(raw['tier'], 'tier')
+  return scene
 }

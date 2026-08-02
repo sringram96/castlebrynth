@@ -31,7 +31,7 @@ const CONTENT = join(ROOT, 'content')
 const BUNDLE = join(CONTENT, 'bundle.json')
 
 // P0 is one scene, and a run opens on it (CANON.md §the shore).
-const START = 'shore'
+const START = 'crossing'
 
 main()
 
@@ -45,6 +45,9 @@ function main(): void {
 
   for (const file of files) {
     let scene: Scene
+    // The bundle holds the NORMALISED scene. parseScene accepts both that and
+    // the authored mapping, so the artefact passes back through the same gate
+    // the compiler used (.llm/rules/vocabulary.mdc).
     try {
       scene = parseScene(yaml.load(readFileSync(resolve(ROOT, file), 'utf8')))
     } catch (e) {
@@ -52,13 +55,13 @@ function main(): void {
       errors.push(`${file}: ${reason(e)}`)
       continue
     }
-    if (scenes.has(scene.id)) {
-      errors.push(`${file}: id — the scene id "${scene.id}" is already ${source.get(scene.id)}'s`)
+    if (scenes.has(scene.scene)) {
+      errors.push(`${file}: id — the scene id "${scene.scene}" is already ${source.get(scene.scene)}'s`)
       continue
     }
-    scenes.set(scene.id, scene)
-    source.set(scene.id, file)
-    console.log(`  ${file} — ${scene.id}, ${count(scene.objects.length, 'object')}`)
+    scenes.set(scene.scene, scene)
+    source.set(scene.scene, file)
+    console.log(`  ${file} — ${scene.scene}, ${count(scene.objects.length, 'object')}`)
   }
 
   if (errors.length) {

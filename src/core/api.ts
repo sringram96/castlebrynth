@@ -81,7 +81,7 @@ function view(bundle: Bundle, state: GameState): View {
   if (scene === undefined) return { line: '', scene: state.scene, objects: [] }
 
   return {
-    line: scene.line,
+    line: scene.enter,
     scene: state.scene,
     // `visible` is the one authority on the object set (H006a) — authored,
     // minus hidden, plus every addObject, minus every removeObject.
@@ -89,11 +89,11 @@ function view(bundle: Bundle, state: GameState): View {
   }
 }
 
-// The action names in the order the author wrote them, which is the order a
-// shell will print them in. `name` and the responses stay behind: prose is the
-// world's to speak, through Effects, not the view's to leak.
+// The free tap's line and the action names, in the order the author wrote them.
+// The responses stay behind: what an action DOES is the world's to say, through
+// Effects, once you choose it.
 function afforded(object: ObjectCard): ViewObject {
-  return { id: object.id, actions: Object.keys(object.actions) }
+  return { id: object.id, tap: object.tap, actions: Object.keys(object.actions) }
 }
 
 // `scenes` is a plain object and a scene id is content: `goto: constructor`

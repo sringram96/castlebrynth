@@ -37,14 +37,24 @@ describe('H004a · the content builder', () => {
     expect(existsSync(bundlePath)).toBe(true)
   })
 
-  it('produces a v1 bundle containing the shore', () => {
+  it('produces a v1 bundle containing the crossing', () => {
     const b = JSON.parse(readFileSync(bundlePath, 'utf8'))
     expect(b.v).toBe(1)
-    expect(b.start).toBe('shore')
-    expect(Object.keys(b.scenes)).toContain('shore')
-    expect(b.scenes.shore.objects.map((o: { id: string }) => o.id).sort()).toEqual(
-      ['book', 'path', 'pool', 'self', 'stone'].sort(),
+    expect(b.start).toBe('crossing')
+    expect(Object.keys(b.scenes)).toContain('crossing')
+    expect(b.scenes.crossing.objects.map((o: { id: string }) => o.id).sort()).toEqual(
+      ['portal', 'hands', 'stone', 'door', 'steps'].sort(),
     )
+  })
+
+  it('carries the free tap of every object through to the bundle', () => {
+    // The tap is what a shell draws before anything has been done (GAME.md
+    // #input). A bundle that dropped it would compile and be unplayable.
+    const b = JSON.parse(readFileSync(bundlePath, 'utf8'))
+    for (const o of b.scenes.crossing.objects as { id: string; tap?: string }[]) {
+      expect(typeof o.tap, `${o.id} lost its tap`).toBe('string')
+      expect(o.tap!.length, `${o.id} taps to nothing`).toBeGreaterThan(0)
+    }
   })
 
   it('is deterministic — building twice yields byte-identical output', () => {
@@ -57,16 +67,25 @@ describe('H004a · the content builder', () => {
     const r = build(['--only', 'tests/fixtures/bad-vocab.yaml'])
     expect(r.ok, 'a bad-vocab fixture must fail the build').toBe(false)
     expect(r.output).toMatch(/bad-vocab\.yaml/)
-    expect(r.output).toMatch(/objects\.book\.read\[0\]\.setFlagg/)
+    expect(r.output).toMatch(/objects\.stone\.study\[0\]\.setFlagg/)
+  })
+
+  it('leaves the bundle alone when a build fails', () => {
+    // --only reports one file and writes nothing; a failed build must not have
+    // left a half-world behind either.
+    const before = readFileSync(bundlePath, 'utf8')
+    build(['--only', 'tests/fixtures/bad-vocab.yaml'])
+    expect(readFileSync(bundlePath, 'utf8')).toBe(before)
   })
 })
 
 describe('H004b · the bundle loader', () => {
-  it('loads the compiled shore', async () => {
+  it('loads the compiled crossing', async () => {
     const loadBundle = await importLoadBundle()
     const b = loadBundle(JSON.parse(readFileSync(bundlePath, 'utf8')))
     expect(b.v).toBe(1)
-    expect(b.scenes['shore']).toBeDefined()
+    expect(b.scenes['crossing']).toBeDefined()
+    expect(b.start).toBe('crossing')
   })
 
   it('round-trips deep-equal through JSON', async () => {
@@ -85,5 +104,25 @@ describe('H004b · the bundle loader', () => {
   it('rejects a bundle whose start scene is missing', async () => {
     const loadBundle = await importLoadBundle()
     expect(() => loadBundle({ v: 1, start: 'nowhere', scenes: {} })).toThrow(/start|nowhere/i)
+  })
+
+  it('rejects a scene whose words are not the vocabulary, naming the scene', async () => {
+    // The bundle is an artefact, and an artefact can be hand-edited. It comes
+    // through parseScene every time, so the loader and the compiler can never
+    // disagree about a word.
+    const loadBundle = await importLoadBundle()
+    expect(() =>
+      loadBundle({
+        v: 1,
+        start: 'crossing',
+        scenes: {
+          crossing: {
+            scene: 'crossing',
+            enter: 'A line.',
+            objects: { door: { tap: 'A low door.', actions: { open: [{ setFlagg: 'a', say: 'hi' }] } } },
+          },
+        },
+      }),
+    ).toThrow(/scenes\.crossing.*objects\.door\.open\[0\]\.setFlagg/)
   })
 })

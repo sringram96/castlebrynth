@@ -34,22 +34,25 @@ export type Effect =
   | { readonly kind: 'refused'; readonly ref: ActionRef; readonly line: string }
   | { readonly kind: 'journal'; readonly entry: string }
   | { readonly kind: 'enter'; readonly scene: string }
+  | { readonly kind: 'end'; readonly line: string; readonly note?: string }
 
-/** One thing in view and the taps it affords, by name. No prose, no state. */
+/**
+ * One thing in view: what the free tap says about it, and the taps it affords.
+ *
+ * `tap` is prose, and it is the one piece of prose the view carries. The free
+ * tap is bedrock (GAME.md #input) — it describes, selects and surfaces actions,
+ * and it never advances the world. A shell that had to call `act` to learn what
+ * a thing looks like could not offer a free tap at all.
+ */
 export interface ViewObject {
   readonly id: string
+  readonly tap: string
   readonly actions: readonly string[]
 }
 
 /** Everything needed to draw the moment, and nothing else. */
 export interface View {
-  /**
-   * The line for having just arrived, when the scene speaks one apart from
-   * the line it stands under. Absent everywhere in P0 — a Scene is id, line
-   * and objects (H003a) and has no second line to give. It is declared here
-   * because GameAPI is frozen (P0.md) and CANON.md already scans `enter` as
-   * authored prose: the shell that renders it must not need a new contract.
-   */
+  /** The line for having just arrived, when the scene speaks one apart. */
   readonly enter?: string
   readonly line: string
   readonly scene: string

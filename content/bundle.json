@@ -1,183 +1,112 @@
 {
   "scenes": {
-    "hall": {
-      "id": "hall",
-      "line": "A long room, and the far end of it is not lit.",
+    "crossing": {
+      "enter": "The ring of the portal is cold all through, and nothing is coming back through it.",
       "objects": [
+        {
+          "actions": {
+            "touch": [
+              {
+                "say": "The stone takes the heat out of your palm and gives nothing back. Whatever it cost to come through, it has already been paid."
+              }
+            ]
+          },
+          "id": "portal",
+          "tap": "It's a portal, and it's dead. Cold stone, and a rim worn smooth by hands going one way."
+        },
         {
           "actions": {
             "look": [
               {
-                "say": "The stone is worn low down the middle, a band two strides wide. It runs from the steps to the dark."
+                "journal": "scraped_hands",
+                "say": "Scraped raw across all four knuckles. Whatever you were holding, you held it hard, and for a long way."
               }
             ]
           },
-          "id": "floor",
-          "name": "the floor"
+          "id": "hands",
+          "tap": "Your hands. The knuckles are opened and you don't know on what."
         },
         {
           "actions": {
             "study": [
               {
-                "gate": {
-                  "flag": [
-                    "knows_glyph"
+                "if": {
+                  "flags": [
+                    "knows_mark"
                   ]
                 },
-                "journal": [
-                  "the same mark"
-                ],
-                "say": "The mark cut into the door is the mark cut into the stone. Your thumb has it before your eyes do."
+                "say": "The same shape. A ring, and a line falling through it."
               },
               {
-                "refuse": "Something is cut into the door, deep and worn shallow. Your thumb goes over it and takes nothing."
-              }
-            ]
-          },
-          "id": "door",
-          "name": "a door at the end of the room"
-        },
-        {
-          "actions": {
-            "listen": [
-              {
-                "say": "It does not move and it does not breathe. It holds the cold the way the pool held the water."
-              }
-            ]
-          },
-          "id": "dark",
-          "name": "the dark at the end"
-        }
-      ]
-    },
-    "shore": {
-      "id": "shore",
-      "line": "Grey water, and no far side to it.",
-      "objects": [
-        {
-          "actions": {
-            "study": [
-              {
-                "say": "The stone is warm where nothing else is. A mark is cut into the top of it, deep enough to read with your thumb.",
-                "setFlag": [
-                  "knows_glyph"
+                "journal": "the_mark",
+                "say": "A ring with a line falling through it, cut deep enough to read with a thumb. Your hands know it before you do.",
+                "set": [
+                  "knows_mark"
                 ]
               }
             ]
           },
           "id": "stone",
-          "name": "a flat stone"
-        },
-        {
-          "actions": {
-            "read": [
-              {
-                "gate": {
-                  "flag": [
-                    "knows_glyph"
-                  ]
-                },
-                "journal": [
-                  "procession"
-                ],
-                "say": "The marks hold still. They are names in a line, all walking the same way.",
-                "setFlag": [
-                  "book_open"
-                ]
-              },
-              {
-                "refuse": "The marks swim. You cannot hold them."
-              }
-            ]
-          },
-          "id": "book",
-          "name": "a book, face up in the shingle"
-        },
-        {
-          "actions": {
-            "look": [
-              {
-                "say": "The pool is shallow and clear. Your face does not arrive in it."
-              }
-            ]
-          },
-          "id": "pool",
-          "name": "a pool in the rock"
+          "tap": "A block set into the wall at chest height, scored over with a shape."
         },
         {
           "actions": {
             "listen": [
               {
-                "say": "You hold still and listen. There is your breath, and the water, and nothing under either."
+                "say": "Nothing on the other side. Not silence — the sound of a place too big to hear the end of."
+              }
+            ],
+            "open": [
+              {
+                "if": {
+                  "flags": [
+                    "knows_mark"
+                  ]
+                },
+                "journal": "the_way_down",
+                "say": "You lift the bar. The shape on the wood is the shape on the stone, and the door is only a door.",
+                "set": [
+                  "door_open"
+                ]
+              },
+              {
+                "refuse": true,
+                "say": "The mark on the wood means something. Not to you, and not to your hands."
               }
             ]
           },
-          "id": "self",
-          "name": "yourself"
+          "id": "door",
+          "tap": "A low door, barred from this side. The same shape is burned into the wood at eye height."
         },
         {
           "actions": {
-            "follow": [
+            "descend": [
               {
-                "gate": {
-                  "flag": [
-                    "book_open"
+                "end": {
+                  "line": "The dark takes the third tread, and then you.",
+                  "note": "left the Crossing"
+                },
+                "if": {
+                  "flags": [
+                    "door_open"
                   ]
                 },
-                "goto": "stair",
-                "say": "The path climbs off the shingle and inland. It runs the way the names run in the book."
+                "say": "The cold comes up the steps to meet you. You go down into it."
               },
               {
-                "refuse": "The path goes up into the dark. You have no name for what is at the top of it."
-              }
-            ]
-          },
-          "id": "path",
-          "name": "a path inland"
-        }
-      ]
-    },
-    "stair": {
-      "id": "stair",
-      "line": "The steps go up inside the rock, and the cold comes down them.",
-      "objects": [
-        {
-          "actions": {
-            "climb": [
-              {
-                "goto": "hall",
-                "say": "You go up. The turn is always the same turn, and then the steps stop."
+                "refuse": true,
+                "say": "The door is barred between you and them."
               }
             ]
           },
           "id": "steps",
-          "name": "the steps"
-        },
-        {
-          "actions": {
-            "touch": [
-              {
-                "say": "Cut stone, wet under the hand. It is rubbed smooth at the height of a shoulder, the whole way up."
-              }
-            ]
-          },
-          "id": "wall",
-          "name": "the wall at your shoulder"
-        },
-        {
-          "actions": {
-            "listen": [
-              {
-                "say": "Cold comes down the steps and goes out behind you to the water. Nothing comes down with it."
-              }
-            ]
-          },
-          "id": "air",
-          "name": "the air"
+          "tap": "Steps going down past the door, and the dark takes them three treads in."
         }
-      ]
+      ],
+      "scene": "crossing",
+      "tier": "T0"
     }
   },
-  "start": "shore",
+  "start": "crossing",
   "v": 1
 }

@@ -101,15 +101,17 @@ describe('P106 · behaviour did not change', () => {
     expect(r.ok, r.out).toBe(true)
   })
 
-  it('content-lint still passes on the shore', () => {
+  it('content-lint still passes on the Crossing', () => {
     const r = run('content-lint')
     expect(r.ok, r.out).toBe(true)
   })
 
   it('build:content still fails path-precisely on bad vocabulary', () => {
+    // The fixture's bad word sits on the scored stone now, not the shore's
+    // book — the path is the whole of the claim, and it must name where.
     const r = run('build:content', ['--only', 'tests/fixtures/bad-vocab.yaml'])
     expect(r.ok, 'a bad-vocab fixture must still fail the build').toBe(false)
-    expect(r.out).toMatch(/objects\.book\.read\[0\]\.setFlagg/)
+    expect(r.out).toMatch(/objects\.stone\.study\[0\]\.setFlagg/)
   })
 })
 

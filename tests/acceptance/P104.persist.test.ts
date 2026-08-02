@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import yaml from 'js-yaml'
 import { save, restore, SAVE_KEY } from '../../src/shell/persist'
 import { loadBundle } from '../../src/core/bundle'
 import { createGame } from '../../src/core/api'
@@ -9,9 +10,20 @@ import type { Bundle } from '../../src/core/cards'
 
 // P104 · the run survives the app closing. A corrupt save is a new run, not an
 // error the person ever sees.
+//
+// The Crossing is read from the scene as it was authored rather than from
+// content/bundle.json: the compiler writes the parsed Scene, whose `objects` is
+// a list, and `loadBundle` validates through `parseScene`, which reads the
+// authored shape — a mapping keyed by object id. H004 owns that disagreement.
+
+const SCENE = resolve(__dirname, '../../content/crossing.yaml')
 
 const bundle = (): Bundle =>
-  loadBundle(JSON.parse(readFileSync(resolve(__dirname, '../../content/bundle.json'), 'utf8')))
+  loadBundle({
+    v: 1,
+    start: 'crossing',
+    scenes: { crossing: yaml.load(readFileSync(SCENE, 'utf8')) },
+  })
 
 /** The smallest thing that satisfies Storage. Keeps the test out of a browser. */
 const fakeStorage = (seed: Record<string, string> = {}): Storage => {
@@ -28,7 +40,7 @@ const fakeStorage = (seed: Record<string, string> = {}): Storage => {
   } as Storage
 }
 
-const played = () => withItem(withFlag(emptyState('shore', 42), 'knows_glyph'), 'lamp')
+const played = () => withItem(withFlag(emptyState('crossing', 42), 'knows_mark'), 'tithe')
 
 describe('P104 · round trip', () => {
   it('restores a state that deep-equals the one saved', () => {
@@ -42,9 +54,9 @@ describe('P104 · round trip', () => {
     const g = createGame(bundle())
     let s = g.newRun(42)
     for (const tap of [
-      { object: 'book', action: 'read' },
+      { object: 'door', action: 'open' },
       { object: 'stone', action: 'study' },
-      { object: 'book', action: 'read' },
+      { object: 'door', action: 'open' },
     ]) {
       s = g.act(s, tap).state
     }
@@ -52,8 +64,9 @@ describe('P104 · round trip', () => {
     save(store, s)
     const back = restore(store, bundle())
     expect(back).toEqual(s)
-    expect(back.journal).toContain('procession')
-    expect(back.refused).toContain('book.read')
+    expect(back.journal).toContain('the_mark')
+    expect(back.journal).toContain('the_way_down')
+    expect(back.refused).toContain('door.open')
   })
 
   it('writes the versioned envelope from src/core/save.ts, not a second format', () => {
@@ -69,7 +82,7 @@ describe('P104 · round trip', () => {
   it('overwrites rather than accumulating', () => {
     const store = fakeStorage()
     save(store, played())
-    save(store, emptyState('shore', 42))
+    save(store, emptyState('crossing', 42))
     expect(store.length).toBe(1)
   })
 })
@@ -81,7 +94,7 @@ describe('P104 · a bad save is a new run, quietly', () => {
     ['not json', { [SAVE_KEY]: 'not json' }],
     ['truncated', { [SAVE_KEY]: '{"v":1,"state":{' }],
     ['wrong version', { [SAVE_KEY]: '{"v":2,"state":{}}' }],
-    ['missing fields', { [SAVE_KEY]: '{"v":1,"state":{"scene":"shore"}}' }],
+    ['missing fields', { [SAVE_KEY]: '{"v":1,"state":{"scene":"crossing"}}' }],
     ['json null', { [SAVE_KEY]: 'null' }],
   ]
 

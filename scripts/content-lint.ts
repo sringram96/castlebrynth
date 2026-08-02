@@ -47,15 +47,20 @@ const CONTENT = join(ROOT, 'content')
 
 // CANON.md §banned words, in its four groups and its order.
 const BANNED = [
-  // Meta — breaks the frame.
+  // Meta — CANON.md bans any reference to games, stats or UI.
   'player', 'game', 'gameplay', 'level', 'quest', 'xp', 'inventory',
   'checkpoint', 'respawn', 'tutorial', 'unlock', 'unlocked', 'menu',
-  // Anachronism — Brynth has none of these.
+  'health', 'mana', 'stats', 'hp',
+  // The narrator observes; it does not tell you what you are having.
+  'you feel', 'suddenly', 'mysterious', 'evil', 'creepy',
+  // Named below T3 only in TRUTH.md. The cult says "the Morning King".
+  'satan', 'devil', 'lucifer',
+  // Anachronism.
   'computer', 'phone', 'email', 'internet', 'okay', 'ok',
   // Intensifiers — the world does not editorialise.
-  'very', 'really', 'truly', 'literally', 'suddenly', 'somehow',
-  'amazing', 'awesome', 'incredible', 'epic', 'mysterious', 'eerie',
-  // Deferral — the tell of a refusal that is a wall (LAWS.md §refusal).
+  'very', 'really', 'truly', 'literally', 'somehow',
+  'amazing', 'awesome', 'incredible', 'epic', 'eerie',
+  // Deferral — the tell of a refusal that is a wall rather than a signpost.
   'yet', 'not now', 'later', 'come back',
 ]
 
@@ -123,12 +128,10 @@ function survey(authored: readonly Authored[]): World {
   const items: string[] = []
 
   for (const { scene } of authored) {
-    ids.push(scene.id)
+    ids.push(scene.scene)
     for (const response of responses(scene)) {
-      // `notFlag`/`notItem` want a thing absent, and everything is absent at
-      // the start of a run — only the positive want needs granting.
-      flags.push(...(response.setFlag ?? []))
-      items.push(...(response.addItem ?? []))
+      flags.push(...(response.set ?? []))
+      items.push(...(response.give ?? []))
     }
   }
   return { ids, flags, items }
@@ -149,12 +152,14 @@ function check({ file, scene }: Authored, world: World, errors: string[]): void 
     }
   }
 
-  // CANON.md bans these words in `say`, `refuse`, `journal`, `line` and
-  // `enter`. The first four are here; `enter` is not, because VOCAB.md gives
-  // no author a way to write one and parseScene rejects the word outright.
-  prose('line', [scene.line])
+  // CANON.md bans these words in every authored string. `journal` is an entry
+  // id now, not prose, so it is not scanned — the entry it names is.
+  prose('enter', [scene.enter])
 
   for (const object of scene.objects) {
+    // The free tap is the line a player reads most often (GAME.md #input).
+    prose(`objects.${object.id}.tap`, [object.tap])
+
     for (const [action, list] of Object.entries(object.actions)) {
       // The path is the action's — `objects.book.read` — because the
       // vocabulary hides the `actions` key from content: an object affords
@@ -164,15 +169,13 @@ function check({ file, scene }: Authored, world: World, errors: string[]): void 
       list.forEach((response, index) => {
         const here = `${path}[${index}]`
 
-        if (response.say !== undefined) prose(`${here}.say`, [response.say])
-        if (response.refuse !== undefined) prose(`${here}.refuse`, [response.refuse])
-        if (response.journal !== undefined) prose(`${here}.journal`, response.journal)
+        prose(`${here}.say`, [response.say])
 
-        for (const flag of response.gate?.flag ?? []) {
-          if (!world.flags.includes(flag)) fail(`${here}.gate.flag`, `nothing sets the flag "${flag}"`)
+        for (const flag of response.if?.flags ?? []) {
+          if (!world.flags.includes(flag)) fail(`${here}.if.flags`, `nothing sets the flag "${flag}"`)
         }
-        for (const item of response.gate?.item ?? []) {
-          if (!world.items.includes(item)) fail(`${here}.gate.item`, `nothing grants the item "${item}"`)
+        for (const item of response.if?.items ?? []) {
+          if (!world.items.includes(item)) fail(`${here}.if.items`, `nothing grants the item "${item}"`)
         }
 
         if (response.goto !== undefined && !world.ids.includes(response.goto)) {

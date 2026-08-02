@@ -1,12 +1,13 @@
 # A fixture that must fail the build with a path-precise error (.llm/rules/vocabulary.mdc).
-# `setFlagg` is not a word. The compiler must say so, and say where.
-id: badvocab
-line: "Grey water, and no far side to it."
+# The word is `set`; `setFlagg` is not a word at all. The compiler must say so,
+# and say where — file, then the path inside it.
+scene: badvocab
+enter: "The ring of the portal is cold all through, and nothing is coming back through it."
+tier: T0
 objects:
-  - id: book
-    name: book
+  stone:
+    tap: "A block set into the wall at chest height, scored over with a shape."
     actions:
-      read:
-        - setFlagg: knows_glyph
-          say: "The glyphs settle."
-        - refuse: "The marks swim. You cannot hold them."
+      study:
+        - setFlagg: knows_mark
+          say: "A ring with a line falling through it, cut deep enough to read with a thumb."

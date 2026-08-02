@@ -89,6 +89,10 @@ function drawn(effect: Effect): HTMLElement | null {
     // An `enter` carries a scene id, not prose. The line for having arrived
     // comes back on the next View (api-types.ts), so drawing this one would
     // put an id on the screen and say the arrival twice.
+    // The end of a slice speaks for itself; the note is bookkeeping for the
+    // Book of Ends, not for the screen (GAME.md #home-screen).
+    case 'end':
+      return para('said ended', effect.line)
     case 'enter':
       return null
   }

@@ -33,8 +33,10 @@ const app = (): HTMLElement => {
 const played = (): GameState => {
   const game = createGame(loadBundle(data))
   let state = game.newRun(1)
+  // The Crossing's arc: the scored stone teaches the mark, and the same door
+  // that refused it opens (content/crossing.yaml).
   state = game.act(state, { object: 'stone', action: 'study' }).state
-  state = game.act(state, { object: 'book', action: 'read' }).state
+  state = game.act(state, { object: 'door', action: 'open' }).state
   return state
 }
 
@@ -59,16 +61,16 @@ describe('P108 · the boot draws the world', () => {
   it('mounts the real content into #app', async () => {
     const el = app()
     await boot()
-    expect(el.textContent).toContain('Grey water')
+    expect(el.textContent).toContain('The ring of the portal is cold all through')
   })
 
   it('the page it drew is tappable', async () => {
     const el = app()
     await boot()
     const stone = el.querySelector<HTMLElement>('[data-object="stone"][data-action="study"]')
-    expect(stone, 'the shore must be tappable').not.toBeNull()
+    expect(stone, 'the Crossing must be tappable').not.toBeNull()
     stone?.click()
-    expect(el.textContent).toContain('warm where nothing else is')
+    expect(el.textContent).toContain('cut deep enough to read with a thumb')
   })
 })
 
@@ -77,7 +79,7 @@ describe('P108 · the boot is where the run comes back from', () => {
     save(localStorage, played())
     const el = app()
     await boot()
-    expect(el.textContent, 'the journal came back with the run').toContain('procession')
+    expect(el.textContent, 'the journal came back with the run').toContain('the_way_down')
   })
 
   it('writes the run back after a tap', async () => {
@@ -91,7 +93,7 @@ describe('P108 · the boot is where the run comes back from', () => {
     localStorage.setItem(SAVE_KEY, '{"v":1,"state":{')
     const el = app()
     await boot()
-    expect(el.textContent).toContain('Grey water')
+    expect(el.textContent).toContain('The ring of the portal is cold all through')
   })
 
   it('leaves every other key in storage alone', async () => {

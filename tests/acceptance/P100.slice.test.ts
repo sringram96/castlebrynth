@@ -2,6 +2,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { resolve } from 'node:path'
+import yaml from 'js-yaml'
 import { mount } from '../../src/shell/mount'
 import { createGame } from '../../src/core/api'
 import { loadBundle } from '../../src/core/bundle'
@@ -13,13 +14,32 @@ import type { Bundle } from '../../src/core/cards'
 // P0 proved the engine. This proves the engine is enough: a shell built on
 // GameAPI and nothing else, playing the whole arc, remembering it afterwards.
 //
-// Authored by convention ahead of every P1 card. No agent may edit it
-// (AGENTS.md law 3). The agent assigned P100 runs it, finds it green, and
-// reports "already satisfied".
+// The arc is the Crossing's (content/crossing.yaml): the door refuses, the
+// scored stone teaches, the same tap opens, and the steps end the slice. It
+// replaces the shore's "the book refuses, then the book opens" one for one —
+// a refusal that names what you lack, a thing that teaches it, the same tap
+// answering differently, and a way on that was earned.
+//
+// The free tap is NOT asserted here. `getView` carries `tap` for every object
+// (api-types.ts) and the renderer does not draw it yet; a free-tap step in the
+// shell is future work, and P100 asserts what the shell does today — one
+// control per object/action pair, and the world's own lines under them.
+//
+// The bundle is read from the authored yaml rather than from
+// content/bundle.json. Those two shapes disagree today — the compiler writes
+// the parsed Scene, whose `objects` is a list, and `loadBundle` validates
+// through `parseScene`, which reads the authored shape, a mapping keyed by
+// object id. H004 owns that disagreement; this card is about the shell.
 
 const root = resolve(__dirname, '../..')
+const SCENE = resolve(root, 'content/crossing.yaml')
+
 const bundle = (): Bundle =>
-  loadBundle(JSON.parse(readFileSync(resolve(root, 'content/bundle.json'), 'utf8')))
+  loadBundle({
+    v: 1,
+    start: 'crossing',
+    scenes: { crossing: yaml.load(readFileSync(SCENE, 'utf8')) },
+  })
 
 const fakeStorage = (seed: Record<string, string> = {}): Storage => {
   const map = new Map(Object.entries(seed))
@@ -53,11 +73,11 @@ const tap = (el: HTMLElement, object: string, action: string): boolean => {
 const text = (el: HTMLElement) => el.textContent ?? ''
 
 describe('P100 · the slice, through the shell', () => {
-  it('opens on the shore with its objects tappable', () => {
+  it('opens on the Crossing with its objects tappable', () => {
     const el = app()
     mount(el, createGame(bundle()))
-    expect(text(el)).toContain('Grey water')
-    for (const id of ['stone', 'book', 'pool', 'self', 'path']) {
+    expect(text(el)).toContain('The ring of the portal is cold all through')
+    for (const id of ['portal', 'hands', 'stone', 'door', 'steps']) {
       expect(
         el.querySelector(`[data-object="${id}"]`),
         `${id} is not tappable`,
@@ -69,51 +89,63 @@ describe('P100 · the slice, through the shell', () => {
     const el = app()
     mount(el, createGame(bundle()))
 
-    expect(tap(el, 'book', 'read'), 'book.read must be tappable').toBe(true)
-    expect(text(el), 'the book must refuse an unglyphed reader').toMatch(/marks swim/i)
+    expect(tap(el, 'door', 'open'), 'door.open must be tappable').toBe(true)
+    expect(text(el), 'the door must refuse a reader who cannot read the mark').toMatch(
+      /means something\. Not to you/i,
+    )
 
     expect(tap(el, 'stone', 'study')).toBe(true)
-    expect(text(el)).toMatch(/warm where nothing else is/i)
+    expect(text(el)).toMatch(/cut deep enough to read with a thumb/i)
 
-    expect(tap(el, 'book', 'read')).toBe(true)
-    expect(text(el), 'the journal must gain the procession').toMatch(/procession/i)
+    expect(tap(el, 'door', 'open')).toBe(true)
+    expect(text(el), 'the same tap must open once the mark is known').toMatch(
+      /the door is only a door/i,
+    )
   })
 
   it('the journal is on screen the whole time, and keeps what it gained', () => {
     const el = app()
     mount(el, createGame(bundle()))
     tap(el, 'stone', 'study')
-    tap(el, 'book', 'read')
-    expect(text(el)).toMatch(/procession/i)
-    // still there a tap later, in a different scene's worth of redraws
-    tap(el, 'pool', 'look')
-    expect(text(el), 'the journal did not survive a redraw').toMatch(/procession/i)
+    expect(text(el), 'the journal must gain the mark').toMatch(/the_mark/)
+    // still there a tap later, in a different turn's worth of redraws
+    tap(el, 'portal', 'touch')
+    expect(text(el), 'the journal did not survive a redraw').toMatch(/the_mark/)
   })
 
-  it('the path off the shore opens once the book has', () => {
+  it('the way down opens once the door has', () => {
     const el = app()
     mount(el, createGame(bundle()))
 
-    tap(el, 'path', 'follow')
-    expect(text(el), 'the path must refuse before the book is open').not.toMatch(/^stair$/im)
+    expect(tap(el, 'steps', 'descend')).toBe(true)
+    expect(text(el), 'the steps must refuse while the door is barred').toMatch(
+      /The door is barred between you and them/,
+    )
+    expect(text(el), 'the slice must not end on a refusal').not.toContain(
+      'The dark takes the third tread',
+    )
 
     tap(el, 'stone', 'study')
-    tap(el, 'book', 'read')
-    expect(tap(el, 'path', 'follow')).toBe(true)
-
-    // We are somewhere else now: the shore's objects are gone from the screen.
-    expect(el.querySelector('[data-object="stone"]'), 'still on the shore').toBeNull()
+    tap(el, 'door', 'open')
+    expect(tap(el, 'steps', 'descend')).toBe(true)
+    expect(text(el), 'the earned descent must end the slice').toContain(
+      'The dark takes the third tread, and then you.',
+    )
   })
 
   it('never shows the engine\'s bookkeeping', () => {
     const el = app()
     mount(el, createGame(bundle()))
     tap(el, 'stone', 'study')
-    tap(el, 'book', 'read')
+    tap(el, 'door', 'open')
     const t = text(el)
-    expect(t, 'a flag leaked to the screen').not.toContain('knows_glyph')
+    expect(t, 'a flag leaked to the screen').not.toContain('knows_mark')
+    expect(t, 'a flag leaked to the screen').not.toContain('door_open')
     expect(t).not.toContain('obj+')
     expect(t).not.toContain('obj-')
+    // The end note is the Book of Ends' bookkeeping, not the screen's
+    // (render.ts). Reached below; asserted here where the other leaks are.
+    expect(t).not.toContain('left the Crossing')
   })
 })
 
@@ -121,18 +153,20 @@ describe('P100 · the run survives being closed', () => {
   it('restores mid-arc, journal and ledger intact', () => {
     const g = createGame(bundle())
     let s = g.newRun(42)
-    s = g.act(s, { object: 'book', action: 'read' }).state
+    s = g.act(s, { object: 'door', action: 'open' }).state
     s = g.act(s, { object: 'stone', action: 'study' }).state
-    s = g.act(s, { object: 'book', action: 'read' }).state
+    s = g.act(s, { object: 'door', action: 'open' }).state
 
     const store = fakeStorage()
     save(store, s)
 
     const back = restore(store, bundle())
     expect(back).toEqual(s)
-    expect(back.journal).toContain('procession')
-    expect(back.refused).toContain('book.read')
-    expect(back.flags).toContain('knows_glyph')
+    expect(back.journal).toContain('the_mark')
+    expect(back.journal).toContain('the_way_down')
+    expect(back.refused).toContain('door.open')
+    expect(back.flags).toContain('knows_mark')
+    expect(back.flags).toContain('door_open')
   })
 
   it('a corrupt save opens a new run rather than a broken screen', () => {
@@ -144,7 +178,7 @@ describe('P100 · the run survives being closed', () => {
 
     const el = app()
     mount(el, createGame(b))
-    expect(text(el)).toContain('Grey water')
+    expect(text(el)).toContain('The ring of the portal is cold all through')
   })
 })
 

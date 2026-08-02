@@ -20,68 +20,81 @@ import type { GameState } from '../core/types'
 // is the engine's business and H006a's tests.
 //
 // The fixture goes through loadBundle rather than content/bundle.json, so a
-// content edit cannot turn this red — and `water` is written before `shore` so
-// "the start scene" and "the first scene" are different answers.
-const twoScenes = (line: string): Bundle =>
+// content edit cannot turn this red — and `dark` is written before `crossing`
+// so "the start scene" and "the first scene" are different answers. It is
+// written in the authored shape parseScene reads: `scene`, `enter`, and
+// `objects` as a mapping keyed by object id, every one of them carrying its
+// free tap (cards.ts).
+const twoScenes = (enter: string): Bundle =>
   loadBundle({
     v: 1,
-    start: 'shore',
+    start: 'crossing',
     scenes: {
-      water: { id: 'water', line: 'Under, and no light in it.', objects: [] },
-      shore: {
-        id: 'shore',
-        line,
-        objects: [
-          {
-            id: 'stone',
-            name: 'a flat stone',
-            actions: { study: [{ say: 'A mark is cut into it.' }] },
+      dark: { scene: 'dark', enter: 'No light here, and the steps go on down.', objects: {} },
+      crossing: {
+        scene: 'crossing',
+        enter,
+        objects: {
+          stone: {
+            tap: 'A block set into the wall at chest height, scored over with a shape.',
+            actions: { study: [{ say: 'A ring with a line falling through it.' }] },
           },
-        ],
+        },
       },
     },
   })
 
-// P108 · a shore with an arc in it: a refusal, the flag that lifts it, an entry
-// for the journal, and somewhere to walk to. The smallest content a loop is
-// visible in.
+// P108 · a Crossing with an arc in it: a refusal, the flag that lifts it, an
+// entry for the journal, and somewhere to walk to. The smallest content a loop
+// is visible in. The steps go down ungated here — what is under test is that a
+// goto redraws the scene, and the door standing between them is the real
+// Crossing's business and P105's.
 const arc = (): Bundle =>
   loadBundle({
     v: 1,
-    start: 'shore',
+    start: 'crossing',
     scenes: {
-      water: { id: 'water', line: 'Under, and no light in it.', objects: [] },
-      shore: {
-        id: 'shore',
-        line: 'Grey water, and no far side to it.',
-        objects: [
-          {
-            id: 'stone',
-            name: 'a flat stone',
+      dark: { scene: 'dark', enter: 'No light here, and the steps go on down.', objects: {} },
+      crossing: {
+        scene: 'crossing',
+        enter: 'The ring of the portal is cold all through, and nothing is coming back through it.',
+        objects: {
+          stone: {
+            tap: 'A block set into the wall at chest height, scored over with a shape.',
             actions: {
-              study: [{ setFlag: 'knows_glyph', say: 'The stone is warm where nothing else is.' }],
-            },
-          },
-          {
-            id: 'book',
-            name: 'a book, face up in the shingle',
-            actions: {
-              read: [
+              study: [
                 {
-                  gate: { flag: 'knows_glyph' },
-                  journal: 'procession',
-                  say: 'The marks hold still.',
+                  say: 'A ring with a line falling through it, cut deep enough to read with a thumb.',
+                  set: ['knows_mark'],
                 },
-                { refuse: 'The marks swim. You cannot hold them.' },
               ],
             },
           },
-          {
-            id: 'path',
-            name: 'a path inland',
-            actions: { follow: [{ goto: 'water', say: 'The path goes down off the shingle.' }] },
+          door: {
+            tap: 'A low door, barred from this side. The same shape is burned into the wood at eye height.',
+            actions: {
+              open: [
+                {
+                  if: { flags: ['knows_mark'] },
+                  say: 'You lift the bar. The shape on the wood is the shape on the stone, and the door is only a door.',
+                  journal: 'the_way_down',
+                },
+                {
+                  refuse: true,
+                  say: 'The mark on the wood means something. Not to you, and not to your hands.',
+                },
+              ],
+            },
           },
-        ],
+          steps: {
+            tap: 'Steps going down past the door, and the dark takes them three treads in.',
+            actions: {
+              descend: [
+                { goto: 'dark', say: 'The cold comes up the steps to meet you. You go down into it.' },
+              ],
+            },
+          },
+        },
       },
     },
   })
@@ -120,21 +133,21 @@ const played = (): GameState => {
   const game = createGame(arc())
   let state = game.newRun(1)
   state = game.act(state, { object: 'stone', action: 'study' }).state
-  state = game.act(state, { object: 'book', action: 'read' }).state
+  state = game.act(state, { object: 'door', action: 'open' }).state
   return state
 }
 
 describe('P101 · mount', () => {
   it('draws the scene line into the element it was given', () => {
     const el = div()
-    mount(el, createGame(twoScenes('Grey water, and no far side to it.')))
-    expect(el.textContent).toContain('Grey water, and no far side to it.')
+    mount(el, createGame(twoScenes('The ring of the portal is cold all through.')))
+    expect(el.textContent).toContain('The ring of the portal is cold all through.')
   })
 
   it('opens at the bundle\'s start scene, not the first one written', () => {
     const el = div()
-    mount(el, createGame(twoScenes('Grey water, and no far side to it.')))
-    expect(el.textContent).not.toContain('Under, and no light in it.')
+    mount(el, createGame(twoScenes('The ring of the portal is cold all through.')))
+    expect(el.textContent).not.toContain('No light here, and the steps go on down.')
   })
 
   it('draws the line as prose, not as markup', () => {
@@ -145,7 +158,7 @@ describe('P101 · mount', () => {
   })
 
   it('keeps no run of its own — two mounts of one game draw one frame', () => {
-    const game = createGame(twoScenes('Grey water, and no far side to it.'))
+    const game = createGame(twoScenes('The ring of the portal is cold all through.'))
     const first = div()
     const second = div()
     mount(first, game)
@@ -157,7 +170,7 @@ describe('P101 · mount', () => {
     const mine = div()
     const theirs = div()
     document.body.append(mine, theirs)
-    mount(mine, createGame(twoScenes('Grey water, and no far side to it.')))
+    mount(mine, createGame(twoScenes('The ring of the portal is cold all through.')))
     expect(theirs.textContent).toBe('')
   })
 })
@@ -167,34 +180,38 @@ describe('P108 · a tap goes through act and comes back as a screen', () => {
     const el = div()
     mount(el, createGame(arc()))
     tap(el, 'stone', 'study')
-    expect(text(el)).toContain('The stone is warm where nothing else is.')
+    expect(text(el)).toContain('cut deep enough to read with a thumb')
   })
 
   it('marks a refusal as one rather than as a thing that happened', () => {
     const el = div()
     mount(el, createGame(arc()))
-    tap(el, 'book', 'read')
+    tap(el, 'door', 'open')
     const refusal = el.querySelector('.refused')
     expect(refusal, 'the refusal must reach the screen, set apart').not.toBeNull()
-    expect(refusal?.textContent).toBe('The marks swim. You cannot hold them.')
+    expect(refusal?.textContent).toBe(
+      'The mark on the wood means something. Not to you, and not to your hands.',
+    )
   })
 
-  it('keeps the state the act returned — the second read is not the first', () => {
+  it('keeps the state the act returned — the second open is not the first', () => {
     const el = div()
     mount(el, createGame(arc()))
-    tap(el, 'book', 'read')
+    tap(el, 'door', 'open')
     tap(el, 'stone', 'study')
-    tap(el, 'book', 'read')
-    expect(text(el)).toContain('The marks hold still.')
-    expect(text(el), 'the refusal belongs to a tap that is over').not.toContain('The marks swim')
+    tap(el, 'door', 'open')
+    expect(text(el)).toContain('You lift the bar.')
+    expect(text(el), 'the refusal belongs to a tap that is over').not.toContain(
+      'The mark on the wood means something',
+    )
   })
 
   it('says what this tap did, not what every tap has done', () => {
     const el = div()
     mount(el, createGame(arc()))
     tap(el, 'stone', 'study')
-    tap(el, 'book', 'read')
-    expect(text(el)).not.toContain('The stone is warm')
+    tap(el, 'door', 'open')
+    expect(text(el)).not.toContain('cut deep enough to read with a thumb')
   })
 
   it('redraws the scene whole — a second tap does not double the controls', () => {
@@ -208,29 +225,29 @@ describe('P108 · a tap goes through act and comes back as a screen', () => {
   it('follows a goto: the scene it left is gone from the screen', () => {
     const el = div()
     mount(el, createGame(arc()))
-    tap(el, 'path', 'follow')
-    expect(text(el)).toContain('Under, and no light in it.')
-    expect(text(el)).not.toContain('Grey water')
-    expect(control(el, 'stone', 'study'), 'still on the shore').toBeNull()
+    tap(el, 'steps', 'descend')
+    expect(text(el)).toContain('No light here, and the steps go on down.')
+    expect(text(el)).not.toContain('The ring of the portal')
+    expect(control(el, 'stone', 'study'), 'still at the Crossing').toBeNull()
   })
 
   it('draws the panel from the same state, every frame', () => {
     const el = div()
     mount(el, createGame(arc()))
     tap(el, 'stone', 'study')
-    tap(el, 'book', 'read')
-    expect(el.querySelector('.panel')?.textContent).toContain('procession')
+    tap(el, 'door', 'open')
+    expect(el.querySelector('.panel')?.textContent).toContain('the_way_down')
     // A scene away, and a redraw later: the person's record is not the moment's.
-    tap(el, 'path', 'follow')
-    expect(el.querySelector('.panel')?.textContent).toContain('procession')
+    tap(el, 'steps', 'descend')
+    expect(el.querySelector('.panel')?.textContent).toContain('the_way_down')
   })
 
   it('never puts the engine\'s bookkeeping on the screen', () => {
     const el = div()
     mount(el, createGame(arc()))
     tap(el, 'stone', 'study')
-    tap(el, 'book', 'read')
-    expect(text(el)).not.toContain('knows_glyph')
+    tap(el, 'door', 'open')
+    expect(text(el)).not.toContain('knows_mark')
   })
 })
 
@@ -247,18 +264,18 @@ describe('P108 · where the run is kept', () => {
     mount(el, createGame(arc()), store)
 
     tap(el, 'stone', 'study')
-    expect(restore(store, arc()).flags).toContain('knows_glyph')
+    expect(restore(store, arc()).flags).toContain('knows_mark')
 
-    tap(el, 'book', 'read')
-    expect(restore(store, arc()).journal).toContain('procession')
+    tap(el, 'door', 'open')
+    expect(restore(store, arc()).journal).toContain('the_way_down')
   })
 
   it('saves a refused tap too — the ledger moved', () => {
     const store = fakeStorage()
     const el = div()
     mount(el, createGame(arc()), store)
-    tap(el, 'book', 'read')
-    expect(restore(store, arc()).refused).toContain('book.read')
+    tap(el, 'door', 'open')
+    expect(restore(store, arc()).refused).toContain('door.open')
   })
 
   it('keeps nothing when it was given nowhere to keep it', () => {
@@ -273,15 +290,15 @@ describe('P108 · where the run is kept', () => {
   it('opens on the run it was handed rather than a fresh one', () => {
     const el = div()
     mount(el, createGame(arc()), undefined, played())
-    expect(el.querySelector('.panel')?.textContent).toContain('procession')
-    // And it is that run that carries on: the book is open, so it holds still.
-    tap(el, 'book', 'read')
-    expect(text(el)).toContain('The marks hold still.')
+    expect(el.querySelector('.panel')?.textContent).toContain('the_way_down')
+    // And it is that run that carries on: the mark is known, so the bar lifts.
+    tap(el, 'door', 'open')
+    expect(text(el)).toContain('You lift the bar.')
   })
 
   it('opens a fresh run when it was handed none', () => {
     const el = div()
     mount(el, createGame(arc()), fakeStorage())
-    expect(el.querySelector('.panel')?.textContent).not.toContain('procession')
+    expect(el.querySelector('.panel')?.textContent).not.toContain('the_way_down')
   })
 })

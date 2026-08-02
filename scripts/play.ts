@@ -13,7 +13,7 @@
 // plain .mjs under Node 20 cannot import a .ts module without a loader the
 // repo did not have — so this file carried a small engine of its own and said
 // so in its header. It had already drifted: it dropped the `say` on a
-// refusing branch where resolve.ts speaks it, and no shore refusal carried
+// refusing branch which resolve.ts now carries on the refusal itself, and no shore refusal carried
 // one, so nothing showed. P106 brought `tsx` in and deleted it. What is left
 // here is a terminal: `loadBundle`, `createGame`, and the four Effects turned
 // into lines.
@@ -142,7 +142,10 @@ function report(effect: Effect): void {
     console.log(`  ${effect.line}`)
     console.log(`  (refused — ${refKey(effect.ref)})`)
   } else if (effect.kind === 'journal') console.log(`  (journal + ${effect.entry})`)
-  else console.log(`  (enter ${effect.scene})`)
+  else if (effect.kind === 'end') {
+    console.log(`\n  ${effect.line}`)
+    if (effect.note !== undefined) console.log(`  (${effect.note})`)
+  } else console.log(`  (enter ${effect.scene})`)
 }
 
 /** A menu number or `<object> <action>`. Anything else is nothing. */
