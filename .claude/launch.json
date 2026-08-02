@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "brynth",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeExecutable": "/home/nullptr/.nvm/versions/node/v20.20.2/bin/node",
+      "runtimeArgs": ["node_modules/vite/bin/vite.js", "--host", "127.0.0.1", "--port", "5173"],
       "port": 5173
     }
   ]
