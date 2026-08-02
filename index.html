@@ -9,6 +9,8 @@
   </head>
   <body>
     <div id="app"></div>
-    <script type="module" src="/src/shell/mount.ts"></script>
+    <!-- boot, not mount: the entry has a side effect (it draws), and mount is
+         imported by tests that must not have one fire on them (boot.ts). -->
+    <script type="module" src="/src/shell/boot.ts"></script>
   </body>
 </html>
