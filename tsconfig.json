@@ -24,5 +24,5 @@
   // Acceptance tests are authored ahead of the cards that satisfy them, so
   // they legitimately reference modules that do not exist yet. Vitest runs
   // them; `npm run typecheck` covers src, which must always compile.
-  "include": ["src", "vitest.config.ts", "eslint.config.js"]
+  "include": ["src", "scripts", "vitest.config.ts", "eslint.config.js"]
 }

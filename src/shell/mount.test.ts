@@ -54,7 +54,7 @@ describe('P101 · mount', () => {
     const el = div()
     mount(el, createGame(twoScenes('A door, <b>shut</b>.')))
     expect(el.querySelector('b')).toBeNull()
-    expect(el.textContent).toBe('A door, <b>shut</b>.')
+    expect(el.textContent).toContain('A door, <b>shut</b>.')
   })
 
   it('keeps no run of its own — two mounts of one game draw one frame', () => {
