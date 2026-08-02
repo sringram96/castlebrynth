@@ -7,10 +7,16 @@
 // them and a silent rename is a shell drawing with `undefined`.
 
 import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { theme } from './theme'
 
-const SOURCE = readFileSync(new URL('./theme.ts', import.meta.url), 'utf8')
+// Not `new URL(...)`: these tests run under happy-dom (H101's
+// environmentMatchGlobs), whose global URL is its own, and node's fs
+// rejects it — "The URL must be of scheme file". fileURLToPath is the
+// one spelling that survives both environments.
+const SOURCE = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'theme.ts'), 'utf8')
 
 /** Every leaf, as `color.bg` → value. */
 function leaves(node: unknown, path: string[] = []): [string, unknown][] {

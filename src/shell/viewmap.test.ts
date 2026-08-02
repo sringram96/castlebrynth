@@ -6,11 +6,17 @@
 // argument fails here rather than in a shell three cards later.
 
 import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import type { View } from '../core/api-types'
 import { blocks, label, narratorLines, selectedBlock } from './viewmap'
 
-const SOURCE = readFileSync(new URL('./viewmap.ts', import.meta.url), 'utf8')
+// Not `new URL(...)`: these tests run under happy-dom (H101's
+// environmentMatchGlobs), whose global URL is its own, and node's fs
+// rejects it — "The URL must be of scheme file". fileURLToPath is the
+// one spelling that survives both environments.
+const SOURCE = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'viewmap.ts'), 'utf8')
 
 function deepFreeze<T>(value: T): T {
   if (typeof value === 'object' && value !== null) Object.values(value).forEach(deepFreeze)
