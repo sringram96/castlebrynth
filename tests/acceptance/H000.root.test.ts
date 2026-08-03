@@ -18,6 +18,12 @@
 // journal and refusals ratchet on the CAMPAIGN branch — they must survive
 // death and pay off on later meetings — while a push's one-shot gates live in
 // `run.flags`.
+//
+// Ledger ids carry their prefix (H010, cards.ts `LedgerPrefix`): `knowledge:`
+// for what survives death, `flag:` for a one-shot of this push. The ledgers
+// STORE the prefix — nothing strips it on the way in — so the fixtures below
+// are asserted in the prefixed form, matching src/core/types.test.ts. Object
+// ids ("book", "stone") are not ledger entries and carry no prefix.
 import { describe, expect, it } from "vitest";
 import { act, getView, newRun } from "../../src/core/api";
 import type { ActInput } from "../../src/core/types";
@@ -59,11 +65,11 @@ describe("H000 · the atom: refuses, then opens", () => {
     expect(r.state.campaign.refused[0]?.depth).toBe(depth);
     // being refused is not an act: the journal records acts (DESIGN §content laws)
     expect(r.state.campaign.journal).toHaveLength(0);
-    expect(r.state.campaign.knowledge).not.toContain("knows_glyph");
+    expect(r.state.campaign.knowledge).not.toContain("knowledge:knows_glyph");
 
     // 2 — knowledge is earned at the stone, and it ratchets
     r.step("stone", "study");
-    expect(r.state.campaign.knowledge).toContain("knows_glyph");
+    expect(r.state.campaign.knowledge).toContain("knowledge:knows_glyph");
     // the stone does not un-refuse the book; what was refused stays refused
     expect(r.state.campaign.refused).toHaveLength(1);
 
@@ -71,7 +77,7 @@ describe("H000 · the atom: refuses, then opens", () => {
     const opening = r.step("book", "read");
     expect(saying(opening, "procession")).toBe(1);
     expect(saying(opening, "script you don't know")).toBe(0);
-    expect(r.state.run.flags).toContain("read_book");
+    expect(r.state.run.flags).toContain("flag:read_book");
     expect(saying(r.state.campaign.journal, "procession")).toBe(1);
 
     // 4 — the spent page: it still answers, and it changes nothing
