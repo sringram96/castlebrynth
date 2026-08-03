@@ -1,4 +1,5 @@
 // H003 · the room card schema, asserted. H009 · migrated to the lean word set.
+// H010 · every flag id now names its ledger in its prefix.
 //
 // The word set is .llm/rules/engine.md's, and it is the law this file asserts:
 // gates {flags, items} · deltas {say, set, unset, give, take, adjust, journal,
@@ -36,6 +37,7 @@ import {
   DOOR_KEYS,
   GATE_KEYS,
   KEEPS,
+  LEDGER_PREFIXES,
   OBJECT_KEYS,
   RESPONSE_KEYS,
   ROOM_KEYS,
@@ -95,13 +97,13 @@ const TALLOW_STORE: RoomCard = {
       actions: {
         reach: [
           {
-            if: { flags: ["vat-opened"] },
+            if: { flags: ["flag:vat-opened"] },
             say: "The hole your arm made holds its shape. The edges have gone hard.",
           },
           {
             say: "Cold to the elbow. An edge opens your palm. A key comes up with it.",
             adjust: { hp: -1 },
-            set: ["vat-opened", "knowledge:things-kept-in-tallow"],
+            set: ["flag:vat-opened", "knowledge:things-kept-in-tallow"],
             give: [{ id: "item:greased-key", keep: "none" }],
             journal: "Put an arm into the tallow. Brought up a key, and a cut.",
           },
@@ -131,12 +133,12 @@ const TALLOW_STORE: RoomCard = {
         ],
         shift: [
           {
-            if: { flags: ["bench-shifted"] },
+            if: { flags: ["flag:bench-shifted"] },
             say: "The bench stands where you put it. The boards under it are pale.",
           },
           {
             say: "You put your shoulder to it. It comes off the boards, and iron shows.",
-            set: ["bench-shifted"],
+            set: ["flag:bench-shifted"],
             addObject: { object: "hatch", cause: "the bench is shifted off it" },
           },
         ],
@@ -152,7 +154,7 @@ const TALLOW_STORE: RoomCard = {
           {
             if: { flags: ["knowledge:tallow-seal"], cross_push: true },
             say: "You work the seam. The hatch lifts, and the water below is loud.",
-            set: ["hatch-open"],
+            set: ["flag:hatch-open"],
             goto: "door:under-floor",
           },
           {
@@ -488,7 +490,7 @@ describe("H003 · a response list ends in an ungated fallback", () => {
   it("does not compile a list that ends on a gated response", () => {
     // @ts-expect-error — the last element is checked against `{ if?: never }`,
     // so a tap can never fall through to nothing (DESIGN §content laws).
-    const dead: Responses = [{ if: { flags: ["x"] }, say: "Only when gated." }];
+    const dead: Responses = [{ if: { flags: ["flag:x"] }, say: "Only when gated." }];
     expect(dead).toBeDefined();
   });
 
@@ -524,7 +526,7 @@ describe("H003 · a response list ends in an ungated fallback", () => {
   });
 
   it("refuses both shapes at load too", () => {
-    const endsGated = withResponses([{ if: { flags: ["x"] }, say: "Gated." }]);
+    const endsGated = withResponses([{ if: { flags: ["flag:x"] }, say: "Gated." }]);
     expect(pathsOf(endsGated)).toContain("objects.thing.actions.peer[0].if");
     expect(messageAt(endsGated, "objects.thing.actions.peer[0].if")).toContain("UNGATED fallback");
 
@@ -691,7 +693,7 @@ describe("H003 · no softlocks — every sensed door is walked through", () => {
           tap: "Two.",
           actions: {
             go: [
-              { if: { flags: ["opened"] }, say: "Down.", goto: "door:down" },
+              { if: { flags: ["flag:opened"] }, say: "Down.", goto: "door:down" },
               { say: "It does not give." },
             ],
           },
@@ -988,7 +990,7 @@ describe("H009 · the five added words are vocabulary, and load", () => {
   // is asserted here is that a card may say them and that the shapes hold.
   it("accepts unset — a flag can be lowered again", () => {
     expect(
-      pathsOf(withResponses([{ say: "The catch drops back.", unset: ["latch-held"] }])),
+      pathsOf(withResponses([{ say: "The catch drops back.", unset: ["flag:latch-held"] }])),
     ).toStrictEqual([]);
   });
 
@@ -1106,6 +1108,133 @@ describe("H009 · the superseded words are rejected", () => {
       { say: "Fallback." },
     ]);
     expect(pathsOf(marked)).toStrictEqual([]);
+  });
+});
+
+describe("H010 · every flag id names its ledger", () => {
+  // OVERTURNED, on purpose. cards.ts used to hold that WHICH ledger a flag
+  // lives in "is resolution's business (H006), never the card's". It is the
+  // card's: `cross_push` already makes an author declare a gate's cross-push
+  // lifetime at the gate, so the card was in the lifetime business already.
+  //
+  // The lean word set leaves one write word and one gate key, so the id itself
+  // is the only place the fact can live — and a fact living inside a string is
+  // worth exactly what the check on it is worth. Hence this block: the closed
+  // prefix set, enforced at LOAD, is the price of the ruling and not optional.
+
+  it("accepts both prefixes under `set`, and a gate that reads the union", () => {
+    const both = withResponses([
+      {
+        if: { flags: ["flag:bench-shifted", "knowledge:tallow-seal"] },
+        say: "You know the seal, and the bench is off the boards.",
+      },
+      {
+        say: "You put your shoulder to it, and understand what the tallow is for.",
+        set: ["flag:hatch-open", "knowledge:things-kept-in-tallow"],
+      },
+    ]);
+    expect(pathsOf(both)).toStrictEqual([]);
+  });
+
+  it("rejects a bare id, by name and key path, and carries the prefixes", () => {
+    const bare = withResponses([{ say: "The iron gives.", set: ["hatch-open"] }]);
+    const path = "objects.thing.actions.peer[0].set[0]";
+    expect(pathsOf(bare)).toStrictEqual([path]);
+    expect(messageAt(bare, path)).toContain('"hatch-open" names no ledger');
+    // The fix is in the message: an author never reads engine source.
+    for (const prefix of LEDGER_PREFIXES) expect(messageAt(bare, path)).toContain(prefix);
+    expect(formatProblem(problemsOf(bare)[0] as Problem)).toBe(
+      `${FILE}: ${path} — ${messageAt(bare, path)}`,
+    );
+  });
+
+  it("rejects an unknown prefix — a typo never becomes a run flag quietly", () => {
+    // This is the whole reason the set is closed, and the dissent's sharpest
+    // objection to putting the ledger in a string: unchecked, `knowlege:` would
+    // load clean, and the campaign ledger would silently never be written.
+    const typo = withResponses([{ say: "You understand it.", set: ["knowlege:tallow-seal"] }]);
+    const path = "objects.thing.actions.peer[0].set[0]";
+    expect(pathsOf(typo)).toStrictEqual([path]);
+    expect(messageAt(typo, path)).toContain('"knowlege:tallow-seal" names no ledger');
+  });
+
+  it("rejects a prefix with no flag after it", () => {
+    const hollow = withResponses([{ say: "Something gives.", set: ["flag:"] }]);
+    const path = "objects.thing.actions.peer[0].set[0]";
+    expect(messageAt(hollow, path)).toContain("no flag after it");
+  });
+
+  it("refuses to unset knowledge — the ratchet does not turn back", () => {
+    // DESIGN §the descent: "knowledge ratchets cross-push (refusals + clues pay
+    // off on later meetings)". A ratchet you can lower is not a ratchet, and
+    // there is no word that unlearns.
+    const unlearn = withResponses([{ say: "You forget the seal.", unset: ["knowledge:tallow-seal"] }]);
+    const path = "objects.thing.actions.peer[0].unset[0]";
+    expect(pathsOf(unlearn)).toStrictEqual([path]);
+    expect(messageAt(unlearn, path)).toContain("RATCHETS");
+    expect(messageAt(unlearn, path)).toContain("`unset` lowers `flag:` ids only");
+  });
+
+  it("still lowers a run flag — `unset` did not stop being a word", () => {
+    expect(
+      pathsOf(withResponses([{ say: "The catch drops back.", unset: ["flag:latch-held"] }])),
+    ).toStrictEqual([]);
+  });
+
+  it("leaves door ids alone — `goto` names a declared door, not a flag", () => {
+    // The rule reaches `set`, `unset` and `flags`, and stops. A door is checked
+    // against this room's declarations; it is not a ledger entry, so a prefix
+    // on one is simply a door that was never declared.
+    expect(pathsOf(withResponses([{ say: "You go on.", goto: "door:on" }]))).toStrictEqual([]);
+    const prefixed = withResponses([{ say: "You go on.", goto: "flag:on" }]);
+    expect(messageAt(prefixed, "objects.thing.actions.peer[0].goto")).toContain(
+      "is not a door of this room",
+    );
+  });
+
+  it("leaves `items` alone — a pouch is not a ledger of flags", () => {
+    expect(
+      pathsOf(
+        withResponses([
+          { if: { items: ["item:greased-key"] }, say: "It is in your hand already." },
+          { say: "You have nothing that fits." },
+        ]),
+      ),
+    ).toStrictEqual([]);
+  });
+
+  it("names every offending id in a list, not just the first", () => {
+    const bad = withResponses([
+      { if: { flags: ["opened", "knowlege:x"] }, say: "Gated." },
+      { say: "Fallback." },
+    ]);
+    expect(pathsOf(bad)).toStrictEqual([
+      "objects.thing.actions.peer[0].if.flags[0]",
+      "objects.thing.actions.peer[0].if.flags[1]",
+    ]);
+  });
+
+  it("freezes the ledger prefixes", () => {
+    // Two ledgers, two prefixes (types.ts: run and campaign are the whole of
+    // the state). A third prefix would be a third BRANCH first, and its own
+    // Asana task — never a side effect (.llm/rules/engine.md).
+    expect(LEDGER_PREFIXES).toStrictEqual(["flag:", "knowledge:"]);
+  });
+
+  it("keeps the exemplar honest — every flag it writes names a ledger", () => {
+    // TALLOW_STORE is the file a content author copies, so the convention has
+    // to be visible in it rather than only in the loader.
+    const flags = everyResponse(TALLOW_STORE).flatMap((response) => [
+      ...(response.set ?? []),
+      ...(response.if?.flags ?? []),
+    ]);
+    expect(flags.length).toBeGreaterThan(0);
+    for (const flag of flags) {
+      expect(LEDGER_PREFIXES.some((prefix) => flag.startsWith(prefix)), flag).toBe(true);
+    }
+    // Both ledgers are exercised: a one-shot and a clue that outlives the push.
+    expect(flags).toContain("flag:vat-opened");
+    expect(flags).toContain("knowledge:things-kept-in-tallow");
   });
 });
 
