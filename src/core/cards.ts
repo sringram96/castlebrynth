@@ -33,7 +33,7 @@
 //   "Doors are the map: the next 2-3 doors appear as sensed descriptions
 //    (light, sound, smell). No map screen, ever."
 //        → `RoomCard.doors`: a declared door is an id and a sense line, both
-//          required, 1 to 3 of them (see `Doors`). A door has no destination
+//          required, 2 or 3 of them (see `Doors`). A door has no destination
 //          field here — nothing in a room card names another room.
 //
 // §content laws
@@ -42,11 +42,24 @@
 //        → there is no `tappable` flag anywhere in this file to toggle:
 //          presence IS tappability (types.ts `ViewObject`). Adds and removes
 //          are `reveal` and `remove`, and `ObjectChange.cause` is required.
+//          Removing the flag removed one WAY to toggle, not toggling: a card
+//          that can `remove` an object and `reveal` it again makes it
+//          pull/push forever, so the loader refuses any object named by both.
+//          An affordance leaves once, or arrives once, and not both.
 //   "no softlocks (always a path to exit, death, or the Crossing)"
-//        → every response list ends in an UNGATED fallback, enforced by the
-//          `Responses` tuple: a list that ends on a gate does not compile
-//          and does not load. A tap can therefore never fall through to
-//          nothing. A room also declares at least one door.
+//        → three things, and the third is the one that bites:
+//          (1) every response list ends in an UNGATED fallback, enforced by
+//              the `Responses` tuple — a list that ends on a gate does not
+//              compile and does not load, so a tap cannot fall through to
+//              nothing;
+//          (2) a room offers a way on at all: some response says `goto` or
+//              `fight`;
+//          (3) every DECLARED door is named by some `goto` in the same card.
+//          (3) is not optional and it is not the shell's problem. types.ts
+//          addresses every act as `Intent { object, action }` — a door is not
+//          an object, and `PanelView.actions` are `Intent`-addressed too — so
+//          a declared door is reachable ONLY through some object's `goto`.
+//          A sensed door no action goes through is a road painted on a wall.
 //   "journal records acts, never morals"
 //        → `journal` is a line, written by the author. Whether it moralises
 //          is a prose question, and prose is the content lint's lane.
@@ -80,6 +93,32 @@
 //                     and the bundle is H004's compiler. A card that also
 //                     declared its depth would be a second source of truth.
 //
+// Three more, each a thing DESIGN demands that this schema cannot yet SAY.
+// They are named so that the next card to want one finds the gap already
+// described rather than discovering it in the dark:
+//
+//   label             types.ts requires `ViewObject.label` and
+//                     `ActionOption.label` — non-optional strings — and no
+//                     field here feeds either. "REACH IN" is not derivable
+//                     from the key `reach`. H006 meets this immediately.
+//   cinema            types.ts `Effect` has kind "cinema", and §art direction
+//                     reserves it for first openings and glimpses of the
+//                     child. No room word reaches it, so a card cannot ask
+//                     for the camera to come close — this room's hatch opening
+//                     is exactly such a moment and cannot say so.
+//                     It is a RENDERING consequence too, not only a missing
+//                     effect: .llm/rules/art.md 3 sets a lens per register
+//                     (rooms F~115, cinema F~170+), so two registers need two
+//                     lenses and something must declare which one a still is.
+//                     That declaration is NOT this card's — `still` names an
+//                     asset, and whether the asset is a locked wide tableau or
+//                     a letterboxed close-up is a fact about the asset, not
+//                     about the room referencing it. The register question is
+//                     filed on H104, the scene renderer.
+//   geometry          §content laws forbids pixel hunts ("visible objects,
+//                     min hit size") and nothing here carries a position or a
+//                     size, so no lint can measure a tap target from a card.
+//
 // ────────────────────────────────────────────────────── what is NOT checked ──
 //
 // A ratified board ruling (H005's decision record, 2026-08-02) binds the
@@ -88,7 +127,9 @@
 // graph validation is DEFERRED to D002, which binds doors at draw time. So
 // this loader never asks where a door leads, whether a gate's key is
 // reachable, whether the graph is acyclic, or whether a depth's rooms add up.
-// Every check below is answerable from one card alone.
+// Every check below is answerable from one card alone — including the two
+// softlock checks and the toggle check, which read only this card's own
+// doors, objects and responses and never follow a door out of the room.
 //
 // Resolution — applying a delta to a state — is H006. Nothing here resolves.
 
@@ -113,22 +154,32 @@ export type Tier = "T0" | "T1" | "T2" | "T3";
  *
  * A gate with no condition in it is not a gate; the loader says so. The type
  * cannot: every key is optional, because any one of them may be the only one.
+ *
+ * THREE of the four keys are conditions. `cross_push` is not one — see below.
+ * A resolver evaluating a gate must skip exactly that key, and it is spelled
+ * the way DESIGN.md spells it so that an author copying the design document
+ * verbatim is never told their own vocabulary is unknown.
  */
 export interface Gate {
-  /** One-shots for this push (types.ts RunBranch.flags). */
+  /** CONDITION. One-shots for this push (types.ts RunBranch.flags). */
   readonly flags?: readonly Id[];
-  /** In the pouch, by item id. */
+  /** CONDITION. In the pouch, by item id. */
   readonly items?: readonly Id[];
-  /** Campaign knowledge — it survives death, so it ratchets cross-push. */
+  /** CONDITION. Campaign knowledge — survives death, so it ratchets cross-push. */
   readonly knows?: readonly Id[];
   /**
-   * The author's declaration that this gate's clue is NOT promised inside
-   * this push: it "pays off on a later meeting" (DESIGN §the descent, which
-   * spells this marker `cross_push`). Unmarked clue-locked gates are the ones
-   * a graph pass must prove satisfiable in-push — and that pass is D002's,
-   * not this loader's.
+   * NOT A CONDITION. Nothing about the state makes it true or false, and a
+   * resolver must evaluate the other three keys and SKIP this one — a gate
+   * carrying only `cross_push` gates on nothing, which is why the loader
+   * refuses it.
+   *
+   * It is the author's declaration that this gate's clue is not promised
+   * inside this push: it "pays off on a later meeting" (DESIGN §the descent,
+   * which spells the marker `cross_push`). Unmarked clue-locked gates are the
+   * ones a graph pass must prove satisfiable in-push — and that pass is
+   * D002's, not this loader's.
    */
-  readonly crossPush?: true;
+  readonly cross_push?: true;
 }
 
 // ────────────────────────────────────────────────────────────────── deltas ──
@@ -254,16 +305,18 @@ export interface Door {
 }
 
 /**
- * 1 to 3 doors, counted by the type.
+ * 2 or 3 doors, counted by the type. Both bounds are DESIGN's sentence:
+ * "the next 2-3 doors appear as sensed descriptions".
  *
- * DESIGN §the descent: "the next 2-3 doors appear as sensed descriptions".
- * The upper bound is that sentence. The lower bound is 1 rather than 2 on a
- * judgment call: a room with no door at all is a softlock under §content laws
- * (nothing in this vocabulary ends a push), while 2-3 reads as the shape of a
- * FORK, and a corridor with one way on is not a fork. If the board wants a
- * hard floor of two, this type and the loader's bound are the one-line change.
+ * The floor is 2 and not 1. Under FORWARD-ONLY with no map screen, WHICH DOOR
+ * to take is the only navigational decision the game ever offers; a floor of 1
+ * would let a descent be authored as a chain of corridors with no choice in
+ * it, and "doors are the map" does not survive a map with one road on it.
+ * Widening a bound later is safe, tightening one after content exists is not,
+ * and lowering this floor is a DESIGN.md amendment rather than a schema
+ * default.
  */
-export type Doors = readonly [Door] | readonly [Door, Door] | readonly [Door, Door, Door];
+export type Doors = readonly [Door, Door] | readonly [Door, Door, Door];
 
 // ───────────────────────────────────────────────────────────── the room card ──
 
@@ -315,8 +368,12 @@ const GATE_KEY_TABLE: KeyTable<Gate> = {
   flags: true,
   items: true,
   knows: true,
-  crossPush: true,
+  cross_push: true,
 };
+
+/** The three gate keys that are CONDITIONS. `cross_push` is not one of them:
+ *  it is a marking, and a resolver skips it. */
+const GATE_CONDITIONS = ["flags", "items", "knows"] as const;
 
 const DELTA_KEY_TABLE: KeyTable<Deltas> = {
   say: true,
@@ -464,25 +521,51 @@ function readGate(value: unknown, path: string, fault: Fault): void {
     return;
   }
   closed(value, GATE_KEY_TABLE, path, "gate key", GATE_KEYS, fault);
-  for (const key of ["flags", "items", "knows"] as const) {
+  for (const key of GATE_CONDITIONS) {
     if (value[key] !== undefined) idList(value[key], at(path, key), `\`${key}\``, fault);
   }
-  if (value["crossPush"] !== undefined && value["crossPush"] !== true) {
-    fault(at(path, "crossPush"), "`crossPush` is written only as true, or left out");
+  if (value["cross_push"] !== undefined && value["cross_push"] !== true) {
+    fault(at(path, "cross_push"), "`cross_push` is written only as true, or left out");
   }
-  if (value["flags"] === undefined && value["items"] === undefined && value["knows"] === undefined) {
-    fault(path, "a gate with no condition in it is not a gate — drop the `if`");
+  if (GATE_CONDITIONS.every((key) => value[key] === undefined)) {
+    fault(
+      path,
+      "a gate with no condition in it is not a gate — drop the `if`. " +
+        "`cross_push` is a marking, not a condition: it gates nothing on its own.",
+    );
   }
 }
 
-function readChange(
-  value: unknown,
-  path: string,
-  word: "reveal" | "remove",
-  objects: readonly string[],
-  latent: readonly string[],
-  fault: Fault,
-): void {
+/** One `reveal` or `remove`, and where it was written. Kept so the toggle
+ *  check can name both halves of a pull/push when it finds one. */
+interface Sighting {
+  readonly object: string;
+  readonly path: string;
+}
+
+/**
+ * One card being read: what it declares, what its responses turn out to do,
+ * and where to send a problem.
+ *
+ * The `gotos` / `fights` / `reveals` / `removes` lists are filled in as the
+ * responses are walked, because three laws are properties of the WHOLE card
+ * rather than of any one response — a door nothing reaches, a room with no way
+ * on, and an object that leaves and comes back. They are answered once the
+ * walk is over, and every one of them reads this card alone.
+ */
+interface Reading {
+  readonly fault: Fault;
+  readonly doors: readonly string[];
+  readonly objects: readonly string[];
+  readonly latent: readonly string[];
+  readonly gotos: string[];
+  readonly fights: string[];
+  readonly reveals: Sighting[];
+  readonly removes: Sighting[];
+}
+
+function readChange(value: unknown, path: string, word: "reveal" | "remove", read: Reading): void {
+  const fault = read.fault;
   if (!isRecord(value)) {
     fault(path, `\`${word}\` is a map: the object, and the cause it changed`);
     return;
@@ -497,15 +580,21 @@ function readChange(
   );
   const target = value["object"];
   if (typeof target !== "string" || target === "") return;
-  if (!objects.includes(target)) {
+  if (!read.objects.includes(target)) {
     fault(
       at(path, "object"),
       `"${target}" is not an object of this room. \`${word}\` reaches only this ` +
-        `room's own objects: ${objects.join(", ") || "(none declared)"}.`,
+        `room's own objects: ${read.objects.join(", ") || "(none declared)"}.`,
     );
     return;
   }
-  if (word === "reveal" && !latent.includes(target)) {
+  const sighting: Sighting = { object: target, path: at(path, "object") };
+  if (word === "remove") {
+    read.removes.push(sighting);
+    return;
+  }
+  read.reveals.push(sighting);
+  if (!read.latent.includes(target)) {
     fault(
       at(path, "object"),
       `"${target}" is already present when the room opens, so revealing it ` +
@@ -539,15 +628,8 @@ function readItems(value: unknown, path: string, fault: Fault): void {
   });
 }
 
-function readResponse(
-  value: unknown,
-  path: string,
-  last: boolean,
-  doors: readonly string[],
-  objects: readonly string[],
-  latent: readonly string[],
-  fault: Fault,
-): void {
+function readResponse(value: unknown, path: string, last: boolean, read: Reading): void {
+  const fault = read.fault;
   if (!isRecord(value)) {
     fault(path, "a response is a map of words");
     return;
@@ -582,7 +664,12 @@ function readResponse(
     line(value["journal"], at(path, "journal"), "`journal`, when written,", fault);
   }
   if (value["give"] !== undefined) readItems(value["give"], at(path, "give"), fault);
-  if (value["fight"] !== undefined) id(value["fight"], at(path, "fight"), "`fight` — an enemy id", fault);
+  if (value["fight"] !== undefined) {
+    id(value["fight"], at(path, "fight"), "`fight` — an enemy id", fault);
+    if (typeof value["fight"] === "string" && value["fight"] !== "") {
+      read.fights.push(value["fight"]);
+    }
+  }
 
   if (value["harm"] !== undefined) {
     const harm = value["harm"];
@@ -596,23 +683,26 @@ function readResponse(
   }
 
   if (value["reveal"] !== undefined) {
-    readChange(value["reveal"], at(path, "reveal"), "reveal", objects, latent, fault);
+    readChange(value["reveal"], at(path, "reveal"), "reveal", read);
   }
   if (value["remove"] !== undefined) {
-    readChange(value["remove"], at(path, "remove"), "remove", objects, latent, fault);
+    readChange(value["remove"], at(path, "remove"), "remove", read);
   }
 
   if (value["goto"] !== undefined) {
     const where = at(path, "goto");
     id(value["goto"], where, "`goto` — a door of this room", fault);
     const door = value["goto"];
-    if (typeof door === "string" && door !== "" && !doors.includes(door)) {
-      fault(
-        where,
-        `"${door}" is not a door of this room. \`goto\` names a door DECLARED ` +
-          `by the room you are standing in: ${doors.join(", ") || "(none declared)"}. ` +
-          `Where that door leads is bound at draw time, not here.`,
-      );
+    if (typeof door === "string" && door !== "") {
+      read.gotos.push(door);
+      if (!read.doors.includes(door)) {
+        fault(
+          where,
+          `"${door}" is not a door of this room. \`goto\` names a door DECLARED ` +
+            `by the room you are standing in: ${read.doors.join(", ") || "(none declared)"}. ` +
+            `Where that door leads is bound at draw time, not here.`,
+        );
+      }
     }
   }
 
@@ -632,20 +722,13 @@ function readResponse(
   }
 }
 
-function readResponses(
-  value: unknown,
-  path: string,
-  doors: readonly string[],
-  objects: readonly string[],
-  latent: readonly string[],
-  fault: Fault,
-): void {
+function readResponses(value: unknown, path: string, read: Reading): void {
   if (!Array.isArray(value)) {
-    fault(path, "an action is a list of responses, read top to bottom");
+    read.fault(path, "an action is a list of responses, read top to bottom");
     return;
   }
   if (value.length === 0) {
-    fault(
+    read.fault(
       path,
       "an action with no responses answers nothing — a list is one or more " +
         "gated responses, then one ungated fallback",
@@ -653,15 +736,7 @@ function readResponses(
     return;
   }
   value.forEach((response, index) => {
-    readResponse(
-      response,
-      nth(path, index),
-      index === value.length - 1,
-      doors,
-      objects,
-      latent,
-      fault,
-    );
+    readResponse(response, nth(path, index), index === value.length - 1, read);
   });
 }
 
@@ -708,12 +783,13 @@ export function loadRoom(file: string, source: unknown): LoadResult {
   if (!Array.isArray(doors)) {
     fault("doors", "a room declares its doors as a list — doors are the map (DESIGN §the descent)");
   } else {
-    if (doors.length < 1 || doors.length > 3) {
+    if (doors.length < 2 || doors.length > 3) {
       fault(
         "doors",
-        `a room senses 1 to 3 doors, not ${doors.length} — "the next 2-3 doors ` +
-          `appear as sensed descriptions" (DESIGN §the descent), and a room with ` +
-          `no door at all is a softlock`,
+        `a room senses 2 or 3 doors, not ${doors.length} — "the next 2-3 doors ` +
+          `appear as sensed descriptions" (DESIGN §the descent). Which door to ` +
+          `take is the only navigational decision the descent offers, so a room ` +
+          `with one way on is not a fork and the map has one road on it.`,
       );
     }
     doors.forEach((door, index) => {
@@ -755,6 +831,17 @@ export function loadRoom(file: string, source: unknown): LoadResult {
     return isRecord(object) && object["latent"] === true;
   });
 
+  const read: Reading = {
+    fault,
+    doors: doorIds,
+    objects: objectIds,
+    latent: latentIds,
+    gotos: [],
+    fights: [],
+    reveals: [],
+    removes: [],
+  };
+
   for (const key of objectIds) {
     const where = at("objects", key);
     const object = objects[key];
@@ -782,9 +869,53 @@ export function loadRoom(file: string, source: unknown): LoadResult {
     for (const action of Object.keys(actions)) {
       const actionPath = at(at(where, "actions"), action);
       if (action.trim() === "") fault(actionPath, "an action id is not blank");
-      readResponses(actions[action], actionPath, doorIds, objectIds, latentIds, fault);
+      readResponses(actions[action], actionPath, read);
     }
   }
+
+  // ── the three laws that are properties of the whole card ──────────────────
+  //
+  // Each reads only what this card declares and what this card's own responses
+  // do. None of them follows a door out of the room, so none of them trespasses
+  // on D002's cross-room graph pass.
+
+  // Affordance permanence. An object that can be removed and revealed again
+  // pulls and pushes forever, and "tappability never toggles" is exactly the
+  // thing that forbids. Reported at the reveal, naming the remove.
+  for (const revealed of read.reveals) {
+    const removed = read.removes.find((sighting) => sighting.object === revealed.object);
+    if (removed === undefined) continue;
+    fault(
+      revealed.path,
+      `"${revealed.object}" is removed at ${removed.path} and revealed here, so its ` +
+        `tappability toggles — an affordance arrives once, or leaves once, not both ` +
+        `(DESIGN §content laws: affordance permanence). Two objects, or one one-way change.`,
+    );
+  }
+
+  // No softlocks, first half: a way on exists at all.
+  if (read.gotos.length === 0 && read.fights.length === 0) {
+    fault(
+      "",
+      "this room offers no way on — no response says `goto` or `fight`, so a " +
+        "player who enters it cannot leave (DESIGN §content laws: no softlocks)",
+    );
+  }
+
+  // No softlocks, second half: every sensed door can actually be walked
+  // through. types.ts addresses every act as `Intent { object, action }`, and a
+  // door is not an object — so a door no `goto` names is a road painted on a
+  // wall, and the player is left choosing between doors that do not open.
+  doorIds.forEach((door, index) => {
+    if (read.gotos.includes(door)) return;
+    fault(
+      at(nth("doors", index), "id"),
+      `"${door}" is sensed but nothing goes through it — no response in this room ` +
+        `says \`goto: ${door}\`. Every act is addressed to an object and an action ` +
+        `(types.ts \`Intent\`), so a door is reached only through some object's ` +
+        `\`goto\` (DESIGN §content laws: no softlocks).`,
+    );
+  });
 
   if (problems.length > 0) return { ok: false, problems };
   // Every key, every word and every value above has been read. The cast is

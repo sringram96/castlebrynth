@@ -13,6 +13,10 @@
 // only honest way to test a compile error, and it is why the claims about
 // structural enforcement in cards.ts can be believed.
 //
+// Then the three laws that belong to a whole card rather than to any one
+// response: an affordance may not toggle, a room must offer a way on, and
+// every sensed door must be one that some action goes through.
+//
 // One word has no place in a quiet store room and so is not in the exemplar:
 // `fight`, the doorway into the Lots. It is covered in the loader block.
 
@@ -44,11 +48,15 @@ const FILE = "content/rooms/tallow-store.yaml";
  * The beats, so the shape reads as a room and not a table:
  *   · the vat is the risk — the free tap telegraphs the edge, REACH IN takes
  *     skin for a key, and a second reach finds only the hole it made;
- *   · the ladle leaves the room when you take it, with a cause;
+ *   · the ladle leaves the room when you work it out, with a cause, and
+ *     nothing in the card can put it back;
  *   · the bench shifts off a hatch that was not there before, with a cause;
  *   · the hatch is packed shut, and opens only on knowledge marked cross_push
  *     — a clue met on a different push, paying off on a later meeting;
- *   · three doors, sensed as light, sound and smell. No map screen.
+ *   · three doors, sensed as smell, light and sound, and every one of them is
+ *     walked through by some action in this room. No map screen.
+ *
+ * Every line is inside §frame's budget: 1-2 lines over a 240-wide canvas.
  */
 const TALLOW_STORE: RoomCard = {
   id: "room:tallow-store",
@@ -59,7 +67,7 @@ const TALLOW_STORE: RoomCard = {
   doors: [
     {
       id: "door:stair-down",
-      sense: "The far doorway stands open on a stair. The air off it is colder, and smells of wet stone.",
+      sense: "The far doorway, open on a stair. The air off it smells of wet stone.",
     },
     {
       id: "door:lamp-corridor",
@@ -73,7 +81,7 @@ const TALLOW_STORE: RoomCard = {
 
   objects: {
     vat: {
-      tap: "A vat of set tallow, skinned over grey. The skin is broken in one place, and the break is not soft.",
+      tap: "A vat of set tallow, skinned grey. The break in the skin is not soft.",
       actions: {
         reach: [
           {
@@ -81,7 +89,7 @@ const TALLOW_STORE: RoomCard = {
             say: "The hole your arm made holds its shape. The edges have gone hard.",
           },
           {
-            say: "Cold to the elbow. The fat gives, then holds. Something set in it opens your palm on the way out: a key, greased black.",
+            say: "Cold to the elbow. An edge opens your palm. A key comes up with it.",
             harm: 1,
             set: ["vat-opened"],
             give: [{ id: "item:greased-key", keep: "none" }],
@@ -97,10 +105,10 @@ const TALLOW_STORE: RoomCard = {
       actions: {
         take: [
           {
-            say: "The handle comes up with the tallow still on it. You keep it.",
+            say: "You work the handle out. The tallow closes over the hole it leaves.",
             give: [{ id: "item:tallow-ladle", keep: "none" }],
-            remove: { object: "ladle", cause: "the ladle is in your hand" },
-            journal: "Took the ladle out of the vat.",
+            remove: { object: "ladle", cause: "the ladle is out of the vat" },
+            journal: "Worked the ladle out of the tallow.",
           },
         ],
       },
@@ -109,14 +117,16 @@ const TALLOW_STORE: RoomCard = {
     bench: {
       tap: "A work bench, scrubbed pale. Wick-ends in a tin, cut to one length.",
       actions: {
-        peer: [{ say: "Every wick is the same length. The tin is full. Nobody here has burned one." }],
+        peer: [
+          { say: "Every wick is the same length. The tin is full. Nobody here burns one." },
+        ],
         shift: [
           {
             if: { flags: ["bench-shifted"] },
             say: "The bench stands where you put it. The boards under it are pale.",
           },
           {
-            say: "You put your shoulder to it. It comes off the boards, and there is iron underneath.",
+            say: "You put your shoulder to it. It comes off the boards, and iron shows.",
             set: ["bench-shifted"],
             reveal: { object: "hatch", cause: "the bench is shifted off it" },
           },
@@ -126,19 +136,19 @@ const TALLOW_STORE: RoomCard = {
 
     hatch: {
       latent: true,
-      tap: "A hatch in the floor, iron, flush with the boards. The seam is packed with tallow.",
+      tap: "A hatch in the floor, iron, flush with the boards. The seam is packed.",
       actions: {
         listen: [{ say: "Water, under the iron. A long way down, and moving." }],
         lift: [
           {
-            if: { knows: ["knowledge:tallow-seal"], crossPush: true },
-            say: "You work the seam until the tallow comes away in one piece. The hatch lifts, and the water is loud.",
+            if: { knows: ["knowledge:tallow-seal"], cross_push: true },
+            say: "You work the seam. The hatch lifts, and the water below is loud.",
             set: ["hatch-open"],
             goto: "door:under-floor",
           },
           {
             refuse: true,
-            say: "There is nothing to get hold of. The tallow in the seam has gone hard as wood.",
+            say: "There is nothing to get hold of. The tallow has gone hard as wood.",
           },
         ],
       },
@@ -169,22 +179,27 @@ const TALLOW_STORE: RoomCard = {
 /** The exemplar as a content file arrives: parsed data, no types attached. */
 const authored = (): unknown => JSON.parse(JSON.stringify(TALLOW_STORE));
 
+/** Every response in a card, with the object and action it hangs under. */
+const everyResponse = (card: RoomCard): readonly Responses[number][] => {
+  const out: Responses[number][] = [];
+  for (const key of Object.keys(card.objects)) {
+    const actions: { readonly [action: string]: Responses } =
+      (card.objects[key] as RoomObject).actions ?? {};
+    for (const action of Object.keys(actions)) out.push(...(actions[action] as Responses));
+  }
+  return out;
+};
+
 /** Every line of writing in a card, wherever it lives. */
 const prose = (card: RoomCard): readonly string[] => {
   const lines: string[] = [card.line];
   for (const door of card.doors) lines.push(door.sense);
-  for (const key of Object.keys(card.objects)) {
-    const object = card.objects[key] as RoomObject;
-    lines.push(object.tap);
-    const actions: { readonly [action: string]: Responses } = object.actions ?? {};
-    for (const action of Object.keys(actions)) {
-      for (const response of actions[action] as Responses) {
-        lines.push(response.say);
-        if (response.journal !== undefined) lines.push(response.journal);
-        if (response.reveal !== undefined) lines.push(response.reveal.cause);
-        if (response.remove !== undefined) lines.push(response.remove.cause);
-      }
-    }
+  for (const key of Object.keys(card.objects)) lines.push((card.objects[key] as RoomObject).tap);
+  for (const response of everyResponse(card)) {
+    lines.push(response.say);
+    if (response.journal !== undefined) lines.push(response.journal);
+    if (response.reveal !== undefined) lines.push(response.reveal.cause);
+    if (response.remove !== undefined) lines.push(response.remove.cause);
   }
   return lines;
 };
@@ -230,12 +245,30 @@ describe("H003 · the exemplar card", () => {
     }
   });
 
-  it("senses three doors and names no room beyond them", () => {
+  it("senses three doors, walks through all three, and names no room beyond them", () => {
+    const walked = everyResponse(TALLOW_STORE)
+      .map((response) => response.goto)
+      .filter((door): door is string => door !== undefined);
     expect(TALLOW_STORE.doors).toHaveLength(3);
     for (const door of TALLOW_STORE.doors) {
       expect(Object.keys(door).sort(), door.id).toStrictEqual(["id", "sense"]);
       expect(door.sense.length, door.id).toBeGreaterThan(0);
+      expect(walked, door.id).toContain(door.id);
     }
+  });
+
+  it("never removes an affordance it can put back", () => {
+    // Affordance permanence, in the exemplar's own shape: the ladle only ever
+    // leaves, the hatch only ever arrives, and no object does both.
+    const removed = everyResponse(TALLOW_STORE)
+      .map((response) => response.remove?.object)
+      .filter((object): object is string => object !== undefined);
+    const revealed = everyResponse(TALLOW_STORE)
+      .map((response) => response.reveal?.object)
+      .filter((object): object is string => object !== undefined);
+    expect(removed).toStrictEqual(["ladle"]);
+    expect(revealed).toStrictEqual(["hatch"]);
+    expect(removed.filter((object) => revealed.includes(object))).toStrictEqual([]);
   });
 
   it("keeps the T0 voice — nothing banned, in any line it writes", () => {
@@ -263,9 +296,31 @@ describe("H003 · the exemplar card", () => {
       }
     }
   });
+
+  it("keeps every line inside the frame's budget", () => {
+    // DESIGN §frame: "1-2 lines of writing on top". The budget is measurable
+    // rather than aesthetic because .llm/rules/art.md 6 fixes the canvas at
+    // "logical 240-wide portrait; INTEGER upscale only" and art.md 8 puts UI
+    // text at native res over the art — about 44 characters to a line, so 88
+    // is two of them. Every author copies this room, so one long line here
+    // becomes long lines everywhere.
+    for (const written of prose(TALLOW_STORE)) {
+      expect(written.length, `${written.length} chars: "${written}"`).toBeLessThanOrEqual(88);
+    }
+  });
 });
 
 // ─────────────────────────────────────────── unknown words are rejected at load ──
+
+/** The way on: an action that walks through each sensed door. A room without
+ *  one is a softlock, so every probe below carries it. */
+const WAY_ON = {
+  tap: "Two doors, both shut.",
+  actions: {
+    go: [{ say: "You go on.", goto: "door:on" }],
+    down: [{ say: "You go down.", goto: "door:down" }],
+  },
+};
 
 /** A minimal legal card, for one thing at a time to go wrong in. */
 const probe = (over: Record<string, unknown> = {}): Record<string, unknown> => ({
@@ -273,14 +328,21 @@ const probe = (over: Record<string, unknown> = {}): Record<string, unknown> => (
   tier: "T0",
   still: "still:probe",
   line: "A small room. Nothing in it moves.",
-  doors: [{ id: "door:on", sense: "Light under the far door." }],
-  objects: {},
+  doors: [
+    { id: "door:on", sense: "Light under the far door." },
+    { id: "door:down", sense: "Cold air off the near stair." },
+  ],
+  objects: { way: WAY_ON },
   ...over,
 });
 
+/** A probe card carrying the way on, plus whatever is under test. */
+const withObjects = (objects: Record<string, unknown>): Record<string, unknown> =>
+  probe({ objects: { way: WAY_ON, ...objects } });
+
 /** A probe card whose one object carries one action's response list. */
 const withResponses = (responses: readonly unknown[]): Record<string, unknown> =>
-  probe({ objects: { thing: { tap: "A thing on the floor.", actions: { peer: responses } } } });
+  withObjects({ thing: { tap: "A thing on the floor.", actions: { peer: responses } } });
 
 const problemsOf = (source: unknown): readonly Problem[] => {
   const result = loadRoom(FILE, source);
@@ -293,7 +355,8 @@ const messageAt = (source: unknown, path: string): string =>
   problemsOf(source).find((p) => p.path === path)?.message ?? `(no problem at ${path})`;
 
 describe("H003 · unknown words are rejected at LOAD, by path", () => {
-  it("accepts the exemplar, so a rejection below means something", () => {
+  it("accepts the probe and the exemplar, so a rejection below means something", () => {
+    expect(pathsOf(probe())).toStrictEqual([]);
     expect(pathsOf(authored())).toStrictEqual([]);
   });
 
@@ -321,6 +384,24 @@ describe("H003 · unknown words are rejected at LOAD, by path", () => {
     );
   });
 
+  it("spells the cross-push marking the way DESIGN.md spells it", () => {
+    // An author copying DESIGN §the descent verbatim writes `cross_push`, and
+    // must not be told their own vocabulary is unknown.
+    const asDesigned = withResponses([
+      { if: { knows: ["knowledge:x"], cross_push: true }, say: "Known." },
+      { say: "Fallback." },
+    ]);
+    expect(pathsOf(asDesigned)).toStrictEqual([]);
+
+    const camel = withResponses([
+      { if: { knows: ["knowledge:x"], crossPush: true }, say: "Known." },
+      { say: "Fallback." },
+    ]);
+    expect(messageAt(camel, "objects.thing.actions.peer[0].if.crossPush")).toContain(
+      'unknown gate key "crossPush"',
+    );
+  });
+
   it("rejects an unknown room key", () => {
     const bad = probe({ depth: 1 });
     expect(pathsOf(bad)).toContain("depth");
@@ -328,13 +409,18 @@ describe("H003 · unknown words are rejected at LOAD, by path", () => {
   });
 
   it("rejects an unknown object key — including a tappable flag", () => {
-    const bad = probe({ objects: { thing: { tap: "A thing.", tappable: true } } });
+    const bad = withObjects({ thing: { tap: "A thing.", tappable: true } });
     expect(pathsOf(bad)).toContain("objects.thing.tappable");
     expect(messageAt(bad, "objects.thing.tappable")).toContain('unknown object key "tappable"');
   });
 
   it("rejects an unknown door key — a door cannot name where it leads", () => {
-    const bad = probe({ doors: [{ id: "door:on", sense: "Light.", to: "room:next" }] });
+    const bad = probe({
+      doors: [
+        { id: "door:on", sense: "Light.", to: "room:next" },
+        { id: "door:down", sense: "Cold." },
+      ],
+    });
     expect(pathsOf(bad)).toContain("doors[0].to");
     expect(messageAt(bad, "doors[0].to")).toContain('unknown door key "to"');
   });
@@ -355,6 +441,7 @@ describe("H003 · unknown words are rejected at LOAD, by path", () => {
     const bad = probe({
       mood: "damp",
       objects: {
+        way: WAY_ON,
         thing: { tap: "A thing.", glow: true, actions: { peer: [{ say: "A line.", sey: "x" }] } },
       },
     });
@@ -382,7 +469,7 @@ describe("H003 · the free-tap line is structurally mandatory", () => {
   });
 
   it("also refuses it at load, for authored files that tsc never sees", () => {
-    const bad = probe({ objects: { thing: { actions: {} } } });
+    const bad = withObjects({ thing: { actions: {} } });
     expect(pathsOf(bad)).toContain("objects.thing.tap");
     expect(messageAt(bad, "objects.thing.tap")).toContain("`tap`");
   });
@@ -419,7 +506,7 @@ describe("H003 · a response list ends in an ungated fallback", () => {
   it("compiles a lone ungated response, and a gated stack above one", () => {
     const lone: Responses = [{ say: "The only answer." }];
     const stack: Responses = [
-      { if: { knows: ["knowledge:x"], crossPush: true }, say: "Known." },
+      { if: { knows: ["knowledge:x"], cross_push: true }, say: "Known." },
       { if: { items: ["item:key"] }, say: "Carried." },
       { say: "Neither." },
     ];
@@ -439,13 +526,21 @@ describe("H003 · a response list ends in an ungated fallback", () => {
     expect(messageAt(empty, "objects.thing.actions.peer")).toContain("answers nothing");
   });
 
-  it("refuses a gate with nothing in it — the loader's job, not the type's", () => {
+  it("refuses a gate with nothing in it, cross_push included", () => {
     const hollow = withResponses([{ if: {}, say: "Gated on nothing." }, { say: "Fallback." }]);
     expect(messageAt(hollow, "objects.thing.actions.peer[0].if")).toContain("is not a gate");
+
+    // cross_push is a marking, not a condition: it gates nothing on its own,
+    // and a resolver evaluating a gate skips exactly this key.
+    const marked = withResponses([
+      { if: { cross_push: true }, say: "Marked." },
+      { say: "Fallback." },
+    ]);
+    expect(messageAt(marked, "objects.thing.actions.peer[0].if")).toContain("not a condition");
   });
 });
 
-describe("H003 · doors are 1 to 3, sensed, and counted by the type", () => {
+describe("H003 · doors are 2 or 3, sensed, and counted by the type", () => {
   it("does not compile four doors", () => {
     // @ts-expect-error — "the next 2-3 doors appear as sensed descriptions".
     const tooMany: Doors = [
@@ -455,6 +550,13 @@ describe("H003 · doors are 1 to 3, sensed, and counted by the type", () => {
       { id: "d", sense: "Cold." },
     ];
     expect(tooMany).toBeDefined();
+  });
+
+  it("does not compile a single door — a corridor is not a fork", () => {
+    // @ts-expect-error — which door to take is the only navigational decision
+    // the descent offers, and a map with one road on it is not a map.
+    const chain: Doors = [{ id: "a", sense: "Light." }];
+    expect(chain).toBeDefined();
   });
 
   it("does not compile a room with no door", () => {
@@ -467,18 +569,26 @@ describe("H003 · doors are 1 to 3, sensed, and counted by the type", () => {
   it("refuses the same counts at load", () => {
     const four = probe({
       doors: [
-        { id: "a", sense: "Light." },
-        { id: "b", sense: "Sound." },
+        { id: "door:on", sense: "Light." },
+        { id: "door:down", sense: "Sound." },
         { id: "c", sense: "Smell." },
         { id: "d", sense: "Cold." },
       ],
     });
-    expect(messageAt(four, "doors")).toContain("1 to 3 doors, not 4");
-    expect(messageAt(probe({ doors: [] }), "doors")).toContain("1 to 3 doors, not 0");
+    expect(messageAt(four, "doors")).toContain("2 or 3 doors, not 4");
+    expect(messageAt(probe({ doors: [{ id: "door:on", sense: "Light." }] }), "doors")).toContain(
+      "2 or 3 doors, not 1",
+    );
+    expect(messageAt(probe({ doors: [] }), "doors")).toContain("2 or 3 doors, not 0");
   });
 
   it("requires the sense line — it is the whole of the map", () => {
-    const blind = probe({ doors: [{ id: "door:on", sense: "" }] });
+    const blind = probe({
+      doors: [
+        { id: "door:on", sense: "" },
+        { id: "door:down", sense: "Cold." },
+      ],
+    });
     expect(pathsOf(blind)).toContain("doors[0].sense");
     expect(messageAt(blind, "doors[0].sense")).toContain("no map screen");
   });
@@ -511,9 +621,75 @@ describe("H003 · goto names a declared door of THIS room", () => {
     // The ruling this card was given (H005's decision record, 2026-08-02):
     // declaration-presence is checked here; the graph is bound at draw time.
     // The proof is that a door has no room-naming key at all, and a card whose
-    // doors lead somewhere this loader has never heard of is clean.
+    // doors lead somewhere this loader has never heard of is clean. The two
+    // softlock checks below read this same one card and follow nothing out.
     expect(DOOR_KEYS).toStrictEqual(["id", "sense"]);
     expect(pathsOf(authored())).toStrictEqual([]);
+  });
+});
+
+// ──────────────────────────────────────── the laws that belong to a whole card ──
+
+describe("H003 · no softlocks — the room offers a way on", () => {
+  it("refuses a room where nothing says goto or fight", () => {
+    const stranded = probe({
+      objects: { thing: { tap: "A thing.", actions: { peer: [{ say: "Nothing gives." }] } } },
+    });
+    expect(messageAt(stranded, "")).toContain("offers no way on");
+    expect(formatProblem(problemsOf(stranded)[0] as Problem)).toContain("(root)");
+  });
+
+  it("accepts a fight as the way on, without a goto of its own", () => {
+    // FIGHT is the other doorway (DESIGN §the two engines, one doorway). The
+    // sensed doors still have to be walked through, so this card is judged on
+    // both counts and passes both.
+    const arena = withObjects({
+      thing: {
+        tap: "It is already standing.",
+        actions: { peer: [{ say: "It turns.", fight: "enemy:x" }] },
+      },
+    });
+    expect(pathsOf(arena)).toStrictEqual([]);
+  });
+});
+
+describe("H003 · no softlocks — every sensed door is walked through", () => {
+  it("refuses a door nothing goes through", () => {
+    const halfMapped = probe({
+      objects: {
+        way: { tap: "Two doors.", actions: { go: [{ say: "You go on.", goto: "door:on" }] } },
+      },
+    });
+    expect(pathsOf(halfMapped)).toStrictEqual(["doors[1].id"]);
+    expect(messageAt(halfMapped, "doors[1].id")).toContain('"door:down" is sensed but nothing goes');
+    // Why this is the schema's business and not the shell's: types.ts addresses
+    // every act as `Intent { object, action }`, and a door is not an object.
+    expect(messageAt(halfMapped, "doors[1].id")).toContain("Intent");
+  });
+
+  it("names every unwalked door, not just the first", () => {
+    const painted = probe({
+      objects: { thing: { tap: "A thing.", actions: { peer: [{ say: "Nothing gives." }] } } },
+    });
+    expect(pathsOf(painted)).toStrictEqual(["", "doors[0].id", "doors[1].id"]);
+  });
+
+  it("counts a goto from any object, in any action, gated or not", () => {
+    const scattered = probe({
+      objects: {
+        one: { tap: "One.", actions: { go: [{ say: "On.", goto: "door:on" }] } },
+        two: {
+          tap: "Two.",
+          actions: {
+            go: [
+              { if: { flags: ["opened"] }, say: "Down.", goto: "door:down" },
+              { say: "It does not give." },
+            ],
+          },
+        },
+      },
+    });
+    expect(pathsOf(scattered)).toStrictEqual([]);
   });
 });
 
@@ -524,15 +700,60 @@ describe("H003 · affordance permanence", () => {
     expect(OBJECT_KEYS).not.toContain("visible");
   });
 
-  it("requires a cause on a reveal", () => {
-    const causeless = probe({
-      objects: {
-        thing: {
-          tap: "A thing.",
-          actions: { peer: [{ say: "It shifts.", reveal: { object: "under" } }] },
+  it("refuses an object that can be removed and then revealed again", () => {
+    // Dropping the `tappable` key removed one WAY to toggle, not toggling:
+    // `remove` on one action plus `reveal` on another is pull/push forever.
+    const pullPush = withObjects({
+      latch: { latent: true, tap: "A latch, set in the frame." },
+      hand: {
+        tap: "The frame, and the latch in it.",
+        actions: {
+          pull: [
+            {
+              say: "It comes away.",
+              remove: { object: "latch", cause: "the latch is in your hand" },
+            },
+          ],
+          push: [
+            {
+              say: "It seats again.",
+              reveal: { object: "latch", cause: "the latch is set again" },
+            },
+          ],
         },
-        under: { latent: true, tap: "What was under it." },
       },
+    });
+    const path = "objects.hand.actions.push[0].reveal.object";
+    expect(pathsOf(pullPush)).toStrictEqual([path]);
+    expect(messageAt(pullPush, path)).toContain("tappability toggles");
+    // The problem names BOTH halves, so an author can see the whole loop.
+    expect(messageAt(pullPush, path)).toContain("objects.hand.actions.pull[0].remove.object");
+  });
+
+  it("allows an affordance that only leaves, or only arrives", () => {
+    const oneWay = withObjects({
+      latch: { latent: true, tap: "A latch, set in the frame." },
+      ladle: { tap: "A ladle." },
+      hand: {
+        tap: "The frame.",
+        actions: {
+          push: [{ say: "It seats.", reveal: { object: "latch", cause: "the frame gives" } }],
+          take: [
+            { say: "It comes up.", remove: { object: "ladle", cause: "the ladle is in your hand" } },
+          ],
+        },
+      },
+    });
+    expect(pathsOf(oneWay)).toStrictEqual([]);
+  });
+
+  it("requires a cause on a reveal", () => {
+    const causeless = withObjects({
+      thing: {
+        tap: "A thing.",
+        actions: { peer: [{ say: "It shifts.", reveal: { object: "under" } }] },
+      },
+      under: { latent: true, tap: "What was under it." },
     });
     const path = "objects.thing.actions.peer[0].reveal.cause";
     expect(pathsOf(causeless)).toContain(path);
@@ -561,16 +782,14 @@ describe("H003 · affordance permanence", () => {
   });
 
   it("accepts a reveal of a latent object, with its cause", () => {
-    const clean = probe({
-      objects: {
-        thing: {
-          tap: "A thing.",
-          actions: {
-            peer: [{ say: "It shifts.", reveal: { object: "under", cause: "the thing is moved" } }],
-          },
+    const clean = withObjects({
+      thing: {
+        tap: "A thing.",
+        actions: {
+          peer: [{ say: "It shifts.", reveal: { object: "under", cause: "the thing is moved" } }],
         },
-        under: { latent: true, tap: "What was under it." },
       },
+      under: { latent: true, tap: "What was under it." },
     });
     expect(pathsOf(clean)).toStrictEqual([]);
   });
@@ -596,7 +815,7 @@ describe("H003 · the vocabulary is closed, and frozen", () => {
   });
 
   it("freezes the gate keys and the response keys", () => {
-    expect(GATE_KEYS).toStrictEqual(["flags", "items", "knows", "crossPush"]);
+    expect(GATE_KEYS).toStrictEqual(["flags", "items", "knows", "cross_push"]);
     expect(RESPONSE_KEYS).toStrictEqual(["if", ...DELTA_WORDS]);
   });
 
@@ -607,11 +826,17 @@ describe("H003 · the vocabulary is closed, and frozen", () => {
     expect(KEEPS).toStrictEqual(["none", "kept", "key"]);
   });
 
-  it("has no word for spending tithes, taking an item, or moving backwards", () => {
+  it("has no word for the things the header names as absent", () => {
     // Stated absences, not oversights — see the header of cards.ts. The board
-    // owns each of them; none is a side effect of this card.
+    // owns each of them; none is a side effect of this card. `label`, `cinema`
+    // and object geometry are named there too: things DESIGN demands that this
+    // schema cannot yet say, and that H006 and the art lint will need.
     for (const absent of ["tithes", "pay", "take", "back", "qte", "sanity", "might", "will"]) {
       expect(DELTA_WORDS as readonly string[], absent).not.toContain(absent);
+    }
+    for (const absent of ["label", "cinema", "at", "size"]) {
+      expect(DELTA_WORDS as readonly string[], absent).not.toContain(absent);
+      expect(OBJECT_KEYS as readonly string[], absent).not.toContain(absent);
     }
   });
 });
@@ -621,7 +846,9 @@ describe("H003 · a refusal is a refusal", () => {
     const paid = withResponses([
       { refuse: true, say: "The labyrinth says no.", give: [{ id: "item:x", keep: "none" }] },
     ]);
-    expect(messageAt(paid, "objects.thing.actions.peer[0]")).toContain("carries no delta but its line");
+    expect(messageAt(paid, "objects.thing.actions.peer[0]")).toContain(
+      "carries no delta but its line",
+    );
   });
 
   it("accepts a refusal that only speaks", () => {
