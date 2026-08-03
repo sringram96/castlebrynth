@@ -3,7 +3,7 @@
 // Types only: this file emits no runtime value. src/core is pure — no DOM, no
 // I/O, no Date, no Math.random, no console (.llm/rules/engine.md).
 //
-// Three laws are carried by the type system here, not by comments:
+// Four laws are carried by the type system here, not by comments:
 //
 //   1. NOTHING IN THE STATE IS WRITABLE. Every field is `readonly` and every
 //      list is a ReadonlyArray, all the way down. So `view` — the free tap —
@@ -20,6 +20,13 @@
 //   3. THE STATE IS JSON. Every field is a JSON primitive, an object of them,
 //      or a list of them: no Map, no Set, no Date, no class, no undefined. A
 //      run is `seed + deaths + inputs`, exactly, and it must survive a save.
+//
+//   4. NO SANITY BAR EXISTS ANYWHERE (DESIGN §frame). Sanity is a `Pool` like
+//      hp — "either bar at zero is death, by the same rule" — and `Strip`, the
+//      list of bars that render, has NO FIELD for it. There is nowhere to put
+//      one, so the design's sentence is a type rather than a comment. The only
+//      route sanity has to the screen is `GameView.vignette`, derived by
+//      `view` and stored nowhere.
 //
 // Behaviour lives elsewhere by design: H002 the RNG algorithm, H003 rooms,
 // H004 the content compiler, H006 resolution.
@@ -96,10 +103,17 @@ export interface Vitals {
   readonly might: Pool;
   readonly will: Pool;
   /**
-   * 0 = clear, 1 = closed. This is the vignette, and only the vignette: no
-   * sanity bar exists anywhere on screen (DESIGN §frame).
+   * The sanity bar. 0 = death, by the same rule as `hp` — DESIGN §ledgers:
+   * "EITHER bar at zero — health or sanity — is death, by the same rule". The
+   * same rule makes it the same kind of quantity, so it is the same type, and
+   * a room moves it with the same arithmetic (cards.ts `Adjust`).
+   *
+   * Tracked, and never rendered as a number or a bar. It reaches the shell
+   * only as `GameView.vignette` — derived, 0 = clear, 1 = closed, running the
+   * other way from the bar it reads — and `Strip` has no field for it at all
+   * (DESIGN §frame, .llm/rules/ui.md 5).
    */
-  readonly sanity: number;
+  readonly sanity: Pool;
 }
 
 // ──────────────────────────────────────────────────────────── the two branches ──
@@ -124,9 +138,10 @@ export interface RunBranch {
   readonly equipment: EquipmentSlots;
   readonly small: SmallSlots;
   readonly skills: readonly SkillState[];
-  /** One-shots for this push: doors opened, ambushes already sprung. Anything
-   *  that must ratchet across pushes is knowledge, and lives on the campaign
-   *  branch instead. */
+  /** One-shots for this push: doors opened, ambushes already sprung. Every id
+   *  here carries `flag:` — a card names the ledger it writes in the id's own
+   *  prefix (cards.ts `LedgerPrefix`). Anything that must ratchet across
+   *  pushes carries `knowledge:` and lives on the campaign branch instead. */
   readonly flags: readonly Id[];
 }
 
@@ -141,7 +156,12 @@ export interface CampaignBranch {
   readonly branch: "campaign";
   /** DICE SURVIVE DEATH — law. */
   readonly dice: readonly DieRef[];
-  /** Machine-readable understanding: what gates may now open. */
+  /** Machine-readable understanding: what gates may now open. This is where
+   *  `knowledge:`-prefixed ids live, and the prefix is the whole of how a card
+   *  says so (cards.ts `LedgerPrefix`) — there is no second field and no second
+   *  write word. It RATCHETS: `set` raises knowledge, and nothing lowers it —
+   *  `unset` of a `knowledge:` id fails at LOAD, because a ratchet you can
+   *  lower is not a ratchet (DESIGN §the descent). */
   readonly knowledge: readonly Id[];
   /** Human-readable lines. Records acts, never morals (DESIGN §content laws). */
   readonly journal: readonly string[];
@@ -203,7 +223,10 @@ export interface GameView {
   readonly panel: PanelView;
   /** The permanent strip. Never collapses, never hides (.llm/rules/ui.md). */
   readonly strip: Strip;
-  /** Sanity, as the vignette closes in. No bar (DESIGN §frame). */
+  /** Sanity, as the vignette closes in: 0 = clear, 1 = closed. DERIVED from
+   *  `RunBranch.vitals.sanity` by `view` and stored nowhere, and it is the ONLY
+   *  way sanity reaches the shell — there is no bar and no number
+   *  (DESIGN §frame, .llm/rules/ui.md 5). */
   readonly vignette: number;
 }
 
@@ -228,7 +251,17 @@ export interface ActionOption {
   readonly label: string;
 }
 
-/** HP · Might · Will · ◎ tithes · depth (DESIGN §frame). */
+/**
+ * HP · Might · Will · ◎ tithes · depth (DESIGN §frame).
+ *
+ * SANITY IS NOT HERE, and its absence is the law rather than an oversight.
+ * This interface is the list of bars that render, so a `sanity` field on it
+ * would BE the bar DESIGN §frame forbids — "no sanity bar exists anywhere".
+ * Sanity is a `Pool` on the state like any other (`Vitals.sanity`), and the
+ * one thing that must stay true of it is that nothing can draw it: it leaves
+ * the engine only as `GameView.vignette`. Adding a field here is not a widening
+ * of the strip, it is the repeal of a design law, and tsc refuses it today.
+ */
 export interface Strip {
   readonly hp: Pool;
   readonly might: Pool;

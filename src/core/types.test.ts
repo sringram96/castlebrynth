@@ -11,8 +11,12 @@ import type {
   DeathTransition,
   EquipmentSlots,
   GameState,
+  GameView,
   ItemRef,
+  Pool,
   RunBranch,
+  Strip,
+  Vitals,
 } from "./types";
 
 const CAMPAIGN: CampaignBranch = {
@@ -34,7 +38,9 @@ const RUN: RunBranch = {
     hp: { current: 0, max: 0 },
     might: { current: 0, max: 0 },
     will: { current: 0, max: 0 },
-    sanity: 0,
+    // H010: a bar, exactly like hp — "either bar at zero is death, by the same
+    // rule" (DESIGN §ledgers), so the same rule gets the same type.
+    sanity: { current: 0, max: 0 },
   },
   tithes: 0,
   consumables: [],
@@ -62,7 +68,9 @@ describe("H001 · state is JSON", () => {
       campaign: {
         ...CAMPAIGN,
         dice: [{ id: "die:hollow" }],
-        knowledge: ["knows_glyph"],
+        // H010: campaign ids carry `knowledge:`, run ids carry `flag:` — the
+        // prefix is how a card names the ledger it writes (cards.ts).
+        knowledge: ["knowledge:knows_glyph"],
         journal: ["procession"],
         refused: [{ intent: { object: "book", action: "read" }, depth: 0 }],
         landmarks: ["landmark:well"],
@@ -77,7 +85,7 @@ describe("H001 · state is JSON", () => {
         equipment: [key, null, null, null],
         small: [null, { id: "item:knife", keep: "kept" }],
         skills: [{ id: "skill:steady", uses: { current: 1, max: 2 } }],
-        flags: ["read_book"],
+        flags: ["flag:read_book"],
       },
     };
     const text = JSON.stringify(furnished);
@@ -138,7 +146,7 @@ describe("H001 · run and campaign are disjoint branches", () => {
       small: [null, null],
       flags: [],
     });
-    const reborn = rebirth({ ...RUN, depth: 4, tithes: 12, flags: ["opened_gate"] });
+    const reborn = rebirth({ ...RUN, depth: 4, tithes: 12, flags: ["flag:opened_gate"] });
     expect(reborn.depth).toBe(0);
     expect(reborn.tithes).toBe(0);
     expect(reborn.flags).toStrictEqual([]);
@@ -175,5 +183,48 @@ describe("H001 · design law the compiler keeps", () => {
     // @ts-expect-error — an array read may be undefined, and must be handled
     const first: ItemRef = RUN.consumables[0];
     expect(first).toBeUndefined();
+  });
+});
+
+describe("H010 · no sanity bar exists anywhere", () => {
+  // DESIGN §frame: "Sanity is the vignette closing in — no sanity bar exists
+  // anywhere." This block is the whole reason sanity may safely BE a `Pool`:
+  // a Pool is what the three rendered bars are, so the honest objection to
+  // typing it as one is that it now LOOKS like them. The answer is that
+  // looking like them is not enough to become one — there is nowhere to put
+  // it on the strip, and tsc is what says so.
+  const POOL: Pool = { current: 3, max: 4 };
+
+  it("types sanity as a bar, by the same rule as hp", () => {
+    // DESIGN §ledgers: "EITHER bar at zero — health or sanity — is death, by
+    // the same rule." Same rule, same kind of quantity, same type.
+    const vitals: Vitals = { hp: POOL, might: POOL, will: POOL, sanity: POOL };
+    // @ts-expect-error — sanity is a Pool, not the vignette's 0..1 scalar. The
+    // vignette is DERIVED from this bar and lives only on GameView.
+    const scalar: Vitals = { hp: POOL, might: POOL, will: POOL, sanity: 0.25 };
+    expect(vitals.sanity).toStrictEqual(vitals.hp);
+    expect(scalar).toBeDefined();
+  });
+
+  it("gives the strip no sanity field to draw", () => {
+    // The strip is the list of bars that render (DESIGN §frame: HP · Might ·
+    // Will · ◎ tithes · depth). A sanity field here would BE the forbidden
+    // bar, so its absence is the law — not a note asking a renderer to behave.
+    const strip: Strip = { hp: POOL, might: POOL, will: POOL, tithes: 0, depth: 0 };
+    // @ts-expect-error — there is nowhere on `Strip` to put sanity, and adding
+    // one is the repeal of a design law rather than a widening of a type.
+    const barred: Strip = { hp: POOL, might: POOL, will: POOL, tithes: 0, depth: 0, sanity: POOL };
+    expect(Object.keys(strip)).not.toContain("sanity");
+    expect(Object.keys(strip).sort()).toStrictEqual(["depth", "hp", "might", "tithes", "will"]);
+    expect(barred).toBeDefined();
+  });
+
+  it("lets sanity reach the shell only as the vignette", () => {
+    // @ts-expect-error — `GameView` has no sanity of any shape: the derived
+    // `vignette` is the whole of what the shell is handed.
+    const leaked: GameView["sanity"] = 0;
+    const vignette: GameView["vignette"] = 0.5;
+    expect(leaked).toBeDefined();
+    expect(vignette).toBe(0.5);
   });
 });

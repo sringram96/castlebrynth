@@ -109,7 +109,8 @@ describe("H001 · view is the free tap", () => {
     expect(v.strip.depth).toBe(state.run.depth);
     expect(v.strip.tithes).toBe(state.run.tithes);
     expect(v.strip.hp).toStrictEqual(state.run.vitals.hp);
-    expect(v.vignette).toBe(state.run.vitals.sanity);
+    expect(v.strip.might).toStrictEqual(state.run.vitals.might);
+    expect(v.strip.will).toStrictEqual(state.run.vitals.will);
   });
 
   it("is pure: the same state gives the same picture", () => {
@@ -119,6 +120,58 @@ describe("H001 · view is the free tap", () => {
 
   it("answers to getView, the name H000 imports", () => {
     expect(getView).toBe(view);
+  });
+});
+
+describe("H010 · the vignette is the whole of what sanity shows", () => {
+  /** The fresh save with the sanity bar set to a reading. */
+  const withSanity = (current: number, max: number): GameState => {
+    const state = newRun(42, BUNDLE);
+    return {
+      ...state,
+      run: { ...state.run, vitals: { ...state.run.vitals, sanity: { current, max } } },
+    };
+  };
+
+  it("derives the aperture from the bar, and runs it the other way", () => {
+    // The bar and the aperture are opposites on purpose: a full bar is a clear
+    // frame, and an empty one is a closed one — and an empty one is also death,
+    // by the same rule as hp (DESIGN §ledgers).
+    expect(view(withSanity(4, 4)).vignette).toBe(0);
+    expect(view(withSanity(3, 4)).vignette).toBe(0.25);
+    expect(view(withSanity(2, 4)).vignette).toBe(0.5);
+    expect(view(withSanity(0, 4)).vignette).toBe(1);
+  });
+
+  it("answers 0 on an unfilled bar, rather than NaN", () => {
+    // `freshRun` opens every pool at {0, 0} — starting bars are balance, and
+    // balance is content (H004). So 0/0 is the FIRST state this ever meets,
+    // and without the guard every fresh save would render a NaN aperture.
+    const fresh = newRun(42, BUNDLE);
+    expect(fresh.run.vitals.sanity).toStrictEqual({ current: 0, max: 0 });
+    expect(view(fresh).vignette).toBe(0);
+    expect(Number.isNaN(view(fresh).vignette)).toBe(false);
+    expect(Number.isNaN(view(withSanity(0, 0)).vignette)).toBe(false);
+  });
+
+  it("keeps sanity off the strip — there is no bar to find", () => {
+    // DESIGN §frame: "no sanity bar exists anywhere". types.test.ts proves the
+    // TYPE has no room for one; this proves the picture `view` actually builds
+    // carries none either, and that the only name sanity answers to is
+    // `vignette` (.llm/rules/ui.md 5: no sanity number is ever rendered).
+    const v = view(withSanity(1, 4));
+    expect(Object.keys(v.strip).sort()).toStrictEqual(["depth", "hp", "might", "tithes", "will"]);
+    expect(Object.keys(v.strip)).not.toContain("sanity");
+    expect(Object.keys(v)).not.toContain("sanity");
+    expect(JSON.stringify(v)).not.toContain("sanity");
+  });
+
+  it("stores the vignette nowhere — it is derived on every look", () => {
+    const state = withSanity(1, 4);
+    const before = clone(state);
+    expect(view(state).vignette).toBe(0.75);
+    expect(clone(state)).toStrictEqual(before);
+    expect(JSON.stringify(state)).not.toContain("vignette");
   });
 });
 

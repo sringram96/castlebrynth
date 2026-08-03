@@ -34,7 +34,11 @@
 //          ratchet is the MARKING on the gate rather than a second verb
 //          (.llm/rules/engine.md, the lean word set). Which ledger holds a
 //          given flag — this push's one-shots or the campaign's knowledge —
-//          is resolution's business (H006), and a card never says.
+//          IS the card's to say, and it says it in the id's own prefix:
+//          `flag:` or `knowledge:`. H010 OVERTURNED the opposite sentence that
+//          stood here; see `Gate` below for why it never held. `unset` of a
+//          `knowledge:` id is a LOAD error, because knowledge ratchets and a
+//          ratchet you can lower is not a ratchet.
 //   "Doors are the map: the next 2-3 doors appear as sensed descriptions
 //    (light, sound, smell). No map screen, ever."
 //        → `RoomCard.doors`: a declared door is an id and a sense line, both
@@ -142,6 +146,37 @@ import type { Id, ItemRef, Keep } from "./types";
  *  inside it; the prose scan that holds it there is the content lint's. */
 export type Tier = "T0" | "T1" | "T2" | "T3";
 
+// ───────────────────────────────────────────────────────── the ledger prefix ──
+
+/**
+ * Which ledger a flag id names, said by the id itself.
+ *
+ *   `flag:`       a one-shot of THIS push — types.ts `RunBranch.flags`. Death
+ *                 empties them.
+ *   `knowledge:`  what survives death — types.ts `CampaignBranch.knowledge`.
+ *                 It RATCHETS: `set` raises it and no word lowers it.
+ *
+ * Every id under `set`, `unset` and a gate's `flags` carries one. A door id
+ * under `goto` does NOT: a door is declared by the room and checked against
+ * that declaration, and it is not a ledger entry.
+ *
+ * WHY THE ID AND NOT A WORD. The lean word set leaves one write word and one
+ * gate key, so there is nowhere else for the fact to go — a second write word
+ * would make the ledger choice and the no-unlearn ratchet structural for free,
+ * and it was ruled against because it re-opens a fresh human ruling and only
+ * solves the WRITE side (gates outnumber writes, and the gate collapsed to one
+ * key too). That is the trade, recorded: machine-meaningful semantics inside a
+ * string.
+ *
+ * WHICH IS WHY THE SET IS CLOSED, AND CHECKED AT LOAD. A prefix convention
+ * without enforcement is worse than no convention: `knowlege:x` would load
+ * clean, become a run flag, and the campaign ledger would quietly never be
+ * written. So an unknown or missing prefix is an error at LOAD, by name and by
+ * key path, exactly as an unknown `adjust` track is — and that check is not
+ * optional decoration, it is the price of this design.
+ */
+export type LedgerPrefix = "flag:" | "knowledge:";
+
 // ─────────────────────────────────────────────────────────────────── gates ──
 
 /**
@@ -151,9 +186,17 @@ export type Tier = "T0" | "T1" | "T2" | "T3";
  * Two conditions, and .llm/rules/engine.md names both: gates {flags, items}.
  * `flags` are raised by `set` and lowered by `unset`, `items` are what is in
  * the pouch. There is no third condition for knowledge: knowledge is a flag
- * that lives on the campaign ledger instead of the run's, and WHICH ledger
- * holds a given flag is resolution's business (H006), never the card's — a
- * card names a flag and marks the gate.
+ * that lives on the campaign ledger instead of the run's, and `flags` reads
+ * the UNION of the two ledgers — one list may name both.
+ *
+ * OVERTURNED BY H010, deliberately. This comment used to say that WHICH ledger
+ * holds a given flag "is resolution's business (H006), never the card's". It
+ * is the card's, and it always was: `cross_push` right below already makes the
+ * author declare a gate's cross-push lifetime AT THE GATE, so the card was in
+ * the lifetime business before this ruling arrived. The old sentence described
+ * a separation the language does not actually maintain. Every id under `set`,
+ * `unset` and `flags` now carries its ledger in its prefix (`LedgerPrefix`),
+ * and a bare or unknown one fails at LOAD.
  *
  * A gate with no condition in it is not a gate; the loader says so. The type
  * cannot: every key is optional, because either one may be the only one.
@@ -164,8 +207,10 @@ export type Tier = "T0" | "T1" | "T2" | "T3";
  * verbatim is never told their own vocabulary is unknown.
  */
 export interface Gate {
-  /** CONDITION. A named flag, raised by `set` (types.ts RunBranch.flags for a
-   *  one-shot, CampaignBranch.knowledge for one that survives death). */
+  /** CONDITION. Named flags, raised by `set`, each carrying its ledger in its
+   *  own prefix (`LedgerPrefix`): `flag:` for a one-shot of this push,
+   *  `knowledge:` for what survives death. A gate reads the union, so one list
+   *  may name both. */
   readonly flags?: readonly Id[];
   /** CONDITION. In the pouch, by item id. */
   readonly items?: readonly Id[];
@@ -241,11 +286,17 @@ export interface Adjust {
    * they are the same kind of quantity and they move the same way.
    *
    * Never shown as a number or a bar; it renders as the vignette (see above).
-   * A card writes the BAR, in whole units. types.ts `Vitals.sanity` currently
-   * holds the vignette's own scale instead (0 = clear, 1 = closed), which runs
-   * the other way; reconciling the state shape with the word set is H006's,
-   * alongside the same question about `CampaignBranch.knowledge`. Nothing here
-   * resolves a delta, so nothing here depends on the answer.
+   * A card writes the BAR, in whole units, and types.ts now agrees: H010 made
+   * `Vitals.sanity` a `Pool` like `hp`, where 0 is death by the same rule. The
+   * deferral that stood here is answered — the state shape reconciles TOWARDS
+   * this word, not the other way round, because the alternative is not even
+   * expressible: `readAdjust` below requires a whole non-zero move, so on a
+   * 0-to-1 vignette scale the only legal delta would be ±1 and `+1` would mean
+   * clear-to-dead.
+   *
+   * The vignette's own 0..1 scale is DERIVED from the bar by `view` and stored
+   * nowhere, and `Strip` has no sanity field to draw it as — which is how "no
+   * sanity bar exists anywhere" (DESIGN §frame) stays a type.
    */
   readonly sanity?: number;
   /** types.ts Vitals.might. */
@@ -272,9 +323,13 @@ export interface Adjust {
 export interface Deltas {
   /** The line this response writes. Always present. */
   readonly say: string;
-  /** Raise these flags: doors opened, ambushes sprung, things now known. */
+  /** Raise these flags: doors opened, ambushes sprung, things now known. Each
+   *  id names the ledger it is raised on, in its prefix (`LedgerPrefix`):
+   *  `flag:` for this push, `knowledge:` for what survives death. */
   readonly set?: readonly Id[];
-  /** Lower these flags again. */
+  /** Lower these flags again. `flag:` ids ONLY — knowledge ratchets cross-push
+   *  (DESIGN §the descent) and there is no word that unlearns it, so `unset` of
+   *  a `knowledge:` id is refused at LOAD. */
   readonly unset?: readonly Id[];
   /** Put items in the pouch. The author marks each one's `keep`. */
   readonly give?: readonly ItemRef[];
@@ -292,7 +347,8 @@ export interface Deltas {
    */
   readonly refuse?: true;
   /** Go through a door DECLARED by this room. Forward-only: there is no word
-   *  for going back, and a door ref is not a room id. */
+   *  for going back, and a door ref is not a room id — nor a flag, so it
+   *  carries no ledger prefix and the prefix rule does not reach it. */
   readonly goto?: Id;
   /** A latent object of this room becomes present, for a stated cause. */
   readonly addObject?: ObjectChange;
@@ -502,6 +558,11 @@ const KEEP_TABLE: KeyTable<Record<Keep, unknown>> = {
   key: true,
 };
 
+const LEDGER_PREFIX_TABLE: KeyTable<Record<LedgerPrefix, unknown>> = {
+  "flag:": true,
+  "knowledge:": true,
+};
+
 /** The keys a room card may carry. */
 export const ROOM_KEYS = Object.keys(ROOM_KEY_TABLE) as readonly (keyof RoomCard)[];
 /** The keys a declared door may carry. */
@@ -521,6 +582,9 @@ export const RESPONSE_KEYS = Object.keys(RESPONSE_KEY_TABLE) as readonly (keyof 
 export const TIERS = Object.keys(TIER_TABLE) as readonly Tier[];
 /** What death does with an item (types.ts `Keep`). */
 export const KEEPS = Object.keys(KEEP_TABLE) as readonly Keep[];
+/** The ledger a flag id may name, in order. Two ledgers, two prefixes; a third
+ *  would be a third BRANCH of state first (types.ts), and its own Asana task. */
+export const LEDGER_PREFIXES = Object.keys(LEDGER_PREFIX_TABLE) as readonly LedgerPrefix[];
 
 // ────────────────────────────────────────────────────────────────── loading ──
 
@@ -603,15 +667,76 @@ function idList(value: unknown, path: string, what: string, fault: Fault): void 
   value.forEach((entry, index) => id(entry, nth(path, index), "an id", fault));
 }
 
+/** The three words whose ids are flags, and so name a ledger: the two write
+ *  words, and the one gate key that reads them. `goto` is not one of them, and
+ *  `items` is not either — a pouch is not a ledger of flags. */
+type FlagWord = "set" | "unset" | "flags";
+
+/**
+ * A list of flag ids: shaped like any id list, and each id naming its ledger.
+ *
+ * The prefix set is closed and it is enforced HERE, at load, by name and by key
+ * path — the same mechanism `adjust`'s tracks get, for the same reason. With
+ * the ledger living inside a string, an unchecked `knowlege:x` would load clean
+ * as a run flag and the campaign ledger would quietly never be written
+ * (`LedgerPrefix`).
+ *
+ * `unset` may lower a `flag:` and may not lower a `knowledge:`: knowledge
+ * ratchets cross-push (DESIGN §the descent), and a ratchet you can lower is not
+ * a ratchet.
+ */
+function flagList(value: unknown, path: string, word: FlagWord, fault: Fault): void {
+  idList(value, path, `\`${word}\``, fault);
+  if (!Array.isArray(value)) return;
+  value.forEach((entry: unknown, index) => {
+    // Shape is idList's; this pass is only about the ledger. A non-id was
+    // already reported, and reporting it twice helps nobody.
+    if (typeof entry !== "string" || entry.trim() === "") return;
+    const where = nth(path, index);
+    const prefix = LEDGER_PREFIXES.find((known) => entry.startsWith(known));
+    if (prefix === undefined) {
+      fault(
+        where,
+        `"${entry}" names no ledger — every id under \`set\`, \`unset\` and a ` +
+          `gate's \`flags\` carries one of: ${LEDGER_PREFIXES.join(", ")}. ` +
+          `\`flag:\` is a one-shot of THIS push, emptied by death (types.ts ` +
+          `RunBranch.flags); \`knowledge:\` survives death and ratchets ` +
+          `(CampaignBranch.knowledge). A door id under \`goto\` is not a flag ` +
+          `and carries neither.`,
+      );
+      return;
+    }
+    if (entry.length === prefix.length) {
+      fault(
+        where,
+        `"${entry}" is a ledger prefix with no flag after it — name the flag, ` +
+          `or the card raises nothing.`,
+      );
+      return;
+    }
+    if (word === "unset" && prefix === "knowledge:") {
+      fault(
+        where,
+        `"${entry}" is knowledge, and \`unset\` cannot lower it: knowledge ` +
+          `RATCHETS cross-push — "refusals + clues pay off on later meetings" ` +
+          `(DESIGN §the descent) — and a ratchet you can lower is not a ratchet. ` +
+          `\`unset\` lowers \`flag:\` ids only.`,
+      );
+    }
+  });
+}
+
 function readGate(value: unknown, path: string, fault: Fault): void {
   if (!isRecord(value)) {
     fault(path, "a gate is a map of conditions");
     return;
   }
   closed(value, GATE_KEY_TABLE, path, "gate key", GATE_KEYS, fault);
-  for (const key of GATE_CONDITIONS) {
-    if (value[key] !== undefined) idList(value[key], at(path, key), `\`${key}\``, fault);
-  }
+  // Both conditions are id lists; only `flags` names a ledger. Read in
+  // GATE_CONDITIONS order, so an author meets the problems the way the rule
+  // declares the keys.
+  if (value["flags"] !== undefined) flagList(value["flags"], at(path, "flags"), "flags", fault);
+  if (value["items"] !== undefined) idList(value["items"], at(path, "items"), "`items`", fault);
   if (value["cross_push"] !== undefined && value["cross_push"] !== true) {
     fault(at(path, "cross_push"), "`cross_push` is written only as true, or left out");
   }
@@ -777,8 +902,8 @@ function readResponse(value: unknown, path: string, last: boolean, read: Reading
 
   line(value["say"], at(path, "say"), "`say` — every response writes a line, and this", fault);
 
-  if (value["set"] !== undefined) idList(value["set"], at(path, "set"), "`set`", fault);
-  if (value["unset"] !== undefined) idList(value["unset"], at(path, "unset"), "`unset`", fault);
+  if (value["set"] !== undefined) flagList(value["set"], at(path, "set"), "set", fault);
+  if (value["unset"] !== undefined) flagList(value["unset"], at(path, "unset"), "unset", fault);
   if (value["journal"] !== undefined) {
     line(value["journal"], at(path, "journal"), "`journal`, when written,", fault);
   }
