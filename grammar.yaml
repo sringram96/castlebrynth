@@ -123,7 +123,22 @@ jokers: {}
 spells: {}
 skills: {}
 enemy_rules: {}
-enemies: {}
+
+# HALF AN ENEMY LIVES HERE. What the grammar knows is the chance it follows you
+# out and which rules it bends; "its intents, its health and its art are the
+# enemy card's" (the note on `EnemyEntry` above). The other half is
+# content/foes/, and src/lots/foes.ts joins them — so `pursuit` is written down
+# once, in the file whose loader refuses an enemy without it.
+#
+# The tallow thing bends nothing: it carries no `rules`, because `enemy_rules`
+# is empty above and an elite that "seals your sixes" is L005's and deferred
+# past H180. Its pursuit is 0.3 because it was hanging on a rack a moment ago
+# and it is most of the way to letting you go.
+
+enemies:
+  tallow-thing:
+    name: The Tallow Thing
+    pursuit: 0.3
 
 # ── the economy, held open ────────────────────────────────────────────────
 #

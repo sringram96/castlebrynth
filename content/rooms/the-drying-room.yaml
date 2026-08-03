@@ -1,0 +1,80 @@
+# THE DRYING ROOM — the fight room. One way into the Lots, and it is telegraphed.
+#
+# "FIGHT is the only door into the Lots" (DESIGN §the two engines, one doorway),
+# and `fight` is an enemy id passed through — "the engine never names an enemy"
+# (cards.ts `Deltas.fight`, .llm/rules/engine.md). The id here is `tallow-thing`,
+# and it is written BARE rather than with a content prefix like `item:` or
+# `door:`. That is not an oversight: an enemy id is looked up in the LOTS'
+# namespace, which is grammar.yaml's, and grammar.yaml carries no prefixes on any
+# of its keys. The body and the intents of this one are
+# content/foes/tallow-thing.yaml; its pursuit chance and the rules it bends are
+# grammar.yaml's `enemies` (src/lots/manifest.ts says the split, and
+# src/lots/foes.ts joins the two halves).
+#
+# ── telegraphed harm ─────────────────────────────────────────────────────────
+#
+# "telegraphed harm" (DESIGN §content laws) has no lint and cannot have one — it
+# is a prose question about two strings (scripts/content-lint.mjs, "two with no
+# home"). So it is kept by hand, and it is kept in the free tap, which is the
+# line a player gets for nothing: the standing line says one of the racks is not
+# a hide, the rack's tap says one hangs lower than the rest, and PEER says the
+# low one has a weight in it and the weight moves. Three readings before
+# anything costs, and the free tap "never advances, costs, or harms" (DESIGN
+# §the descent) — so a player who is surprised here was not paying for the
+# telling.
+#
+# ── the fight is a fallback, and that is the shape ───────────────────────────
+#
+# `pull` reads: if the thing is already up, say so; otherwise take the hide down
+# and open the fight. The fight response is the UNGATED one and it comes last,
+# because a response list ends in a fallback that can always answer (cards.ts
+# `Responses`). `flag:thing-woken` is what makes it a one-shot — a fight the room
+# could re-open on a second tap would re-arm an enemy the player has already
+# walked away from, and a flag is a one-shot of the PUSH rather than of the room
+# (types.ts `RunBranch.flags`).
+#
+# Both doors stand whatever the fight comes to: "fleeing ends the fight, pursuit
+# may land one parting harm, and the room's door draw stands — forward is still
+# the only way" (DESIGN §the lots). Nothing in this card gates a door on winning.
+
+id: room:the-drying-room
+tier: T0
+still: still:the-drying-room
+line: A drying room, warm. Hides on racks down both sides, and one is not a hide.
+
+doors:
+  - id: door:the-rack-gap
+    sense: A gap between two racks, and past it a low red light, close to the floor.
+  - id: door:the-flue
+    sense: A flue in the wall, wide enough to take you. Warm air, smelling of burnt fat.
+
+objects:
+  racks:
+    tap: Hides on racks, dry and stiff. One rack hangs lower than the others.
+    actions:
+      peer:
+        - say: The low one is not stiff. There is a weight in it, and the weight moves.
+      pull:
+        - if:
+            flags: [flag:thing-woken]
+          say: The low rack is bare. What was hanging on it is standing on the floor.
+        - say: You take the low hide down by a corner. It opens, and it stands up.
+          set: [flag:thing-woken]
+          journal: Pulled the low hide off its rack in the drying room.
+          fight: tallow-thing
+
+  gap:
+    tap: The gap between two racks. Red light past it, low down, and not moving.
+    actions:
+      go:
+        - say: You turn side-on and go through. The red light is not coming off a lamp.
+          goto: door:the-rack-gap
+
+  flue:
+    tap: A flue in the wall at shoulder height, warm, and smelling of burnt fat.
+    actions:
+      listen:
+        - say: Air moves up it steadily. Nothing above is drawing it; it goes anyway.
+      climb:
+        - say: You get up into the flue. The brick inside is worn smooth with use.
+          goto: door:the-flue

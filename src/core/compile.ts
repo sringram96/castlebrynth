@@ -99,6 +99,12 @@ export type CompileResult =
   | { readonly ok: true; readonly rooms: RoomCards }
   | { readonly ok: false; readonly problems: readonly Problem[] };
 
+/** One file read as far as data, and no further. What the card language makes
+ *  of that data is the card language's (`loadRoom`, `loadFoe`). */
+export type ParseResult =
+  | { readonly ok: true; readonly data: unknown }
+  | { readonly ok: false; readonly problems: readonly Problem[] };
+
 /**
  * What the `yaml` package found wrong, said in this project's voice.
  *
@@ -121,19 +127,18 @@ function yamlMessage(headline: string, code: string): string {
 }
 
 /**
- * Read one authored file into a typed room card.
+ * Read one authored file as far as DATA — the file's own problems, and nothing
+ * about what the data says.
  *
- * Never throws: a file full of junk gives problems out, the way `loadRoom` and
- * `load` (api.ts) answer junk with problems and null rather than an exception.
- * Every problem is reported, not just the first.
- *
- * The two stages do not mix. If the FILE is wrong, the card is not read at all
- * and the problems are the file's — reporting "unknown room key" against a
- * document the parser has already given up on would send an author to fix a
- * line that only looks wrong because the parse went sideways. If the file is
- * clean, every problem from here on is `loadRoom`'s, in `loadRoom`'s words.
+ * Every check in here is about the FILE and is one no card language can make,
+ * because by the time a loader is handed data the fact is already gone (see the
+ * head of this file). So it is the same stage for every kind of authored card,
+ * and it is exported rather than copied: a second parser with its own idea of
+ * which YAML version a file is read as is exactly the two-validators problem
+ * this file opens by refusing. The foe card (src/lots/foes.ts) comes through
+ * here too.
  */
-export function compileRoom(file: string, text: string): LoadResult {
+export function parseCard(file: string, text: string): ParseResult {
   const problems: Problem[] = [];
   // A file-level problem has no key path to point at — the keys are exactly
   // what did not parse — so the path is the root, and the location travels in
@@ -184,9 +189,28 @@ export function compileRoom(file: string, text: string): LoadResult {
   // parser argued with is not the card the author wrote.
   if (problems.length > 0) return { ok: false, problems };
 
+  return { ok: true, data: doc.toJS() };
+}
+
+/**
+ * Read one authored file into a typed room card.
+ *
+ * Never throws: a file full of junk gives problems out, the way `loadRoom` and
+ * `load` (api.ts) answer junk with problems and null rather than an exception.
+ * Every problem is reported, not just the first.
+ *
+ * The two stages do not mix. If the FILE is wrong, the card is not read at all
+ * and the problems are the file's — reporting "unknown room key" against a
+ * document the parser has already given up on would send an author to fix a
+ * line that only looks wrong because the parse went sideways. If the file is
+ * clean, every problem from here on is `loadRoom`'s, in `loadRoom`'s words.
+ */
+export function compileRoom(file: string, text: string): LoadResult {
+  const parsed = parseCard(file, text);
+  if (!parsed.ok) return { ok: false, problems: parsed.problems };
   // Data, at last. From here the language is cards.ts's and so are the words of
   // every problem — this file adds nothing to them and takes nothing away.
-  return loadRoom(file, doc.toJS());
+  return loadRoom(file, parsed.data);
 }
 
 /**

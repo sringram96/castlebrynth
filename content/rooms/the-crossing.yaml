@@ -1,0 +1,92 @@
+# THE CROSSING — where a push opens, and where every death puts you back.
+#
+# "You wake at the Crossing — a dead portal chamber — with no memory" (DESIGN
+# §world & voice). "Death wakes you at the Crossing, bars and uses restored;
+# doors redraw" (DESIGN §ledgers). So this room is read more often than any
+# other in the game, and it is written to be read again: nothing here is spent,
+# and the two things that change — the bone you took, the hand you put through
+# the arch — say so on the second reading rather than falling silent.
+#
+# Three beats, and the task's three: WAKE (the standing `line`, over the art), A
+# PLAIN SIGNATURE CHOICE (`bones`), THE WAY DOWN (`stair`, and the low door
+# beside it so that the map has more than one road on it — cards.ts `Doors`).
+#
+# ── the signature choice, and what content cannot yet say ────────────────────
+#
+# "Hand = 5 plain bones + 1 signature die CHOSEN at the Crossing ('one of these
+# was yours' — never confirmed). The choice is the class" (DESIGN §the lots).
+# The choice is authored here; the CLASS is not, and cannot be. The state has a
+# field for it — types.ts `CampaignBranch.signature` — and the Descent's closed
+# word set has no word that writes it: gates {flags, items} · deltas {say, set,
+# unset, give, take, adjust, journal, refuse, goto, addObject, removeObject,
+# prompt, fight, end} (.llm/rules/engine.md). `give` is the near miss and it is
+# the wrong door: it fills the POUCH, and types.ts is explicit that "a die is not
+# an item ... dice are the hands and survive death by their own law". So this
+# card records the choice the only honest way it can — a `knowledge:` id, which
+# survives death exactly as the die must — and binding that id to
+# `CampaignBranch.signature` waits on a word that is its own Asana task, never a
+# side effect. It is written down here rather than faked with `give`.
+#
+# The die is PLAIN by the task's scope. The Hollow Die is the wizard's and
+# grammar.yaml ships no such die yet; three worn knucklebones are what a plain
+# choice looks like, and which one was yours is never confirmed — the tap says
+# only that nothing here says.
+#
+# Lines are kept under 88 characters (DESIGN §frame, and the reference room
+# content/rooms/tallow-store.yaml, which is the file to copy).
+
+id: room:the-crossing
+tier: T0
+still: still:the-crossing
+line: You wake on the floor of a round chamber. A dead arch stands over you.
+
+doors:
+  - id: door:the-long-stair
+    sense: A stair going down out of the chamber. The air off it smells of wet stone.
+  - id: door:the-low-door
+    sense: A low door in the wall, shut. Light under it, yellow, and it does not move.
+
+objects:
+  arch:
+    tap: A stone arch, and behind it the wall. The sill under it is worn hollow.
+    actions:
+      peer:
+        - say: The stone inside the arch is unbroken. The hollow in the sill is foot-shaped.
+      reach:
+        - if:
+            flags: [knowledge:the-arch-is-dead]
+          say: The wall is where it was. Your hand knows the cold of it now.
+        - say: Cold stone, and the wall is a wall. Whatever stood in the arch stands nowhere.
+          set: [knowledge:the-arch-is-dead]
+          journal: Put a hand into the dead arch. Found the wall behind it.
+
+  bones:
+    tap: Three knucklebones set out in a row on the floor, by the sill. Dry.
+    actions:
+      peer:
+        - say: Three of them, and one is worn where a thumb sits. Nothing says which was yours.
+      take:
+        - if:
+            flags: [flag:bone-taken]
+          say: Two lie where they were set out. The third is in your hand.
+        - say: You take one. It is worn on two faces, and it sits in the hand like use.
+          set: [flag:bone-taken, knowledge:a-bone-was-taken]
+          journal: Took one of the three knucklebones set out at the Crossing.
+
+  stair:
+    tap: The stair, going down. The steps are wet along the outer edge.
+    actions:
+      listen:
+        - say: Nothing comes up the stair. The wet on the steps is not running anywhere.
+      go:
+        - say: You go down. The wet on the steps did not come from above.
+          goto: door:the-long-stair
+
+  low-door:
+    tap: A low door, shut. The line of light at its foot is steady and yellow.
+    actions:
+      listen:
+        - say: Nothing moves behind it. The light under the door does not change.
+      open:
+        - say: The door gives inward. A corridor, lit end to end, and nobody standing in it.
+          goto: door:the-low-door

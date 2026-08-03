@@ -23,6 +23,10 @@
 // content/rooms/     the game's content. Compiled as a SET, because two files
 //                    claiming one room id is invisible from inside either one
 //                    (compile.ts `compileRooms`). Must be clean.
+// content/foes/      an enemy's body and its intents (src/lots/foes.ts). Also a
+//                    SET, for the same reason. Its OTHER half is grammar.yaml's
+//                    `enemies`, and the two halves are checked against each
+//                    other here — see "the one cross-file check" below.
 // content/fixtures/  authored wrong on purpose, and never drawn by a build.
 //                    Each one must still FAIL, and its problems are printed
 //                    rather than swallowed — a fixture is a claim about what
@@ -54,6 +58,20 @@
 //   prose and tier     scanning a line against the card's declared tier, and the
 //                      banned-word list (DESIGN §world & voice), want the same
 //                      prose pass and are not in skeleton scope.
+//
+// ─────────────────────────────────────────────── the one cross-file check ──
+//
+// An enemy is written in two files on purpose — pursuit in grammar.yaml, body
+// and intents in content/foes/ (src/lots/foes.ts says why) — and a fact split
+// across two files is invisible from inside either one, which is precisely the
+// kind of thing this layer exists to see. So the halves are paired here: every
+// foe card names a declared enemy, every declared enemy has a card, and every
+// `fight:` a room emits names one of them. All three are LOAD-time answers to
+// the same question, and the alternative to asking it here is a room that opens
+// a fight against an enemy with no body, at play, in front of somebody.
+//
+// This is not the deferred cross-room graph pass and does not become one:
+// nothing below follows a door out of a room.
 
 import { readFile, readdir } from "node:fs/promises";
 import { registerHooks } from "node:module";
@@ -87,11 +105,16 @@ if (process.features.typescript === false || process.features.typescript === und
 
 const { formatProblem } = await import("../src/core/cards.ts");
 const { compileRoom, compileRooms } = await import("../src/core/compile.ts");
+const { compileFoes } = await import("../src/lots/foes.ts");
+const { loadManifest } = await import("../src/lots/manifest.ts");
+const { parse } = await import("yaml");
 
 // ───────────────────────────────────────────────────────────────── the walk ──
 
 const ROOMS = "content/rooms";
+const FOES = "content/foes";
 const FIXTURES = "content/fixtures";
+const GRAMMAR = "grammar.yaml";
 
 const root = join(import.meta.dirname, "..");
 
@@ -129,10 +152,12 @@ const problemsOf = (result) => (result.ok ? [] : result.problems);
 let failed = false;
 
 const rooms = await Promise.all((await yamlFiles(ROOMS)).map(source));
+const foes = await Promise.all((await yamlFiles(FOES)).map(source));
 const fixtures = await Promise.all((await yamlFiles(FIXTURES)).map(source));
 
 console.log(
   `content lint · ${rooms.length} room${rooms.length === 1 ? "" : "s"}, ` +
+    `${foes.length} foe${foes.length === 1 ? "" : "s"}, ` +
     `${fixtures.length} fixture${fixtures.length === 1 ? "" : "s"}`,
 );
 
@@ -147,6 +172,72 @@ if (roomProblems.length > 0) {
 } else {
   console.log(`\n${ROOMS} — clean`);
   for (const { file } of rooms) console.log(`  ${file}`);
+}
+
+// The foes. Also a set, for the same reason.
+const compiledFoes = compileFoes(foes);
+const foeProblems = problemsOf(compiledFoes);
+if (foeProblems.length > 0) {
+  failed = true;
+  console.error(`\n${FOES} — ${foeProblems.length} problem(s):`);
+  for (const problem of foeProblems) console.error(`  ${formatProblem(problem)}`);
+} else {
+  console.log(`\n${FOES} — clean`);
+  for (const { file } of foes) console.log(`  ${file}`);
+}
+
+// The two halves of an enemy, paired. Only runnable when both sides compiled;
+// pairing against a set that failed to load would report the same break twice.
+const manifest = loadManifest(GRAMMAR, parse(await readFile(join(root, GRAMMAR), "utf8")));
+const pairing = [];
+if (!manifest.ok) {
+  failed = true;
+  console.error(`\n${GRAMMAR} — ${manifest.problems.length} problem(s):`);
+  for (const problem of manifest.problems) console.error(`  ${formatProblem(problem)}`);
+} else if (compiled.ok && compiledFoes.ok) {
+  const declared = Object.keys(manifest.manifest.enemies);
+  const carded = Object.keys(compiledFoes.foes);
+  for (const id of carded) {
+    if (declared.includes(id)) continue;
+    pairing.push(
+      `${FOES}/${id}.yaml: id — "${id}" is not a declared enemy. An enemy's pursuit ` +
+        `chance and name are ${GRAMMAR}'s \`enemies\` and a foe card is the other ` +
+        `half of one (src/lots/foes.ts), so a card answering to no entry is a body ` +
+        `that never gets asked how hard it follows you.`,
+    );
+  }
+  for (const id of declared) {
+    if (carded.includes(id)) continue;
+    pairing.push(
+      `${GRAMMAR}: enemies.${id} — declared, and no foe card gives it a body. Write ` +
+        `${FOES}/${id}.yaml, or take the entry out: an enemy with no hp and no ` +
+        `intents cannot be fought (src/lots/turn.ts \`openFight\`).`,
+    );
+  }
+  // Every `fight:` a room emits, against the enemies that actually exist. A
+  // room card is checked alone (cards.ts) and cannot see this from in there.
+  for (const room of Object.values(compiled.rooms)) {
+    for (const [key, object] of Object.entries(room.objects)) {
+      for (const [action, responses] of Object.entries(object.actions ?? {})) {
+        responses.forEach((response, index) => {
+          const enemy = response.fight;
+          if (enemy === undefined || declared.includes(enemy)) return;
+          pairing.push(
+            `${room.id}: objects.${key}.actions.${action}[${index}].fight — "${enemy}" ` +
+              `is not a declared enemy. FIGHT is the only door into the Lots ` +
+              `(DESIGN §the two engines, one doorway), and this one opens on nothing.`,
+          );
+        });
+      }
+    }
+  }
+}
+if (pairing.length > 0) {
+  failed = true;
+  console.error(`\n${GRAMMAR} × ${FOES} — ${pairing.length} problem(s):`);
+  for (const problem of pairing) console.error(`  ${problem}`);
+} else if (manifest.ok) {
+  console.log(`\n${GRAMMAR} × ${FOES} — every enemy has both halves`);
 }
 
 // The fixtures. Each is compiled ALONE — they are not a set and they are not
