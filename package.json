@@ -7,7 +7,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "law": "tsc --noEmit && eslint . && vitest run src --passWithNoTests",
+    "law": "tsc --noEmit && eslint . && vitest run src --passWithNoTests && node scripts/content-lint.mjs",
     "build:content": "node scripts/build-content.mjs",
     "play": "node scripts/play.mjs",
     "test": "vitest"

@@ -1,0 +1,50 @@
+# BROKEN ON PURPOSE — a fixture, not content. See bad-unknown-word.yaml.
+#
+# THE MISTAKE: `goto` names a door this room does not declare. It is the mirror
+# of bad-sealed-door.yaml — that one senses a door nothing walks through, this
+# one walks through a door nothing senses — and the two together are the whole
+# of the door law a single card can answer.
+#
+# The room is otherwise correct: two doors sensed, both walked. Then the boards
+# come up on `door:sump`, which is a door of no room. The player is moved
+# somewhere the card never described, and the sense line they would have chosen
+# it by does not exist — doors are the map (DESIGN §the descent), and this is a
+# road that is not on it.
+#
+# WHAT IS NOT CHECKED HERE, and it is the ratified line (H005's decision
+# record, 2026-08-02): this is a DECLARATION-PRESENCE check and nothing more.
+# The lint never asks where `door:on` leads, whether the room it opens on
+# exists, or whether the graph of rooms is acyclic. Binding a door to what is
+# behind it happens at draw time and belongs to D002.
+#
+# EXPECTED, and asserted by scripts/content-lint.mjs:
+#   objects.boards.actions.lift[0].goto — "door:sump" is not a door of this room
+
+id: room:bad-undeclared-door
+tier: T0
+still: still:bad-undeclared-door
+line: A landing. Two ways off it, and the boards are wet.
+
+doors:
+  - id: door:on
+    sense: Light under the far door.
+  - id: door:down
+    sense: Cold air off the near stair.
+
+objects:
+  way:
+    tap: Two doors, both shut. The floor between them is boards.
+    actions:
+      go:
+        - say: You go on.
+          goto: door:on
+      down:
+        - say: You go down.
+          goto: door:down
+
+  boards:
+    tap: Boards, dark with water. One of them is loose at the end.
+    actions:
+      lift:
+        - say: The board comes up. Water below it, moving, and a way down.
+          goto: door:sump
