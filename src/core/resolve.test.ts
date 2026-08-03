@@ -466,6 +466,241 @@ describe("H006 · unknown words fail at LOAD, never at play", () => {
   });
 });
 
+// ──────────────────────────────────────────── an intent is two plain strings ──
+//
+// The block above walks `Object.keys(card.objects)` and `Object.keys(actions)`
+// — the card's OWN ids — so it can only ever exercise intents the card answers.
+// It structurally cannot reach the unaddressed path, which is the one the
+// docstring calls INERT and the one that shipped as a `TypeError`: a raw
+// `map[id]` on an object literal reads through `Object.prototype`, so twelve
+// plain strings came back as inherited Functions, walked past the
+// `=== undefined` guard, and hit `.find` on a Function.
+//
+// So this block starts from the OTHER end: ids no card authored.
+
+/**
+ * Every key a plain object literal inherits, read off the prototype at run time
+ * rather than typed out — the day an engine or a polyfill adds one, this list
+ * grows and the assertions below cover it with no edit here.
+ */
+const INHERITED: readonly string[] = Object.getOwnPropertyNames(Object.prototype);
+
+/**
+ * The twelve that actually crashed `resolve`, written out so a reader of this
+ * file meets the bug instead of a computed array. Asserted below to be a subset
+ * of `INHERITED`, so the hand-written list and the live prototype cannot drift.
+ */
+const CRASHED: readonly string[] = [
+  "constructor",
+  "toString",
+  "toLocaleString",
+  "valueOf",
+  "hasOwnProperty",
+  "isPrototypeOf",
+  "propertyIsEnumerable",
+  "__defineGetter__",
+  "__defineSetter__",
+  "__lookupGetter__",
+  "__lookupSetter__",
+  "__proto__",
+];
+
+/** Ids no card authored and no prototype carries — the ordinary miss. */
+const UNAUTHORED: readonly string[] = ["eat", "chandelier", "", " ", "0", "length", "call"];
+
+/**
+ * THE MUTE CELL — an object with NO `actions` key at all.
+ *
+ * The other two fixtures give every object actions, so `actions === undefined`
+ * is a branch they cannot reach. A wall you can only look at is authored
+ * exactly like this: a tap and nothing else.
+ *
+ * The `gap` is here because the loader will not pass a room a player cannot
+ * leave, and every declared door must be walked through by some response
+ * (DESIGN §content laws: no softlocks). That law is why this fixture is a room
+ * and not a table.
+ */
+const MUTE: RoomCard = {
+  id: "room:the-mute-cell",
+  tier: "T0",
+  still: "still:the-mute-cell",
+  line: "A cell, and the walls of it have been gone over by hand.",
+  doors: [
+    { id: "door:cell-out", sense: "The way you came, and the light in it has not moved." },
+    { id: "door:cell-down", sense: "A gap at the floor, and cold coming up out of it." },
+  ],
+  objects: {
+    wall: { tap: "Marks in the plaster, close together. Someone counted here." },
+    gap: {
+      tap: "The door, and under it a gap wide enough to matter.",
+      actions: {
+        out: [{ say: "You go back out the way you were brought.", goto: "door:cell-out" }],
+        down: [{ say: "You go down into it, shoulder first.", goto: "door:cell-down" }],
+      },
+    },
+  },
+};
+
+describe("H006 · unaddressed ids are inert, including the inherited ones", () => {
+  const CARDS: readonly RoomCard[] = [SHORE, SUMP, MUTE];
+
+  it("the mute cell is content too — it loads, with an object that has no actions", () => {
+    const result = loadRoom(`content/rooms/${MUTE.id}.yaml`, clone(MUTE));
+    expect(result.ok ? [] : result.problems.map((p) => `${p.path} — ${p.message}`)).toStrictEqual(
+      [],
+    );
+    expect((MUTE.objects["wall"] as RoomObject).actions).toBeUndefined();
+  });
+
+  it("names the twelve, and keeps the list honest against the live prototype", () => {
+    expect(CRASHED.filter((key) => !INHERITED.includes(key))).toStrictEqual([]);
+    expect(INHERITED.filter((key) => !CRASHED.includes(key))).toStrictEqual([]);
+    // Not one of them is an id any fixture authored, or the test is vacuous.
+    for (const card of CARDS) {
+      for (const key of CRASHED) expect(Object.keys(card.objects), card.id).not.toContain(key);
+    }
+  });
+
+  it("does not throw on an inherited key as an ACTION id — the crash, asserted", () => {
+    // `actions["toString"]` is `Object.prototype.toString`: a Function, not
+    // undefined. Before the `hasOwnProperty` guard every line below threw
+    // `responses.find is not a function`.
+    const state = withBars(fresh());
+    for (const card of CARDS) {
+      for (const object of Object.keys(card.objects)) {
+        for (const action of INHERITED) {
+          expect(
+            () => resolve(state, card, { object, action }),
+            `${card.id}.${object}.${action}`,
+          ).not.toThrow();
+        }
+      }
+    }
+  });
+
+  it("does not throw on an inherited key as an OBJECT id — safe by guard, not by luck", () => {
+    // `objects["toString"]` is a Function here too. It was inert only because
+    // `Object.prototype` happens to carry no `.actions`, which is an accident
+    // of the prototype's shape and not a property of this code.
+    const state = withBars(fresh());
+    for (const card of CARDS) {
+      for (const object of INHERITED) {
+        for (const action of ["reach", "read", "go", ...INHERITED]) {
+          expect(
+            () => resolve(state, card, { object, action }),
+            `${card.id}.${object}.${action}`,
+          ).not.toThrow();
+        }
+      }
+    }
+  });
+
+  it("does not lean on what `Object.prototype` happens to carry today", () => {
+    // The OBJECT side was inert before the fix, but only because
+    // `Object.prototype` has no `.actions` — a fact about the prototype's
+    // current shape, not a property of this code. Take the accident away and
+    // the difference shows: `objects["toString"]` is a Function, a Function
+    // inherits from `Object.prototype`, and one line further on the engine is
+    // resolving a response no room ever wrote.
+    //
+    // This is the assertion that makes the object-side guard load-bearing.
+    // Without it, guarding the action lookup ALONE passes every other test in
+    // this file, and the object side stays luck dressed as a guarantee.
+    const state = withBars(fresh());
+    const stray = { read: [{ say: "A line no room ever wrote." }] };
+    Object.defineProperty(Object.prototype, "actions", {
+      value: stray,
+      configurable: true,
+      enumerable: false, // invisible to Object.keys/for-in, so nothing else shifts
+      writable: true,
+    });
+    try {
+      for (const card of CARDS) {
+        for (const object of INHERITED) {
+          const out = resolve(state, card, { object, action: "read" });
+          expect(out.state, `${card.id}.${object}.read`).toBe(state);
+          expect(out.effects, `${card.id}.${object}.read`).toStrictEqual([]);
+          expect(out.emissions, `${card.id}.${object}.read`).toStrictEqual([]);
+        }
+      }
+      // The rooms themselves are unmoved: their objects own their `actions`.
+      expect(saying(said(act(state, SHORE, "book", "read")), "a script you don't know")).toBe(1);
+    } finally {
+      delete (Object.prototype as unknown as Record<string, unknown>)["actions"];
+    }
+    expect("actions" in Object.prototype).toBe(false);
+  });
+
+  it("answers the very same state, and silence, for every unaddressed id", () => {
+    // Inert is not merely "does not throw": it is the same state OBJECT back,
+    // nothing said, nothing emitted — the identity the docstring promises.
+    const state = withBars(fresh());
+    for (const card of CARDS) {
+      for (const object of [...INHERITED, ...UNAUTHORED, ...Object.keys(card.objects)]) {
+        for (const action of [...INHERITED, ...UNAUTHORED]) {
+          const out = resolve(state, card, { object, action });
+          expect(out.state, `${card.id}.${object}.${action}`).toBe(state);
+          expect(out.effects, `${card.id}.${object}.${action}`).toStrictEqual([]);
+          expect(out.emissions, `${card.id}.${object}.${action}`).toStrictEqual([]);
+        }
+      }
+    }
+  });
+
+  it("resolves an unaddressed id against a state frozen to the leaves", () => {
+    // The frozen test in "nothing mutates" walks authored ids only, so it never
+    // meets this path. A write through a shared reference — or a throw — fails
+    // here instead of corrupting a save quietly.
+    const state = deepFreeze(withBars(fresh()));
+    const before = clone(state);
+    for (const card of CARDS) {
+      for (const object of [...INHERITED, ...UNAUTHORED]) {
+        for (const action of [...INHERITED, ...UNAUTHORED]) {
+          expect(
+            () => resolve(state, card, { object, action }),
+            `${card.id}.${object}.${action}`,
+          ).not.toThrow();
+        }
+      }
+    }
+    expect(clone(state)).toStrictEqual(before);
+  });
+
+  it("is keyed on OWNERSHIP, not on the spelling — an authored `toString` answers", () => {
+    // The guard must not become a blocklist. A card is free to name an object
+    // or an action `toString`; what disqualifies an id is that the map does not
+    // have it ITSELF, never that the prototype happens to. This is the
+    // assertion a mutant that simply refuses the twelve strings would fail.
+    // Written out as named `Responses` rather than inline, and not for style:
+    // tsc will not contextually type an object literal's `valueOf` or
+    // `constructor` member through a string index signature — it reaches the
+    // APPARENT member off `Object` first and the tuple never gets applied. The
+    // type system has the same blind spot the runtime had, one layer up.
+    const read: Responses = [
+      { say: "You read it off with a thumb. It is a name, and it is not yours." },
+    ];
+    const weigh: Responses = [{ say: "Someone cast this. Someone stood at a fire and made it." }];
+    const plate: RoomObject = {
+      tap: "A plate, and the letters on it stand up out of the metal.",
+      actions: { valueOf: read, constructor: weigh },
+    };
+    const shadow: RoomCard = {
+      ...MUTE,
+      objects: { ...MUTE.objects, toString: plate },
+    };
+    expect(loadRoom(`content/rooms/${shadow.id}.yaml`, clone(shadow)).ok).toBe(true);
+
+    const state = withBars(fresh());
+    const spoken = act(state, shadow, "toString", "valueOf");
+    expect(said(spoken)).toHaveLength(1);
+    expect(saying(said(spoken), "It is a name, and it is not yours.")).toBe(1);
+    expect(said(act(state, shadow, "toString", "constructor"))).toHaveLength(1);
+    // …and the un-authored inherited keys on that same object are still inert.
+    expect(act(state, shadow, "toString", "hasOwnProperty").state).toBe(state);
+    expect(act(state, shadow, "valueOf", "valueOf").state).toBe(state);
+  });
+});
+
 // ──────────────────────────────────────────────────────────────── gate ordering ──
 
 describe("H006 · gate ordering", () => {
@@ -583,6 +818,48 @@ describe("H006 · ledger routing, proven branch by branch", () => {
       "study",
     );
     expect(saying(said(fromCampaign), "have it already")).toBe(1);
+  });
+
+  it("survives a death: the wiped run ledger closes its gate, knowledge keeps its own", () => {
+    // The assertion the split exists for, and the one the block above was
+    // missing: every test here reads a ledger that is still standing. This one
+    // KILLS THE RUN. Rebirth keeps the campaign, increments `deaths` and
+    // rebuilds the run branch (DESIGN §ledgers, types.ts `Death`), and after it
+    // the `knowledge:` gate must still open while the `flag:` one must not.
+    const lived = bendCampaign(bendRun(fresh(), { flags: ["flag:read-book"] }), {
+      knowledge: ["knowledge:the-glyph"],
+    });
+    expect(saying(said(act(lived, SHORE, "book", "read")), "nothing left to say")).toBe(1);
+
+    const reborn: GameState = {
+      ...lived,
+      deaths: lived.deaths + 1,
+      run: newRun(SEED, BUNDLE).run, // a NEW run branch: the flags are gone
+    };
+    expect(reborn.run.flags).toStrictEqual([]);
+    expect(reborn.campaign.knowledge).toStrictEqual(["knowledge:the-glyph"]);
+
+    // The glyph is still known, so the stone still recognises itself…
+    expect(saying(said(act(reborn, SHORE, "stone", "study")), "have it already")).toBe(1);
+    // …and the book, whose "already read" flag died with the run, is readable
+    // again — through the SECOND response, which the surviving knowledge opens.
+    // That is the payoff DESIGN promises: what you learned buys the next run.
+    const again = act(reborn, SHORE, "book", "read");
+    expect(saying(said(again), "nothing left to say")).toBe(0);
+    expect(saying(said(again), "It is a procession")).toBe(1);
+    expect(again.state.run.flags).toStrictEqual(["flag:read-book"]);
+  });
+
+  it("survives a death: with no knowledge either, the gate falls to the fallback", () => {
+    // The other half. A run flag with nothing behind it does not fall through
+    // to some other gated response — it reaches the ungated last word, which is
+    // why cards.ts makes that fallback a tuple law.
+    const lived = bendRun(fresh(), { flags: ["flag:read-book"] });
+    const reborn: GameState = { ...lived, deaths: lived.deaths + 1, run: newRun(SEED, BUNDLE).run };
+    const out = act(reborn, SHORE, "book", "read");
+    expect(said(out)).toHaveLength(1);
+    expect(saying(said(out), "a script you don't know")).toBe(1);
+    expect(out.state.campaign.refused).toHaveLength(1); // the fallback refuses
   });
 
   it("raises a flag once — a ledger is a set", () => {

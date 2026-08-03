@@ -7,6 +7,13 @@
 // (.llm/rules/engine.md) — there is no `default:` here that could fail at play,
 // and there is no branch that throws.
 //
+// That last sentence is a claim, so it is carried by a mechanism rather than by
+// discipline: an id from an intent reaches an author-keyed map only through
+// `own` below, which is the one place a lookup on `objects` or `actions` may
+// happen. Read raw, those maps answer an inherited Function for a dozen plain
+// strings (`toString`, `constructor`, `valueOf`, …) and the totality guarantee
+// is a `TypeError`. It shipped that way once; the regression is asserted.
+//
 // src/core is pure: no DOM, no I/O, no Date, no Math.random, no console. Every
 // function here takes a state and returns a value, and none of them can edit a
 // state — `GameState` is readonly to the leaves (types.ts law 1), so a resolver
@@ -436,6 +443,30 @@ function refused(campaign: CampaignBranch, intent: Intent, depth: number): Campa
 
 // ───────────────────────────────────────────────────────────────── resolving ──
 
+/**
+ * Read an AUTHOR-KEYED map without reading through the prototype.
+ *
+ * `card.objects` and `RoomObject.actions` are keyed by ids a content author
+ * chose, and an object literal inherits `Object.prototype`. So a raw `map[id]`
+ * does NOT answer `undefined` for `toString`, `constructor`, `valueOf`,
+ * `hasOwnProperty`, `isPrototypeOf`, `propertyIsEnumerable`, `toLocaleString`,
+ * `__defineGetter__`, `__lookupGetter__`, `__defineSetter__`,
+ * `__lookupSetter__` or `__proto__` — it answers an inherited Function (or, for
+ * `__proto__`, the prototype itself), an `=== undefined` guard waves it
+ * through, and the next line calls an array method on it. Twelve plain strings
+ * turned the only transition into a `TypeError`, which is exactly what "unknown
+ * things fail at LOAD, never at play" (.llm/rules/engine.md) forbids.
+ *
+ * `noUncheckedIndexedAccess` types both lookups as `T | undefined` already.
+ * That is a compile-time promise the runtime does not keep, which is precisely
+ * why this is a guard and not a type. `cards.ts` writes the same one at its own
+ * three map lookups (`closed`, `KEEP_TABLE`, `TIER_TABLE`); this is the house
+ * form, applied at the last place that omitted it.
+ */
+function own<T>(map: { readonly [key: string]: T }, key: string): T | undefined {
+  return Object.prototype.hasOwnProperty.call(map, key) ? map[key] : undefined;
+}
+
 /** Nothing was addressed, so nothing was said and nothing moved. */
 const inert = (state: GameState): Resolution => ({ state, effects: [], emissions: [] });
 
@@ -452,6 +483,12 @@ const inert = (state: GameState): Resolution => ({ state, effects: [], emissions
  * should arise — but resolution is not the place to discover it, because
  * unknown things fail at LOAD and nothing fails at play.
  *
+ * "Does not have" means DOES NOT HAVE ITSELF (`own`), not "reads undefined".
+ * An intent is a pair of plain strings and the shell may be a tap behind the
+ * engine — `removeObject` is emitted, so the present-object set is the shell's
+ * and can lag by one act — which makes the inert path a real path and not a
+ * theoretical one.
+ *
  * The words are applied in the order the vocabulary declares them
  * (`DELTA_WORDS`, .llm/rules/engine.md): say, set, unset, give, take, adjust,
  * journal, refuse, goto, addObject, removeObject, prompt, fight, end. That
@@ -459,7 +496,12 @@ const inert = (state: GameState): Resolution => ({ state, effects: [], emissions
  * the same flag is a lowered flag, always, in every build.
  */
 export function resolve(state: GameState, card: RoomCard, intent: Intent): Resolution {
-  const responses = card.objects[intent.object]?.actions?.[intent.action];
+  // BOTH lookups are guarded, and deliberately: the object side happens to be
+  // inert today only because `Object.prototype` carries no `.actions`, and an
+  // accident is not a guarantee — it would become a crash the moment anything
+  // reached one field further.
+  const actions = own(card.objects, intent.object)?.actions;
+  const responses = actions === undefined ? undefined : own(actions, intent.action);
   if (responses === undefined) return inert(state);
 
   // Gate ordering: the first response whose gates all hold answers. The list
