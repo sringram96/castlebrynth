@@ -52,10 +52,16 @@
 //   ACTIONS  ROLL before the cast; THROW · BRACE · FLEE after it. THROW carries
 //            the live arithmetic in its own label, so the decision is made
 //            where it is taken.
-//   SKILLS   "found, uses-per-rest, spent AFTER the dice land". grammar.yaml
-//            ships `skills: {}` — deferred past H180 — so this page is honestly
-//            empty rather than filled with something invented.
-//   ITEMS    jokers and spells, likewise `{}` and deferred (L005). Empty.
+//   SKILLS   `run.skills` — "found, uses-per-rest, spent AFTER the dice land".
+//   ITEMS    `run.pouch` — consumables, then the four equipment slots, then the
+//            two small ones, in the engine's own fixed order, each carrying its
+//            ✦/• keep mark.
+//
+// BOTH READ THE RUN BRANCH, NOT THE MANIFEST, and getting that wrong is the
+// mistake this card actually made first: the manifest is what EXISTS in the
+// world (and ships its skill/joker/spell collections empty by decision), while
+// the run branch is what YOU HAVE. Reading the manifest showed a player carrying
+// a knife an empty ITEMS page.
 //
 // ───────────────────────────────────────────────────── the strip reads ONE ledger ──
 //
@@ -74,7 +80,7 @@ import { brace, flee, rollHand, throwBones } from "../lots/turn";
 import type { Bone } from "../lots/cast";
 import type { Manifest } from "../lots/manifest";
 import type { Action, Ending, Fight } from "../lots/turn";
-import type { ActionOption, Id, PanelView, RunBranch, Strip } from "../core/types";
+import type { ActionOption, Id, ItemRef, PanelView, Pouch, RunBranch, Strip } from "../core/types";
 
 /** The object every fight act is addressed to. One name, so the shell's router
  *  has one thing to look for (types.ts `Intent`). */
@@ -319,8 +325,21 @@ export function stripFor(run: RunBranch, fight: Fight | null): Strip {
 
 // ────────────────────────────────────────────────────────────── panes v3 ──
 
+/**
+ * A fight action, addressed.
+ *
+ * The three words are addressed to `FIGHT` — one name, so the shell's router
+ * has one thing to look for. A SKILL or an ITEM is addressed to ITSELF, the way
+ * a room's acts are (types.ts `Intent`): the object is the thing you are
+ * spending, and the action is what you are doing with it.
+ */
 const option = (action: Word, label: string): ActionOption => ({
   intent: { object: FIGHT, action },
+  label,
+});
+
+const spend = (thing: Id, label: string): ActionOption => ({
+  intent: { object: thing, action: "use" },
   label,
 });
 
@@ -336,22 +355,77 @@ function throwLabel(preview: Preview): string {
 }
 
 /**
- * The three panes, reading a fight.
+ * What you are carrying, in the FIXED order the engine walks it: the loose
+ * consumables, then the four equipment slots, then the two small ones.
  *
- * SKILLS and ITEMS are empty because grammar.yaml ships `skills: {}`,
- * `jokers: {}` and `spells: {}` — deferred past H180 by their own cards. The
- * pages still exist and still say they are empty (H105): nothing collapses, and
- * a pane that vanished mid-fight would move the pager under a thumb.
+ * The same order `heldAt` (resolve.ts) and `contents` (death.ts) use, and for
+ * the same reason they use it — so the list a player reads is the list death
+ * will draw a survivor from, in the order it will draw it.
+ *
+ * The KEEP MARK is on the label because it is the only thing about an item that
+ * matters at the moment you might spend it: ✦ key and • kept come back with you
+ * (DESIGN §ledgers), and everything else is what death takes. An empty slot is
+ * null, not a hole, so it is skipped rather than shown as a blank.
  */
-export function panesFor(manifest: Manifest, fight: Fight, chosen: readonly number[]): PanelView {
-  if (fight.ending !== null) return { actions: [], skills: [], items: [] };
+function carried(pouch: Pouch): readonly ItemRef[] {
+  const held: ItemRef[] = [...pouch.consumables];
+  for (const slot of pouch.equipment) if (slot !== null) held.push(slot);
+  for (const slot of pouch.small) if (slot !== null) held.push(slot);
+  return held;
+}
+
+const KEEP_MARK: { readonly [K in ItemRef["keep"]]: string } = {
+  key: "✦ ",
+  kept: "• ",
+  none: "",
+};
+
+/**
+ * The three panes, reading a fight AND THE RUN BRANCH.
+ *
+ * SKILLS and ITEMS come off `run` — state v3's `skills` and `pouch` (D001) —
+ * and NOT off the manifest. That distinction is the whole of this function's
+ * second half and it was got wrong first: reading `manifest.skills` /
+ * `manifest.jokers` / `manifest.spells` reports both pages empty forever,
+ * because grammar.yaml ships those collections empty by decision (L005, L006).
+ * But the manifest is what EXISTS in the world; the run branch is what YOU
+ * HAVE. A player carrying a knife would have read an empty ITEMS page.
+ *
+ * OFFERED, NOT YET SPENDABLE. The turn loop has no word for spending a skill or
+ * an item — DESIGN's pipeline names a `skill_window` hook and turn.ts does not
+ * implement one — so these options are surfaced and the shell has nothing to
+ * route them to. That is the honest skeleton: the panes show what state v3
+ * holds, and the hook that spends it is the engine's card. Showing nothing
+ * would have hidden the pouch; showing it and pretending it fires would be
+ * worse.
+ *
+ * The pages still exist when they are empty (H105): nothing collapses, and a
+ * pane that vanished mid-fight would move the pager under a thumb.
+ */
+export function panesFor(
+  manifest: Manifest,
+  run: RunBranch,
+  fight: Fight,
+  chosen: readonly number[],
+): PanelView {
+  // "found, uses-per-rest, spent AFTER the dice land" — so an exhausted skill
+  // is still listed, with its count. Hiding it would be a collapse, and the
+  // count is the thing worth reading.
+  const skills = run.skills.map((skill) =>
+    spend(skill.id, `${skill.id} — ${skill.uses.current}/${skill.uses.max}`),
+  );
+  const items = carried(run.pouch).map((item) =>
+    spend(item.id, `${KEEP_MARK[item.keep]}${item.id}`),
+  );
+
+  if (fight.ending !== null) return { actions: [], skills, items };
 
   if (fight.roll === null) {
     return {
       // FLEE is always offered — before the roll as well as after it.
       actions: [option("roll", "ROLL YOUR HAND"), option("flee", fleeLabel(fight))],
-      skills: [],
-      items: [],
+      skills,
+      items,
     };
   }
 
@@ -363,8 +437,8 @@ export function panesFor(manifest: Manifest, fight: Fight, chosen: readonly numb
       option("brace", `BRACE — hold ${braced.held}, take ${braced.harm}`),
       option("flee", fleeLabel(fight)),
     ],
-    skills: [],
-    items: [],
+    skills,
+    items,
   };
 }
 
@@ -434,8 +508,9 @@ export interface FightScreen {
   inspect(): string;
   /** What THROW would do with the current selection. */
   preview(): Preview;
-  /** The three panes, fight-aware. */
-  panes(): PanelView;
+  /** The three panes, fight-aware. Takes the run branch because SKILLS and
+   *  ITEMS are state v3's, not the manifest's. */
+  panes(run: RunBranch): PanelView;
   /** Speak a word. The only thing here that moves a fight. */
   say(word: Word): void;
   render(): void;
@@ -575,7 +650,7 @@ export function openScreen(
     tapFoe,
     inspect: () => inspected,
     preview: () => previewThrow(manifest, fight, chosen),
-    panes: () => panesFor(manifest, fight, chosen),
+    panes: (run: RunBranch) => panesFor(manifest, run, fight, chosen),
     say,
     render,
   };

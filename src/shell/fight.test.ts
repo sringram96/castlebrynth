@@ -73,9 +73,25 @@ const RUN: RunBranch = {
     sanity: { current: 5, max: 8 },
   },
   tithes: 11,
+  pouch: {
+    consumables: [{ id: "item:tallow-stub", keep: "none" }],
+    // A hole in the middle on purpose: an empty slot is null, not a gap in the
+    // list, and the pane must skip it rather than render a blank.
+    equipment: [{ id: "item:rusted-knife", keep: "none" }, null, null, { id: "item:the-key", keep: "key" }],
+    small: [null, { id: "item:whetstone", keep: "kept" }],
+  },
+  skills: [
+    { id: "skill:steady-hand", uses: { current: 1, max: 2 } },
+    { id: "skill:read-the-room", uses: { current: 0, max: 1 } },
+  ],
+  flags: [],
+};
+
+/** A run carrying nothing — the other half of the pouch's shape. */
+const EMPTY_RUN: RunBranch = {
+  ...RUN,
   pouch: { consumables: [], equipment: [null, null, null, null], small: [null, null] },
   skills: [],
-  flags: [],
 };
 
 function mount(fight: Fight): {
@@ -209,7 +225,7 @@ describe("D006 · select → throw matches core exactly", () => {
     const { screen } = mount(rolled(7));
     // NO REROLLS EVER (DESIGN §content laws). ROLL is not on the pane once the
     // hand has landed, so the button that would raise the refusal is not there.
-    const actions = panesFor(manifest, screen.fight(), []).actions.map((a) => a.intent.action);
+    const actions = panesFor(manifest, RUN, screen.fight(), []).actions.map((a) => a.intent.action);
     expect(actions).toEqual(["throw", "brace", "flee"]);
     expect(actions).not.toContain("roll");
   });
@@ -234,7 +250,7 @@ describe("D006 · the six-die hand on the floor", () => {
     // order, and the banner carries it.
     expect(bones(host)).toHaveLength(0);
     expect(host.querySelector(".fight-intent")?.textContent).toContain("It will take 7");
-    expect(panesFor(manifest, screen.fight(), []).actions[0]?.intent.action).toBe("roll");
+    expect(panesFor(manifest, RUN, screen.fight(), []).actions[0]?.intent.action).toBe("roll");
   });
 
   it("tap-selects and tap-deselects, and marks what is picked up", () => {
@@ -355,7 +371,7 @@ describe("D006 · inspect shows the lean, and the foe declares its pursuit", () 
 describe("D006 · panes v3", () => {
   it("puts the three words on ACTIONS, addressed to the fight", () => {
     const fight = rolled(5);
-    const panes = panesFor(manifest, fight, [0, 1]);
+    const panes = panesFor(manifest, RUN, fight, [0, 1]);
 
     expect(panes.actions.map((a) => a.intent)).toEqual([
       { object: FIGHT, action: "throw" },
@@ -367,7 +383,7 @@ describe("D006 · panes v3", () => {
   it("carries the live arithmetic in THROW's own label", () => {
     const fight = rolled(5);
     const shown = previewThrow(manifest, fight, [0, 1]);
-    const label = panesFor(manifest, fight, [0, 1]).actions[0]?.label ?? "";
+    const label = panesFor(manifest, RUN, fight, [0, 1]).actions[0]?.label ?? "";
 
     // The decision is made where it is taken: sum × mult = score, in the open.
     expect(label).toContain(`${shown.sum}×${shown.mult} = ${shown.score}`);
@@ -377,8 +393,8 @@ describe("D006 · panes v3", () => {
 
   it("offers FLEE before the roll as well as after it", () => {
     const opened = openFight(manifest, lots(5), foe(), HAND, 20);
-    const before = panesFor(manifest, opened, []).actions.map((a) => a.intent.action);
-    const after = panesFor(manifest, rollHand(manifest, opened), []).actions.map(
+    const before = panesFor(manifest, RUN, opened, []).actions.map((a) => a.intent.action);
+    const after = panesFor(manifest, RUN, rollHand(manifest, opened), []).actions.map(
       (a) => a.intent.action,
     );
 
@@ -387,22 +403,64 @@ describe("D006 · panes v3", () => {
     expect(after).toContain("flee");
   });
 
-  it("keeps SKILLS and ITEMS as pages, empty and honest", () => {
-    const panes = panesFor(manifest, rolled(5), []);
+  it("reads SKILLS off the RUN BRANCH, not the manifest", () => {
+    const panes = panesFor(manifest, RUN, rolled(5), []);
 
-    // grammar.yaml ships `skills: {}`, `jokers: {}` and `spells: {}` — deferred
-    // past H180. The pages still exist (nothing collapses, H105); they are
-    // empty rather than filled with something invented.
+    // The manifest is what EXISTS in the world and ships `skills: {}` by
+    // decision (L006). The run branch is what YOU HAVE. Reading the manifest
+    // reports an empty page forever, whatever the player is carrying.
+    expect(Object.keys(manifest.skills)).toEqual([]);
+    expect(panes.skills.map((s) => s.label)).toEqual([
+      "skill:steady-hand — 1/2",
+      // Spent, and still listed with its count: "spent AFTER the dice land",
+      // and hiding an exhausted skill would be a collapse.
+      "skill:read-the-room — 0/1",
+    ]);
+    // A skill is addressed to ITSELF, the way a room's acts are.
+    expect(panes.skills[0]?.intent).toEqual({ object: "skill:steady-hand", action: "use" });
+  });
+
+  it("reads ITEMS off the pouch, in the engine's own fixed order, with keep marks", () => {
+    const panes = panesFor(manifest, RUN, rolled(5), []);
+
+    // Consumables, then the four equipment slots, then the two small ones —
+    // the order `heldAt` (resolve.ts) and `contents` (death.ts) walk, so the
+    // list a player reads is the list death draws a survivor from. Null slots
+    // are skipped, not rendered as blanks. ✦ key and • kept come back with you.
+    expect(panes.items.map((i) => i.label)).toEqual([
+      "item:tallow-stub",
+      "item:rusted-knife",
+      "✦ item:the-key",
+      "• item:whetstone",
+    ]);
+    expect(panes.items[0]?.intent).toEqual({ object: "item:tallow-stub", action: "use" });
+    expect(Object.keys(manifest.jokers)).toEqual([]);
+  });
+
+  it("keeps both pages when the run carries nothing", () => {
+    const panes = panesFor(manifest, EMPTY_RUN, rolled(5), []);
+
+    // The pages still exist (nothing collapses, H105) — H105's own empty-state
+    // line is what a player reads.
     expect(panes.skills).toEqual([]);
     expect(panes.items).toEqual([]);
-    expect(Object.keys(manifest.skills)).toEqual([]);
-    expect(Object.keys(manifest.jokers)).toEqual([]);
+  });
+
+  it("still offers what you are carrying once the fight is over", () => {
+    const finished = flee(rolled(5, { pursuit: 0 }));
+    const panes = panesFor(manifest, RUN, finished, []);
+
+    // The three words are gone — a finished fight takes no more acts — but the
+    // pouch has not emptied itself, and a pane that vanished would move the
+    // pager under a thumb.
+    expect(panes.actions).toEqual([]);
+    expect(panes.items).toHaveLength(4);
   });
 
   it("offers no acts once the fight is over", () => {
     const finished = flee(rolled(5, { pursuit: 0 }));
     expect(finished.ending).toBe("fled");
-    expect(panesFor(manifest, finished, []).actions).toEqual([]);
+    expect(panesFor(manifest, RUN, finished, []).actions).toEqual([]);
   });
 });
 
