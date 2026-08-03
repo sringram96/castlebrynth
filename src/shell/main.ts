@@ -15,6 +15,9 @@
 // demands (.llm/rules/ui.md, .llm/rules/art.md) and wireframe greys that are
 // meant to be deleted, not tuned.
 
+import { mountPanel } from "./panel";
+import type { Panel } from "./panel";
+
 /** The id `index.html` reserves for the shell. */
 export const APP_ID = "app";
 
@@ -52,18 +55,18 @@ function element(owner: Document, tag: string, className: string): HTMLElement {
  * TOTAL and idempotent: mounting twice leaves one frame, so a boot that runs
  * after a hot reload does not stack two panels on one thumb.
  *
- * The frame opens EMPTY and says so. `frame--empty` draws the two regions as
- * labelled wireframe boxes — that is the whole visible result of this card, and
- * it is deliberately ugly: an empty frame that looked finished would be a claim
- * this card has not earned. H104 and H105 clear the class as they fill the
- * regions.
+ * EACH REGION SAYS IT IS EMPTY UNTIL SOMETHING FILLS IT. `stage--empty` and
+ * `panel--empty` draw labelled wireframe boxes, and each is cleared by the card
+ * that fills that region — H104 the stage, H105 the panel. One class for both
+ * would mean the first card to land silently claimed the other's region as
+ * finished.
  */
 export function mountFrame(host: HTMLElement): Frame {
   const owner = host.ownerDocument;
-  const root = element(owner, "div", "frame frame--empty");
-  const stage = element(owner, "section", "stage");
+  const root = element(owner, "div", "frame");
+  const stage = element(owner, "section", "stage stage--empty");
   const lines = element(owner, "p", "stage-lines");
-  const panel = element(owner, "section", "panel");
+  const panel = element(owner, "section", "panel panel--empty");
 
   // The regions are landmarks, not decoration: a screen reader meets the same
   // two places a thumb does.
@@ -79,6 +82,12 @@ export function mountFrame(host: HTMLElement): Frame {
   return { root, stage, lines, panel };
 }
 
+/** The shell, running: the frame, and what has been mounted into it. */
+export interface Shell {
+  readonly frame: Frame;
+  readonly panel: Panel;
+}
+
 /**
  * Start the shell.
  *
@@ -86,13 +95,26 @@ export function mountFrame(host: HTMLElement): Frame {
  * side effects, and the entry wants to fail quietly rather than throw into a
  * blank page: no `#app`, nothing mounted, null back.
  *
- * Everything a running game needs is wired here as the later cards land —
- * H108 restores the save, H105 renders the panel, H104 the still. Today it
- * mounts the empty frame, which is exactly what this card claims.
+ * Everything a running game needs is wired here as the cards land. Today: the
+ * frame (H101) and the panel (H105), which opens with the dashes of a strip
+ * that has nothing to say yet. There is no state loop — `act` cannot be
+ * reached, because a panel with no view offers no option to press — so it is
+ * left as the one honest stub in this file rather than given a body that
+ * pretends.
  */
-export function boot(document_: Document): Frame | null {
+export function boot(document_: Document): Shell | null {
   const host = document_.getElementById(APP_ID);
-  return host === null ? null : mountFrame(host);
+  if (host === null) return null;
+
+  const frame = mountFrame(host);
+  const panel = mountPanel(frame.panel, {
+    act: () => {
+      /* H104 wires the state loop. Unreachable until a view is rendered. */
+    },
+  });
+  frame.panel.classList.remove("panel--empty");
+
+  return { frame, panel };
 }
 
 // The entry point. Guarded by `#app`'s existence, so importing this module in a

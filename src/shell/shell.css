@@ -119,13 +119,145 @@ body {
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
+/* ───────────────────────────────────────────── the panel's insides (H105) ── */
+
+/* NOTHING COLLAPSES (.llm/rules/ui.md). The panel is a two-row grid: the paged
+ * region takes what is left, the strip takes exactly what it needs, and neither
+ * can squeeze the other to nothing. `min-height: 0` on the paged row is what
+ * lets the PAGE scroll instead of pushing the strip off the bottom. */
+.panel-body {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  height: 100%;
+  min-height: 0;
+}
+
+.panel-pages {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 0;
+}
+
+/* ── the pager: ◂ ACTIONS · SKILLS · ITEMS ▸ */
+
+.pager {
+  display: grid;
+  grid-template-columns: var(--tap-min) 1fr var(--tap-min);
+  align-items: stretch;
+  border-bottom: 0.0625em solid #222;
+}
+
+.pager-tabs {
+  display: flex;
+}
+
+.pager-arrow,
+.pager-tab {
+  /* EVERY TAP TARGET ≥44 device-independent points (.llm/rules/ui.md). Set on
+     the pressable element itself, so it holds whatever the label's length is. */
+  min-height: var(--tap-min);
+  min-width: var(--tap-min);
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: #8a8a8a;
+  font: inherit;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+}
+
+/* The current page is marked, not isolated: the other two labels stay legible
+   and stay pressable. A page never disappears from the pager. */
+.pager-tab--on {
+  color: #f0f0f0;
+  box-shadow: inset 0 -0.125em 0 #f0f0f0;
+}
+
+/* ── the page */
+
+.page {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.5em 0.75em;
+}
+
+.page-subject {
+  margin: 0 0 0.5em;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  color: #8a8a8a;
+  /* Reserves its line whether or not anything is selected: the options below
+     must not jump under the thumb when a selection arrives. */
+  min-height: 1.35em;
+}
+
+.page-options {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.option-press {
+  display: block;
+  width: 100%;
+  min-height: var(--tap-min);
+  padding: 0.5em 0.75em;
+  border: 0.0625em solid #333;
+  border-radius: 0.25em;
+  margin-bottom: 0.375em;
+  background: #141414;
+  color: #e8e8e8;
+  font: inherit;
+  font-size: 0.875rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* An empty page SAYS it is empty. It does not shrink and it does not vanish. */
+.page-empty {
+  margin: 0;
+  color: #5a5a5a;
+  font-size: 0.875rem;
+}
+
+/* ── the permanent strip: HP · MIGHT · WILL · ◎ · DEPTH */
+
+.strip {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5em;
+  padding: 0.5em 0.75em;
+  border-top: 0.0625em solid #333;
+  background: #050505;
+  font-size: 0.75rem;
+  /* No `display: none` reaches this element from anywhere in the shell, and no
+     media query hides it. It is the one element the frame promises. */
+}
+
+.strip-cell {
+  display: flex;
+  gap: 0.25em;
+  align-items: baseline;
+  white-space: nowrap;
+}
+
+.strip-label {
+  color: #6a6a6a;
+  letter-spacing: 0.05em;
+}
+
+.strip-value {
+  color: #e8e8e8;
+}
+
 /* ──────────────────────────────────────────────────────────── the wireframe ── */
 
 /* The empty frame, before there is anything to put in it. H104 and H105
    replace these; they exist so that "the frame mounted" is visible on a phone
    without inventing any content. */
-.frame--empty .stage::after,
-.frame--empty .panel::after {
+.stage--empty::after,
+.panel--empty::after {
   content: attr(data-wireframe);
   position: absolute;
   inset: 0;

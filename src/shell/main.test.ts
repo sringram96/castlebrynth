@@ -44,7 +44,11 @@ describe("H101 · the frame", () => {
   it("opens empty, and says so rather than looking finished", () => {
     const frame = mountFrame(host());
 
-    expect(frame.root.classList.contains("frame--empty")).toBe(true);
+    // Each region carries its OWN wireframe mark, cleared by the card that
+    // fills it. One shared class would let the first card to land claim the
+    // other's region as finished.
+    expect(frame.stage.classList.contains("stage--empty")).toBe(true);
+    expect(frame.panel.classList.contains("panel--empty")).toBe(true);
     expect(frame.stage.textContent).toBe("");
     expect(frame.panel.children).toHaveLength(0);
   });
@@ -77,9 +81,22 @@ describe("H101 · the frame", () => {
 
   it("boots into the host index.html reserves", () => {
     host();
-    const frame = boot(document);
+    const shell = boot(document);
 
-    expect(frame).not.toBeNull();
-    expect(document.getElementById(APP_ID)?.firstElementChild).toBe(frame?.root);
+    expect(shell).not.toBeNull();
+    expect(document.getElementById(APP_ID)?.firstElementChild).toBe(shell?.frame.root);
+  });
+
+  it("boots with the panel already in the frame, strip and all (H105)", () => {
+    host();
+    const shell = boot(document);
+
+    // The permanent strip is permanent from the first frame of the boot, before
+    // there is any state to put in it (.llm/rules/ui.md).
+    expect(shell?.frame.panel.contains(shell.panel.element)).toBe(true);
+    expect(document.querySelectorAll(".strip-cell")).toHaveLength(5);
+    expect(shell?.frame.panel.classList.contains("panel--empty")).toBe(false);
+    // The stage is still a wireframe: H104 has not landed.
+    expect(shell?.frame.stage.classList.contains("stage--empty")).toBe(true);
   });
 });
