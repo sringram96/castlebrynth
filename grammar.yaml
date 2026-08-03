@@ -1,0 +1,138 @@
+# castlebrynth · grammar.yaml — the Lots, as data.
+#
+# The engine of the Lots knows the pipeline hooks and the effect verbs, and
+# nothing else. Every tier, face, die, joker, spell, skill, enemy rule and
+# enemy is written here (DESIGN §the lots, .llm/rules/engine.md). The shape of
+# this file, and the door it comes through, are src/lots/manifest.ts.
+#
+# `experiments/*.yaml` layer over this. An experiment may switch entries on or
+# off and move numbers; it cannot introduce an entry, a hook or a verb. A new
+# word is a loud amendment to DESIGN.md and its own Asana task.
+#
+# What is here is the FLOOR — the table, the alphabet, and two dice — enough
+# that the rest of the chain has something true to build on. Jokers, spells,
+# skills, enemy rules and enemies arrive on their own cards; their sections
+# stand empty rather than stubbed, because an invented joker is a balance
+# decision made in the dark.
+
+version: 1
+
+# ── the tiers ─────────────────────────────────────────────────────────────
+#
+# "base = sum of thrown faces × combo tier (pair ×2, trips ×3, straight ×3,
+# full house ×4, quads+ ×5)" (DESIGN §the lots), said as shapes.
+#
+# Each entry of `counts` is a MINIMUM group size, which is why quads+ is [4]
+# and needs no "or better": five of a kind satisfies it, and no higher tier
+# exists to claim the throw first.
+#
+# `run: 4` is the one number here DESIGN does not spell. It is the length of a
+# straight, and it is data on purpose: an experiment moves it, and the sim
+# rules on it. Four is the honest starting guess against a hand of six.
+
+tiers:
+  pair:
+    mult: 2
+    match: { counts: [2] }
+  trips:
+    mult: 3
+    match: { counts: [3] }
+  straight:
+    mult: 3
+    match: { run: 4 }
+  full_house:
+    mult: 4
+    match: { counts: [3, 2] }
+  quads:
+    mult: 5
+    match: { counts: [4] }
+
+# ── the faces ─────────────────────────────────────────────────────────────
+#
+# The alphabet. Six of them, and every face scores a number — there are no
+# verb-faces (DESIGN §the lots). A blank, when the Hollow Die arrives, is a
+# face with `pips: 0`, not a face left out.
+#
+# A gilded trigger hangs off a face here, and a die may carry at most one such
+# face. None is gilded yet: a gilded face is a power, and powers are authored
+# where their balance is argued.
+
+faces:
+  one:   { pips: 1 }
+  two:   { pips: 2 }
+  three: { pips: 3 }
+  four:  { pips: 4 }
+  five:  { pips: 5 }
+  six:   { pips: 6 }
+
+# ── the dice ──────────────────────────────────────────────────────────────
+#
+# Two, and the second exists to prove the first is not the only kind.
+#
+# The plain bone is the anchor: no lean, six even faces, EV 3.5 exactly — F2
+# bone standard, "plain die EV 3.5 anchors all". Nothing in this file is
+# allowed to make that number drift; `dieEv` in the loader measures it and the
+# test holds it.
+#
+# The river stone is a LEAN die and it is deliberately not a stronger one. Its
+# weights sit on three and four, so its EV is also 3.5 and only its spread
+# changes: F3 says "rare power = RELIABILITY via lean, not raw EV", and this is
+# that sentence with numbers in it. It is heavy, which is both why it lands
+# flat and why it wants Might 3 — a stat gate shapes the arsenal and never
+# touches the throw math (DESIGN §the lots).
+#
+# There is no line here describing either lean. The inspect line is derived
+# from the weights, so it cannot lie about the odds.
+
+dice:
+  bone:
+    name: Knucklebone
+    faces: [one, two, three, four, five, six]
+    socketable: false
+
+  river-stone:
+    name: River Stone
+    faces: [one, two, three, four, five, six]
+    socketable: false
+    lean:
+      three: 2
+      four: 2
+    requires:
+      might: 3
+
+# ── what is found, and what bends ─────────────────────────────────────────
+#
+# Empty by decision, not by omission. Jokers and enemy rules are L005's;
+# spells and skills follow their own cards. Every enemy written into `enemies`
+# must declare a `pursuit` chance — FLEE is always offered, so an enemy that
+# forgot to say how hard it follows you does not load.
+
+jokers: {}
+spells: {}
+skills: {}
+enemy_rules: {}
+enemies: {}
+
+# ── the economy, held open ────────────────────────────────────────────────
+#
+# DESIGN parks the spend economy: "knucklebones gather vs refresh-per-fight —
+# ruled by thumb at the fight screen" (§open, Asana H199). Both sides of the
+# question are toggles so an experiment can flip them without a line of code
+# moving. The base ships the refresh, because a hand that refreshes is the one
+# the turn loop already assumes; GATHER stays off until a thumb says otherwise.
+
+economy:
+  gather:            { enabled: false }
+  refresh_per_fight: { enabled: true }
+
+# ── the sets ──────────────────────────────────────────────────────────────
+#
+# Named groups, switched together. A set lists entries and never another set.
+
+sets:
+  bones:
+    enabled: true
+    entries: [dice.bone]
+  weights:
+    enabled: false
+    entries: [dice.river-stone]
