@@ -16,7 +16,10 @@
 // meant to be deleted, not tuned.
 
 import { mountPanel } from "./panel";
+import { mountScene } from "./scene";
+import type { GameView } from "../core/types";
 import type { Panel } from "./panel";
+import type { Scene, SceneOptions } from "./scene";
 
 /** The id `index.html` reserves for the shell. */
 export const APP_ID = "app";
@@ -85,7 +88,17 @@ export function mountFrame(host: HTMLElement): Frame {
 /** The shell, running: the frame, and what has been mounted into it. */
 export interface Shell {
   readonly frame: Frame;
+  readonly scene: Scene;
   readonly panel: Panel;
+  /**
+   * Draw a view. THE SHELL'S ONE DRAW CALL.
+   *
+   * The still, the writing over it, and the panel, from one `GameView` — so
+   * there is no state of the world in which the strip has been updated and the
+   * art has not. A second entry point would be a second answer to "what is on
+   * screen".
+   */
+  render(view: GameView): void;
 }
 
 /**
@@ -96,25 +109,42 @@ export interface Shell {
  * blank page: no `#app`, nothing mounted, null back.
  *
  * Everything a running game needs is wired here as the cards land. Today: the
- * frame (H101) and the panel (H105), which opens with the dashes of a strip
- * that has nothing to say yet. There is no state loop — `act` cannot be
- * reached, because a panel with no view offers no option to press — so it is
- * left as the one honest stub in this file rather than given a body that
- * pretends.
+ * frame (H101), the panel (H105) and the scene (H104). There is no state loop
+ * in this lane — no bundle is loaded and no act is resolved — so `act` is left
+ * as the one honest stub in this file rather than given a body that pretends.
+ * It is unreachable in any case: a panel with no view offers nothing to press.
  */
-export function boot(document_: Document): Shell | null {
+export function boot(document_: Document, options: SceneOptions = {}): Shell | null {
   const host = document_.getElementById(APP_ID);
   if (host === null) return null;
 
   const frame = mountFrame(host);
   const panel = mountPanel(frame.panel, {
     act: () => {
-      /* H104 wires the state loop. Unreachable until a view is rendered. */
+      /* The state loop is not this lane's. Unreachable until a view renders. */
     },
   });
   frame.panel.classList.remove("panel--empty");
 
-  return { frame, panel };
+  // A tap on a thing SELECTS, and the panel snaps to ACTIONS (H105). The whole
+  // route from a tap on the art to an offered action runs through the shell and
+  // never asks the engine anything — which is what makes the tap free.
+  const scene = mountScene(frame.stage, { select: (object) => panel.select(object) }, options);
+
+  return {
+    frame,
+    scene,
+    panel,
+    render(view: GameView): void {
+      // The stage stops being a wireframe box the moment it has something to
+      // draw — and not before.
+      frame.stage.classList.remove("stage--empty");
+      scene.render(view);
+      // 1–2 lines of writing on top (DESIGN §frame), at native resolution.
+      frame.lines.textContent = view.lines.join(" ");
+      panel.render(view);
+    },
+  };
 }
 
 // The entry point. Guarded by `#app`'s existence, so importing this module in a

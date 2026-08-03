@@ -13,10 +13,11 @@
  *
  * THREE SPACES (.llm/rules/ui.md, .llm/rules/art.md). Layout is written in
  * FRACTIONS of the frame (%, fr, em) and touch in device-independent points.
- * There are exactly two raw lengths in this file and both are named below:
- * one is the platform's tap minimum, one is the asset grid's width. A third
- * would be a bug — src/shell/*.ts is linted for pixel literals, and this file
- * is the only place they are allowed to be written at all.
+ * There is exactly ONE raw length in this file — the platform's tap minimum,
+ * named below. Everything else is a fraction, or a custom property scene.ts
+ * derived and this file only supplies the unit for. The asset grid profile
+ * lives in scene.ts (`GRID_240`), which is the one place art.md permits a raw
+ * pixel count; src/shell/*.ts is linted for the rest.
  */
 
 :root {
@@ -24,13 +25,6 @@
      (≈7mm) regardless of art scale" (.llm/rules/ui.md). Not a taste; the
      size of a thumb. */
   --tap-min: 44px;
-
-  /* ASSET GRID PROFILE — GRID-240: "rooms author on GRID-240 ... Canvas
-     240-wide portrait, integer upscale" (.llm/rules/art.md, DESIGN §art
-     direction). Unitless on purpose: this is a COUNT of logical pixels, not a
-     length. The scale that turns it into a length is computed per frame, by
-     whole numbers only, in scene.ts. */
-  --grid-width: 240;
 
   /* FRAME FRACTION: "interactive controls live in the bottom ~40% of the
      screen" (.llm/rules/ui.md). */
@@ -117,6 +111,92 @@ body {
   /* The strip must clear the home indicator, or the permanent strip is
      permanently half-covered. */
   padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* ───────────────────────────────────────────── the scene's insides (H104) ── */
+
+/* Every length below is a CUSTOM PROPERTY set by scene.ts, multiplied by 1px
+ * here. TS carries the numbers — derived from the asset grid, the whole-number
+ * scale and the frame — and CSS carries the unit. Nothing in this block is a
+ * number anybody chose. */
+
+.scene {
+  position: absolute;
+  inset: 0;
+  /* TRUE-BLACK LETTERBOX filling the remainder (.llm/rules/ui.md). Whatever the
+     whole-number upscale cannot cover is this, and it is #000, not "dark". */
+  background: #000;
+  overflow: hidden;
+}
+
+.still,
+.still-wire {
+  position: absolute;
+  left: calc(var(--still-left, 0) * 1px);
+  top: calc(var(--still-top, 0) * 1px);
+  width: calc(var(--still-width, 0) * 1px);
+  height: calc(var(--still-height, 0) * 1px);
+}
+
+.still {
+  /* CRISP EDGES. The scale is already a whole number; this is what stops the
+     browser guessing between samples anyway. */
+  image-rendering: pixelated;
+  display: block;
+}
+
+.still[hidden],
+.still-wire[hidden] {
+  display: none;
+}
+
+/* The wireframe still: no art yet, and it says which still is missing rather
+   than pretending to be one. */
+.still-wire {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 0.5em;
+  border: 0.0625em dashed #222;
+  color: #3a3a3a;
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+}
+
+.hotspots {
+  position: absolute;
+  inset: 0;
+}
+
+/* IF IT'S TAPPABLE, IT CATCHES THE LIGHT (.llm/rules/art.md). With no art to
+   catch it on, the wireframe outlines every tappable thing — which is also how
+   "no pixel hunts (visible objects, min hit size)" is kept while the art is
+   absent (DESIGN §content laws). */
+.hotspot {
+  position: absolute;
+  left: calc(var(--left, 0) * 1px);
+  top: calc(var(--top, 0) * 1px);
+  width: calc(var(--width, 0) * 1px);
+  height: calc(var(--height, 0) * 1px);
+  /* The minimum is already applied in scene.ts, about each rect's own centre.
+     This is the floor said twice, so a rect can never be shipped below it. */
+  min-width: var(--tap-min);
+  min-height: var(--tap-min);
+  padding: 0.25em;
+  border: 0.0625em solid #2e2e2e;
+  background: transparent;
+  color: #6a6a6a;
+  font: inherit;
+  font-size: 0.6875rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* Laid out rather than derived from the art: the still did not name this thing.
+   Marked so a playtester can see the difference between a hotspot the art
+   placed and one the shell had to invent. */
+.hotspot--laid-out {
+  border-style: dashed;
 }
 
 /* ───────────────────────────────────────────── the panel's insides (H105) ── */
