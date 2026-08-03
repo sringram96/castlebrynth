@@ -32,31 +32,44 @@ ASSET GRID PROFILE (see below).
   props (the body, a door, a die).
 - SPRITE MINIMUMS in frame fractions: dice read at ≥0.10 of frame
   width; no gameplay-critical read below ≈0.03 of frame width.
-- ASSET GRID PROFILE: hand-painted pixel art is authored on ONE
-  named logical grid per asset set (current profile: GRID-240,
-  portrait). The profile is a product choice, not law; switching
-  profiles re-authors assets and changes no rule and no code.
+- ASSET GRID PROFILES, one per register: rooms author on GRID-240;
+  cinema authors on CINE-480 (2x linear — the register's "~2x
+  detail" made literal). Profiles are product choices, not law;
+  changing one re-authors that register's assets and changes no
+  rule and no code.
 - Hand art is painted OVER the solver's guides: VP + corner rays +
   harmonic rungs. The math scaffolds; the hand bricks.
 
-## image laws
+## figure drawing (earned — the lum() lesson)
 
-Carried forward from the conformance review (PR #12). The projective
-system above supersedes that file's camera items — with better math,
-since FOV survives a frame-size change and a fixed focal length does
-not. These were not restated there, so they are kept, not superseded.
-Answer each PASS/FAIL with evidence.
+- PLANES, NOT LIGHTING: a figure is authored as explicit flat color
+  planes (scalp, cheek, muzzle, chin...) chosen by material and
+  form. Light functions may only place sparse highlights; they never
+  generate anatomy.
+- AUTHORED SILHOUETTES: figure contours are hand-placed lumpy
+  polygons or row spans — never a recognizable ellipse or box under
+  deformation. Architecture is solved; figures are drawn.
+- TWO BRUSHES: the design unit is a 2x2 block on the fine canvas —
+  outlines, wrinkles, teeth, nails, brick marks all use it. Single
+  canvas pixels are reserved for wet highlights and dust (~2%).
+- HEAVY INTERIOR OUTLINES: every form-on-form overlap gets a dark
+  separation 1–2 units thick (eyelids, each tooth, each claw, major
+  folds, limb boundaries).
+- CONSTRUCTED FEATURES: teeth/claws are built socket → body → light
+  plane → chipped tip, with dark separators between every unit.
+- CLUSTERS, NOT SPECKLES: texture is connected 2–10 unit clusters
+  whose direction follows the surface; independent 1px noise is
+  banned on figures.
+- DENSITY BUDGET: ~65% broad quiet masses · 25% form-defining
+  clusters · 8% texture · 2% single-pixel accents. Detail is
+  hoarded at focal points (eyes, mouth, hands); everything else
+  stays quiet.
 
-- One motivated light source per scene; 30–40% true black.
-- Hand dither only: no tool gradients, no auto-AA, no mixels, no
-  off-grid rotation/scaling.
-- CONTOUR: every gameplay mass has a continuous silhouette (dark cut
-  vs light, lit edge vs dark) + a contact shadow.
-- If it's tappable, it catches the light — rim readable with the
-  outline toggle OFF.
-- Stillness: ≤2 ambient touches; no idle animation; motion only on
-  declared scares.
-- Palette: on-master colors only; per-depth base + ONE accent.
-- Renderer purity (→ ui.md, engine.md): the free tap mutates nothing,
-  proven by deep clone in a test; the renderer reads View, computes
-  nothing, and never writes state.
+## hero reference
+
+- reference/crawling-one-hero.png is the ratified quality and
+  composition target for cinema plates: authored silhouette, planes,
+  heavy outlines, constructed teeth, focal density at eye/mouth/
+  hand, quiet masses, single motivated underlight, the environment
+  visibly losing (displaced bricks at the scalp). H220 conforms
+  toward it; H115 paints to it; new cinema art is judged against it.
