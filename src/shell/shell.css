@@ -113,6 +113,64 @@ body {
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
+/* ──────────────────────────────────────────────────── the end card (H114) ── */
+
+/* THE STRIP STAYS VISIBLE. The overlay covers the frame, and the strip is
+ * raised above it in the stacking order — .llm/rules/ui.md: "Nothing collapses
+ * or hides: the strip is always visible", and an ending does not repeal that.
+ * What the overlay DOES take is the panel's options: an ended run must not
+ * still offer acts, and intercepting the taps is how that is true without any
+ * control being disabled or removed. */
+.end {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1em;
+  padding: 1.5em;
+  background: #000;
+  text-align: center;
+}
+
+.end[hidden] {
+  display: none;
+}
+
+.strip {
+  position: relative;
+  z-index: 2;
+}
+
+.end-title {
+  margin: 0;
+  color: #d8d8d8;
+  font-size: 0.875rem;
+  letter-spacing: 0.3em;
+}
+
+.end-ending {
+  margin: 0;
+  color: #5a5a5a;
+  font-size: 0.75rem;
+}
+
+.end-again {
+  min-height: var(--tap-min);
+  min-width: calc(var(--tap-min) * 4);
+  padding: 0.5em 1.5em;
+  border: 0.0625em solid #444;
+  border-radius: 0.25em;
+  background: #141414;
+  color: #e8e8e8;
+  font: inherit;
+  font-size: 0.875rem;
+  letter-spacing: 0.15em;
+  cursor: pointer;
+}
+
 /* ───────────────────────────────────────────── the scene's insides (H104) ── */
 
 /* Every length below is a CUSTOM PROPERTY set by scene.ts, multiplied by 1px
