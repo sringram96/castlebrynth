@@ -45,14 +45,21 @@ no sanity bar exists anywhere.
   art. At most one gilded trigger face per die. No verb-faces, no
   self-cost faces.
 - Turn: enemy intent shows (enemies never roll) → roll your hand →
-  THROW a combo / brace / [gather — economy still open] → each held
-  die blocks 1 → intent lands.
+  THROW a combo / brace / [gather — economy still open] / FLEE →
+  each held die blocks 1 → intent lands.
+- FLEE is always offered: every enemy's inspect declares its PURSUIT
+  chance alongside its intent; fleeing ends the fight, pursuit may
+  land one parting harm, and the room's door draw stands — forward
+  is still the only way.
 - Scoring: base = sum of thrown faces × combo tier (pair ×2, trips
   ×3, straight ×3, full house ×4, quads+ ×5). Items are ADDITIVE
   jokers ("rusted knife: +2 to any scored combo"). Elites may bend
   grammar as content ("seals your sixes").
 - Spells are instants: consumables for everyone; socketed faces for
   the wizard (the roll is the cost). Mana does not exist.
+- Heavy dice may be stat-gated ("this die wants Might 3") — stats
+  shape the arsenal without ever touching the throw math. Stats are
+  the body (health, soak, skill and dice access); dice are the hands.
 - Combat content architecture: engine knows only pipeline hooks
   (intent_shown → roll → skill_window → action → combo_validate →
   base_sum → tier_mult → on_score faces-then-jokers → apply →
@@ -82,8 +89,10 @@ sim green + human feel pass, both.
   grants) — death cannot touch it. DICE SURVIVE DEATH — law.
 - Pouch packed at the Crossing from the stash; mid-push finds are
   swap-or-leave; no stash access below.
-- Death wakes you at the Crossing, bars and uses restored; doors
-  redraw; every death unlocks ≥1 new line somewhere (death pays).
+- EITHER bar at zero — health or sanity — is death, by the same
+  rule. Death wakes you at the Crossing, bars and uses restored;
+  doors redraw; every death unlocks ≥1 new line somewhere (death
+  pays).
 - No XP, no levels. Growth = dice (campaign), gear + grants (helpful
   rooms give; dark tradeoffs charge), skills (found, uses-per-rest,
   spent AFTER the dice land), and item combination as joker crafting
@@ -112,8 +121,8 @@ mandatory · death pays per depth.
 NES-CUTSCENE fidelity, not NES-gameplay: pixels as illustration.
 Two shot grammars — ROOMS (locked wide tableaux, 90% of play) and
 CINEMA (letterboxed close-ups, ~2× detail, reserved for glimpses of
-the child, first openings, boss intros, deaths; the camera coming
-close IS the alarm). One motivated light source per scene; 30–40%
+the child, first openings, boss intros, deaths entering the Book of
+Ends; the camera coming close IS the alarm). One motivated light source per scene; 30–40%
 true black; hand dither only; selective outlines + 1px rim light;
 IF IT'S TAPPABLE, IT CATCHES THE LIGHT; CONTOUR LAW — every gameplay
 mass keeps a continuous silhouette (dark cut vs light ground, light
@@ -121,7 +130,11 @@ edge vs dark) + a contact shadow; black withholds CONTENT, never
 SHAPE. Stillness: ≤2 ambient touches per room; motion is the jump
 scare. Canvas 240-wide portrait, integer upscale, true-black
 letterbox, UI text native-res over the art, dithered on-grid
-vignette, dice ≥24px with leans drawn physically. ~40-color master;
+vignette, dice ≥24px with leans drawn physically. PROJECTIVE LAW
+(.llm/rules/art.md): one camera, frontal one-point only, eye height
+constant (the body is the unit), two lenses by register, scenes
+solved as planes + boxes with world-space texturing — hand art is
+painted over the solver's guides. ~40-color master;
 per-depth 12–16 colors = desaturated base + ONE accent (Crossing
 teal · d1 lantern amber · d2 cult crimson · d3 pale gold). THE ART
 NEVER LIES: the Fraying corrupts words only; pixels stay truthful.
@@ -162,4 +175,8 @@ themselves.
 
 Spend economy (knucklebones gather vs refresh-per-fight — ruled by
 thumb at the fight screen) · signature-die roster beyond the wizard ·
-the semantic naming layer (retry from play outward).
+the semantic naming layer (retry from play outward) · ART TASTE:
+Muted vs Noir palette school and CRT on/off (judge on the gallery) ·
+journal + refused-ledger SURFACING in the frame (decide at D006) ·
+the Fraying (sanity word-rot: narrator lies at low sanity, art never
+does — system parked, name reserved).
