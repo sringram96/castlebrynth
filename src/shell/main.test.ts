@@ -15,6 +15,7 @@
 // thing for them to look at.
 import { beforeEach, describe, expect, it } from "vitest";
 import { APP_ID, boot, mountFrame } from "./main";
+import type { GameView } from "../core/types";
 
 function host(): HTMLElement {
   const node = document.createElement("div");
@@ -85,6 +86,42 @@ describe("H101 · the frame", () => {
 
     expect(shell).not.toBeNull();
     expect(document.getElementById(APP_ID)?.firstElementChild).toBe(shell?.frame.root);
+  });
+
+  it("draws the still, the writing and the panel from ONE view (H104)", () => {
+    host();
+    const shell = boot(document, { measure: () => ({ width: 390, height: 523 }) });
+    if (shell === null) throw new Error("expected a shell");
+
+    const view: GameView = {
+      still: "still:crossing",
+      lines: ["The portal is cold.", "Something dripped, once."],
+      objects: [{ id: "portal", label: "the dead ring", actions: [] }],
+      panel: { actions: [], skills: [], items: [] },
+      strip: {
+        hp: { current: 8, max: 10 },
+        might: { current: 3, max: 3 },
+        will: { current: 2, max: 4 },
+        tithes: 17,
+        depth: 2,
+      },
+      vignette: 0.4,
+    };
+    shell.render(view);
+
+    // One call, three regions: there is no state of the world in which the
+    // strip has been updated and the art has not.
+    expect(shell.frame.stage.classList.contains("stage--empty")).toBe(false);
+    expect(shell.frame.lines.textContent).toBe("The portal is cold. Something dripped, once.");
+    expect(shell.scene.hotspots()).toHaveLength(1);
+    expect(document.querySelector("[data-cell='depth'] .strip-value")?.textContent).toBe("2");
+
+    // A tap on the art selects, and the panel snaps to ACTIONS (H105) — the
+    // whole route runs through the shell without asking the engine anything.
+    shell.panel.show("ITEMS");
+    document.querySelector<HTMLButtonElement>(".hotspot")?.click();
+    expect(shell.panel.selection()).toBe("portal");
+    expect(shell.panel.page()).toBe("ACTIONS");
   });
 
   it("boots with the panel already in the frame, strip and all (H105)", () => {

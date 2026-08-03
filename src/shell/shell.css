@@ -13,10 +13,11 @@
  *
  * THREE SPACES (.llm/rules/ui.md, .llm/rules/art.md). Layout is written in
  * FRACTIONS of the frame (%, fr, em) and touch in device-independent points.
- * There are exactly two raw lengths in this file and both are named below:
- * one is the platform's tap minimum, one is the asset grid's width. A third
- * would be a bug — src/shell/*.ts is linted for pixel literals, and this file
- * is the only place they are allowed to be written at all.
+ * There is exactly ONE raw length in this file — the platform's tap minimum,
+ * named below. Everything else is a fraction, or a custom property scene.ts
+ * derived and this file only supplies the unit for. The asset grid profile
+ * lives in scene.ts (`GRID_240`), which is the one place art.md permits a raw
+ * pixel count; src/shell/*.ts is linted for the rest.
  */
 
 :root {
@@ -24,13 +25,6 @@
      (≈7mm) regardless of art scale" (.llm/rules/ui.md). Not a taste; the
      size of a thumb. */
   --tap-min: 44px;
-
-  /* ASSET GRID PROFILE — GRID-240: "rooms author on GRID-240 ... Canvas
-     240-wide portrait, integer upscale" (.llm/rules/art.md, DESIGN §art
-     direction). Unitless on purpose: this is a COUNT of logical pixels, not a
-     length. The scale that turns it into a length is computed per frame, by
-     whole numbers only, in scene.ts. */
-  --grid-width: 240;
 
   /* FRAME FRACTION: "interactive controls live in the bottom ~40% of the
      screen" (.llm/rules/ui.md). */
@@ -117,6 +111,231 @@ body {
   /* The strip must clear the home indicator, or the permanent strip is
      permanently half-covered. */
   padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* ────────────────────────────────────────────── the fight screen (D006) ── */
+
+/* FLOOR DICE IN-SCENE. The bones land in the room, over the still, not in the
+ * panel — the panel is where the three words are. The screen sits above the
+ * scene and below the end card. */
+.fight {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 0.5em;
+  padding: 0.5em;
+  background: #000;
+}
+
+/* THE INTENT SHOWS BEFORE YOU ROLL — always, and at the top, because it is what
+   the whole turn is decided against. Tappable: it is the foe's inspect, which
+   declares the pursuit chance alongside the intent (DESIGN §the lots). */
+.fight-intent {
+  min-height: var(--tap-min);
+  padding: 0.5em 0.75em;
+  border: 0.0625em solid #333;
+  background: #0a0a0a;
+  color: #e8e8e8;
+  font: inherit;
+  font-size: 0.8125rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.floor {
+  display: grid;
+  /* Six bones, three across. At 390 points of frame that is ~0.29 of the frame
+     width each — comfortably over art.md's "dice read at ≥0.10 of frame width"
+     and over the thumb minimum below. */
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: min-content;
+  gap: 0.5em;
+  align-content: center;
+  justify-items: center;
+}
+
+.bone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 1;
+  min-width: var(--tap-min);
+  min-height: var(--tap-min);
+  border: 0.125em solid #3a3a3a;
+  border-radius: 0.25em;
+  background: #141414;
+  color: #cfcfcf;
+  font: inherit;
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+/* Would raise what you are holding to a better tier. A highlight of the legal
+   moves from here — not a recommendation. */
+.bone--completes {
+  border-color: #6a6a6a;
+}
+
+/* Picked up, and about to be thrown. */
+.bone--chosen {
+  border-color: #e8e8e8;
+  background: #262626;
+  color: #ffffff;
+}
+
+/* The inspect line: what the last thing you touched leans toward, or what the
+   foe declares. Derived from the weights — it cannot lie about the odds. */
+.fight-inspect {
+  margin: 0;
+  min-height: 2.7em;
+  color: #8a8a8a;
+  font-size: 0.75rem;
+}
+
+/* ──────────────────────────────────────────────────── the end card (H114) ── */
+
+/* THE STRIP STAYS VISIBLE. The overlay covers the frame, and the strip is
+ * raised above it in the stacking order — .llm/rules/ui.md: "Nothing collapses
+ * or hides: the strip is always visible", and an ending does not repeal that.
+ * What the overlay DOES take is the panel's options: an ended run must not
+ * still offer acts, and intercepting the taps is how that is true without any
+ * control being disabled or removed. */
+.end {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1em;
+  padding: 1.5em;
+  background: #000;
+  text-align: center;
+}
+
+.end[hidden] {
+  display: none;
+}
+
+.strip {
+  position: relative;
+  z-index: 2;
+}
+
+.end-title {
+  margin: 0;
+  color: #d8d8d8;
+  font-size: 0.875rem;
+  letter-spacing: 0.3em;
+}
+
+.end-ending {
+  margin: 0;
+  color: #5a5a5a;
+  font-size: 0.75rem;
+}
+
+.end-again {
+  min-height: var(--tap-min);
+  min-width: calc(var(--tap-min) * 4);
+  padding: 0.5em 1.5em;
+  border: 0.0625em solid #444;
+  border-radius: 0.25em;
+  background: #141414;
+  color: #e8e8e8;
+  font: inherit;
+  font-size: 0.875rem;
+  letter-spacing: 0.15em;
+  cursor: pointer;
+}
+
+/* ───────────────────────────────────────────── the scene's insides (H104) ── */
+
+/* Every length below is a CUSTOM PROPERTY set by scene.ts, multiplied by 1px
+ * here. TS carries the numbers — derived from the asset grid, the whole-number
+ * scale and the frame — and CSS carries the unit. Nothing in this block is a
+ * number anybody chose. */
+
+.scene {
+  position: absolute;
+  inset: 0;
+  /* TRUE-BLACK LETTERBOX filling the remainder (.llm/rules/ui.md). Whatever the
+     whole-number upscale cannot cover is this, and it is #000, not "dark". */
+  background: #000;
+  overflow: hidden;
+}
+
+.still,
+.still-wire {
+  position: absolute;
+  left: calc(var(--still-left, 0) * 1px);
+  top: calc(var(--still-top, 0) * 1px);
+  width: calc(var(--still-width, 0) * 1px);
+  height: calc(var(--still-height, 0) * 1px);
+}
+
+.still {
+  /* CRISP EDGES. The scale is already a whole number; this is what stops the
+     browser guessing between samples anyway. */
+  image-rendering: pixelated;
+  display: block;
+}
+
+.still[hidden],
+.still-wire[hidden] {
+  display: none;
+}
+
+/* The wireframe still: no art yet, and it says which still is missing rather
+   than pretending to be one. */
+.still-wire {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 0.5em;
+  border: 0.0625em dashed #222;
+  color: #3a3a3a;
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+}
+
+.hotspots {
+  position: absolute;
+  inset: 0;
+}
+
+/* IF IT'S TAPPABLE, IT CATCHES THE LIGHT (.llm/rules/art.md). With no art to
+   catch it on, the wireframe outlines every tappable thing — which is also how
+   "no pixel hunts (visible objects, min hit size)" is kept while the art is
+   absent (DESIGN §content laws). */
+.hotspot {
+  position: absolute;
+  left: calc(var(--left, 0) * 1px);
+  top: calc(var(--top, 0) * 1px);
+  width: calc(var(--width, 0) * 1px);
+  height: calc(var(--height, 0) * 1px);
+  /* The minimum is already applied in scene.ts, about each rect's own centre.
+     This is the floor said twice, so a rect can never be shipped below it. */
+  min-width: var(--tap-min);
+  min-height: var(--tap-min);
+  padding: 0.25em;
+  border: 0.0625em solid #2e2e2e;
+  background: transparent;
+  color: #6a6a6a;
+  font: inherit;
+  font-size: 0.6875rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* Laid out rather than derived from the art: the still did not name this thing.
+   Marked so a playtester can see the difference between a hotspot the art
+   placed and one the shell had to invent. */
+.hotspot--laid-out {
+  border-style: dashed;
 }
 
 /* ───────────────────────────────────────────── the panel's insides (H105) ── */
