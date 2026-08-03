@@ -21,15 +21,20 @@
 //          advance, cost, or harm. Omitting it is a compile error.
 //   "Named investigation actions (PEER, LISTEN, REACH IN) carry the risk."
 //        → `RoomObject.actions` — authored ids mapping to response lists.
-//          Only a response carries deltas; only a response can `harm`.
+//          Only a response carries deltas; only a response can `adjust` a
+//          body (DESIGN §the lots: "Stats are the body").
 //   "FORWARD-ONLY."
 //        → the only movement word is `goto`, and it names a DOOR of the
 //          current room. There is no word for the room you came from.
 //   "knowledge ratchets cross-push (refusals + clues pay off on later
 //    meetings). A clue-locked gate ... is marked cross_push."
-//        → `learn` (campaign knowledge), `refuse`, and `Gate.knows` with
-//          `Gate.crossPush` as the author's declaration that this gate's
-//          clue may come from an earlier push.
+//        → `set`, `refuse`, and `Gate.flags` with `Gate.cross_push` as the
+//          author's declaration that this gate's clue may come from an earlier
+//          push. Knowledge has no word of its own: it is a flag, and the
+//          ratchet is the MARKING on the gate rather than a second verb
+//          (.llm/rules/engine.md, the lean word set). Which ledger holds a
+//          given flag — this push's one-shots or the campaign's knowledge —
+//          is resolution's business (H006), and a card never says.
 //   "Doors are the map: the next 2-3 doors appear as sensed descriptions
 //    (light, sound, smell). No map screen, ever."
 //        → `RoomCard.doors`: a declared door is an id and a sense line, both
@@ -41,9 +46,10 @@
 //    a cause)"
 //        → there is no `tappable` flag anywhere in this file to toggle:
 //          presence IS tappability (types.ts `ViewObject`). Adds and removes
-//          are `reveal` and `remove`, and `ObjectChange.cause` is required.
+//          are `addObject` and `removeObject`, and `ObjectChange.cause` is
+//          required — the words are named for the law they serve.
 //          Removing the flag removed one WAY to toggle, not toggling: a card
-//          that can `remove` an object and `reveal` it again makes it
+//          that can `removeObject` and `addObject` it again makes it
 //          pull/push forever, so the loader refuses any object named by both.
 //          An affordance leaves once, or arrives once, and not both.
 //   "no softlocks (always a path to exit, death, or the Crossing)"
@@ -70,22 +76,24 @@
 //
 // ─────────────────────────────────────────────────── deliberately absent ──
 //
-// The vocabulary below is the whole language and it is CLOSED. A new word is
-// its own Asana task, never a side effect (.llm/rules/engine.md). Named here
-// so their absence reads as a decision rather than an oversight:
+// The vocabulary below is the whole language and it is CLOSED, and its word
+// set is now declared by .llm/rules/engine.md rather than by this file: gates
+// {flags, items} · deltas {say, set, unset, give, take, adjust, journal,
+// refuse, goto, addObject, removeObject, prompt, fight, end}. A new word is
+// its own Asana task, never a side effect. Named here so their absence reads
+// as a decision rather than an oversight:
 //
-//   tithes / prices   No word spends or grants ◎. DESIGN §the descent prices
-//                     events ("guarded, priced, or bargained"), but a spend
-//                     word without an affordability GATE lets content charge
-//                     a player into the negative, and the gate keys are
-//                     flags, items and knowledge. The delta and the gate must
-//                     land together, on one card.
-//   might/will/sanity No Descent clause moves them. `harm` covers "carry the
-//                     risk" and "telegraphed harm"; the rest is resolution.
-//   take (items)      Nothing in §the descent or §content laws removes an
-//                     item from the pouch. It arrives with the spend economy.
-//   QTEs              "QTEs are their own category" (DESIGN §the descent) —
-//                     their own category, and their own card.
+//   sanity            `adjust` reaches the tracks the permanent strip shows
+//                     and stops there. The frame shows no sanity bar at all
+//                     ("Sanity is the vignette closing in"), and the system
+//                     that moves it — the Fraying — is PARKED (DESIGN §open).
+//                     A word that moved sanity would land a parked system as
+//                     a side effect. Death by the sanity bar (DESIGN §ledgers)
+//                     is therefore not something a room card can deal out yet.
+//   an affordability  `adjust` spends ◎ and cannot ask whether you can afford
+//   gate              it: the gate keys are flags and items. Until H205 lands
+//                     that gate, nothing here stops a card charging a player
+//                     into the negative — the delta arrived first, by ruling.
 //   events            "exactly one notable-die event per depth" is a property
 //                     of a DEPTH, not of a room card; it is countable only
 //                     across the pool.
@@ -147,29 +155,30 @@ export type Tier = "T0" | "T1" | "T2" | "T3";
  * What must hold for a response to answer. ALL listed conditions must hold,
  * and the lists are AND: `{ flags: [a, b] }` means both.
  *
- * Three keys, and each one is a ledger that already exists in types.ts:
- * `flags` are this push's one-shots (RunBranch.flags), `items` are what is in
- * the pouch, `knows` is campaign knowledge — "Machine-readable understanding:
- * what gates may now open" (types.ts CampaignBranch.knowledge).
+ * Two conditions, and .llm/rules/engine.md names both: gates {flags, items}.
+ * `flags` are raised by `set` and lowered by `unset`, `items` are what is in
+ * the pouch. There is no third condition for knowledge: knowledge is a flag
+ * that lives on the campaign ledger instead of the run's, and WHICH ledger
+ * holds a given flag is resolution's business (H006), never the card's — a
+ * card names a flag and marks the gate.
  *
  * A gate with no condition in it is not a gate; the loader says so. The type
- * cannot: every key is optional, because any one of them may be the only one.
+ * cannot: every key is optional, because either one may be the only one.
  *
- * THREE of the four keys are conditions. `cross_push` is not one — see below.
+ * TWO of the three keys are conditions. `cross_push` is not one — see below.
  * A resolver evaluating a gate must skip exactly that key, and it is spelled
  * the way DESIGN.md spells it so that an author copying the design document
  * verbatim is never told their own vocabulary is unknown.
  */
 export interface Gate {
-  /** CONDITION. One-shots for this push (types.ts RunBranch.flags). */
+  /** CONDITION. A named flag, raised by `set` (types.ts RunBranch.flags for a
+   *  one-shot, CampaignBranch.knowledge for one that survives death). */
   readonly flags?: readonly Id[];
   /** CONDITION. In the pouch, by item id. */
   readonly items?: readonly Id[];
-  /** CONDITION. Campaign knowledge — survives death, so it ratchets cross-push. */
-  readonly knows?: readonly Id[];
   /**
    * NOT A CONDITION. Nothing about the state makes it true or false, and a
-   * resolver must evaluate the other three keys and SKIP this one — a gate
+   * resolver must evaluate the other two keys and SKIP this one — a gate
    * carrying only `cross_push` gates on nothing, which is why the loader
    * refuses it.
    *
@@ -198,8 +207,43 @@ export interface ObjectChange {
 }
 
 /**
+ * Arithmetic on a track. Damage is not a word of its own: it is a negative
+ * number here, and a gift is a positive one.
+ *
+ * DESIGN §the lots: "Stats are the body (health, soak, skill and dice access);
+ * dice are the hands", and DESIGN §ledgers: "EITHER bar at zero — health or
+ * sanity — is death". So the risk a named action carries is not a special verb
+ * but ordinary arithmetic on the body, and the loader's job is only to see
+ * that the arithmetic is whole and that it moves something.
+ *
+ * The tracks are exactly what the permanent strip shows — "HP · Might · Will ·
+ * ◎ tithes · depth" (DESIGN §frame) — less `depth`, which no room sets: how
+ * far down you are is a fact about the descent's draw, not about a card. What
+ * is deliberately not here is named in the header above.
+ *
+ * A move must still be telegraphed in the free tap line first (DESIGN §content
+ * laws: telegraphed harm); that a line telegraphs it is prose, and prose is
+ * the content lint's lane.
+ */
+export interface Adjust {
+  /** The health bar (types.ts Vitals.hp). Negative is harm. */
+  readonly hp?: number;
+  /** types.ts Vitals.might. */
+  readonly might?: number;
+  /** types.ts Vitals.will. */
+  readonly will?: number;
+  /** ◎ — the coin of the labyrinth (types.ts RunBranch.tithes). Negative
+   *  spends. The affordability gate that keeps a spend off the negative is
+   *  H205's, and it is not here yet. */
+  readonly tithes?: number;
+}
+
+/**
  * The delta words: everything a response may apply. CLOSED — a word absent
- * from this list does not exist, and `loadRoom` rejects it by name.
+ * from this list does not exist, and `loadRoom` rejects it by name. The list
+ * and its ORDER are .llm/rules/engine.md's, so that the vocabulary an author
+ * meets in an error message is the vocabulary the rule declares, read the same
+ * way round.
  *
  * `say` is required. A response that applies nothing still speaks, because a
  * tap that produces no line is a tap that appears to have done nothing
@@ -208,33 +252,43 @@ export interface ObjectChange {
 export interface Deltas {
   /** The line this response writes. Always present. */
   readonly say: string;
-  /** Raise these run flags: doors opened, ambushes sprung. This push only. */
+  /** Raise these flags: doors opened, ambushes sprung, things now known. */
   readonly set?: readonly Id[];
-  /** Add to campaign knowledge. Death cannot take it; it ratchets cross-push. */
-  readonly learn?: readonly Id[];
+  /** Lower these flags again. */
+  readonly unset?: readonly Id[];
+  /** Put items in the pouch. The author marks each one's `keep`. */
+  readonly give?: readonly ItemRef[];
+  /** Take items out of the pouch, by id. What death would have done with one
+   *  stops mattering the moment it is gone, so there is no `keep` here. */
+  readonly take?: readonly Id[];
+  /** Move a track: the body, or the coin. Harm is a negative number. */
+  readonly adjust?: Adjust;
   /** One line for the journal. Records the act (DESIGN §content laws). */
   readonly journal?: string;
   /**
    * The labyrinth says no, and remembers being asked (types.ts `Refusal`,
    * CampaignBranch.refused). A refusal carries no other delta than its line:
-   * a refusal that also gives, teaches or moves you was not a refusal.
+   * a refusal that also gives, marks or moves you was not a refusal.
    */
   readonly refuse?: true;
-  /** Put items in the pouch. The author marks each one's `keep`. */
-  readonly give?: readonly ItemRef[];
-  /** HP taken, a whole number of it, 1 or more. Telegraph it in the free tap
-   *  line first (DESIGN §content laws: "telegraphed harm"). */
-  readonly harm?: number;
-  /** A latent object of this room becomes present, for a stated cause. */
-  readonly reveal?: ObjectChange;
-  /** A declared object of this room is gone, for a stated cause. */
-  readonly remove?: ObjectChange;
-  /** The one doorway into the Lots (DESIGN §the two engines, one doorway).
-   *  An enemy id, passed through — the engine never names an enemy. */
-  readonly fight?: Id;
   /** Go through a door DECLARED by this room. Forward-only: there is no word
    *  for going back, and a door ref is not a room id. */
   readonly goto?: Id;
+  /** A latent object of this room becomes present, for a stated cause. */
+  readonly addObject?: ObjectChange;
+  /** A declared object of this room is gone, for a stated cause. */
+  readonly removeObject?: ObjectChange;
+  /** A QTE, by id, passed through. "QTEs are their own category" (DESIGN §the
+   *  descent) and their own card: what a prompt asks, how long it gives, and
+   *  the Will-check fallback every QTE must declare are H208's, not this
+   *  loader's. The word exists here so a room can raise one. */
+  readonly prompt?: Id;
+  /** The one doorway into the Lots (DESIGN §the two engines, one doorway).
+   *  An enemy id, passed through — the engine never names an enemy. */
+  readonly fight?: Id;
+  /** An ending, by id, passed through. What an ending reads and how it is
+   *  shown is H114's; the engine never names one. */
+  readonly end?: Id;
 }
 
 // ──────────────────────────────────────────────────────────────── responses ──
@@ -278,7 +332,7 @@ export interface RoomObject {
    */
   readonly tap: string;
   /**
-   * Not present when the room opens; a response `reveal`s it, with a cause.
+   * Not present when the room opens; a response `addObject`s it, with a cause.
    * Absent means present from the start.
    *
    * This is not a pixel hunt (DESIGN §content laws): a latent object is not
@@ -367,26 +421,36 @@ const OBJECT_KEY_TABLE: KeyTable<RoomObject> = {
 const GATE_KEY_TABLE: KeyTable<Gate> = {
   flags: true,
   items: true,
-  knows: true,
   cross_push: true,
 };
 
-/** The three gate keys that are CONDITIONS. `cross_push` is not one of them:
- *  it is a marking, and a resolver skips it. */
-const GATE_CONDITIONS = ["flags", "items", "knows"] as const;
+/** The two gate keys that are CONDITIONS (.llm/rules/engine.md: gates {flags,
+ *  items}). `cross_push` is not one of them: it is a marking, and a resolver
+ *  skips it. */
+const GATE_CONDITIONS = ["flags", "items"] as const;
 
 const DELTA_KEY_TABLE: KeyTable<Deltas> = {
   say: true,
   set: true,
-  learn: true,
+  unset: true,
+  give: true,
+  take: true,
+  adjust: true,
   journal: true,
   refuse: true,
-  give: true,
-  harm: true,
-  reveal: true,
-  remove: true,
-  fight: true,
   goto: true,
+  addObject: true,
+  removeObject: true,
+  prompt: true,
+  fight: true,
+  end: true,
+};
+
+const ADJUST_TRACK_TABLE: KeyTable<Adjust> = {
+  hp: true,
+  might: true,
+  will: true,
+  tithes: true,
 };
 
 const RESPONSE_KEY_TABLE: KeyTable<Response> = {
@@ -425,8 +489,11 @@ export const DOOR_KEYS = Object.keys(DOOR_KEY_TABLE) as readonly (keyof Door)[];
 export const OBJECT_KEYS = Object.keys(OBJECT_KEY_TABLE) as readonly (keyof RoomObject)[];
 /** The gate keys, in order. */
 export const GATE_KEYS = Object.keys(GATE_KEY_TABLE) as readonly (keyof Gate)[];
-/** The delta words, in order. The whole language a response may apply. */
+/** The delta words, in order. The whole language a response may apply, and
+ *  the order .llm/rules/engine.md declares it in. */
 export const DELTA_WORDS = Object.keys(DELTA_KEY_TABLE) as readonly (keyof Deltas)[];
+/** The tracks `adjust` may move: the permanent strip, less depth. */
+export const ADJUST_TRACKS = Object.keys(ADJUST_TRACK_TABLE) as readonly (keyof Adjust)[];
 /** Everything a response may carry: the gate, then the delta words. */
 export const RESPONSE_KEYS = Object.keys(RESPONSE_KEY_TABLE) as readonly (keyof Response)[];
 /** The knowledge tiers. */
@@ -536,8 +603,8 @@ function readGate(value: unknown, path: string, fault: Fault): void {
   }
 }
 
-/** One `reveal` or `remove`, and where it was written. Kept so the toggle
- *  check can name both halves of a pull/push when it finds one. */
+/** One `addObject` or `removeObject`, and where it was written. Kept so the
+ *  toggle check can name both halves of a pull/push when it finds one. */
 interface Sighting {
   readonly object: string;
   readonly path: string;
@@ -547,7 +614,7 @@ interface Sighting {
  * One card being read: what it declares, what its responses turn out to do,
  * and where to send a problem.
  *
- * The `gotos` / `fights` / `reveals` / `removes` lists are filled in as the
+ * The `gotos` / `fights` / `adds` / `removes` lists are filled in as the
  * responses are walked, because three laws are properties of the WHOLE card
  * rather than of any one response — a door nothing reaches, a room with no way
  * on, and an object that leaves and comes back. They are answered once the
@@ -560,11 +627,16 @@ interface Reading {
   readonly latent: readonly string[];
   readonly gotos: string[];
   readonly fights: string[];
-  readonly reveals: Sighting[];
+  readonly adds: Sighting[];
   readonly removes: Sighting[];
 }
 
-function readChange(value: unknown, path: string, word: "reveal" | "remove", read: Reading): void {
+function readChange(
+  value: unknown,
+  path: string,
+  word: "addObject" | "removeObject",
+  read: Reading,
+): void {
   const fault = read.fault;
   if (!isRecord(value)) {
     fault(path, `\`${word}\` is a map: the object, and the cause it changed`);
@@ -589,17 +661,43 @@ function readChange(value: unknown, path: string, word: "reveal" | "remove", rea
     return;
   }
   const sighting: Sighting = { object: target, path: at(path, "object") };
-  if (word === "remove") {
+  if (word === "removeObject") {
     read.removes.push(sighting);
     return;
   }
-  read.reveals.push(sighting);
+  read.adds.push(sighting);
   if (!read.latent.includes(target)) {
     fault(
       at(path, "object"),
-      `"${target}" is already present when the room opens, so revealing it ` +
+      `"${target}" is already present when the room opens, so adding it ` +
         `would toggle an affordance. Mark it \`latent: true\` where it is declared.`,
     );
+  }
+}
+
+/** `adjust`: whole numbers on named tracks, and at least one of them. */
+function readAdjust(value: unknown, path: string, fault: Fault): void {
+  if (!isRecord(value)) {
+    fault(path, "`adjust` is a map of tracks: how far each one moves, and which way");
+    return;
+  }
+  closed(value, ADJUST_TRACK_TABLE, path, "adjust track", ADJUST_TRACKS, fault);
+  let moved = 0;
+  for (const track of ADJUST_TRACKS) {
+    const by = value[track];
+    if (by === undefined) continue;
+    moved += 1;
+    if (typeof by !== "number" || !Number.isInteger(by) || by === 0) {
+      fault(
+        at(path, track),
+        `\`${track}\` moves by a whole number, and never by none — a move of zero ` +
+          `is a lie. Harm is a NEGATIVE number here, and it must be telegraphed in ` +
+          `the free tap line first (DESIGN §content laws).`,
+      );
+    }
+  }
+  if (moved === 0) {
+    fault(path, "`adjust` with no track in it moves nothing — leave the word out instead");
   }
 }
 
@@ -659,34 +757,31 @@ function readResponse(value: unknown, path: string, last: boolean, read: Reading
   line(value["say"], at(path, "say"), "`say` — every response writes a line, and this", fault);
 
   if (value["set"] !== undefined) idList(value["set"], at(path, "set"), "`set`", fault);
-  if (value["learn"] !== undefined) idList(value["learn"], at(path, "learn"), "`learn`", fault);
+  if (value["unset"] !== undefined) idList(value["unset"], at(path, "unset"), "`unset`", fault);
   if (value["journal"] !== undefined) {
     line(value["journal"], at(path, "journal"), "`journal`, when written,", fault);
   }
   if (value["give"] !== undefined) readItems(value["give"], at(path, "give"), fault);
+  if (value["take"] !== undefined) idList(value["take"], at(path, "take"), "`take`", fault);
+  if (value["adjust"] !== undefined) readAdjust(value["adjust"], at(path, "adjust"), fault);
   if (value["fight"] !== undefined) {
     id(value["fight"], at(path, "fight"), "`fight` — an enemy id", fault);
     if (typeof value["fight"] === "string" && value["fight"] !== "") {
       read.fights.push(value["fight"]);
     }
   }
-
-  if (value["harm"] !== undefined) {
-    const harm = value["harm"];
-    if (typeof harm !== "number" || !Number.isInteger(harm) || harm < 1) {
-      fault(
-        at(path, "harm"),
-        "`harm` is a whole number of HP, 1 or more — a harm of none is a lie, " +
-          "and harm must be telegraphed in the free tap line first",
-      );
-    }
+  if (value["prompt"] !== undefined) {
+    id(value["prompt"], at(path, "prompt"), "`prompt` — a QTE id", fault);
+  }
+  if (value["end"] !== undefined) {
+    id(value["end"], at(path, "end"), "`end` — an ending id", fault);
   }
 
-  if (value["reveal"] !== undefined) {
-    readChange(value["reveal"], at(path, "reveal"), "reveal", read);
+  if (value["addObject"] !== undefined) {
+    readChange(value["addObject"], at(path, "addObject"), "addObject", read);
   }
-  if (value["remove"] !== undefined) {
-    readChange(value["remove"], at(path, "remove"), "remove", read);
+  if (value["removeObject"] !== undefined) {
+    readChange(value["removeObject"], at(path, "removeObject"), "removeObject", read);
   }
 
   if (value["goto"] !== undefined) {
@@ -715,7 +810,7 @@ function readResponse(value: unknown, path: string, last: boolean, read: Reading
         fault(
           path,
           `a refusal carries no delta but its line; drop ${extra.join(", ")} or ` +
-            `drop \`refuse\` (a refusal that gives, teaches or moves you was not one)`,
+            `drop \`refuse\` (a refusal that gives, marks or moves you was not one)`,
         );
       }
     }
@@ -823,8 +918,8 @@ export function loadRoom(file: string, source: unknown): LoadResult {
     return { ok: false, problems };
   }
 
-  // Collect what is declared before reading responses: `reveal` and `remove`
-  // reach this room's own objects and nothing else.
+  // Collect what is declared before reading responses: `addObject` and
+  // `removeObject` reach this room's own objects and nothing else.
   const objectIds = Object.keys(objects);
   const latentIds = objectIds.filter((key) => {
     const object = objects[key];
@@ -838,7 +933,7 @@ export function loadRoom(file: string, source: unknown): LoadResult {
     latent: latentIds,
     gotos: [],
     fights: [],
-    reveals: [],
+    adds: [],
     removes: [],
   };
 
@@ -879,15 +974,15 @@ export function loadRoom(file: string, source: unknown): LoadResult {
   // do. None of them follows a door out of the room, so none of them trespasses
   // on D002's cross-room graph pass.
 
-  // Affordance permanence. An object that can be removed and revealed again
+  // Affordance permanence. An object that can be removed and added again
   // pulls and pushes forever, and "tappability never toggles" is exactly the
-  // thing that forbids. Reported at the reveal, naming the remove.
-  for (const revealed of read.reveals) {
-    const removed = read.removes.find((sighting) => sighting.object === revealed.object);
+  // thing that forbids. Reported at the add, naming the remove.
+  for (const added of read.adds) {
+    const removed = read.removes.find((sighting) => sighting.object === added.object);
     if (removed === undefined) continue;
     fault(
-      revealed.path,
-      `"${revealed.object}" is removed at ${removed.path} and revealed here, so its ` +
+      added.path,
+      `"${added.object}" is removed at ${removed.path} and added here, so its ` +
         `tappability toggles — an affordance arrives once, or leaves once, not both ` +
         `(DESIGN §content laws: affordance permanence). Two objects, or one one-way change.`,
     );
