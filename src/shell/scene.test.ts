@@ -14,7 +14,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { newRun, view as viewOf } from "../core/api";
 import { descend } from "../core/doors";
 import { resolve } from "../core/resolve";
-import { GRID_240, NO_ART, TAP_MIN, hotspotsFor, mountScene, place } from "./scene";
+import {
+  CINE_480,
+  GRID_240,
+  NO_ART,
+  PROFILES,
+  TAP_MIN,
+  gridded,
+  hotspotsFor,
+  mountScene,
+  place,
+} from "./scene";
 import type { RoomCard } from "../core/cards";
 import type { GameState, GameView } from "../core/types";
 import type { Gallery, Size, StillArt } from "./scene";
@@ -29,6 +39,7 @@ const PIXEL =
 
 const ART: StillArt = {
   id: "still:crossing",
+  register: "room",
   src: PIXEL,
   width: GRID_240.width,
   height: 320,
@@ -145,6 +156,74 @@ describe("H104 · integer upscale, crisp edges, true-black letterbox", () => {
     expect(at.left).toBe(0);
     expect(at.top).toBe(0);
     expect(at.height).toBe(STAGE.height);
+  });
+});
+
+describe("H104 · the register rides with the art", () => {
+  it("gives each shot grammar its own canvas and its own lens", () => {
+    // .llm/rules/art.md: rooms author on GRID-240 at ≈92°, cinema on CINE-480
+    // at ≈70° — "2x linear ... the register's '~2x detail' made literal", and
+    // "compression is the claustrophobia".
+    expect(GRID_240.register).toBe("room");
+    expect(CINE_480.register).toBe("cinema");
+    expect(CINE_480.width).toBe(GRID_240.width * 2);
+    expect(CINE_480.fov).toBeLessThan(GRID_240.fov);
+    expect(PROFILES).toEqual({ room: GRID_240, cinema: CINE_480 });
+  });
+
+  it("takes the register off the ART, never off the room", () => {
+    // A `RoomCard` carries `still: Id` and no register field: which shot
+    // grammar a still is, is a fact about the picture, not about the room that
+    // references it. So the still declares it and the profile is DERIVED.
+    const cinema: StillArt = { ...ART, register: "cinema", width: 480, height: 300 };
+
+    expect(place(STAGE, ART).profile).toBe(GRID_240);
+    expect(place(STAGE, cinema).profile).toBe(CINE_480);
+    expect(place(STAGE, cinema).register).toBe("cinema");
+  });
+
+  it("places both registers by the same whole-number rule", () => {
+    // A finding, not an omission: a cinema plate is letterboxed by being
+    // smaller and tighter on the SAME rule, not by a second rule.
+    const cinema: StillArt = { ...ART, register: "cinema", width: 480, height: 300 };
+    const at = place({ width: 1000, height: 700 }, cinema);
+
+    expect(at.scale).toBe(2);
+    expect(Number.isInteger(at.left)).toBe(true);
+    expect(at.left).toBe(Math.floor((1000 - 960) / 2));
+    // Fits whole, with the remainder as true black. Nothing of a close-up is
+    // cropped away.
+    expect(at.width).toBeLessThanOrEqual(1000);
+    expect(at.height).toBeLessThanOrEqual(700);
+  });
+
+  it("treats no art as a ROOM — 90% of play, and a missing plate is not a register", () => {
+    expect(place(STAGE, null).register).toBe("room");
+    expect(place(STAGE, null).profile).toBe(GRID_240);
+  });
+
+  it("says the register in the DOM, so two grammars are told apart downstream", () => {
+    const cinema: StillArt = { ...ART, register: "cinema", width: 480, height: 300 };
+    const { scene, host } = mount({ gallery: (id) => (id === ART.id ? cinema : null) });
+    scene.render(VIEW);
+
+    const node = host.querySelector<HTMLElement>(".scene");
+    expect(node?.dataset["register"]).toBe("cinema");
+    expect(node?.dataset["profile"]).toBe("CINE-480");
+  });
+
+  it("checks a still against its own register's grid, and answers rather than refuses", () => {
+    // A CONTENT check: profiles "are product choices, not law", so a
+    // misgridded plate is caught by a gallery build or a lint, loudly, before
+    // it is a thing a player squints at. Nothing here refuses to draw it.
+    expect(gridded(ART)).toBe(true);
+    expect(gridded({ ...ART, register: "cinema" })).toBe(false);
+    expect(gridded({ ...ART, register: "cinema", width: 480 })).toBe(true);
+
+    const half: StillArt = { ...ART, register: "cinema", width: 240, height: 320 };
+    const { scene } = mount({ gallery: () => half });
+    expect(() => scene.render(VIEW)).not.toThrow();
+    expect(scene.hasArt()).toBe(true);
   });
 });
 

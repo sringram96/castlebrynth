@@ -72,26 +72,94 @@
 //                  "have something" would break the rule that names it.
 //   ANIMATION      plates stay still; motion ships as region patches
 //                  (.llm/rules/animation.md). None of that is here.
-//   CINEMA         the letterboxed close-up register is its own still and its
-//                  own asset grid (CINE-480). This card renders the ROOM
-//                  register.
+//   CINEMA'S ART   the register is now MODELLED here (see below) and a cinema
+//                  still renders through the same path, but there is no cinema
+//                  ART and no word that raises one: `Effect` kind "cinema" is
+//                  declared in types.ts and no room-card word can emit it, so
+//                  the TRIGGER path does not exist. Adding it is adding a word
+//                  to a closed language — its own card (.llm/rules/engine.md).
 
 import type { GameView, Id } from "../core/types";
 
-// ────────────────────────────────────────────────── the asset grid profile ──
+// ──────────────────────────────────────────── the registers and their profiles ──
+//
+// THE REGISTER RIDES WITH THE ART, NOT WITH THE ROOM CARD.
+//
+// DESIGN §art direction names two shot grammars — ROOMS (locked wide tableaux,
+// 90% of play) and CINEMA (letterboxed close-ups, ~2x detail, "the camera coming
+// close IS the alarm") — and .llm/rules/art.md gives each its own lens and its
+// own asset grid profile. Two registers means two lenses, so at render time
+// something must say which one a still is.
+//
+// It is a fact about the ASSET, not about the room that references it: a
+// `RoomCard` carries `still: Id` and no register field, and that is deliberate —
+// the same room could reference either kind, and a card that declared the
+// register would be describing a picture it does not own. So `StillArt` carries
+// it, the profile is DERIVED from it, and nothing downstream has to guess.
+
+/** The two shot grammars. A third is a DESIGN.md amendment, not a new string. */
+export type Register = "room" | "cinema";
 
 /**
- * GRID-240 — the ROOM register's asset grid profile (.llm/rules/art.md).
+ * An asset grid profile: the canvas a register is authored on, and the lens it
+ * is seen through.
  *
- * "rooms author on GRID-240 ... Canvas 240-wide portrait". The width is the
- * profile's; the HEIGHT is the asset's, because a portrait canvas's height is
- * an authoring choice per still and not a law. The wireframe, which has no
- * asset, derives its height from the frame instead — see `place`.
+ * This is the one place .llm/rules/art.md permits a raw pixel count — "Raw pixel
+ * constants are FORBIDDEN everywhere except inside a named ASSET GRID PROFILE" —
+ * and the exemption is why both numbers live here and nowhere else.
  *
- * Profiles "are product choices, not law": changing this number re-authors the
- * register's art and changes no rule and no code but this line.
+ * `fov` is carried and not yet consumed: the lens is the PROJECTOR's input, and
+ * there is no projector (see the header on authored rects). It is declared here
+ * anyway because the profile is where art.md puts it, and a lens discovered
+ * later in two places is a lens that disagrees with itself.
  */
-export const GRID_240 = { name: "GRID-240", width: 240 } as const;
+export interface GridProfile {
+  readonly name: string;
+  readonly register: Register;
+  /** Logical pixels across. The HEIGHT is the asset's own — a portrait canvas's
+   *  height is an authoring choice per still and not a law. */
+  readonly width: number;
+  /** Horizontal field of view, in degrees (.llm/rules/art.md). */
+  readonly fov: number;
+}
+
+/** ROOMS: "rooms author on GRID-240 ... Canvas 240-wide portrait", lens ≈92°. */
+export const GRID_240: GridProfile = {
+  name: "GRID-240",
+  register: "room",
+  width: 240,
+  fov: 92,
+};
+
+/** CINEMA: "cinema authors on CINE-480 (2x linear — the register's '~2x detail'
+ *  made literal)", lens ≈70° or tighter, because "compression is the
+ *  claustrophobia". */
+export const CINE_480: GridProfile = {
+  name: "CINE-480",
+  register: "cinema",
+  width: 480,
+  fov: 70,
+};
+
+/** Register to profile. Exhaustive by type, so a third register cannot be added
+ *  without being given a canvas and a lens. */
+export const PROFILES: { readonly [R in Register]: GridProfile } = {
+  room: GRID_240,
+  cinema: CINE_480,
+};
+
+/**
+ * Is this still authored on its own register's grid?
+ *
+ * Profiles "are product choices, not law", so this is a CONTENT check and not a
+ * render-time one: it answers, and nothing here refuses to draw a still that
+ * fails it. A cinema plate authored 240 wide is half the detail the register
+ * promises, and that is a thing a gallery build or a lint should catch loudly
+ * before it is a thing a player squints at.
+ */
+export function gridded(art: StillArt): boolean {
+  return art.width === PROFILES[art.register].width;
+}
 
 /** The value shell.css declares for `--tap-min`. Read from the stylesheet at
  *  mount; this is the fallback for when no stylesheet has loaded (jsdom, or a
@@ -127,10 +195,12 @@ export interface Rect {
  */
 export interface StillArt {
   readonly id: Id;
+  /** Which shot grammar this is. The register rides with the ART — see above. */
+  readonly register: Register;
   /** Where the pixels are. Any source an `<img>` accepts. */
   readonly src: string;
-  /** Logical size in GRID space. `width` is the profile's; `height` is this
-   *  asset's own. */
+  /** Logical size in GRID space. `width` should be the register's profile width
+   *  (`gridded`); `height` is this asset's own. */
   readonly width: number;
   readonly height: number;
   readonly hotspots: { readonly [object: string]: GridRect };
@@ -151,6 +221,11 @@ export interface Size {
   readonly height: number;
 }
 
+/** A logical canvas to place: its size, and which register it belongs to. */
+export interface Canvas extends Size {
+  readonly register: Register;
+}
+
 /**
  * Where the still sits in the frame, and by how much it is magnified.
  *
@@ -158,6 +233,11 @@ export interface Size {
  * size when there is art, and a frame-shaped canvas when there is not.
  */
 export interface Placement {
+  /** Which shot grammar was placed. Carried out so that nothing downstream has
+   *  to ask the gallery again — and so the DOM can say it. */
+  readonly register: Register;
+  /** The register's asset grid profile: its canvas width and its lens. */
+  readonly profile: GridProfile;
   /** WHOLE NUMBER, ≥ 1. Never fractional: a half-pixel is a blurred pixel. */
   readonly scale: number;
   /** True-black letterbox offset, in device-independent points. */
@@ -187,15 +267,27 @@ export interface Placement {
  *
  * TOTAL: a frame of zero (jsdom, or a first paint before layout) answers scale 1
  * rather than dividing by nothing.
+ *
+ * THE MATH IS THE SAME FOR BOTH REGISTERS, and that is a finding rather than an
+ * omission. Fit by a whole number, centre, fill the remainder with true black —
+ * a cinema plate is letterboxed BY BEING SMALLER AND TIGHTER on the same rule,
+ * not by a second rule. What differs by register is the canvas it was authored
+ * on (`profile`) and the lens it was drawn through (`profile.fov`, the
+ * projector's input), and both ride out on the `Placement`. Register-specific
+ * TREATMENT — a heavier bar, a different edge — is theming, and H102 is paused.
  */
-export function place(frame: Size, still: Size | null): Placement {
+export function place(frame: Size, still: Canvas | null): Placement {
   if (still === null) {
+    // No art is a ROOM: the wireframe stands in for a room's still, and 90% of
+    // play is rooms. A missing cinema plate is a missing plate, not a register.
     const scale = Math.max(1, Math.floor(frame.width / GRID_240.width));
     const grid: Size = {
       width: GRID_240.width,
       height: Math.max(1, Math.floor(frame.height / scale)),
     };
     return {
+      register: "room",
+      profile: GRID_240,
       scale,
       left: 0,
       top: 0,
@@ -212,6 +304,8 @@ export function place(frame: Size, still: Size | null): Placement {
   const width = still.width * scale;
   const height = still.height * scale;
   return {
+    register: still.register,
+    profile: PROFILES[still.register],
     scale,
     // Centred, and on whole points: an odd remainder split in half would put the
     // pixel grid on a half point and undo the crisp edges the scale bought.
@@ -448,6 +542,12 @@ export function mountScene(
     // TS carries numbers; CSS carries the unit. Every length below is derived —
     // from the asset grid, the whole-number scale, and the frame — and none of
     // them is written down anywhere.
+    // The register, said in the DOM. Read by nothing today — register-specific
+    // treatment is theming and H102 is paused — but it is what a playtester and
+    // a future theme layer both need in order to tell the two grammars apart,
+    // and deriving it twice is how they would come to disagree.
+    scene.dataset["register"] = at.register;
+    scene.dataset["profile"] = at.profile.name;
     scene.style.setProperty("--scale", String(at.scale));
     scene.style.setProperty("--still-left", String(at.left));
     scene.style.setProperty("--still-top", String(at.top));
