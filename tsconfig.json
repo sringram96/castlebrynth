@@ -1,4 +1,14 @@
 {
+  // THE ENGINE'S tsconfig — and the reason it is not the only one (H101).
+  //
+  // `lib` has no "DOM" in it, and that omission is core purity said in the type
+  // system rather than only in a lint rule (.llm/rules/engine.md: "src/core is
+  // pure: no DOM, no I/O, no Date"). `document`, `window`, `localStorage` and
+  // `fetch` are not merely forbidden to src/core and src/lots — they do not
+  // EXIST there, so reaching for one is a compile error and not a review note.
+  //
+  // The shell needs them, so the shell type-checks under `tsconfig.shell.json`,
+  // which extends this file and adds DOM. `npm run law` runs both.
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["ES2022"],
@@ -10,5 +20,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src"]
+  "include": ["src/core", "src/lots"]
 }

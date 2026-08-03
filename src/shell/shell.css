@@ -1,0 +1,139 @@
+/* castlebrynth · the frame's geometry. (H101)
+ *
+ * DESIGN §frame: "Full-bleed pixel still; 1–2 lines of writing on top; fixed
+ * bottom panel paged ◂ ACTIONS · SKILLS · ITEMS ▸ over a permanent strip."
+ * This file is that sentence's LAYOUT and nothing more — where the two regions
+ * are and how big. What goes in them is H104's (the still) and H105's (the
+ * panel).
+ *
+ * NOT A THEME. H102 (theme + frame tokens) is a paused card, deferred past
+ * H180 by the skeleton directive: there is no palette here, no type scale, no
+ * spacing ramp. The colours below are wireframe greys, chosen to be obviously
+ * unfinished, and they are expected to be deleted rather than tuned.
+ *
+ * THREE SPACES (.llm/rules/ui.md, .llm/rules/art.md). Layout is written in
+ * FRACTIONS of the frame (%, fr, em) and touch in device-independent points.
+ * There are exactly two raw lengths in this file and both are named below:
+ * one is the platform's tap minimum, one is the asset grid's width. A third
+ * would be a bug — src/shell/*.ts is linted for pixel literals, and this file
+ * is the only place they are allowed to be written at all.
+ */
+
+:root {
+  /* PLATFORM CONSTANT: "every tap target ≥44 device-independent points
+     (≈7mm) regardless of art scale" (.llm/rules/ui.md). Not a taste; the
+     size of a thumb. */
+  --tap-min: 44px;
+
+  /* ASSET GRID PROFILE — GRID-240: "rooms author on GRID-240 ... Canvas
+     240-wide portrait, integer upscale" (.llm/rules/art.md, DESIGN §art
+     direction). Unitless on purpose: this is a COUNT of logical pixels, not a
+     length. The scale that turns it into a length is computed per frame, by
+     whole numbers only, in scene.ts. */
+  --grid-width: 240;
+
+  /* FRAME FRACTION: "interactive controls live in the bottom ~40% of the
+     screen" (.llm/rules/ui.md). */
+  --panel-fraction: 0.38;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  /* TRUE-BLACK LETTERBOX (DESIGN §art direction). The page under the frame is
+     the letterbox: whatever the integer upscale cannot fill is this. */
+  background: #000;
+  color: #d8d8d8;
+  /* One-thumb portrait: the frame never scrolls, and a rubber-band bounce
+     would drag the fixed panel off the thumb. */
+  overflow: hidden;
+  overscroll-behavior: none;
+  /* Taps, not gestures. Double-tap zoom on a pixel still is a lie about the
+     asset grid. */
+  touch-action: manipulation;
+  -webkit-text-size-adjust: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+/* ─────────────────────────────────────────────────────────────── the frame ── */
+
+.frame {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  /* Two regions, and the panel's share is FIXED: the still takes what is left.
+     Nothing collapses — .llm/rules/ui.md — so this is a grid and not a flow,
+     and the panel row cannot be squeezed to nothing by its contents. */
+  grid-template-rows: 1fr calc(var(--panel-fraction) * 100%);
+  background: #000;
+}
+
+/* ───────────────────────────────────────────────────────────────── the stage ── */
+
+.stage {
+  position: relative;
+  overflow: hidden;
+  background: #000;
+  /* Crisp edges. The still is pixel data; every scaler that guesses between
+     samples is forbidden here (.llm/rules/ui.md). */
+  image-rendering: pixelated;
+}
+
+/* 1–2 lines of writing ON TOP of the art (DESIGN §frame). Native resolution
+   over the still — this text is never part of the upscaled image. */
+.stage-lines {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  margin: 0;
+  padding: 0.5em 0.75em;
+  font-size: 0.875rem;
+  color: #e8e8e8;
+  text-shadow: 0 0.0625em 0 #000;
+  pointer-events: none;
+}
+
+.stage-lines:empty {
+  display: none;
+}
+
+/* ───────────────────────────────────────────────────────────────── the panel ── */
+
+.panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: #0a0a0a;
+  border-top: 0.0625em solid #333;
+  /* The strip must clear the home indicator, or the permanent strip is
+     permanently half-covered. */
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* ──────────────────────────────────────────────────────────── the wireframe ── */
+
+/* The empty frame, before there is anything to put in it. H104 and H105
+   replace these; they exist so that "the frame mounted" is visible on a phone
+   without inventing any content. */
+.frame--empty .stage::after,
+.frame--empty .panel::after {
+  content: attr(data-wireframe);
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #444;
+  font-size: 0.75rem;
+  letter-spacing: 0.25em;
+  border: 0.0625em dashed #222;
+}

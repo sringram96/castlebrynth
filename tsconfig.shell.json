@@ -1,0 +1,15 @@
+{
+  // THE SHELL'S tsconfig (H101).
+  //
+  // Everything the engine's config says, plus the one thing the engine may not
+  // have: the DOM. Splitting the two is what makes "src/core is pure" a fact
+  // about what the compiler can see rather than a promise — see tsconfig.json.
+  //
+  // The shell may import the engine (it is the engine's only consumer); the
+  // engine may not import the shell, which eslint.config.mjs refuses by path.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable"]
+  },
+  "include": ["src/shell"]
+}

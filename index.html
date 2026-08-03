@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <!--
+      MOBILE PORTRAIT, AND NOTHING ELSE (DESIGN §frame, .llm/rules/ui.md).
+      `viewport-fit=cover` so the true-black letterbox reaches the notch;
+      `user-scalable=no` because a pinch-zoom on a pixel still is a lie about
+      the asset grid — the art frame upscales by whole numbers or not at all.
+    -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no"
+    />
+    <meta name="color-scheme" content="dark" />
+    <title>castlebrynth</title>
+    <link rel="stylesheet" href="/src/shell/shell.css" />
+  </head>
+  <body>
+    <!-- The frame is built by the shell, not written here: main.ts owns the
+         structure so that jsdom tests mount the same frame the browser does. -->
+    <div id="app"></div>
+    <script type="module" src="/src/shell/main.ts"></script>
+  </body>
+</html>

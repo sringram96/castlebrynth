@@ -48,6 +48,29 @@ export default tseslint.config(
           message: "DICE SURVIVE DEATH: the campaign ledger is not death's to read or write." }],
     }
   },
+  {
+    // H101 · NO PIXEL LITERALS IN LAYOUT CODE (.llm/rules/ui.md).
+    //
+    // The rule already exists in prose — "NUMERIC PIXEL LITERALS IN LAYOUT CODE
+    // ARE A LINT ERROR — if you type 'px', it belongs in a token derived from
+    // frame size or platform constants" — and prose is exactly what a shell
+    // card under deadline steps over. So it is executable now that there is a
+    // shell to run it against.
+    //
+    // The escape hatch is not a comment, it is a FILE: shell.css names the two
+    // constants law allows (the tap minimum, the asset grid width), and TS
+    // reads them back through custom properties. Anything else is either a
+    // fraction of the frame or a number the projector derived.
+    files: ["src/shell/**/*.ts"],
+    languageOptions: { globals: { document: "readonly", window: "readonly", localStorage: "readonly" } },
+    rules: {
+      "no-restricted-syntax": ["error",
+        { selector: "Literal[value=/[0-9]\\s*px/]",
+          message: "Layout in frame fractions or platform constants, never pixels — .llm/rules/ui.md" },
+        { selector: "TemplateElement[value.raw=/[0-9]\\s*px/]",
+          message: "Layout in frame fractions or platform constants, never pixels — .llm/rules/ui.md" }],
+    }
+  },
   { files: ["scripts/**/*.mjs"],
     languageOptions: { globals: { process: "readonly", console: "readonly" } } }
 );
