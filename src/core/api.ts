@@ -10,8 +10,18 @@
 // empty content lists and `act` is the identity transition. Neither invents
 // balance numbers or content ids this card has no authority over.
 
+import { STREAM, fork } from "./rng";
 import { load, save } from "./save";
-import type { CampaignBranch, ContentBundle, GameAPI, GameState, Pool, RunBranch } from "./types";
+import type {
+  CampaignBranch,
+  ContentBundle,
+  GameAPI,
+  GameState,
+  Pool,
+  Pouch,
+  RngState,
+  RunBranch,
+} from "./types";
 
 /**
  * The envelope moved to save.ts with H007, which made it audit the SHAPE of a
@@ -24,6 +34,14 @@ export { SAVE_VERSION, load, save } from "./save";
 
 const EMPTY_POOL: Pool = { current: 0, max: 0 };
 
+/** Carrying nothing, in a pouch that is still the right shape: an empty slot is
+ *  null, not a hole (types.ts `Slot`). */
+const EMPTY_POUCH: Pouch = {
+  consumables: [],
+  equipment: [null, null, null, null],
+  small: [null, null],
+};
+
 /**
  * A fresh campaign ledger: nothing owned, nothing known, nothing remembered.
  * Death never touches this branch again once it exists.
@@ -32,6 +50,10 @@ function freshCampaign(): CampaignBranch {
   return {
     branch: "campaign",
     dice: [],
+    /** Nothing chosen yet: the class is picked at the Crossing (DESIGN §the
+     *  lots), and this is the one moment before that choice. */
+    signature: null,
+    stash: [],
     knowledge: [],
     journal: [],
     refused: [],
@@ -53,16 +75,18 @@ function freshCampaign(): CampaignBranch {
  * number, which is true under any mixing it chooses.
  */
 function freshRun(seed: number, start: string): RunBranch {
+  const rng: RngState = { seed, draws: 0 };
   return {
     branch: "run",
-    rng: { seed, draws: 0 },
+    rng,
+    // Forked ONCE, here, and threaded from now on. Re-forking by name at each
+    // draw would answer draw 0 forever (types.ts `RunBranch.descent`).
+    descent: fork(rng, STREAM.descent),
     depth: 0,
     roomId: start,
     vitals: { hp: EMPTY_POOL, might: EMPTY_POOL, will: EMPTY_POOL, sanity: EMPTY_POOL },
     tithes: 0,
-    consumables: [],
-    equipment: [null, null, null, null],
-    small: [null, null],
+    pouch: EMPTY_POUCH,
     skills: [],
     flags: [],
   };

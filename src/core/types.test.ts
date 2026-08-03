@@ -22,6 +22,10 @@ import type {
 const CAMPAIGN: CampaignBranch = {
   branch: "campaign",
   dice: [],
+  // D001: the class, chosen at the Crossing — null before the first one.
+  signature: null,
+  // D001: what you own and are not carrying. Distinct from `dice`.
+  stash: [],
   knowledge: [],
   journal: [],
   refused: [],
@@ -32,6 +36,10 @@ const CAMPAIGN: CampaignBranch = {
 const RUN: RunBranch = {
   branch: "run",
   rng: { seed: 42, draws: 0 },
+  // D001: the Descent's stream, PERSISTED. A fork is fresh at draw 0 every
+  // time (rng.ts), so re-deriving it per draw would answer the same door
+  // forever — the successor is threaded back here instead.
+  descent: { seed: 99, draws: 0 },
   depth: 0,
   roomId: null,
   vitals: {
@@ -43,9 +51,11 @@ const RUN: RunBranch = {
     sanity: { current: 0, max: 0 },
   },
   tithes: 0,
-  consumables: [],
-  equipment: [null, null, null, null],
-  small: [null, null],
+  pouch: {
+    consumables: [],
+    equipment: [null, null, null, null],
+    small: [null, null],
+  },
   skills: [],
   flags: [],
 };
@@ -68,6 +78,8 @@ describe("H001 · state is JSON", () => {
       campaign: {
         ...CAMPAIGN,
         dice: [{ id: "die:hollow" }],
+        signature: { id: "die:hollow-signature" },
+        stash: [{ id: "item:rope", keep: "none" }],
         // H010: campaign ids carry `knowledge:`, run ids carry `flag:` — the
         // prefix is how a card names the ledger it writes (cards.ts).
         knowledge: ["knowledge:knows_glyph"],
@@ -81,9 +93,11 @@ describe("H001 · state is JSON", () => {
         depth: 2,
         roomId: "room:cistern",
         tithes: 6,
-        consumables: [{ id: "item:candle", keep: "none" }],
-        equipment: [key, null, null, null],
-        small: [null, { id: "item:knife", keep: "kept" }],
+        pouch: {
+          consumables: [{ id: "item:candle", keep: "none" }],
+          equipment: [key, null, null, null],
+          small: [null, { id: "item:knife", keep: "kept" }],
+        },
         skills: [{ id: "skill:steady", uses: { current: 1, max: 2 } }],
         flags: ["flag:read_book"],
       },
@@ -141,9 +155,9 @@ describe("H001 · run and campaign are disjoint branches", () => {
       ...dying,
       depth: 0,
       tithes: 0,
-      consumables: [],
-      equipment: [null, null, null, null],
-      small: [null, null],
+      // D001: one field, and the whole pouch is in it. Death is a law about a
+      // THING now, so a death that forgot the small slots cannot compile clean.
+      pouch: { consumables: [], equipment: [null, null, null, null], small: [null, null] },
       flags: [],
     });
     const reborn = rebirth({ ...RUN, depth: 4, tithes: 12, flags: ["flag:opened_gate"] });
@@ -175,14 +189,69 @@ describe("H001 · design law the compiler keeps", () => {
     expect(tooMany).toHaveLength(5);
     expect(tooFew).toHaveLength(3);
     // A slot read is exact — tuples have no holes, so no undefined creeps in.
-    const slot = RUN.equipment[0];
+    const slot = RUN.pouch.equipment[0];
     expect(slot).toBeNull();
   });
 
   it("compiles under noUncheckedIndexedAccess", () => {
     // @ts-expect-error — an array read may be undefined, and must be handled
-    const first: ItemRef = RUN.consumables[0];
+    const first: ItemRef = RUN.pouch.consumables[0];
     expect(first).toBeUndefined();
+  });
+});
+
+describe("D001 · the state v3 fields", () => {
+  it("keeps the Descent's stream on the run branch, as a stream", () => {
+    // The point of the field is that it is PERSISTED: a fork is fresh at draw
+    // 0 every time (rng.ts `fork`), so a Descent that re-derived its stream by
+    // name at each draw would answer the same door forever. Threading it is
+    // only possible if there is somewhere to thread it TO, and this is it.
+    const drawn: RunBranch = { ...RUN, descent: { seed: RUN.descent.seed, draws: 12 } };
+    expect(drawn.descent.draws).toBe(12);
+    // It dies with the push, so it is on the branch death empties...
+    // @ts-expect-error — ...and there is no descent stream on the campaign.
+    const onCampaign: CampaignBranch["descent"] = RUN.descent;
+    expect(onCampaign).toBeDefined();
+  });
+
+  it("keeps the stash on the campaign branch, and apart from the dice", () => {
+    // "Pouch packed at the Crossing from the stash" (DESIGN §ledgers). The
+    // stash holds ITEMS and the dice hold DICE: one list for both would make
+    // DICE SURVIVE DEATH a filter over a mixed list rather than a branch of
+    // the state.
+    const stashed: CampaignBranch = { ...CAMPAIGN, stash: [{ id: "item:rope", keep: "none" }] };
+    expect(stashed.stash).toHaveLength(1);
+    // @ts-expect-error — a die is not an item: it has no `keep`, because
+    // nothing death does with an item is ever done to a die.
+    const diceInTheStash: CampaignBranch = { ...CAMPAIGN, stash: [{ id: "die:hollow" }] };
+    // @ts-expect-error — and an item is not a die.
+    const itemsInTheDice: CampaignBranch = { ...CAMPAIGN, dice: [{ id: "x", keep: "none" }] };
+    expect([diceInTheStash, itemsInTheDice].every(Boolean)).toBe(true);
+    // @ts-expect-error — the stash is not reachable from a push: no stash
+    // access below (DESIGN §ledgers), so there is no field for it on the run.
+    const onRun: RunBranch["stash"] = [];
+    expect(onRun).toBeDefined();
+  });
+
+  it("keeps the signature on the campaign branch — a class you lose is not a class", () => {
+    const chosen: CampaignBranch = { ...CAMPAIGN, signature: { id: "die:hollow" } };
+    expect(chosen.signature?.id).toBe("die:hollow");
+    // Null is a real value here, and only before the first Crossing.
+    expect(CAMPAIGN.signature).toBeNull();
+    // Death is handed a run branch and nothing else, so the signature is not
+    // even in scope to be taken: DICE SURVIVE DEATH, and so does the class.
+    // @ts-expect-error — there is no signature on the branch death is given.
+    const readByDeath: DeathTransition = (dying) => ({ ...dying, roomId: dying.signature.id });
+    expect(typeof readByDeath).toBe("function");
+  });
+
+  it("gathers the pouch, so death is one field and not three", () => {
+    const pouch = RUN.pouch;
+    expect(Object.keys(pouch).sort()).toStrictEqual(["consumables", "equipment", "small"]);
+    // @ts-expect-error — the three containers are no longer flat on the run:
+    // a death that emptied `consumables` and forgot `small` used to compile.
+    const flat: RunBranch["consumables"] = [];
+    expect(flat).toBeDefined();
   });
 });
 

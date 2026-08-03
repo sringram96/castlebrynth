@@ -84,6 +84,29 @@ export interface DieRef {
   readonly id: Id;
 }
 
+/**
+ * WHAT YOU CARRY DOWN. One container, so that death is one field.
+ *
+ * "Pouch packed at the Crossing from the stash; mid-push finds are
+ * swap-or-leave; no stash access below" (DESIGN §ledgers, death, growth). The
+ * three containers were flat on the run branch until D001 gathered them, and
+ * the gathering is not tidying: death "takes it, except ✦ key and • kept items
+ * + one random survivor", and a law about a THING needs a thing to be about.
+ * With the pouch named, D003 empties one field and tsc can see that it emptied
+ * all of it; with three flat fields, a death that forgot `small` would compile,
+ * pass every type law, and quietly let a run's knives ride through death.
+ *
+ * The arities are the design's (4 + 2) and they are the tuple types', so the
+ * pouch's SHAPE never changes — only what is in the slots. An empty slot is
+ * null, not a hole.
+ */
+export interface Pouch {
+  /** The unbounded container: what a room's `give` lands in (resolve.ts). */
+  readonly consumables: readonly ItemRef[];
+  readonly equipment: EquipmentSlots;
+  readonly small: SmallSlots;
+}
+
 /** A skill: found, uses-per-rest, spent AFTER the dice land. */
 export interface SkillState {
   readonly id: Id;
@@ -127,16 +150,41 @@ export interface Vitals {
  */
 export interface RunBranch {
   readonly branch: "run";
+  /** This push's ROOT stream. Everything else forks from it. */
   readonly rng: RngState;
+  /**
+   * THE DESCENT'S STREAM, PERSISTED — rooms and doors draw from here (D002).
+   *
+   * It is a field and not a `fork(rng, STREAM.descent)` at each call site, and
+   * that distinction is the whole reason it exists. A fork reads its parent's
+   * SEED and deliberately never its `draws` (rng.ts `fork`), so it is FRESH AT
+   * DRAW 0 every time — which is exactly the property that makes the tree of
+   * streams reproducible, and exactly the property that makes re-forking by
+   * name at each draw return the same number forever. Doors that redraw off the
+   * death count would redraw the same three doors, at every depth, for the whole
+   * push.
+   *
+   * So whoever consumes randomness must PERSIST the successor, not re-derive
+   * the stream by name. This field is where the Descent persists it: a draw
+   * reads it, and writes the state that comes after it back here, the same way
+   * everything else in this engine threads a value forward.
+   *
+   * It lives on the RUN branch because a push's position in the labyrinth dies
+   * with the push. Rebirth mints it again from the run's root, and the root is
+   * mixed with the death count (rng.ts `runStream`), which is how "doors
+   * redraw" after a death is a consequence of the seed rather than a special
+   * case in the draw.
+   */
+  readonly descent: RngState;
   readonly depth: Depth;
   /** Where you are standing. null before the first room is drawn. */
   readonly roomId: Id | null;
   readonly vitals: Vitals;
   /** ◎ — the coin of the labyrinth. */
   readonly tithes: number;
-  readonly consumables: readonly ItemRef[];
-  readonly equipment: EquipmentSlots;
-  readonly small: SmallSlots;
+  /** What you carry. Death takes it, except ✦ key and • kept items plus one
+   *  random survivor (DESIGN §ledgers, death, growth; D003). */
+  readonly pouch: Pouch;
   readonly skills: readonly SkillState[];
   /** One-shots for this push: doors opened, ambushes already sprung. Every id
    *  here carries `flag:` — a card names the ledger it writes in the id's own
@@ -154,8 +202,45 @@ export interface RunBranch {
  */
 export interface CampaignBranch {
   readonly branch: "campaign";
-  /** DICE SURVIVE DEATH — law. */
+  /** DICE SURVIVE DEATH — law. The plain bones and everything won since. */
   readonly dice: readonly DieRef[];
+  /**
+   * The signature die: the one CHOSEN at the Crossing, and the class.
+   *
+   * "Hand = 5 plain bones + 1 signature die CHOSEN at the Crossing ('one of
+   * these was yours' — never confirmed). The choice is the class" (DESIGN §the
+   * lots). So it is campaign property by the same law that keeps the dice —
+   * a class you lose on death is not a class — and it is null only before the
+   * first Crossing, which is the one moment the game has no answer to what you
+   * are.
+   *
+   * HELD BESIDE `dice`, NOT INSIDE IT. A hand is composed of the plain bones
+   * plus this one, so a signature that were also a member of `dice` would have
+   * to be excluded again at every composition, and the invariant "exactly one
+   * of your dice is the signature" would be a rule nothing enforces. Out here
+   * it is a field that is either chosen or not.
+   *
+   * The engine never names WHICH die (.llm/rules/engine.md): the roster beyond
+   * the wizard is content, and parked in DESIGN §open.
+   */
+  readonly signature: DieRef | null;
+  /**
+   * THE STASH: what you own but are not carrying.
+   *
+   * "Pouch packed at the Crossing from the stash ... no stash access below"
+   * (DESIGN §ledgers, death, growth). It is on the campaign branch because it
+   * is what waits for you between pushes, and it is DISTINCT FROM `dice`
+   * because a die is not an item: dice are the hands and survive death by their
+   * own law, while stashed items are the things a Crossing packs a pouch from.
+   * One list for both would make "DICE SURVIVE DEATH" a filter over a mixed
+   * list rather than a branch of the state.
+   *
+   * Death does not reach here — nothing on this branch is death's — so what a
+   * death returns from the pouch (✦ key, • kept, one random survivor) is placed
+   * here by the REBIRTH transition, which is the lifecycle's and not death's
+   * (types.ts `DeathTransition`, D003).
+   */
+  readonly stash: readonly ItemRef[];
   /** Machine-readable understanding: what gates may now open. This is where
    *  `knowledge:`-prefixed ids live, and the prefix is the whole of how a card
    *  says so (cards.ts `LedgerPrefix`) — there is no second field and no second

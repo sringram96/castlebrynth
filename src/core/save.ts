@@ -33,14 +33,17 @@
 //
 //   1  H001's envelope. Versioned, and shallow: both branches present and
 //      claiming their own names, and nothing else checked.
-//   2  this card. The same STATE SHAPE — a v1 save is a v2 save — but written
-//      by an envelope that audits, and read back through one. The bump is the
-//      first link of the migration chain rather than a change of shape, and it
-//      is laid now so that D001's state change has a chain to hang on instead
-//      of inventing one under pressure.
+//   2  H007. The same STATE SHAPE — a v1 save is a v2 save — but written by an
+//      envelope that audits, and read back through one. The bump is the first
+//      link of the migration chain rather than a change of shape, and it was
+//      laid so that D001's state change had a chain to hang on instead of
+//      inventing one under pressure.
+//   3  D001. A real shape change, on both branches: the run's three flat
+//      containers gathered into `pouch`, the Descent's persisted stream added
+//      as `descent`, and the campaign given `signature` and `stash`.
 //
-// A v1 save therefore loads, through `MIGRATIONS`, and then faces the same
-// audit every v2 save faces. That is the whole of "repair": what is carried
+// An older save therefore loads, through `MIGRATIONS`, and then faces the same
+// audit a current one faces. That is the whole of "repair": what is carried
 // forward is carried forward, and what is poisoned is REFUSED — a repaired
 // seed would be a different run wearing the same save's name.
 //
@@ -60,6 +63,7 @@
 //                         that refused a save for being unbalanced would make
 //                         a balance bug unrecoverable instead of visible.
 
+import { STREAM, fork } from "./rng";
 import type {
   CampaignBranch,
   DieRef,
@@ -68,6 +72,7 @@ import type {
   ItemRef,
   Keep,
   Pool,
+  Pouch,
   Refusal,
   RngState,
   RunBranch,
@@ -84,7 +89,7 @@ import type {
  * Bump this when the state shape changes, and add the migration in the same
  * commit — a bump without a link strands every save in the field.
  */
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 // ────────────────────────────────────────────────────────────── the primitives ──
 
@@ -225,16 +230,25 @@ const isRefusal = audit(REFUSAL_AUDIT);
  * the two branches stay non-interchangeable across a save exactly as they are
  * non-interchangeable in the type system (types.ts law 2).
  */
+const POUCH_AUDIT: Audit<Pouch> = {
+  consumables: listOf(isItem),
+  equipment: tupleOf(4, isSlot),
+  small: tupleOf(2, isSlot),
+};
+
 const RUN_AUDIT: Audit<RunBranch> = {
   branch: literal("run"),
   rng: isRng,
+  /** Audited by the same guard as the root, because it IS one: a persisted
+   *  child stream, threaded by the Descent's draws (types.ts `descent`). A save
+   *  that lost it would silently re-fork at draw 0 and redraw one labyrinth
+   *  forever. */
+  descent: isRng,
   depth: isCount,
   roomId: (value) => value === null || isString(value),
   vitals: isVitals,
   tithes: isSafeInt,
-  consumables: listOf(isItem),
-  equipment: tupleOf(4, isSlot),
-  small: tupleOf(2, isSlot),
+  pouch: audit(POUCH_AUDIT),
   skills: listOf(isSkill),
   flags: listOf(isString),
 };
@@ -243,6 +257,10 @@ const RUN_AUDIT: Audit<RunBranch> = {
 const CAMPAIGN_AUDIT: Audit<CampaignBranch> = {
   branch: literal("campaign"),
   dice: listOf(isDie),
+  /** null before the first Crossing — the one moment the game has no answer to
+   *  what you are (types.ts `signature`). */
+  signature: (value) => value === null || isDie(value),
+  stash: listOf(isItem),
   knowledge: listOf(isString),
   journal: listOf(isString),
   refused: listOf(isRefusal),
@@ -292,7 +310,53 @@ type Migration = (state: unknown) => unknown;
  */
 const MIGRATIONS: { readonly [from: number]: Migration } = {
   1: (state) => state,
+  2: toV3,
 };
+
+/**
+ * 2 → 3: gather the pouch, mint the Descent's stream, open the campaign's
+ * stash and its unchosen class (D001).
+ *
+ * WHAT IT MAY AND MAY NOT INVENT. Everything added here is either empty or
+ * DERIVED from what the save already carries, and that is the line:
+ *
+ *   pouch      a re-shaping, not a change. The same three containers, moved
+ *              under one key and deleted from where they were, so a migrated
+ *              save does not carry both spellings of what it holds.
+ *   descent    `fork(rng, STREAM.descent)` — the very value `freshRun` mints
+ *              (api.ts), derived from the seed this save already has. A v2 save
+ *              cannot have drawn a door (D002 did not exist), so draw 0 is not
+ *              an approximation of its position, it IS its position.
+ *   signature  null. Nothing in a v2 save records which die was yours, and a
+ *              guess here would silently pick a player's class for them.
+ *   stash      empty. Same reason: what you owned and were not carrying was
+ *              not written down, and inventing it would mint items.
+ *
+ * TOTAL, and it runs before the audit — an old save is by definition not the
+ * current shape, so nothing here may assume a field is present or is the type
+ * it looks like. A run whose `rng` is not a stream cannot be carried forward at
+ * all: `descent` derives from it, and a stream derived from poison is a
+ * plausible-looking number with no run behind it. That is a null, here, rather
+ * than a save that loads and replays as somebody else's labyrinth.
+ */
+function toV3(state: unknown): unknown {
+  if (!isRecord(state)) return null;
+  const run = state["run"];
+  const campaign = state["campaign"];
+  if (!isRecord(run) || !isRecord(campaign)) return null;
+  if (!isRng(run["rng"])) return null;
+
+  const { consumables, equipment, small, ...restOfRun } = run;
+  return {
+    ...state,
+    run: {
+      ...restOfRun,
+      descent: fork(run["rng"] as RngState, STREAM.descent),
+      pouch: { consumables, equipment, small },
+    },
+    campaign: { ...campaign, signature: null, stash: [] },
+  };
+}
 
 /** The oldest version the chain can still carry forward. Derived, so it cannot
  *  drift from `MIGRATIONS`. */

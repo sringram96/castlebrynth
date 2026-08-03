@@ -97,6 +97,7 @@ import type {
   Intent,
   ItemRef,
   Pool,
+  Pouch,
   RunBranch,
   SmallSlots,
   Vitals,
@@ -231,13 +232,21 @@ type Held =
  * twice. Order is part of the save format, exactly as draw order is.
  */
 function heldAt(run: RunBranch, id: Id): Held | null {
-  const loose = run.consumables.findIndex((item) => item.id === id);
+  const pouch = run.pouch;
+  const loose = pouch.consumables.findIndex((item) => item.id === id);
   if (loose >= 0) return { place: "consumables", index: loose };
-  const worn = run.equipment.findIndex((slot) => slot !== null && slot.id === id);
+  const worn = pouch.equipment.findIndex((slot) => slot !== null && slot.id === id);
   if (worn >= 0) return { place: "equipment", index: worn };
-  const small = run.small.findIndex((slot) => slot !== null && slot.id === id);
+  const small = pouch.small.findIndex((slot) => slot !== null && slot.id === id);
   if (small >= 0) return { place: "small", index: small };
   return null;
+}
+
+/** One container of the pouch replaced, the pouch's shape kept (types.ts
+ *  `Pouch`). Written once so that every word that moves an item moves it the
+ *  same way. */
+function withPouch(run: RunBranch, pouch: Partial<Pouch>): RunBranch {
+  return { ...run, pouch: { ...run.pouch, ...pouch } };
 }
 
 /** An empty slot is null, not a hole: the pouch's shape never changes
@@ -322,7 +331,7 @@ function withKnowledge(campaign: CampaignBranch, flag: Id): CampaignBranch {
  */
 function given(run: RunBranch, items: readonly ItemRef[]): RunBranch {
   const taken: ItemRef[] = items.map((item) => ({ id: item.id, keep: item.keep }));
-  return { ...run, consumables: [...run.consumables, ...taken] };
+  return withPouch(run, { consumables: [...run.pouch.consumables, ...taken] });
 }
 
 /**
@@ -342,17 +351,16 @@ function taken(run: RunBranch, ids: readonly Id[]): RunBranch {
     const where = heldAt(next, id);
     if (where === null) continue;
     if (where.place === "consumables") {
-      next = {
-        ...next,
-        consumables: next.consumables.filter((_, index) => index !== where.index),
-      };
+      next = withPouch(next, {
+        consumables: next.pouch.consumables.filter((_, index) => index !== where.index),
+      });
       continue;
     }
     if (where.place === "equipment") {
-      next = { ...next, equipment: emptyEquipment(next.equipment, where.index) };
+      next = withPouch(next, { equipment: emptyEquipment(next.pouch.equipment, where.index) });
       continue;
     }
-    next = { ...next, small: emptySmall(next.small, where.index) };
+    next = withPouch(next, { small: emptySmall(next.pouch.small, where.index) });
   }
   return next;
 }

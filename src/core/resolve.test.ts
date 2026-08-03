@@ -32,6 +32,7 @@ import type {
   GameState,
   Id,
   Intent,
+  Pouch,
   RunBranch,
 } from "./types";
 
@@ -316,6 +317,11 @@ const bendRun = (state: GameState, run: Partial<RunBranch>): GameState => ({
   ...state,
   run: { ...state.run, ...run },
 });
+
+/** D001 gathered the three containers under `run.pouch` (types.ts `Pouch`), so
+ *  a fixture that packs one goes through here. */
+const bendPouch = (state: GameState, pouch: Partial<Pouch>): GameState =>
+  bendRun(state, { pouch: { ...state.run.pouch, ...pouch } });
 
 /** A state with the campaign branch bent to a fixture's needs. */
 const bendCampaign = (state: GameState, campaign: Partial<CampaignBranch>): GameState => ({
@@ -677,7 +683,7 @@ describe("H006 · refuse", () => {
 describe("H006 · give and take", () => {
   it("gives into the pouch, keeping what death does with each thing", () => {
     const out = act(fresh(), SUMP, "pack", "open");
-    expect(out.state.run.consumables).toStrictEqual([
+    expect(out.state.run.pouch.consumables).toStrictEqual([
       { id: "item:tallow-candle", keep: "none" },
       { id: "item:iron-key", keep: "key" },
     ]);
@@ -685,23 +691,23 @@ describe("H006 · give and take", () => {
 
   it("takes one instance back out, and leaves the rest of the pouch alone", () => {
     const opened = act(fresh(), SUMP, "pack", "open").state;
-    const doubled = bendRun(opened, {
-      consumables: [...opened.run.consumables, { id: "item:tallow-candle", keep: "none" }],
+    const doubled = bendPouch(opened, {
+      consumables: [...opened.run.pouch.consumables, { id: "item:tallow-candle", keep: "none" }],
     });
     const out = act(doubled, SUMP, "pack", "empty");
-    expect(out.state.run.consumables).toStrictEqual([
+    expect(out.state.run.pouch.consumables).toStrictEqual([
       { id: "item:iron-key", keep: "key" },
       { id: "item:tallow-candle", keep: "none" },
     ]);
   });
 
   it("takes out of a worn slot, and leaves a null where it was", () => {
-    const state = bendRun(fresh(), {
+    const state = bendPouch(fresh(), {
       equipment: [null, { id: "item:tallow-candle", keep: "kept" }, null, null],
     });
     const out = act(state, SUMP, "pack", "empty");
-    expect(out.state.run.equipment).toStrictEqual([null, null, null, null]);
-    expect(out.state.run.equipment).toHaveLength(4); // the pouch's shape never changes
+    expect(out.state.run.pouch.equipment).toStrictEqual([null, null, null, null]);
+    expect(out.state.run.pouch.equipment).toHaveLength(4); // the pouch's shape never changes
   });
 
   it("takes nothing when the thing is not carried, and does not fail", () => {
@@ -715,9 +721,9 @@ describe("H006 · give and take", () => {
     const key = { id: "item:iron-key", keep: "key" } as const;
     const holds = (state: GameState): number => saying(said(act(state, SUMP, "hatch", "lift")), "key turns the plate");
     expect(holds(fresh())).toBe(0);
-    expect(holds(bendRun(fresh(), { consumables: [key] }))).toBe(1);
-    expect(holds(bendRun(fresh(), { equipment: [null, null, key, null] }))).toBe(1);
-    expect(holds(bendRun(fresh(), { small: [null, key] }))).toBe(1);
+    expect(holds(bendPouch(fresh(), { consumables: [key] }))).toBe(1);
+    expect(holds(bendPouch(fresh(), { equipment: [null, null, key, null] }))).toBe(1);
+    expect(holds(bendPouch(fresh(), { small: [null, key] }))).toBe(1);
   });
 });
 
@@ -950,8 +956,8 @@ describe("H006 · nothing mutates", () => {
   it("does not hold the card's items — a save owns what is in it", () => {
     const out = act(fresh(), SUMP, "pack", "open");
     const given = (SUMP.objects["pack"] as RoomObject).actions?.["open"]?.[0]?.give;
-    expect(out.state.run.consumables[0]).not.toBe(given?.[0]);
-    expect(out.state.run.consumables[0]).toStrictEqual(given?.[0]);
+    expect(out.state.run.pouch.consumables[0]).not.toBe(given?.[0]);
+    expect(out.state.run.pouch.consumables[0]).toStrictEqual(given?.[0]);
   });
 });
 

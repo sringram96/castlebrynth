@@ -16,7 +16,7 @@
 
 import { describe, expect, it } from "vitest";
 import { newRun } from "./api";
-import { next } from "./rng";
+import { STREAM, fork, next } from "./rng";
 import { OLDEST_READABLE, SAVE_VERSION, load, save } from "./save";
 import type { ContentBundle, GameState } from "./types";
 
@@ -39,6 +39,8 @@ function populated(): GameState {
     campaign: {
       ...fresh.campaign,
       dice: [{ id: "die:hollow" }],
+      signature: { id: "die:hollow" },
+      stash: [{ id: "item:rope", keep: "none" }],
       knowledge: ["knowledge:the-book"],
       journal: ["You put the stone back where it was."],
       refused: [{ intent: { object: "book", action: "read" }, depth: 1 }],
@@ -48,6 +50,7 @@ function populated(): GameState {
     run: {
       ...fresh.run,
       rng: { seed: 1234, draws: 7 },
+      descent: { seed: 777, draws: 4 },
       depth: 2,
       roomId: "room:cistern",
       vitals: {
@@ -57,9 +60,11 @@ function populated(): GameState {
         sanity: { current: 5, max: 6 },
       },
       tithes: 11,
-      consumables: [{ id: "item:candle", keep: "none" }],
-      equipment: [{ id: "item:knife", keep: "kept" }, null, null, null],
-      small: [{ id: "item:key", keep: "key" }, null],
+      pouch: {
+        consumables: [{ id: "item:candle", keep: "none" }],
+        equipment: [{ id: "item:knife", keep: "kept" }, null, null, null],
+        small: [{ id: "item:key", keep: "key" }, null],
+      },
       skills: [{ id: "skill:steady", uses: { current: 1, max: 2 } }],
       flags: ["flag:door-opened"],
     },
@@ -140,18 +145,126 @@ describe("H007 · the envelope round-trips", () => {
   });
 });
 
+/**
+ * A save as v1 and v2 wrote one: the three containers flat on the run branch,
+ * no `descent` stream, and a campaign with no `signature` and no `stash`.
+ *
+ * Written out rather than derived from `populated()`, because a migration test
+ * that builds its input by transforming the current shape proves only that the
+ * transform is invertible. This is what is actually on a player's disk.
+ */
+function legacy(): Record<string, unknown> {
+  return {
+    seed: 42,
+    deaths: 3,
+    campaign: {
+      branch: "campaign",
+      dice: [{ id: "die:hollow" }],
+      knowledge: ["knowledge:the-book"],
+      journal: ["You put the stone back where it was."],
+      refused: [{ intent: { object: "book", action: "read" }, depth: 1 }],
+      landmarks: ["landmark:the-well"],
+      grants: ["grant:steady-hands"],
+    },
+    run: {
+      branch: "run",
+      rng: { seed: 1234, draws: 7 },
+      depth: 2,
+      roomId: "room:cistern",
+      vitals: {
+        hp: { current: 4, max: 6 },
+        might: { current: 2, max: 3 },
+        will: { current: 1, max: 3 },
+        sanity: { current: 5, max: 6 },
+      },
+      tithes: 11,
+      consumables: [{ id: "item:candle", keep: "none" }],
+      equipment: [{ id: "item:knife", keep: "kept" }, null, null, null],
+      small: [{ id: "item:key", keep: "key" }, null],
+      skills: [{ id: "skill:steady", uses: { current: 1, max: 2 } }],
+      flags: ["flag:door-opened"],
+    },
+  };
+}
+
 describe("H007 · the version chain", () => {
   it("carries an older save forward instead of stranding it", () => {
-    // v1 is H001's envelope: the same state shape, written before anything
-    // audited it. It loads, and then faces the audit like anything else.
-    const state = populated();
     expect(OLDEST_READABLE).toBe(1);
-    expect(load(enveloped(state, 1))).toStrictEqual(state);
+    for (const version of [1, 2]) {
+      const back = load(enveloped(legacy(), version));
+      expect(back, `v${version}`).not.toBeNull();
+      expect(back?.seed).toBe(42);
+      expect(back?.deaths).toBe(3);
+    }
+  });
+
+  it("gathers the old flat containers into the pouch, losing nothing", () => {
+    // D001 re-shaped what a run holds; it did not change what it holds. Every
+    // thing in the old save is in the new one, in the container it was in.
+    const back = load(enveloped(legacy(), 2));
+    expect(back?.run.pouch).toStrictEqual({
+      consumables: [{ id: "item:candle", keep: "none" }],
+      equipment: [{ id: "item:knife", keep: "kept" }, null, null, null],
+      small: [{ id: "item:key", keep: "key" }, null],
+    });
+    // And it does not carry both spellings of what it holds.
+    const raw = back as unknown as Record<string, Record<string, unknown>>;
+    for (const gone of ["consumables", "equipment", "small"]) {
+      expect(Object.keys(raw["run"] as object), gone).not.toContain(gone);
+    }
+  });
+
+  it("mints the Descent's stream a migrated save never had — derived, not invented", () => {
+    // It must be the value `freshRun` would have minted from the same seed
+    // (api.ts), and it must be at draw 0: a v2 save cannot have drawn a door,
+    // because D002 did not exist when it was written.
+    const back = load(enveloped(legacy(), 2));
+    expect(back?.run.descent).toStrictEqual(fork({ seed: 1234, draws: 7 }, STREAM.descent));
+    expect(back?.run.descent.draws).toBe(0);
+    // Derived from the SEED and never the parent's position, so it does not
+    // matter that the old save was mid-push (rng.ts `fork`).
+    expect(back?.run.descent.seed).not.toBe(1234);
+  });
+
+  it("opens the campaign's new fields empty rather than guessing them", () => {
+    // Nothing in a v2 save records which die was yours or what you had stashed.
+    // A guess would silently pick a player's class for them, or mint items.
+    const back = load(enveloped(legacy(), 2));
+    expect(back?.campaign.signature).toBeNull();
+    expect(back?.campaign.stash).toStrictEqual([]);
+    // And it keeps every campaign field that WAS written down.
+    expect(back?.campaign.dice).toStrictEqual([{ id: "die:hollow" }]);
+    expect(back?.campaign.knowledge).toStrictEqual(["knowledge:the-book"]);
+    expect(back?.campaign.refused).toHaveLength(1);
+  });
+
+  it("re-saves a migrated save at the current version", () => {
+    const back = load(enveloped(legacy(), 1));
+    expect(back).not.toBeNull();
+    const rewritten = save(back as GameState);
+    expect((JSON.parse(rewritten) as { version: number }).version).toBe(SAVE_VERSION);
+    expect(load(rewritten)).toStrictEqual(back);
   });
 
   it("audits a migrated save too — an old save is not a trusted one", () => {
-    const poisoned = withValue(populated(), ["run", "rng", "seed"], "42");
+    const poisoned = { ...legacy(), run: { ...(legacy()["run"] as object), rng: { seed: "42" } } };
     expect(load(enveloped(poisoned, 1))).toBeNull();
+    expect(load(enveloped(poisoned, 2))).toBeNull();
+  });
+
+  it("refuses to carry forward a run with no stream to fork from", () => {
+    // `descent` derives from `rng`, and a stream derived from poison is a
+    // plausible number with no run behind it.
+    for (const rng of [undefined, null, {}, { seed: 1.5, draws: 0 }, { seed: 1, draws: -1 }]) {
+      const broken = { ...legacy(), run: { ...(legacy()["run"] as object), rng } };
+      expect(load(enveloped(broken, 2)), JSON.stringify(rng)).toBeNull();
+    }
+  });
+
+  it("refuses a legacy save at the CURRENT version — the version is a claim", () => {
+    // A v2-shaped state wearing `version: 3` is not migrated, because it says
+    // it needs no migration. It is simply not a v3 state, and it is refused.
+    expect(load(enveloped(legacy(), SAVE_VERSION))).toBeNull();
   });
 
   it("refuses a version outside the chain, older or newer, and does not throw", () => {
@@ -317,18 +430,18 @@ describe("H007 · the pouch keeps its shape", () => {
     const state = populated();
     const worn = { id: "item:knife", keep: "kept" };
     for (const equipment of [[], [null], [null, null, null], [null, null, null, null, null]]) {
-      expect(load(enveloped(withValue(state, ["run", "equipment"], equipment)))).toBeNull();
+      expect(load(enveloped(withValue(state, ["run", "pouch", "equipment"], equipment)))).toBeNull();
     }
     for (const small of [[], [null], [null, null, null]]) {
-      expect(load(enveloped(withValue(state, ["run", "small"], small)))).toBeNull();
+      expect(load(enveloped(withValue(state, ["run", "pouch", "small"], small)))).toBeNull();
     }
-    expect(load(enveloped(withValue(state, ["run", "equipment"], [worn, null, null, null])))).not.toBeNull();
+    expect(load(enveloped(withValue(state, ["run", "pouch", "equipment"], [worn, null, null, null])))).not.toBeNull();
   });
 
   it("refuses a slot that is neither an item nor empty", () => {
     const state = populated();
     for (const slot of ["item:knife", 0, {}, { id: "item:knife" }, { id: 1, keep: "kept" }]) {
-      expect(load(enveloped(withValue(state, ["run", "equipment"], [slot, null, null, null])))).toBeNull();
+      expect(load(enveloped(withValue(state, ["run", "pouch", "equipment"], [slot, null, null, null])))).toBeNull();
     }
   });
 
@@ -336,11 +449,11 @@ describe("H007 · the pouch keeps its shape", () => {
     const state = populated();
     for (const keep of ["KEPT", "keep", "", null, 1]) {
       const item = { id: "item:candle", keep };
-      expect(load(enveloped(withValue(state, ["run", "consumables"], [item]))), String(keep)).toBeNull();
+      expect(load(enveloped(withValue(state, ["run", "pouch", "consumables"], [item]))), String(keep)).toBeNull();
     }
     for (const keep of ["none", "kept", "key"]) {
       const item = { id: "item:candle", keep };
-      expect(load(enveloped(withValue(state, ["run", "consumables"], [item]))), String(keep)).not.toBeNull();
+      expect(load(enveloped(withValue(state, ["run", "pouch", "consumables"], [item]))), String(keep)).not.toBeNull();
     }
   });
 });
