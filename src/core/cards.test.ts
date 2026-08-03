@@ -1,4 +1,11 @@
-// H003 · the room card schema, asserted.
+// H003 · the room card schema, asserted. H009 · migrated to the lean word set.
+//
+// The word set is .llm/rules/engine.md's, and it is the law this file asserts:
+// gates {flags, items} · deltas {say, set, unset, give, take, adjust, journal,
+// refuse, goto, addObject, removeObject, prompt, fight, end}. `learn`, `harm`
+// and the gate key `knows` were H003's and are now superseded — they are not
+// merely gone from the tables, they are asserted REJECTED, at the type and at
+// load, so the old set cannot come back quietly.
 //
 // The card's DONE WHEN has two halves and they are the first two blocks below:
 //   1. an exemplar card typechecks — TALLOW_STORE is annotated `RoomCard`, so
@@ -17,11 +24,14 @@
 // response: an affordance may not toggle, a room must offer a way on, and
 // every sensed door must be one that some action goes through.
 //
-// One word has no place in a quiet store room and so is not in the exemplar:
-// `fight`, the doorway into the Lots. It is covered in the loader block.
+// Five words have no place in a quiet store room and so are not in the
+// exemplar: `fight`, the doorway into the Lots, the other two emissions
+// `prompt` and `end`, and `unset` and `take`, which undo things this room has
+// no reason to undo. They are covered in the loader block instead.
 
 import { describe, expect, it } from "vitest";
 import {
+  ADJUST_TRACKS,
   DELTA_WORDS,
   DOOR_KEYS,
   GATE_KEYS,
@@ -90,10 +100,9 @@ const TALLOW_STORE: RoomCard = {
           },
           {
             say: "Cold to the elbow. An edge opens your palm. A key comes up with it.",
-            harm: 1,
-            set: ["vat-opened"],
+            adjust: { hp: -1 },
+            set: ["vat-opened", "knowledge:things-kept-in-tallow"],
             give: [{ id: "item:greased-key", keep: "none" }],
-            learn: ["knowledge:things-kept-in-tallow"],
             journal: "Put an arm into the tallow. Brought up a key, and a cut.",
           },
         ],
@@ -107,7 +116,7 @@ const TALLOW_STORE: RoomCard = {
           {
             say: "You work the handle out. The tallow closes over the hole it leaves.",
             give: [{ id: "item:tallow-ladle", keep: "none" }],
-            remove: { object: "ladle", cause: "the ladle is out of the vat" },
+            removeObject: { object: "ladle", cause: "the ladle is out of the vat" },
             journal: "Worked the ladle out of the tallow.",
           },
         ],
@@ -128,7 +137,7 @@ const TALLOW_STORE: RoomCard = {
           {
             say: "You put your shoulder to it. It comes off the boards, and iron shows.",
             set: ["bench-shifted"],
-            reveal: { object: "hatch", cause: "the bench is shifted off it" },
+            addObject: { object: "hatch", cause: "the bench is shifted off it" },
           },
         ],
       },
@@ -141,7 +150,7 @@ const TALLOW_STORE: RoomCard = {
         listen: [{ say: "Water, under the iron. A long way down, and moving." }],
         lift: [
           {
-            if: { knows: ["knowledge:tallow-seal"], cross_push: true },
+            if: { flags: ["knowledge:tallow-seal"], cross_push: true },
             say: "You work the seam. The hatch lifts, and the water below is loud.",
             set: ["hatch-open"],
             goto: "door:under-floor",
@@ -198,8 +207,8 @@ const prose = (card: RoomCard): readonly string[] => {
   for (const response of everyResponse(card)) {
     lines.push(response.say);
     if (response.journal !== undefined) lines.push(response.journal);
-    if (response.reveal !== undefined) lines.push(response.reveal.cause);
-    if (response.remove !== undefined) lines.push(response.remove.cause);
+    if (response.addObject !== undefined) lines.push(response.addObject.cause);
+    if (response.removeObject !== undefined) lines.push(response.removeObject.cause);
   }
   return lines;
 };
@@ -261,14 +270,14 @@ describe("H003 · the exemplar card", () => {
     // Affordance permanence, in the exemplar's own shape: the ladle only ever
     // leaves, the hatch only ever arrives, and no object does both.
     const removed = everyResponse(TALLOW_STORE)
-      .map((response) => response.remove?.object)
+      .map((response) => response.removeObject?.object)
       .filter((object): object is string => object !== undefined);
-    const revealed = everyResponse(TALLOW_STORE)
-      .map((response) => response.reveal?.object)
+    const added = everyResponse(TALLOW_STORE)
+      .map((response) => response.addObject?.object)
       .filter((object): object is string => object !== undefined);
     expect(removed).toStrictEqual(["ladle"]);
-    expect(revealed).toStrictEqual(["hatch"]);
-    expect(removed.filter((object) => revealed.includes(object))).toStrictEqual([]);
+    expect(added).toStrictEqual(["hatch"]);
+    expect(removed.filter((object) => added.includes(object))).toStrictEqual([]);
   });
 
   it("keeps the T0 voice — nothing banned, in any line it writes", () => {
@@ -388,13 +397,13 @@ describe("H003 · unknown words are rejected at LOAD, by path", () => {
     // An author copying DESIGN §the descent verbatim writes `cross_push`, and
     // must not be told their own vocabulary is unknown.
     const asDesigned = withResponses([
-      { if: { knows: ["knowledge:x"], cross_push: true }, say: "Known." },
+      { if: { flags: ["knowledge:x"], cross_push: true }, say: "Known." },
       { say: "Fallback." },
     ]);
     expect(pathsOf(asDesigned)).toStrictEqual([]);
 
     const camel = withResponses([
-      { if: { knows: ["knowledge:x"], crossPush: true }, say: "Known." },
+      { if: { flags: ["knowledge:x"], crossPush: true }, say: "Known." },
       { say: "Fallback." },
     ]);
     expect(messageAt(camel, "objects.thing.actions.peer[0].if.crossPush")).toContain(
@@ -506,7 +515,7 @@ describe("H003 · a response list ends in an ungated fallback", () => {
   it("compiles a lone ungated response, and a gated stack above one", () => {
     const lone: Responses = [{ say: "The only answer." }];
     const stack: Responses = [
-      { if: { knows: ["knowledge:x"], cross_push: true }, say: "Known." },
+      { if: { flags: ["knowledge:x"], cross_push: true }, say: "Known." },
       { if: { items: ["item:key"] }, say: "Carried." },
       { say: "Neither." },
     ];
@@ -700,9 +709,10 @@ describe("H003 · affordance permanence", () => {
     expect(OBJECT_KEYS).not.toContain("visible");
   });
 
-  it("refuses an object that can be removed and then revealed again", () => {
+  it("refuses an object that can be removed and then added again", () => {
     // Dropping the `tappable` key removed one WAY to toggle, not toggling:
-    // `remove` on one action plus `reveal` on another is pull/push forever.
+    // `removeObject` on one action plus `addObject` on another is pull/push
+    // forever. The words were renamed by H009; the law they serve did not move.
     const pullPush = withObjects({
       latch: { latent: true, tap: "A latch, set in the frame." },
       hand: {
@@ -711,23 +721,23 @@ describe("H003 · affordance permanence", () => {
           pull: [
             {
               say: "It comes away.",
-              remove: { object: "latch", cause: "the latch is in your hand" },
+              removeObject: { object: "latch", cause: "the latch is in your hand" },
             },
           ],
           push: [
             {
               say: "It seats again.",
-              reveal: { object: "latch", cause: "the latch is set again" },
+              addObject: { object: "latch", cause: "the latch is set again" },
             },
           ],
         },
       },
     });
-    const path = "objects.hand.actions.push[0].reveal.object";
+    const path = "objects.hand.actions.push[0].addObject.object";
     expect(pathsOf(pullPush)).toStrictEqual([path]);
     expect(messageAt(pullPush, path)).toContain("tappability toggles");
     // The problem names BOTH halves, so an author can see the whole loop.
-    expect(messageAt(pullPush, path)).toContain("objects.hand.actions.pull[0].remove.object");
+    expect(messageAt(pullPush, path)).toContain("objects.hand.actions.pull[0].removeObject.object");
   });
 
   it("allows an affordance that only leaves, or only arrives", () => {
@@ -737,9 +747,12 @@ describe("H003 · affordance permanence", () => {
       hand: {
         tap: "The frame.",
         actions: {
-          push: [{ say: "It seats.", reveal: { object: "latch", cause: "the frame gives" } }],
+          push: [{ say: "It seats.", addObject: { object: "latch", cause: "the frame gives" } }],
           take: [
-            { say: "It comes up.", remove: { object: "ladle", cause: "the ladle is in your hand" } },
+            {
+              say: "It comes up.",
+              removeObject: { object: "ladle", cause: "the ladle is in your hand" },
+            },
           ],
         },
       },
@@ -747,46 +760,50 @@ describe("H003 · affordance permanence", () => {
     expect(pathsOf(oneWay)).toStrictEqual([]);
   });
 
-  it("requires a cause on a reveal", () => {
+  it("requires a cause on an addObject", () => {
+    // The rename did not drop the cause: "adds/removes carry a cause"
+    // (DESIGN §content laws) still holds, and it is still required.
     const causeless = withObjects({
       thing: {
         tap: "A thing.",
-        actions: { peer: [{ say: "It shifts.", reveal: { object: "under" } }] },
+        actions: { peer: [{ say: "It shifts.", addObject: { object: "under" } }] },
       },
       under: { latent: true, tap: "What was under it." },
     });
-    const path = "objects.thing.actions.peer[0].reveal.cause";
+    const path = "objects.thing.actions.peer[0].addObject.cause";
     expect(pathsOf(causeless)).toContain(path);
     expect(messageAt(causeless, path)).toContain("adds and removes carry a cause");
   });
 
-  it("requires a cause on a remove", () => {
-    const causeless = withResponses([{ say: "You take it.", remove: { object: "thing" } }]);
-    expect(pathsOf(causeless)).toContain("objects.thing.actions.peer[0].remove.cause");
+  it("requires a cause on a removeObject", () => {
+    const causeless = withResponses([{ say: "You take it.", removeObject: { object: "thing" } }]);
+    expect(pathsOf(causeless)).toContain("objects.thing.actions.peer[0].removeObject.cause");
   });
 
   it("reaches only this room's own objects", () => {
     const stray = withResponses([
-      { say: "It shifts.", reveal: { object: "elsewhere", cause: "the bench moves" } },
+      { say: "It shifts.", addObject: { object: "elsewhere", cause: "the bench moves" } },
     ]);
-    const path = "objects.thing.actions.peer[0].reveal.object";
+    const path = "objects.thing.actions.peer[0].addObject.object";
     expect(messageAt(stray, path)).toContain('"elsewhere" is not an object of this room');
   });
 
-  it("refuses to reveal something already present — that would be a toggle", () => {
+  it("refuses to add something already present — that would be a toggle", () => {
     const toggle = withResponses([
-      { say: "It is there again.", reveal: { object: "thing", cause: "the light moves" } },
+      { say: "It is there again.", addObject: { object: "thing", cause: "the light moves" } },
     ]);
-    const path = "objects.thing.actions.peer[0].reveal.object";
+    const path = "objects.thing.actions.peer[0].addObject.object";
     expect(messageAt(toggle, path)).toContain("latent: true");
   });
 
-  it("accepts a reveal of a latent object, with its cause", () => {
+  it("accepts an addObject of a latent object, with its cause", () => {
     const clean = withObjects({
       thing: {
         tap: "A thing.",
         actions: {
-          peer: [{ say: "It shifts.", reveal: { object: "under", cause: "the thing is moved" } }],
+          peer: [
+            { say: "It shifts.", addObject: { object: "under", cause: "the thing is moved" } },
+          ],
         },
       },
       under: { latent: true, tap: "What was under it." },
@@ -798,25 +815,51 @@ describe("H003 · affordance permanence", () => {
 describe("H003 · the vocabulary is closed, and frozen", () => {
   // Changing any list here changes the language every room is written in. A
   // new word is its own Asana task, never a side effect (.llm/rules/engine.md).
-  it("freezes the delta words", () => {
+  it("freezes the delta words, in the order the rule declares them", () => {
+    // Verbatim from .llm/rules/engine.md: "deltas {say, set, unset, give, take,
+    // adjust, journal, refuse (→ refused ledger), goto (declared doors only),
+    // addObject, removeObject, prompt, fight (emission), end}".
     expect(DELTA_WORDS).toStrictEqual([
       "say",
       "set",
-      "learn",
+      "unset",
+      "give",
+      "take",
+      "adjust",
       "journal",
       "refuse",
-      "give",
-      "harm",
-      "reveal",
-      "remove",
-      "fight",
       "goto",
+      "addObject",
+      "removeObject",
+      "prompt",
+      "fight",
+      "end",
     ]);
   });
 
   it("freezes the gate keys and the response keys", () => {
-    expect(GATE_KEYS).toStrictEqual(["flags", "items", "knows", "cross_push"]);
+    // engine.md: "gates {flags, items}". `cross_push` is the third key and it
+    // is not a condition — it is a marking, and it stays (DESIGN §the descent).
+    expect(GATE_KEYS).toStrictEqual(["flags", "items", "cross_push"]);
     expect(RESPONSE_KEYS).toStrictEqual(["if", ...DELTA_WORDS]);
+  });
+
+  it("freezes the tracks `adjust` may move", () => {
+    // The two bars that can kill, the two stats, the coin.
+    expect(ADJUST_TRACKS).toStrictEqual(["hp", "sanity", "might", "will", "tithes"]);
+    // Depth is the draw's, not a card's: it is derived, never adjusted.
+    expect(ADJUST_TRACKS as readonly string[]).not.toContain("depth");
+  });
+
+  it("can move BOTH bars that death reads — sanity is a track, not an absence", () => {
+    // DESIGN §ledgers: "EITHER bar at zero — health or sanity — is death, by
+    // the same rule." Both halves of that sentence must be reachable from the
+    // room language, or the sanity half is unauthorable and the vignette can
+    // never close. §frame's "no sanity bar exists anywhere" and ui.md 5's "no
+    // sanity number is ever rendered" are about the SCREEN; the Fraying, which
+    // DESIGN §open parks, is the consequence of low sanity, not the value.
+    expect(ADJUST_TRACKS).toContain("hp");
+    expect(ADJUST_TRACKS).toContain("sanity");
   });
 
   it("freezes the room and door keys, the tiers, and the keeps", () => {
@@ -831,7 +874,11 @@ describe("H003 · the vocabulary is closed, and frozen", () => {
     // owns each of them; none is a side effect of this card. `label`, `cinema`
     // and object geometry are named there too: things DESIGN demands that this
     // schema cannot yet say, and that H006 and the art lint will need.
-    for (const absent of ["tithes", "pay", "take", "back", "qte", "sanity", "might", "will"]) {
+    //
+    // `take` left this list at H009 — it is a word now. `tithes`, `sanity`,
+    // `might` and `will` are not words either way, and never were: they are
+    // `adjust` TRACKS, reached through one word rather than four of their own.
+    for (const absent of ["tithes", "pay", "back", "qte", "sanity", "might", "will"]) {
       expect(DELTA_WORDS as readonly string[], absent).not.toContain(absent);
     }
     for (const absent of ["label", "cinema", "at", "size"]) {
@@ -856,18 +903,209 @@ describe("H003 · a refusal is a refusal", () => {
   });
 });
 
-describe("H003 · harm is whole, and never nothing", () => {
-  it("refuses a harm of none or a fraction", () => {
-    for (const bad of [0, -1, 1.5, "1"]) {
-      const card = withResponses([{ say: "It takes skin.", harm: bad }]);
-      expect(messageAt(card, "objects.thing.actions.peer[0].harm"), String(bad)).toContain(
-        "whole number of HP",
+describe("H009 · adjust is whole, and never nothing", () => {
+  // H003's `harm` law, retargeted. Harm is no longer a word: it is a negative
+  // number on a track (.llm/rules/engine.md). What was "1 or more" is now
+  // "not zero", because the sign carries the direction.
+  it("refuses a move of none or a fraction", () => {
+    for (const bad of [0, 1.5, -1.5, "1", null]) {
+      const card = withResponses([{ say: "It takes skin.", adjust: { hp: bad } }]);
+      expect(messageAt(card, "objects.thing.actions.peer[0].adjust.hp"), String(bad)).toContain(
+        "whole number",
       );
     }
   });
 
-  it("accepts a whole harm", () => {
-    expect(pathsOf(withResponses([{ say: "It takes skin.", harm: 2 }]))).toStrictEqual([]);
+  it("accepts a whole move in either direction, on any track", () => {
+    expect(pathsOf(withResponses([{ say: "It takes skin.", adjust: { hp: -2 } }]))).toStrictEqual(
+      [],
+    );
+    expect(
+      pathsOf(withResponses([{ say: "The cut closes over.", adjust: { hp: 1 } }])),
+    ).toStrictEqual([]);
+    expect(
+      pathsOf(
+        withResponses([{ say: "You put coin in the slot.", adjust: { tithes: -3, will: 1 } }]),
+      ),
+    ).toStrictEqual([]);
+  });
+
+  it("moves sanity the same way it moves health — negative takes", () => {
+    // "By the same rule" (DESIGN §ledgers) is what settles the sign: the two
+    // bars are the same kind of quantity, so a room writes them the same way.
+    // What is never written is a NUMBER on screen — that is the vignette's
+    // job (DESIGN §frame, .llm/rules/ui.md 5), and no card decides rendering.
+    const closes = withResponses([
+      { say: "The lamp gutters. The walls come in a little.", adjust: { sanity: -1 } },
+    ]);
+    expect(pathsOf(closes)).toStrictEqual([]);
+    expect(
+      pathsOf(withResponses([{ say: "You get your breath back.", adjust: { sanity: 2 } }])),
+    ).toStrictEqual([]);
+    // Both bars in one response: one act can cost body and mind together.
+    const both = withResponses([
+      { say: "It is on you before the light moves.", adjust: { hp: -2, sanity: -1 } },
+    ]);
+    expect(pathsOf(both)).toStrictEqual([]);
+    // And the whole-number law reaches it like any other track.
+    const fraction = withResponses([{ say: "The walls come in.", adjust: { sanity: -0.5 } }]);
+    expect(messageAt(fraction, "objects.thing.actions.peer[0].adjust.sanity")).toContain(
+      "whole number",
+    );
+  });
+
+  it("refuses an unknown track, and lists the ones there are", () => {
+    // The whole reason the set is closed: a typo that loads clean would move
+    // nothing, silently, forever.
+    const bad = withResponses([{ say: "Something gives.", adjust: { helth: -1 } }]);
+    const path = "objects.thing.actions.peer[0].adjust.helth";
+    expect(pathsOf(bad)).toContain(path);
+    expect(messageAt(bad, path)).toContain('unknown adjust track "helth"');
+    for (const track of ADJUST_TRACKS) expect(messageAt(bad, path)).toContain(track);
+
+    // `depth` is a real word in this game and still not a track: it is derived
+    // from the descent, never adjusted by a room.
+    const derived = withResponses([{ say: "You go down.", adjust: { depth: 1 } }]);
+    expect(messageAt(derived, "objects.thing.actions.peer[0].adjust.depth")).toContain(
+      'unknown adjust track "depth"',
+    );
+  });
+
+  it("refuses an adjust that moves nothing", () => {
+    const hollow = withResponses([{ say: "Nothing changes.", adjust: {} }]);
+    expect(messageAt(hollow, "objects.thing.actions.peer[0].adjust")).toContain("moves nothing");
+  });
+
+  it("refuses an adjust that is not a map", () => {
+    const wrong = withResponses([{ say: "It takes skin.", adjust: 1 }]);
+    expect(messageAt(wrong, "objects.thing.actions.peer[0].adjust")).toContain("a map of tracks");
+  });
+});
+
+describe("H009 · the five added words are vocabulary, and load", () => {
+  // Vocabulary only: what each one DOES is another card's (H208 `prompt`,
+  // H114 `end`, H205 the tithes spend path and its affordability gate). What
+  // is asserted here is that a card may say them and that the shapes hold.
+  it("accepts unset — a flag can be lowered again", () => {
+    expect(
+      pathsOf(withResponses([{ say: "The catch drops back.", unset: ["latch-held"] }])),
+    ).toStrictEqual([]);
+  });
+
+  it("accepts take — an item leaves the pouch, by id and without a keep", () => {
+    // `give` carries `keep` because death must know what to do with the item.
+    // Once it is gone that stops mattering, so `take` is a list of ids.
+    expect(
+      pathsOf(withResponses([{ say: "It takes the key back.", take: ["item:greased-key"] }])),
+    ).toStrictEqual([]);
+    const wrong = withResponses([
+      { say: "It takes the key back.", take: [{ id: "item:x", keep: "none" }] },
+    ]);
+    expect(pathsOf(wrong)).toContain("objects.thing.actions.peer[0].take[0]");
+  });
+
+  it("accepts prompt — a QTE id, passed through", () => {
+    expect(
+      pathsOf(withResponses([{ say: "The floor goes.", prompt: "qte:catch-the-edge" }])),
+    ).toStrictEqual([]);
+    const blank = withResponses([{ say: "The floor goes.", prompt: "" }]);
+    expect(messageAt(blank, "objects.thing.actions.peer[0].prompt")).toContain("`prompt`");
+  });
+
+  it("accepts end — an ending id, passed through", () => {
+    expect(
+      pathsOf(withResponses([{ say: "The dark closes over.", end: "ending:the-long-way-down" }])),
+    ).toStrictEqual([]);
+    const blank = withResponses([{ say: "The dark closes over.", end: 1 }]);
+    expect(messageAt(blank, "objects.thing.actions.peer[0].end")).toContain("`end`");
+  });
+
+  it("does not count `end` as the way on — the softlock check is unchanged", () => {
+    // A judgment call, recorded: H009 added `end` as vocabulary and did NOT
+    // widen "some response says `goto` or `fight`" to admit it. Widening a
+    // ruled check is its own task; refusing more than necessary is the safe
+    // direction, and this test is here so the next card finds the decision.
+    const ending = probe({
+      objects: {
+        thing: { tap: "A thing.", actions: { peer: [{ say: "It closes.", end: "ending:x" }] } },
+      },
+    });
+    expect(messageAt(ending, "")).toContain("offers no way on");
+  });
+});
+
+describe("H009 · the superseded words are rejected", () => {
+  // The human ruling (main, "Law: the lean word set supersedes") drops `learn`,
+  // `harm` and the gate key `knows`. Removing them from the tables is not
+  // enough: a card written against the old set must FAIL, loudly, by name.
+  it("rejects `learn` — knowledge is a flag now, so `set` says it", () => {
+    const old = withResponses([{ say: "You understand.", learn: ["knowledge:x"] }]);
+    const path = "objects.thing.actions.peer[0].learn";
+    expect(pathsOf(old)).toContain(path);
+    expect(messageAt(old, path)).toContain('unknown response word "learn"');
+    expect(messageAt(old, path)).toContain("set");
+  });
+
+  it("rejects `harm` — damage is arithmetic on a track now", () => {
+    const old = withResponses([{ say: "It takes skin.", harm: 1 }]);
+    const path = "objects.thing.actions.peer[0].harm";
+    expect(pathsOf(old)).toContain(path);
+    expect(messageAt(old, path)).toContain('unknown response word "harm"');
+    expect(messageAt(old, path)).toContain("adjust");
+  });
+
+  it("rejects the gate key `knows` — the gate conditions are flags and items", () => {
+    const old = withResponses([
+      { if: { knows: ["knowledge:x"] }, say: "Known." },
+      { say: "Fallback." },
+    ]);
+    const path = "objects.thing.actions.peer[0].if.knows";
+    expect(pathsOf(old)).toContain(path);
+    expect(messageAt(old, path)).toContain('unknown gate key "knows"');
+    expect(messageAt(old, path)).toContain("flags, items");
+  });
+
+  it("rejects the old names for the object changes", () => {
+    const old = withObjects({
+      thing: {
+        tap: "A thing.",
+        actions: {
+          peer: [{ say: "It shifts.", reveal: { object: "under", cause: "the thing is moved" } }],
+          take: [{ say: "It comes up.", remove: { object: "thing", cause: "it is in your hand" } }],
+        },
+      },
+      under: { latent: true, tap: "What was under it." },
+    });
+    expect(messageAt(old, "objects.thing.actions.peer[0].reveal")).toContain(
+      'unknown response word "reveal"',
+    );
+    expect(messageAt(old, "objects.thing.actions.take[0].remove")).toContain(
+      'unknown response word "remove"',
+    );
+  });
+
+  it("does not compile them either — the type is the first door", () => {
+    // @ts-expect-error — `learn` is not a word: knowledge is a flag, and `set`
+    // raises it (.llm/rules/engine.md, the lean word set).
+    const learned: Responses = [{ say: "You understand.", learn: ["knowledge:x"] }];
+    // @ts-expect-error — `harm` is not a word: it is `adjust: { hp: -1 }`.
+    const hurt: Responses = [{ say: "It takes skin.", harm: 1 }];
+    // @ts-expect-error — `knows` is not a gate key: the conditions are flags
+    // and items, and campaign knowledge is a flag like any other.
+    const known: Responses = [{ if: { knows: ["knowledge:x"] }, say: "K." }, { say: "F." }];
+    expect([learned, hurt, known]).toHaveLength(3);
+  });
+
+  it("keeps cross_push, which is NOT a condition and was not dropped with knows", () => {
+    // engine.md lists gate CONDITIONS as {flags, items}; `cross_push` is a
+    // marking on a gate and DESIGN §the descent still names it. It survives
+    // the drop of `knows` because it never was a sibling of it.
+    expect(GATE_KEYS).toContain("cross_push");
+    const marked = withResponses([
+      { if: { flags: ["knowledge:tallow-seal"], cross_push: true }, say: "Known." },
+      { say: "Fallback." },
+    ]);
+    expect(pathsOf(marked)).toStrictEqual([]);
   });
 });
 
