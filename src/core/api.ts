@@ -59,7 +59,7 @@ function freshRun(seed: number, start: string): RunBranch {
     rng: { seed, draws: 0 },
     depth: 0,
     roomId: start,
-    vitals: { hp: EMPTY_POOL, might: EMPTY_POOL, will: EMPTY_POOL, sanity: 0 },
+    vitals: { hp: EMPTY_POOL, might: EMPTY_POOL, will: EMPTY_POOL, sanity: EMPTY_POOL },
     tithes: 0,
     consumables: [],
     equipment: [null, null, null, null],
@@ -83,6 +83,30 @@ export const newRun: GameAPI["newRun"] = (seed: number, bundle: ContentBundle) =
 });
 
 /**
+ * The vignette: how far the aperture has closed. 0 = clear, 1 = closed.
+ *
+ * Sanity's ONLY route to the screen. It is derived here and stored nowhere,
+ * because there is no sanity bar anywhere (DESIGN §frame) and no sanity number
+ * is ever rendered (.llm/rules/ui.md 5) — `Strip` has no field for it, and
+ * this number is what the shell dithers the aperture with instead.
+ *
+ * It runs the OTHER WAY from the bar it reads, and that is the whole of the
+ * conversion: a full bar is a clear frame, and an empty one — death, by the
+ * same rule as hp (DESIGN §ledgers) — is a closed one.
+ *
+ * `max === 0` answers 0, not NaN. A fresh run opens with every pool empty
+ * (`freshRun` above: starting bars are balance, balance is content, content is
+ * H004's), so `0/0` is the state this function meets FIRST and on every save
+ * made before the Crossing fills the bars. An unfilled bar is not a closed
+ * frame; it is a frame with nothing to say yet. Nothing is clamped here —
+ * floors and the death predicate are H205/D003's, not the renderer's.
+ */
+function vignetteOf(sanity: Pool): number {
+  if (sanity.max === 0) return 0;
+  return 1 - sanity.current / sanity.max;
+}
+
+/**
  * The free tap. State in, picture out — it reads and it derives, and it cannot
  * do anything else: every field it can reach is readonly (.llm/rules/ui.md,
  * "Free tap NEVER mutates state"). The content lists are empty until rooms
@@ -100,7 +124,7 @@ export const view: GameAPI["view"] = (state: GameState) => ({
     tithes: state.run.tithes,
     depth: state.run.depth,
   },
-  vignette: state.run.vitals.sanity,
+  vignette: vignetteOf(state.run.vitals.sanity),
 });
 
 /**
