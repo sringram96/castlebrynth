@@ -262,10 +262,14 @@ describe("D004 · the gate is satisfiable, and the key is not in the lock", () =
     const opened = act(state, "grate", "lift");
     expect(opened.state.run.flags).toContain("flag:grate-open");
     expect(opened.state.campaign.refused).toHaveLength(0);
-    // Opening it is not going down it: those are two acts, and the far side is
-    // met between them (see the room card).
-    expect(opened.emissions).toEqual([]);
-    expect(act(opened.state, "grate", "go").emissions).toEqual([
+    // Opening it is not going down it: those are two acts, and what stands on
+    // the far side is met between them. This file asserts only that they are
+    // two and that the door is still there at the end of it — the threshold
+    // itself is D005's and is asserted in src/lots/boss.test.ts.
+    expect(opened.emissions.some((e) => e.kind === "goto")).toBe(false);
+    const down = act(opened.state, "grate", "go");
+    expect(down.emissions.some((e) => e.kind === "goto")).toBe(false);
+    expect(act(down.state, "grate", "go").emissions).toEqual([
       { kind: "goto", door: "door:the-grate" },
     ]);
   });

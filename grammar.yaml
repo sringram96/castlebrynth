@@ -130,15 +130,24 @@ enemy_rules: {}
 # content/foes/, and src/lots/foes.ts joins them — so `pursuit` is written down
 # once, in the file whose loader refuses an enemy without it.
 #
-# The tallow thing bends nothing: it carries no `rules`, because `enemy_rules`
+# NEITHER OF THEM BENDS ANYTHING. Both carry no `rules`, because `enemy_rules`
 # is empty above and an elite that "seals your sixes" is L005's and deferred
-# past H180. Its pursuit is 0.3 because it was hanging on a rack a moment ago
-# and it is most of the way to letting you go.
+# past H180. The threshold is the depth-1 boss and it is HARDER and nothing
+# else — more body, and an intent that gets worse. It does not bend a rule, it
+# does not seal a face, and it asks for no parry; those return with the Warden.
+#
+# The two pursuit chances are the difference between a thing that was hanging on
+# a rack and a thing that is standing in a shaft. The tallow thing is most of
+# the way to letting you go. The threshold is not — and it is still not a wall,
+# because FLEE is always offered and half the time it stays where it stands.
 
 enemies:
   tallow-thing:
     name: The Tallow Thing
     pursuit: 0.3
+  the-threshold:
+    name: The Thing In The Threshold
+    pursuit: 0.5
 
 # ── the economy, held open ────────────────────────────────────────────────
 #

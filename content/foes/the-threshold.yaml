@@ -1,0 +1,51 @@
+# THE THING IN THE THRESHOLD — the depth-1 boss, and it is HARDER and nothing
+# else.
+#
+# No rule bent, no face sealed, no parry asked for. `enemy_rules` in
+# grammar.yaml is empty and this enemy carries no `rules` list, so there is
+# nothing in the whole content set that can bend the grammar — the elite and the
+# Warden proper return after H180 and bring their bends with them. What a boss
+# is at the skeleton is two numbers: more body, and an intent that gets worse.
+#
+# It is met on the way down the cistern grate — content/rooms/the-cistern-head.yaml
+# — which is the far side of the one gated door, and the key for that gate sits
+# a room earlier.
+#
+# ── the body ─────────────────────────────────────────────────────────────────
+#
+#     320 ÷ 27 ≈ 12 turns holding two back    320 ÷ 43 ≈ 8 turns holding one
+#
+# which is F2's "TTK ... boss 8–12", measured against the hand this game ships:
+# six plain bones, EV 3.5 each, scored `sum × tier`. A player who throws the
+# whole hand every turn ends it in six and blocks nothing for six turns, which
+# is the trade and not a shortcut.
+#
+# F7 one-shot guard — "max single throw ≤60% of that depth's boss HP" — holds
+# with room to spare, and it is arithmetic rather than a hope: the largest throw
+# this grammar can produce is six sixes taken as quads, 36 × 5 = 180, and
+# 180 ÷ 320 is 56%. src/lots/boss.test.ts computes that bound off the manifest
+# rather than repeating the number, so a die or a tier that widened it would go
+# red here.
+#
+# ── the escalation, and the one thing this file wanted and could not say ─────
+#
+# Two values, and the second is the one below half. 8 while it is whole, 13 once
+# it is not: six turns of 8 and then six of 13, cycling.
+#
+# THE ESCALATION IS COUNTED IN TURNS AND NOT IN ITS OWN BLOOD, and that is a
+# deferral rather than a choice. `intentAt` reads `intents` by TURN and by
+# nothing else (src/lots/turn.ts), so an intent that fired off the foe's
+# REMAINING hp — the shape a threshold fight actually wants — is a word the turn
+# loop does not have, and adding one is an engine amendment with its own Asana
+# task. It is bounced rather than faked.
+#
+# What is here instead is the same beat, arrived at by the clock: at 27 a turn a
+# player has taken 164 off 320 by the end of turn six, which is half of it to
+# within five points. So the thing gets worse at the moment it is half down —
+# for the player it was sized against. The two readings part company for anyone
+# playing differently, and that gap is the cost of the missing word, written
+# down here rather than discovered later.
+
+id: the-threshold
+hp: 320
+intents: [8, 8, 8, 8, 8, 8, 13, 13, 13, 13, 13, 13]

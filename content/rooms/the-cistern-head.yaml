@@ -14,9 +14,31 @@
 #
 # OPENING it and GOING DOWN it are separate acts, and the split is not manners.
 # A single `lift` that opened the grate and walked through it in one response
-# would leave nowhere for what is on the other side to stand — and D005 puts
-# something there. So `lift` raises `flag:grate-open` and stops, and `go` reads
-# that flag and takes the door. The far side is met between the two.
+# would leave nowhere for what is on the other side to stand. So `lift` raises
+# `flag:grate-open` and stops, and `go` reads that flag and takes the door. The
+# far side is met between the two, and D005 is what is standing there.
+#
+# ── the threshold, and why it is behind the gate rather than beside it ───────
+#
+# The depth-1 boss is met on the way DOWN the grate, which is the only way this
+# card can say "behind the gated door" and mean it: where a door LEADS is bound
+# at draw time from the depth's pool (src/core/doors.ts) and no card names
+# another room, so a boss authored into a room on the far side would be a boss
+# the draw might not deal. Put on the act of going through, it is exactly as
+# reachable as the gate is, and the gate is keyed on the tally.
+#
+# `threshold` arrives LATENT, added by the response that opens the grate, for
+# the stated cause — "adds/removes carry a cause" (DESIGN §content laws) — and
+# nothing ever removes it. It is the telegraph and it is free: tap it and peer
+# at it for nothing, before the act that costs. Its actions carry no `fight`;
+# the fight is on the grate's `go`, because GOING DOWN is what meets it.
+#
+# FLEEING PUTS YOU PAST IT, and that is DESIGN's sentence, not a mercy: "fleeing
+# ends the fight, pursuit may land one parting harm, and the room's door draw
+# stands — forward is still the only way" (§the lots). So `flag:threshold-met`
+# is raised by the meeting and not by winning it, and the response above reads
+# that flag and takes the door. A boss that had to be killed to be passed would
+# make FLEE a word that is offered and does not work.
 #
 # ── the refusal is the telegraph ─────────────────────────────────────────────
 #
@@ -59,15 +81,33 @@ objects:
           say: The tally goes into the slot and turns. The grate comes up on its hinge.
           set: [flag:grate-open]
           journal: Opened the cistern grate with the brass tally.
+          addObject:
+            object: threshold
+            cause: the grate is open, and the shaft under it is not empty
         - refuse: true
           say: The grate does not lift. The slot in the lock-plate is cut for a tally.
       go:
         - if:
-            flags: [flag:grate-open]
-          say: You go down the ladder under the grate. The rungs are wet, and warm.
+            flags: [flag:threshold-met]
+          say: You go down past it. The rungs are wet, and warm, and they hold.
           goto: door:the-grate
+        - if:
+            flags: [flag:grate-open]
+          say: You put a foot on the top rung. What is standing in the shaft comes up.
+          set: [flag:threshold-met]
+          journal: Went down into the cistern shaft. Something was already in it.
+          fight: the-threshold
         - refuse: true
           say: The grate is shut and flush, and there is nothing to take hold of.
+
+  threshold:
+    latent: true
+    tap: The shaft under the grate is filled. Whatever fills it has not moved.
+    actions:
+      peer:
+        - say: It stands on the ladder with its back to the water. It is the shaft's width.
+      listen:
+        - say: The water below it is loud. Whatever is on the ladder makes no sound at all.
 
   channel:
     tap: A dry channel cut across the floor and out through the wall. Soot in it.
