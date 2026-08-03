@@ -62,6 +62,27 @@
 //                  side effect of the room compiler is exactly the quiet edit
 //                  .llm/rules/engine.md forbids. `compileRooms` returns the
 //                  rooms; assembling a bundle around them is the next card's.
+//
+// ───────────────────────────────────── known, and deliberately not fixed ──
+//
+// AN ALIAS PUTS ONE OBJECT IN TWO PLACES ON THE CARD. Two keys written from the
+// same `*anchor` come out of `toJS()` as the SAME array or map, not as copies —
+// `a === b` is true in memory — and a compiled card is not frozen. Write that
+// card to content/bundle.json and read it back and they are two, because JSON
+// has no aliases. So the in-memory card and the shipped card are the same VALUE
+// and not the same graph.
+//
+// Harmless today, and left alone on purpose: nothing mutates a card (the state
+// is JSON and the cards are read-only to the engine), a round trip through
+// JSON.stringify is asserted to reload clean through `loadRoom`, and both the
+// obvious fixes cost more than the problem. Deep-cloning every card would spend
+// a copy on every room to defend against a mutation nobody makes; refusing
+// aliases outright would take a real authoring convenience away for the same
+// reason. What would make it matter is the day something writes to a card — and
+// that day the fix belongs wherever that write is, not here.
+//
+// Recorded so that whoever meets `a === b` finds it described rather than
+// discovering it in the dark.
 
 import { parseAllDocuments } from "yaml";
 import { loadRoom } from "./cards";
@@ -107,6 +128,12 @@ export type CompileResult =
  * only the trailing colon of its pretty-printed form is trimmed, because the
  * excerpt it introduced is not carried into a one-line problem. The error code
  * is kept too: it is the thing to search for when the sentence is not enough.
+ *
+ * The code decides the sentence that follows, because the package's two piles
+ * mean opposite things about the file. An ERROR means the file did not read as
+ * YAML. A WARNING means it read fine and SOMETHING IN IT WAS DROPPED — which is
+ * the more dangerous of the two here, because what is dropped is a word the
+ * author wrote and no check downstream can miss what is no longer there.
  */
 function yamlMessage(headline: string, code: string): string {
   const said = headline.endsWith(":") ? headline.slice(0, -1) : headline;
@@ -115,9 +142,71 @@ function yamlMessage(headline: string, code: string): string {
       ? "A repeated key is not a warning here: the second value wins silently, " +
         "the line you wrote first disappears, and no check on the card can see " +
         "that it was ever written. Delete one of them."
-      : "The file does not read as YAML, so nothing written in it has been " +
-        "checked yet — the card's own words are read only once the file parses.";
+      : code === "TAG_RESOLVE_FAILED"
+        ? "A tag is a word, and this one is not in the language. The parser did " +
+          "not recognise it either: it DROPPED the tag and kept the bare value, " +
+          "so what reaches the card loader reads as correct and the word you " +
+          "wrote is not in the data for anything to find. Room cards carry no " +
+          "tags at all — delete it. (Unknown vocabulary fails at LOAD, and a new " +
+          "word is its own Asana task: .llm/rules/engine.md 3.)"
+        : code === "BAD_DIRECTIVE"
+          ? `The parser does not have that version and read the file as YAML ` +
+            `${YAML_VERSION} regardless, so the directive is not a statement — ` +
+            `it is overruled, quietly. The version decides what the words in the ` +
+            `file MEAN: under 1.1 a bare \`no\` is the boolean false, and a door ` +
+            `sensed as "no light" stops being a line of writing. Drop it.`
+          : "The file does not read as YAML, so nothing written in it has been " +
+            "checked yet — the card's own words are read only once the file parses.";
   return `${said} (yaml ${code}). ${why}`;
+}
+
+/**
+ * The parse, with this project's options pinned in one place.
+ *
+ * It is its own function so that the `let` below can be typed by inference off
+ * it. `parseAllDocuments` is generic, and naming its `ReturnType` directly
+ * instantiates the generics at their defaults and loses `Document.Parsed` —
+ * which is the type that guarantees `directives` is there.
+ */
+function parseDocuments(text: string) {
+  return parseAllDocuments(text, {
+    version: YAML_VERSION,
+    uniqueKeys: true,
+    prettyErrors: true,
+  });
+}
+
+/**
+ * What to say when the parser THREW instead of reporting.
+ *
+ * `yaml` answers almost everything with `doc.errors`. Not everything: it
+ * defends itself against a billion-laughs expansion by counting how often each
+ * anchor is resolved, and at 100 uses of one anchor it throws a bare
+ * `ReferenceError`. The throw is not at the parse — it is at `toJS()`, where
+ * the aliases are actually expanded — so both stages are wrapped below.
+ *
+ * 100 is not a hostile number. One anchored tap reused down a row of alcoves
+ * reaches it, and content/fixtures/bad-alias-storm.yaml is exactly that file.
+ *
+ * A thrown error is the one failure this compiler must never pass on. It names
+ * no file, which is the opposite of this layer's whole job; and it takes the
+ * run down with it, so `compileRooms`' promise that every file is read even
+ * after an earlier one failed would be worth nothing. Whatever the parser
+ * decides to throw, it comes back as a problem with the file's name on it.
+ */
+function thrownMessage(thrown: unknown): string {
+  const raw = thrown instanceof Error ? thrown.message : String(thrown);
+  // The thrown text is somebody else's sentence and it does not always end like
+  // one. It is quoted, and the punctuation is ours.
+  const said = /[.!?]$/.test(raw.trim()) ? raw.trim() : `${raw.trim()}.`;
+  return (
+    `the YAML parser gave up on this file rather than reporting a problem in ` +
+    `it: ${said} Nothing in the file has been checked, and no line can be ` +
+    `named. The one cause the parser refuses this way is anchors: it allows ` +
+    `100 uses of any one anchor, and past that it stops rather than expanding ` +
+    `them. If this file repeats an alias down a long list, write the repeated ` +
+    `block out in full or split the room in two.`
+  );
 }
 
 /**
@@ -142,11 +231,14 @@ export function compileRoom(file: string, text: string): LoadResult {
     problems.push({ file, path: "", message });
   };
 
-  const [doc, ...rest] = parseAllDocuments(text, {
-    version: YAML_VERSION,
-    uniqueKeys: true,
-    prettyErrors: true,
-  });
+  let parsed: ReturnType<typeof parseDocuments>;
+  try {
+    parsed = parseDocuments(text);
+  } catch (thrown) {
+    fault(thrownMessage(thrown));
+    return { ok: false, problems };
+  }
+  const [doc, ...rest] = parsed;
 
   if (doc === undefined) {
     fault(
@@ -164,6 +256,12 @@ export function compileRoom(file: string, text: string): LoadResult {
     return { ok: false, problems };
   }
 
+  // This catches ONE version and it is the important one: 1.1, which the parser
+  // supports, so it reports nothing and hands back a card whose scalars have
+  // quietly changed meaning. Every other version an author might write — 1.3,
+  // 2.0 — is normalised to "1.2" here before this line can read it, and arrives
+  // instead as a BAD_DIRECTIVE in `doc.warnings` below. Both paths refuse; they
+  // are two different silences and it takes both checks to close them.
   const declared = doc.directives.yaml;
   if (declared.explicit === true && declared.version !== YAML_VERSION) {
     fault(
@@ -176,17 +274,34 @@ export function compileRoom(file: string, text: string): LoadResult {
     return { ok: false, problems };
   }
 
-  for (const error of doc.errors) {
-    fault(yamlMessage(error.message.split("\n")[0] ?? error.message, error.code));
+  // BOTH PILES, and the warnings are the ones that bite. `doc.errors` is a file
+  // that did not read; `doc.warnings` is a file that read fine with something
+  // TAKEN OUT of it — an unresolved tag dropped off a value, a version directive
+  // overruled. Nothing downstream can object to a word that is no longer in the
+  // data, which is the same reason the duplicate-key check lives here, so a
+  // warning is refused exactly as hard as an error.
+  for (const complaint of [...doc.errors, ...doc.warnings]) {
+    fault(yamlMessage(complaint.message.split("\n")[0] ?? complaint.message, complaint.code));
   }
   // The parser recovers from most of what it reports and would hand over a
   // half-built document. It is not read: a card assembled out of a file the
   // parser argued with is not the card the author wrote.
   if (problems.length > 0) return { ok: false, problems };
 
-  // Data, at last. From here the language is cards.ts's and so are the words of
-  // every problem — this file adds nothing to them and takes nothing away.
-  return loadRoom(file, doc.toJS());
+  // Data, at last — and this is the line that actually throws on an alias
+  // storm, because `toJS()` is where the aliases are expanded. A clean parse is
+  // not yet a safe document.
+  let data: unknown;
+  try {
+    data = doc.toJS();
+  } catch (thrown) {
+    fault(thrownMessage(thrown));
+    return { ok: false, problems };
+  }
+
+  // From here the language is cards.ts's and so are the words of every problem —
+  // this file adds nothing to them and takes nothing away.
+  return loadRoom(file, data);
 }
 
 /**

@@ -1,0 +1,56 @@
+# BROKEN ON PURPOSE — a fixture, not content.
+#
+# Everything under content/fixtures/ is authored wrong so that the compiler can
+# be shown refusing it (src/core/compile.test.ts). Nothing here is a room the
+# game may draw: a build that walks content/rooms/ never meets these files, and
+# it must stay that way.
+#
+# THE MISTAKE: an invented word, in the one place cards.ts cannot look.
+#
+# `!Secret` is a YAML TAG. An author who has seen `!!str` somewhere writes one
+# reaching for a way to mark a still as hidden, and the parser does not know it:
+# it drops the tag, keeps the bare scalar, and files the complaint under
+# `doc.warnings` — not `doc.errors`. So the data that reaches `loadRoom` is
+# `still: still:bad-unknown-tag`, which is perfectly good, and by then the word
+# the author actually wrote IS GONE. There is nothing left on the card for any
+# check downstream to find.
+#
+# That is the same shape as bad-duplicate-key.yaml and it is why both live at
+# this layer: a line an author wrote, silently not there. Unknown vocabulary
+# fails at LOAD (.llm/rules/engine.md 3) — and a tag is vocabulary.
+#
+# EVERY OTHER LINE IN THIS FILE IS CORRECT, on purpose. Ignore the warning and
+# this room compiles clean, which is exactly what it did before H004's review;
+# compile.test.ts asserts both halves.
+#
+# EXPECTED, and asserted:
+#   (root) — Unresolved tag: !Secret at line 31, column 8 (yaml
+#            TAG_RESOLVE_FAILED). ...
+
+id: room:bad-unknown-tag
+still: !Secret still:bad-unknown-tag
+tier: T0
+line: A dry room. Chalk marks on the wall, half rubbed out.
+
+doors:
+  - id: door:on
+    sense: Light under the far door, low and steady.
+  - id: door:down
+    sense: Cold air off the near stair.
+
+objects:
+  way:
+    tap: Two doors, both shut.
+    actions:
+      go:
+        - say: You go on. The light does not change.
+          goto: door:on
+      down:
+        - say: You go down. The cold comes up to meet you.
+          goto: door:down
+
+  wall:
+    tap: Chalk marks, half rubbed out. Somebody counted something here.
+    actions:
+      peer:
+        - say: Five strokes, then a gap, then two. The gap has been scrubbed.

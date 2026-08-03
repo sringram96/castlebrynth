@@ -1,0 +1,458 @@
+# BROKEN ON PURPOSE — a fixture, not content.
+#
+# Everything under content/fixtures/ is authored wrong so that the compiler can
+# be shown refusing it (src/core/compile.test.ts). Nothing here is a room the
+# game may draw: a build that walks content/rooms/ never meets these files, and
+# it must stay that way.
+#
+# THE MISTAKE: one anchor, aliased a hundred times.
+#
+# This is the only fixture here that is not really an authoring mistake at all.
+# The `yaml` package defends itself against a billion-laughs expansion by
+# counting how often each anchor is resolved, and past its limit — 100 uses of
+# one anchor — it does not report a problem the way it reports a tab or a
+# repeated key. It THROWS, and it throws while the aliases are being expanded,
+# which is `doc.toJS()` and not the parse.
+#
+# 100 is not a hostile number and this file is not a bomb: it is one anchored
+# tap reused down a long row of alcoves, which is the obvious thing to write
+# when a room repeats itself. The alcoves are deliberately bare — no actions —
+# because the subject of this file is the alias count and nothing else, and a
+# fixture with one variable in it is the one the next author can read.
+#
+# What is asserted is that the compiler ANSWERS this file instead of dying on
+# it. A thrown error names no file, and a throw part-way through a build means
+# every file after it goes unread: an author fixing content would get one stack
+# trace and no idea which of forty rooms produced it. That is the opposite of
+# this card's goal, which is a problem that says where.
+#
+# EXPECTED, and asserted:
+#   (root) — the YAML parser gave up on this file rather than reporting a
+#            problem in it ... 100 uses of one anchor
+
+id: room:bad-alias-storm
+tier: T0
+still: still:bad-alias-storm
+line: A long row of alcoves cut into the wall. Every one of them the same.
+
+doors:
+  - id: door:on
+    sense: Light under the far door.
+  - id: door:down
+    sense: Cold air off the near stair.
+
+objects:
+  way:
+    tap: Two doors, both shut.
+    actions:
+      go:
+        - say: You go on.
+          goto: door:on
+      down:
+        - say: You go down.
+          goto: door:down
+
+  # The first alcove holds the anchor. Every alcove after it is the same alcove.
+  alcove-001:
+    tap: &tap A shallow alcove, cut square. Nothing in it.
+    actions: {}
+
+  alcove-002:
+    tap: *tap
+    actions: {}
+
+  alcove-003:
+    tap: *tap
+    actions: {}
+
+  alcove-004:
+    tap: *tap
+    actions: {}
+
+  alcove-005:
+    tap: *tap
+    actions: {}
+
+  alcove-006:
+    tap: *tap
+    actions: {}
+
+  alcove-007:
+    tap: *tap
+    actions: {}
+
+  alcove-008:
+    tap: *tap
+    actions: {}
+
+  alcove-009:
+    tap: *tap
+    actions: {}
+
+  alcove-010:
+    tap: *tap
+    actions: {}
+
+  alcove-011:
+    tap: *tap
+    actions: {}
+
+  alcove-012:
+    tap: *tap
+    actions: {}
+
+  alcove-013:
+    tap: *tap
+    actions: {}
+
+  alcove-014:
+    tap: *tap
+    actions: {}
+
+  alcove-015:
+    tap: *tap
+    actions: {}
+
+  alcove-016:
+    tap: *tap
+    actions: {}
+
+  alcove-017:
+    tap: *tap
+    actions: {}
+
+  alcove-018:
+    tap: *tap
+    actions: {}
+
+  alcove-019:
+    tap: *tap
+    actions: {}
+
+  alcove-020:
+    tap: *tap
+    actions: {}
+
+  alcove-021:
+    tap: *tap
+    actions: {}
+
+  alcove-022:
+    tap: *tap
+    actions: {}
+
+  alcove-023:
+    tap: *tap
+    actions: {}
+
+  alcove-024:
+    tap: *tap
+    actions: {}
+
+  alcove-025:
+    tap: *tap
+    actions: {}
+
+  alcove-026:
+    tap: *tap
+    actions: {}
+
+  alcove-027:
+    tap: *tap
+    actions: {}
+
+  alcove-028:
+    tap: *tap
+    actions: {}
+
+  alcove-029:
+    tap: *tap
+    actions: {}
+
+  alcove-030:
+    tap: *tap
+    actions: {}
+
+  alcove-031:
+    tap: *tap
+    actions: {}
+
+  alcove-032:
+    tap: *tap
+    actions: {}
+
+  alcove-033:
+    tap: *tap
+    actions: {}
+
+  alcove-034:
+    tap: *tap
+    actions: {}
+
+  alcove-035:
+    tap: *tap
+    actions: {}
+
+  alcove-036:
+    tap: *tap
+    actions: {}
+
+  alcove-037:
+    tap: *tap
+    actions: {}
+
+  alcove-038:
+    tap: *tap
+    actions: {}
+
+  alcove-039:
+    tap: *tap
+    actions: {}
+
+  alcove-040:
+    tap: *tap
+    actions: {}
+
+  alcove-041:
+    tap: *tap
+    actions: {}
+
+  alcove-042:
+    tap: *tap
+    actions: {}
+
+  alcove-043:
+    tap: *tap
+    actions: {}
+
+  alcove-044:
+    tap: *tap
+    actions: {}
+
+  alcove-045:
+    tap: *tap
+    actions: {}
+
+  alcove-046:
+    tap: *tap
+    actions: {}
+
+  alcove-047:
+    tap: *tap
+    actions: {}
+
+  alcove-048:
+    tap: *tap
+    actions: {}
+
+  alcove-049:
+    tap: *tap
+    actions: {}
+
+  alcove-050:
+    tap: *tap
+    actions: {}
+
+  alcove-051:
+    tap: *tap
+    actions: {}
+
+  alcove-052:
+    tap: *tap
+    actions: {}
+
+  alcove-053:
+    tap: *tap
+    actions: {}
+
+  alcove-054:
+    tap: *tap
+    actions: {}
+
+  alcove-055:
+    tap: *tap
+    actions: {}
+
+  alcove-056:
+    tap: *tap
+    actions: {}
+
+  alcove-057:
+    tap: *tap
+    actions: {}
+
+  alcove-058:
+    tap: *tap
+    actions: {}
+
+  alcove-059:
+    tap: *tap
+    actions: {}
+
+  alcove-060:
+    tap: *tap
+    actions: {}
+
+  alcove-061:
+    tap: *tap
+    actions: {}
+
+  alcove-062:
+    tap: *tap
+    actions: {}
+
+  alcove-063:
+    tap: *tap
+    actions: {}
+
+  alcove-064:
+    tap: *tap
+    actions: {}
+
+  alcove-065:
+    tap: *tap
+    actions: {}
+
+  alcove-066:
+    tap: *tap
+    actions: {}
+
+  alcove-067:
+    tap: *tap
+    actions: {}
+
+  alcove-068:
+    tap: *tap
+    actions: {}
+
+  alcove-069:
+    tap: *tap
+    actions: {}
+
+  alcove-070:
+    tap: *tap
+    actions: {}
+
+  alcove-071:
+    tap: *tap
+    actions: {}
+
+  alcove-072:
+    tap: *tap
+    actions: {}
+
+  alcove-073:
+    tap: *tap
+    actions: {}
+
+  alcove-074:
+    tap: *tap
+    actions: {}
+
+  alcove-075:
+    tap: *tap
+    actions: {}
+
+  alcove-076:
+    tap: *tap
+    actions: {}
+
+  alcove-077:
+    tap: *tap
+    actions: {}
+
+  alcove-078:
+    tap: *tap
+    actions: {}
+
+  alcove-079:
+    tap: *tap
+    actions: {}
+
+  alcove-080:
+    tap: *tap
+    actions: {}
+
+  alcove-081:
+    tap: *tap
+    actions: {}
+
+  alcove-082:
+    tap: *tap
+    actions: {}
+
+  alcove-083:
+    tap: *tap
+    actions: {}
+
+  alcove-084:
+    tap: *tap
+    actions: {}
+
+  alcove-085:
+    tap: *tap
+    actions: {}
+
+  alcove-086:
+    tap: *tap
+    actions: {}
+
+  alcove-087:
+    tap: *tap
+    actions: {}
+
+  alcove-088:
+    tap: *tap
+    actions: {}
+
+  alcove-089:
+    tap: *tap
+    actions: {}
+
+  alcove-090:
+    tap: *tap
+    actions: {}
+
+  alcove-091:
+    tap: *tap
+    actions: {}
+
+  alcove-092:
+    tap: *tap
+    actions: {}
+
+  alcove-093:
+    tap: *tap
+    actions: {}
+
+  alcove-094:
+    tap: *tap
+    actions: {}
+
+  alcove-095:
+    tap: *tap
+    actions: {}
+
+  alcove-096:
+    tap: *tap
+    actions: {}
+
+  alcove-097:
+    tap: *tap
+    actions: {}
+
+  alcove-098:
+    tap: *tap
+    actions: {}
+
+  alcove-099:
+    tap: *tap
+    actions: {}
+
+  alcove-100:
+    tap: *tap
+    actions: {}
+
+  alcove-101:
+    tap: *tap
+    actions: {}

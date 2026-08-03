@@ -22,7 +22,7 @@
 // comes back with the file's name on it, unaltered.
 
 import { describe, expect, it } from "vitest";
-import { parse } from "yaml";
+import { parse, parseAllDocuments } from "yaml";
 import { formatProblem, loadRoom } from "./cards";
 import type { Problem, RoomCard } from "./cards";
 import { compileRoom, compileRooms } from "./compile";
@@ -30,11 +30,17 @@ import tallowStoreSource from "../../content/rooms/tallow-store.yaml?raw";
 import unknownWordSource from "../../content/fixtures/bad-unknown-word.yaml?raw";
 import sealedDoorSource from "../../content/fixtures/bad-sealed-door.yaml?raw";
 import duplicateKeySource from "../../content/fixtures/bad-duplicate-key.yaml?raw";
+import aliasStormSource from "../../content/fixtures/bad-alias-storm.yaml?raw";
+import unknownTagSource from "../../content/fixtures/bad-unknown-tag.yaml?raw";
+import yamlVersionSource from "../../content/fixtures/bad-yaml-version.yaml?raw";
 
 const TALLOW_STORE = "content/rooms/tallow-store.yaml";
 const UNKNOWN_WORD = "content/fixtures/bad-unknown-word.yaml";
 const SEALED_DOOR = "content/fixtures/bad-sealed-door.yaml";
 const DUPLICATE_KEY = "content/fixtures/bad-duplicate-key.yaml";
+const ALIAS_STORM = "content/fixtures/bad-alias-storm.yaml";
+const UNKNOWN_TAG = "content/fixtures/bad-unknown-tag.yaml";
+const YAML_VERSION = "content/fixtures/bad-yaml-version.yaml";
 
 /** Every problem one file produced, as an author reads them. */
 const faults = (file: string, text: string): readonly string[] => {
@@ -282,6 +288,189 @@ describe("H004 · the file itself", () => {
     expect(faults(FILE, "- a\n- b")).toStrictEqual([
       `${FILE}: (root) — a room card is a map of keys, and this is not one`,
     ]);
+  });
+});
+
+// ──────────────── the two ways a file used to get past this layer ──
+//
+// Both found by the RED TEAM review of PR #22, both reproduced by running code,
+// and both inside the narrow band of checks this file exists to make.
+//
+//   1. the parser THREW and nothing caught it — an exception names no file, and
+//      it took every later file in the run down with it;
+//   2. the parser's WARNINGS were never read — and a warning is the more
+//      dangerous pile, because it means the file parsed with a word removed.
+
+describe("H004 · a file the parser throws on rather than reports", () => {
+  const PROBE = "content/rooms/probe.yaml";
+
+  /** A room whose one anchored tap is reused `n` times. `n` is the alias count,
+   *  which is the only thing the parser's limit actually counts. */
+  const alcoves = (n: number): string => {
+    let text =
+      "id: room:probe\ntier: T0\nstill: still:probe\nline: A row of alcoves.\n" +
+      "doors: []\nobjects:\n  alcove-000:\n    tap: &tap An alcove.\n    actions: {}\n";
+    for (let index = 1; index <= n; index += 1) {
+      text += `  alcove-${index}:\n    tap: *tap\n    actions: {}\n`;
+    }
+    return text;
+  };
+
+  it("is a real throw on ordinary content — this is the bug, reproduced", () => {
+    // The limit is 100 USES OF ONE ANCHOR, and it is not a parse-time throw:
+    // `parseAllDocuments` returns happily and `toJS()` is where the aliases are
+    // expanded. A fix wrapping only the parse would not have caught it.
+    const parseOnly = (text: string): unknown =>
+      parseAllDocuments(text, { version: "1.2", uniqueKeys: true, prettyErrors: true });
+    expect(() => parseOnly(alcoves(100))).not.toThrow();
+
+    const toJs = (text: string): unknown => {
+      const [doc] = parseAllDocuments(text, {
+        version: "1.2",
+        uniqueKeys: true,
+        prettyErrors: true,
+      });
+      return doc?.toJS();
+    };
+    expect(() => toJs(alcoves(99))).not.toThrow();
+    expect(() => toJs(alcoves(100))).toThrow(/Excessive alias count/);
+  });
+
+  it("answers it with a problem instead of dying, and the problem names the file", () => {
+    // The docblock says "never throws". This is that sentence, asserted.
+    expect(() => compileRoom(PROBE, alcoves(100))).not.toThrow();
+    const problems = problemsOf(PROBE, alcoves(100));
+    expect(problems).toHaveLength(1);
+    const problem = problems[0] as Problem;
+    expect(problem.file).toBe(PROBE);
+    expect(problem.path).toBe("");
+    expect(problem.message).toContain("gave up on this file");
+    expect(problem.message).toContain("Excessive alias count");
+    // The cause, said in words an author can act on rather than a stack trace.
+    expect(problem.message).toContain("100 uses of any one anchor");
+    expect(formatProblem(problem)).toBe(`${PROBE}: (root) — ${problem.message}`);
+  });
+
+  it("refuses the fixture off disk the same way", () => {
+    expect(() => compileRoom(ALIAS_STORM, aliasStormSource)).not.toThrow();
+    const problems = problemsOf(ALIAS_STORM, aliasStormSource);
+    expect(problems).toHaveLength(1);
+    expect(problems[0]?.file).toBe(ALIAS_STORM);
+    expect(problems[0]?.message).toContain("gave up on this file");
+  });
+
+  it("one file short of the limit is still read, and refused by the CARD loader", () => {
+    // The boundary matters: 99 aliases must not be swept up by the new catch.
+    // This file is bad — no doors — but it is bad in cards.ts's words, which
+    // means the document really was built and handed over.
+    const problems = problemsOf(PROBE, alcoves(99));
+    expect(problems.length).toBeGreaterThan(0);
+    expect(problems.every((problem) => !problem.message.includes("gave up on this file"))).toBe(
+      true,
+    );
+    expect(problems.some((problem) => problem.path.startsWith("doors"))).toBe(true);
+  });
+
+  it("does not take the rest of the run down with it", () => {
+    // The promise in `compileRooms`' docblock — every file is read even when an
+    // earlier one failed — was false while this could throw. Two GOOD files sat
+    // either side of the bomb and neither was ever reported on.
+    const mixed = [
+      { file: TALLOW_STORE, text: tallowStoreSource },
+      { file: ALIAS_STORM, text: aliasStormSource },
+      { file: UNKNOWN_WORD, text: unknownWordSource },
+      { file: SEALED_DOOR, text: sealedDoorSource },
+    ];
+    expect(() => compileRooms(mixed)).not.toThrow();
+    const result = compileRooms(mixed);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    // Every file after the throwing one was read, and each problem says where.
+    expect(result.problems.map((problem) => problem.file)).toStrictEqual([
+      ALIAS_STORM,
+      UNKNOWN_WORD,
+      SEALED_DOOR,
+    ]);
+  });
+});
+
+describe("H004 · what the parser files as a warning, not an error", () => {
+  /** The same bytes, read the way this file used to read them: `doc.errors`
+   *  only. If that comes back clean, the warning was the only thing standing
+   *  between the file and a compiled card. */
+  const loadsCleanIgnoringWarnings = (file: string, text: string): boolean => {
+    // `logLevel: silent` because ignoring the warning is the POINT of this
+    // helper — without it `parse` re-emits it as a process warning and the
+    // thing being demonstrated turns into noise in the test log.
+    const data: unknown = parse(text, { version: "1.2", uniqueKeys: true, logLevel: "silent" });
+    return loadRoom(file, data).ok;
+  };
+
+  it("refuses an unresolved tag — a word cards.ts structurally cannot see", () => {
+    // `!Secret` is dropped by the parser and the bare scalar kept, so by the
+    // time `loadRoom` is handed data the word is not in it. Same shape as the
+    // duplicate key, same reason it can only be caught here.
+    const problems = problemsOf(UNKNOWN_TAG, unknownTagSource);
+    expect(problems).toHaveLength(1);
+    const problem = problems[0] as Problem;
+    expect(problem.file).toBe(UNKNOWN_TAG);
+    expect(problem.path).toBe("");
+    expect(problem.message).toContain("Unresolved tag: !Secret");
+    expect(problem.message).toContain("yaml TAG_RESOLVE_FAILED");
+    expect(problem.message).toContain("Unknown vocabulary fails at LOAD");
+  });
+
+  it("and that tag was compiling clean before — the fixture proves its own case", () => {
+    expect(loadsCleanIgnoringWarnings(UNKNOWN_TAG, unknownTagSource)).toBe(true);
+    expect(compileRoom(UNKNOWN_TAG, unknownTagSource).ok).toBe(false);
+  });
+
+  it("refuses a version directive the parser overruled instead of honouring", () => {
+    // `%YAML 1.3` never reaches the hand-rolled check: `directives.yaml.version`
+    // is already normalised to "1.2" by the time it is read.
+    const [doc] = parseAllDocuments(yamlVersionSource, { version: "1.2", prettyErrors: true });
+    expect(doc?.directives.yaml).toStrictEqual({ explicit: true, version: "1.2" });
+
+    const problems = problemsOf(YAML_VERSION, yamlVersionSource);
+    expect(problems).toHaveLength(1);
+    const problem = problems[0] as Problem;
+    expect(problem.path).toBe("");
+    expect(problem.message).toContain("Unsupported YAML version 1.3");
+    expect(problem.message).toContain("yaml BAD_DIRECTIVE");
+    expect(problem.message).toContain("overruled");
+  });
+
+  it("and that directive was compiling clean before, too", () => {
+    expect(loadsCleanIgnoringWarnings(YAML_VERSION, yamlVersionSource)).toBe(true);
+    expect(compileRoom(YAML_VERSION, yamlVersionSource).ok).toBe(false);
+  });
+
+  it("still refuses %YAML 1.1 by name — the two checks close different silences", () => {
+    // 1.1 is a version the parser HAS, so it warns about nothing. It is caught
+    // by the explicit check; 1.3 and 2.0 are caught by the warning. Neither
+    // check makes the other redundant, which is why both are here.
+    const eleven = problemsOf(YAML_VERSION, `%YAML 1.1\n---\n${tallowStoreSource}`);
+    expect(eleven).toHaveLength(1);
+    expect(eleven[0]?.message).toContain("declares `%YAML 1.1`");
+
+    for (const version of ["1.3", "2.0"]) {
+      const problems = problemsOf(YAML_VERSION, `%YAML ${version}\n---\n${tallowStoreSource}`);
+      expect(problems).toHaveLength(1);
+      expect(problems[0]?.message).toContain(`Unsupported YAML version ${version}`);
+    }
+
+    // And the version actually read is still allowed to be stated out loud.
+    expect(faults(YAML_VERSION, `%YAML 1.2\n---\n${tallowStoreSource}`)).toStrictEqual([]);
+  });
+
+  it("leaves the good room alone — no warning, nothing to report", () => {
+    const [doc] = parseAllDocuments(tallowStoreSource, {
+      version: "1.2",
+      uniqueKeys: true,
+      prettyErrors: true,
+    });
+    expect(doc?.warnings).toStrictEqual([]);
+    expect(faults(TALLOW_STORE, tallowStoreSource)).toStrictEqual([]);
   });
 });
 
