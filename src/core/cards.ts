@@ -83,13 +83,6 @@
 // its own Asana task, never a side effect. Named here so their absence reads
 // as a decision rather than an oversight:
 //
-//   sanity            `adjust` reaches the tracks the permanent strip shows
-//                     and stops there. The frame shows no sanity bar at all
-//                     ("Sanity is the vignette closing in"), and the system
-//                     that moves it — the Fraying — is PARKED (DESIGN §open).
-//                     A word that moved sanity would land a parked system as
-//                     a side effect. Death by the sanity bar (DESIGN §ledgers)
-//                     is therefore not something a room card can deal out yet.
 //   an affordability  `adjust` spends ◎ and cannot ask whether you can afford
 //   gate              it: the gate keys are flags and items. Until H205 lands
 //                     that gate, nothing here stops a card charging a player
@@ -216,10 +209,24 @@ export interface ObjectChange {
  * but ordinary arithmetic on the body, and the loader's job is only to see
  * that the arithmetic is whole and that it moves something.
  *
- * The tracks are exactly what the permanent strip shows — "HP · Might · Will ·
- * ◎ tithes · depth" (DESIGN §frame) — less `depth`, which no room sets: how
- * far down you are is a fact about the descent's draw, not about a card. What
- * is deliberately not here is named in the header above.
+ * Five tracks: the two bars that can kill you, the two stats, and the coin.
+ * The set is CLOSED, so that `adjust: { helth: -1 }` is an error at LOAD
+ * rather than a line that quietly moves nothing. `depth` is not one of them —
+ * how far down you are is a fact about the descent's draw, not something a
+ * room adjusts.
+ *
+ * SANITY IS TRACKED, AND NEVER RENDERED AS A NUMBER. That is one fact, not
+ * two, and it is the corner of the design most likely to be misread — so,
+ * plainly: DESIGN §ledgers says "EITHER bar at zero — health or sanity — is
+ * death, by the same rule", which makes sanity a bar that a room must be able
+ * to move. DESIGN §frame's "no sanity bar exists anywhere" and .llm/rules/ui.md
+ * 5's "no sanity number is ever rendered" are statements about the SCREEN: it
+ * shows as the vignette closing in, an ordered-dither aperture, instead of as
+ * a bar. A value can be tracked and never displayed; that is the whole design.
+ * And the Fraying — "narrator lies at low sanity" — is the CONSEQUENCE of low
+ * sanity and is what DESIGN §open parks; parking the consequence does not park
+ * the value it reads. Leaving sanity out would make half of "either bar at
+ * zero is death" unreachable from the room language.
  *
  * A move must still be telegraphed in the free tap line first (DESIGN §content
  * laws: telegraphed harm); that a line telegraphs it is prose, and prose is
@@ -228,6 +235,19 @@ export interface ObjectChange {
 export interface Adjust {
   /** The health bar (types.ts Vitals.hp). Negative is harm. */
   readonly hp?: number;
+  /**
+   * The sanity bar. Negative is harm, exactly as on `hp` — DESIGN §ledgers
+   * ties the two together: either at zero is death, "by the same rule", so
+   * they are the same kind of quantity and they move the same way.
+   *
+   * Never shown as a number or a bar; it renders as the vignette (see above).
+   * A card writes the BAR, in whole units. types.ts `Vitals.sanity` currently
+   * holds the vignette's own scale instead (0 = clear, 1 = closed), which runs
+   * the other way; reconciling the state shape with the word set is H006's,
+   * alongside the same question about `CampaignBranch.knowledge`. Nothing here
+   * resolves a delta, so nothing here depends on the answer.
+   */
+  readonly sanity?: number;
   /** types.ts Vitals.might. */
   readonly might?: number;
   /** types.ts Vitals.will. */
@@ -448,6 +468,7 @@ const DELTA_KEY_TABLE: KeyTable<Deltas> = {
 
 const ADJUST_TRACK_TABLE: KeyTable<Adjust> = {
   hp: true,
+  sanity: true,
   might: true,
   will: true,
   tithes: true,
@@ -492,7 +513,7 @@ export const GATE_KEYS = Object.keys(GATE_KEY_TABLE) as readonly (keyof Gate)[];
 /** The delta words, in order. The whole language a response may apply, and
  *  the order .llm/rules/engine.md declares it in. */
 export const DELTA_WORDS = Object.keys(DELTA_KEY_TABLE) as readonly (keyof Deltas)[];
-/** The tracks `adjust` may move: the permanent strip, less depth. */
+/** The tracks `adjust` may move: the two bars, the two stats, the coin. */
 export const ADJUST_TRACKS = Object.keys(ADJUST_TRACK_TABLE) as readonly (keyof Adjust)[];
 /** Everything a response may carry: the gate, then the delta words. */
 export const RESPONSE_KEYS = Object.keys(RESPONSE_KEY_TABLE) as readonly (keyof Response)[];

@@ -801,7 +801,9 @@ describe("H003 · affordance permanence", () => {
       thing: {
         tap: "A thing.",
         actions: {
-          peer: [{ say: "It shifts.", addObject: { object: "under", cause: "the thing is moved" } }],
+          peer: [
+            { say: "It shifts.", addObject: { object: "under", cause: "the thing is moved" } },
+          ],
         },
       },
       under: { latent: true, tap: "What was under it." },
@@ -843,13 +845,21 @@ describe("H003 · the vocabulary is closed, and frozen", () => {
   });
 
   it("freezes the tracks `adjust` may move", () => {
-    // The permanent strip, less depth (DESIGN §frame: "HP · Might · Will · ◎
-    // tithes · depth"). Depth is the draw's, not a card's.
-    expect(ADJUST_TRACKS).toStrictEqual(["hp", "might", "will", "tithes"]);
+    // The two bars that can kill, the two stats, the coin.
+    expect(ADJUST_TRACKS).toStrictEqual(["hp", "sanity", "might", "will", "tithes"]);
+    // Depth is the draw's, not a card's: it is derived, never adjusted.
     expect(ADJUST_TRACKS as readonly string[]).not.toContain("depth");
-    // Sanity is not a track: the frame shows no sanity bar, and the Fraying is
-    // parked (DESIGN §open). A word that moved it would land a parked system.
-    expect(ADJUST_TRACKS as readonly string[]).not.toContain("sanity");
+  });
+
+  it("can move BOTH bars that death reads — sanity is a track, not an absence", () => {
+    // DESIGN §ledgers: "EITHER bar at zero — health or sanity — is death, by
+    // the same rule." Both halves of that sentence must be reachable from the
+    // room language, or the sanity half is unauthorable and the vignette can
+    // never close. §frame's "no sanity bar exists anywhere" and ui.md 5's "no
+    // sanity number is ever rendered" are about the SCREEN; the Fraying, which
+    // DESIGN §open parks, is the consequence of low sanity, not the value.
+    expect(ADJUST_TRACKS).toContain("hp");
+    expect(ADJUST_TRACKS).toContain("sanity");
   });
 
   it("freezes the room and door keys, the tiers, and the keeps", () => {
@@ -866,8 +876,8 @@ describe("H003 · the vocabulary is closed, and frozen", () => {
     // schema cannot yet say, and that H006 and the art lint will need.
     //
     // `take` left this list at H009 — it is a word now. `tithes`, `sanity`,
-    // `might` and `will` are not words either way: they are `adjust` tracks,
-    // and `sanity` is not even one of those.
+    // `might` and `will` are not words either way, and never were: they are
+    // `adjust` TRACKS, reached through one word rather than four of their own.
     for (const absent of ["tithes", "pay", "back", "qte", "sanity", "might", "will"]) {
       expect(DELTA_WORDS as readonly string[], absent).not.toContain(absent);
     }
@@ -920,12 +930,45 @@ describe("H009 · adjust is whole, and never nothing", () => {
     ).toStrictEqual([]);
   });
 
+  it("moves sanity the same way it moves health — negative takes", () => {
+    // "By the same rule" (DESIGN §ledgers) is what settles the sign: the two
+    // bars are the same kind of quantity, so a room writes them the same way.
+    // What is never written is a NUMBER on screen — that is the vignette's
+    // job (DESIGN §frame, .llm/rules/ui.md 5), and no card decides rendering.
+    const closes = withResponses([
+      { say: "The lamp gutters. The walls come in a little.", adjust: { sanity: -1 } },
+    ]);
+    expect(pathsOf(closes)).toStrictEqual([]);
+    expect(
+      pathsOf(withResponses([{ say: "You get your breath back.", adjust: { sanity: 2 } }])),
+    ).toStrictEqual([]);
+    // Both bars in one response: one act can cost body and mind together.
+    const both = withResponses([
+      { say: "It is on you before the light moves.", adjust: { hp: -2, sanity: -1 } },
+    ]);
+    expect(pathsOf(both)).toStrictEqual([]);
+    // And the whole-number law reaches it like any other track.
+    const fraction = withResponses([{ say: "The walls come in.", adjust: { sanity: -0.5 } }]);
+    expect(messageAt(fraction, "objects.thing.actions.peer[0].adjust.sanity")).toContain(
+      "whole number",
+    );
+  });
+
   it("refuses an unknown track, and lists the ones there are", () => {
-    const bad = withResponses([{ say: "Something gives.", adjust: { sanity: -1 } }]);
-    const path = "objects.thing.actions.peer[0].adjust.sanity";
+    // The whole reason the set is closed: a typo that loads clean would move
+    // nothing, silently, forever.
+    const bad = withResponses([{ say: "Something gives.", adjust: { helth: -1 } }]);
+    const path = "objects.thing.actions.peer[0].adjust.helth";
     expect(pathsOf(bad)).toContain(path);
-    expect(messageAt(bad, path)).toContain('unknown adjust track "sanity"');
+    expect(messageAt(bad, path)).toContain('unknown adjust track "helth"');
     for (const track of ADJUST_TRACKS) expect(messageAt(bad, path)).toContain(track);
+
+    // `depth` is a real word in this game and still not a track: it is derived
+    // from the descent, never adjusted by a room.
+    const derived = withResponses([{ say: "You go down.", adjust: { depth: 1 } }]);
+    expect(messageAt(derived, "objects.thing.actions.peer[0].adjust.depth")).toContain(
+      'unknown adjust track "depth"',
+    );
   });
 
   it("refuses an adjust that moves nothing", () => {
