@@ -9,11 +9,14 @@
 # off and move numbers; it cannot introduce an entry, a hook or a verb. A new
 # word is a loud amendment to DESIGN.md and its own Asana task.
 #
-# What is here is the FLOOR — the table, the alphabet, and two dice — enough
-# that the rest of the chain has something true to build on. Jokers, spells,
-# skills, enemy rules and enemies arrive on their own cards; their sections
-# stand empty rather than stubbed, because an invented joker is a balance
-# decision made in the dark.
+# What is here is the FLOOR — the table, the alphabet, two dice, and the
+# grammar's half of the two enemies the Descent can reach — enough that the
+# rest of the chain has something true to build on. Jokers, spells, skills and
+# enemy rules arrive on their own cards; their sections stand empty rather than
+# stubbed, because an invented joker is a balance decision made in the dark.
+# `enemies` stopped being empty when D005 gave the Descent something to fight:
+# an enemy the game can actually meet is not an invention, and its other half
+# is authored in content/foes/ (see the note on `enemies` below).
 
 version: 1
 

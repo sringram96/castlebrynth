@@ -37,14 +37,16 @@
 // actually produced a hand that could make it.
 //
 // The collections DESIGN names but grammar.yaml deliberately leaves empty —
-// jokers, spells, skills, enemy rules, enemies — are DEFERRED past H180 (L005,
-// L006), so `on_score` fires nothing and there is nothing here about it. This
-// covers the tiers that are IMPLEMENTED. When a joker can speak, the additive
-// half of the pipeline gets its own acceptance.
+// jokers, spells, skills, enemy rules — are DEFERRED past H180 (L005, L006), so
+// `on_score` fires nothing and there is nothing here about it. This covers the
+// tiers that are IMPLEMENTED. When a joker can speak, the additive half of the
+// pipeline gets its own acceptance.
 //
-// Foes are fixtures, for the reason grammar.yaml gives for shipping none: an
-// enemy's body and intents are the enemy card's, and inventing one in the
-// shipped base would be a balance decision made in the dark.
+// Foes are fixtures even though grammar.yaml now ships two enemies (D005): what
+// it ships is the GRAMMAR's half — a name and a pursuit chance — while a body
+// and its intents are the enemy card's, in content/foes/. A fight this test can
+// do arithmetic against needs both halves pinned here, not read from content
+// that a later card is free to rebalance.
 
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";

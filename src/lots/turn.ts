@@ -22,10 +22,11 @@
 // `Foe` is handed in, not looked up, and that is manifest.ts's decision
 // standing: "An enemy here is its PURSUIT chance and the rules it bends …
 // Its intents, its health and its art are the enemy card's, and this schema is
-// additive to them." grammar.yaml ships `enemies: {}` for the same reason it
-// ships no jokers. So the body and the intents arrive as data from whoever
-// opened the fight, and this file names no enemy — the engine never does
-// (.llm/rules/engine.md).
+// additive to them." grammar.yaml's `enemies` carries only that half — a name,
+// a pursuit chance, and the rules bent — and nothing this file needs to run a
+// turn. So the body and the intents arrive as data from whoever opened the
+// fight (content/foes/, joined by foes.ts), and this file names no enemy — the
+// engine never does (.llm/rules/engine.md).
 //
 // `pursuit` is REQUIRED on a `Foe`, exactly as it is required on a manifest
 // enemy: "FLEE is always offered: every enemy's inspect declares its PURSUIT

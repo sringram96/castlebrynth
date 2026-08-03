@@ -2,9 +2,13 @@
  *
  * DESIGN §frame: "Full-bleed pixel still; 1–2 lines of writing on top; fixed
  * bottom panel paged ◂ ACTIONS · SKILLS · ITEMS ▸ over a permanent strip."
- * This file is that sentence's LAYOUT and nothing more — where the two regions
- * are and how big. What goes in them is H104's (the still) and H105's (the
- * panel).
+ * H101 opened this file as that sentence's LAYOUT and nothing more — where the
+ * two regions are and how big. It has since grown a block per card that renders
+ * into them, each headed by its card id: the scene (H104), the panel (H105),
+ * the fight screen (D006) and the end card (H114). One stylesheet, because the
+ * stacking order between those blocks is itself a law — the strip stays above
+ * the end card's overlay — and an order split across four files is an order
+ * nobody owns.
  *
  * NOT A THEME. H102 (theme + frame tokens) is a paused card, deferred past
  * H180 by the skeleton directive: there is no palette here, no type scale, no

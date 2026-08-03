@@ -9,10 +9,12 @@
 // off the fight, so every expectation below is arithmetic on a known hand
 // rather than a range a lucky seed could satisfy.
 //
-// Foes are fixtures. grammar.yaml ships `enemies: {}` on purpose — "an invented
-// joker is a balance decision made in the dark" — and an enemy's body and
-// intents are the enemy card's, not the grammar's (manifest.ts). Inventing one
-// in the shipped base would be that decision; inventing one here is a fixture.
+// Foes are fixtures, and deliberately not the shipped ones. grammar.yaml holds
+// only the grammar's half of an enemy — a name and a pursuit chance — while its
+// body and intents are the enemy card's, in content/foes/ (manifest.ts). A unit
+// test of the block math wants a hand-chosen body, not a balanced one: these
+// fixtures pick numbers that make the arithmetic legible, which is exactly what
+// the shipped base may not do.
 
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";

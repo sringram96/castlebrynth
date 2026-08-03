@@ -177,6 +177,8 @@ Spend economy (knucklebones gather vs refresh-per-fight — ruled by
 thumb at the fight screen) · signature-die roster beyond the wizard ·
 the semantic naming layer (retry from play outward) · ART TASTE:
 Muted vs Noir palette school and CRT on/off (judge on the gallery) ·
-journal + refused-ledger SURFACING in the frame (decide at D006) ·
+journal + refused-ledger SURFACING in the frame (D006 was the deadline
+and shipped without ruling it — the fight screen surfaces neither, so
+the question is open and now homeless; it wants a new card) ·
 the Fraying (sanity word-rot: narrator lies at low sanity, art never
 does — system parked, name reserved).

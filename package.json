@@ -8,8 +8,6 @@
   },
   "scripts": {
     "law": "tsc --noEmit && tsc -p tsconfig.shell.json --noEmit && eslint . && vitest run src --passWithNoTests && node scripts/content-lint.mjs",
-    "build:content": "node scripts/build-content.mjs",
-    "play": "node scripts/play.mjs",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",

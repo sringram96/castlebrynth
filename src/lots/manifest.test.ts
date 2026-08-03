@@ -16,9 +16,11 @@
 // The exemplar below is annotated `Manifest`, so `tsc --noEmit` — the first
 // third of `npm run law` — is an assertion about the types, and it is the
 // file an author copies. It carries the collections grammar.yaml deliberately
-// leaves empty (jokers, spells, skills, enemy rules, enemies): those are later
-// cards' content, and inventing them in the shipped base would be a balance
-// decision made in the dark. Inventing them in a test is a fixture.
+// leaves empty (jokers, spells, skills, enemy rules): those are later cards'
+// content, and inventing them in the shipped base would be a balance decision
+// made in the dark. Inventing them in a test is a fixture. `enemies` is no
+// longer one of them — D005 shipped two — but the exemplar keeps its own,
+// because a schema test must not go red when content lands.
 
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";

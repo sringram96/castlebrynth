@@ -1,4 +1,4 @@
-// RULES.md, executable. Core purity + layering.
+// .llm/rules, executable. Core purity + layering.
 import js from "@eslint/js";
 import tseslint from "typescript-eslint";
 
@@ -12,12 +12,12 @@ export default tseslint.config(
     rules: {
       "no-restricted-imports": ["error", { patterns: [{
         group: ["**/shell/**", "**/platform/**"],
-        message: "core is pure — RULES.md 1"
+        message: "core is pure — .llm/rules/engine.md"
       }]}],
       "no-restricted-globals": ["error",
-        { name: "Date", message: "No clocks in core — RULES.md 2" }],
+        { name: "Date", message: "No clocks in core — .llm/rules/engine.md" }],
       "no-restricted-properties": ["error",
-        { object: "Math", property: "random", message: "Inject RNG — RULES.md 2" }],
+        { object: "Math", property: "random", message: "Inject RNG — .llm/rules/engine.md" }],
       "no-console": "error"
     }
   },

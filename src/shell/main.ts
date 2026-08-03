@@ -129,10 +129,18 @@ export interface BootOptions extends SceneOptions {
  * blank page: no `#app`, nothing mounted, null back.
  *
  * Everything a running game needs is wired here as the cards land. Today: the
- * frame (H101), the panel (H105) and the scene (H104). There is no state loop
- * in this lane — no bundle is loaded and no act is resolved — so `act` is left
- * as the one honest stub in this file rather than given a body that pretends.
- * It is unreachable in any case: a panel with no view offers nothing to press.
+ * frame (H101), the panel (H105), the scene (H104) and the end card (H114).
+ * There is no state loop in this lane — no bundle is loaded and no act is
+ * resolved — so `act` is left as the one honest stub in this file rather than
+ * given a body that pretends. It is unreachable in any case: a panel with no
+ * view offers nothing to press.
+ *
+ * NOT WIRED YET, and each for the same missing reason. Persistence (H108,
+ * storage.ts) and the fight screen (D006, fight.ts) are landed and tested, but
+ * both hang off a state loop: `persisting` wraps a transition, and a fight opens
+ * from a `fight` emission. Until something here produces a state, there is
+ * nothing to wrap and nothing to open, so they are left unreferenced rather than
+ * called from a boot that has no run behind it.
  */
 export function boot(document_: Document, options: BootOptions = {}): Shell | null {
   const host = document_.getElementById(APP_ID);

@@ -27,7 +27,13 @@
 import { describe, expect, it } from "vitest";
 import { act, getView, newRun } from "../../src/core/api";
 import type { ActInput } from "../../src/core/types";
-// @ts-expect-error — compiled by `npm run build:content` (H004)
+// `src/core/bundle` does not exist yet, and neither does the command that would
+// write it. H004 compiles rooms (compile.ts) and stops there on purpose:
+// `loadBundle()` takes no arguments, so it must REACH for content, and reaching
+// is the one thing src/core may not do (compile.ts, "deliberately not here").
+// Whoever owns that module owns the reach — and the build script that drives it,
+// which is theirs to add rather than to inherit broken.
+// @ts-expect-error — the module above arrives with that card.
 import { loadBundle } from "../../src/core/bundle";
 
 const SEED = 42;
