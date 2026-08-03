@@ -10,18 +10,17 @@
 // empty content lists and `act` is the identity transition. Neither invents
 // balance numbers or content ids this card has no authority over.
 
-import type {
-  CampaignBranch,
-  ContentBundle,
-  GameAPI,
-  GameState,
-  Pool,
-  RunBranch,
-  SaveEnvelope,
-} from "./types";
+import { load, save } from "./save";
+import type { CampaignBranch, ContentBundle, GameAPI, GameState, Pool, RunBranch } from "./types";
 
-/** Bump when the save shape changes. Older or newer → `load` returns null. */
-export const SAVE_VERSION = 1;
+/**
+ * The envelope moved to save.ts with H007, which made it audit the SHAPE of a
+ * state and not only its version. These three names are re-exported here
+ * because the surface this card gathers is `GameAPI` — five functions, and two
+ * of them are the envelope's — so an importer of the engine still finds them in
+ * one place, and there is exactly one implementation behind them.
+ */
+export { SAVE_VERSION, load, save } from "./save";
 
 const EMPTY_POOL: Pool = { current: 0, max: 0 };
 
@@ -145,51 +144,6 @@ export const getView = view;
  * — reading the intent here would be behaviour, which this card must not ship.
  */
 export const act: GameAPI["act"] = (state: GameState) => ({ state, effects: [] });
-
-/** Wrap the state in its versioned envelope and render it as JSON text. */
-export const save: GameAPI["save"] = (state: GameState) =>
-  JSON.stringify({ version: SAVE_VERSION, state } satisfies SaveEnvelope);
-
-/**
- * Read a save back. Returns null — never throws — on malformed text, on a
- * missing or unknown envelope version, and on anything that is not a
- * castlebrynth state (.llm/rules/engine.md).
- *
- * The check is deliberately shallow: it proves the envelope is a save of a
- * version we speak and that both branches are present and are the branches
- * they claim to be. Validating content words is the content loader's job —
- * unknown words fail at LOAD, there.
- */
-export const load: GameAPI["load"] = (text: string) => {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    return null;
-  }
-  if (!isRecord(parsed)) return null;
-  if (parsed["version"] !== SAVE_VERSION) return null;
-  const state = parsed["state"];
-  return isGameState(state) ? state : null;
-};
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function isGameState(value: unknown): value is GameState {
-  if (!isRecord(value)) return false;
-  if (typeof value["seed"] !== "number") return false;
-  if (typeof value["deaths"] !== "number") return false;
-  const campaign = value["campaign"];
-  const run = value["run"];
-  return (
-    isRecord(campaign) &&
-    campaign["branch"] === "campaign" &&
-    isRecord(run) &&
-    run["branch"] === "run"
-  );
-}
 
 /**
  * The surface, gathered. This binding is the compile-time proof that this
