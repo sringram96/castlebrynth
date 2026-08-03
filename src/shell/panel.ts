@@ -41,7 +41,26 @@
 // NO THEME. H102 is paused past H180; the panel's look is wireframe, in
 // shell.css, and meant to be deleted rather than tuned.
 
-import type { ActionOption, GameView, Id, Intent, Pool, Strip } from "../core/types";
+import type { ActionOption, Id, Intent, PanelView, Pool, Strip, ViewObject } from "../core/types";
+
+/**
+ * What the panel needs to draw itself: the three pages and the strip.
+ *
+ * A `GameView` satisfies this structurally, so a room renders exactly as it did
+ * before. The FIGHT does not have one — there is no still, no room line and no
+ * `ViewObject` on a floor of bones (D006) — and the panel does not need one:
+ * these are the only two fields it ever read.
+ *
+ * `objects` is optional, and its ABSENCE means "there is nothing in this room to
+ * have selected", which is precisely a fight. It is not a way to keep a stale
+ * selection alive across a screen change — a source without objects clears the
+ * selection, exactly as a room that lost the selected thing does.
+ */
+export interface PanelSource {
+  readonly panel: PanelView;
+  readonly strip: Strip;
+  readonly objects?: readonly ViewObject[];
+}
 
 /**
  * The three pages, in the order DESIGN §frame writes them. The order is what
@@ -66,8 +85,8 @@ export interface PanelHandlers {
 export interface Panel {
   /** The element this panel owns, inside the frame's panel region. */
   readonly element: HTMLElement;
-  /** Draw this view. Total: any view, any page, any selection. */
-  render(view: GameView): void;
+  /** Draw this. Total: any source, any page, any selection. */
+  render(source: PanelSource): void;
   /** Which page is showing. */
   page(): Page;
   /** Turn to a page directly (the labels are tappable too). */
@@ -191,7 +210,7 @@ export function mountPanel(host: HTMLElement, handlers: PanelHandlers): Panel {
   // ── the shell's own two pieces of state. Neither reaches the engine.
   let showing: Page = HOME;
   let selected: Id | null = null;
-  let shown: GameView | null = null;
+  let shown: PanelSource | null = null;
 
   /**
    * What the ACTIONS page offers right now.
@@ -205,12 +224,12 @@ export function mountPanel(host: HTMLElement, handlers: PanelHandlers): Panel {
    * actions of a thing that is gone would let a player act on it. The selection
    * is dropped by `render` instead — see below.
    */
-  function actionsNow(view: GameView): readonly ActionOption[] {
+  function actionsNow(view: PanelSource): readonly ActionOption[] {
     if (selected === null) return view.panel.actions;
-    return view.objects.find((object) => object.id === selected)?.actions ?? [];
+    return (view.objects ?? []).find((object) => object.id === selected)?.actions ?? [];
   }
 
-  function optionsOf(view: GameView): readonly ActionOption[] {
+  function optionsOf(view: PanelSource): readonly ActionOption[] {
     if (showing === "SKILLS") return view.panel.skills;
     if (showing === "ITEMS") return view.panel.items;
     return actionsNow(view);
@@ -224,9 +243,9 @@ export function mountPanel(host: HTMLElement, handlers: PanelHandlers): Panel {
     return selected === null ? "Nothing to do here." : "Nothing to do with this.";
   }
 
-  function subjectOf(view: GameView): string {
+  function subjectOf(view: PanelSource): string {
     if (showing !== "ACTIONS" || selected === null) return "";
-    return view.objects.find((object) => object.id === selected)?.label ?? "";
+    return (view.objects ?? []).find((object) => object.id === selected)?.label ?? "";
   }
 
   function draw(): void {
@@ -326,12 +345,13 @@ export function mountPanel(host: HTMLElement, handlers: PanelHandlers): Panel {
 
   return {
     element: element_,
-    render(view: GameView): void {
-      shown = view;
+    render(source: PanelSource): void {
+      shown = source;
       // A selection outlives a re-render only while the thing is still in the
-      // room. When it goes — `removeObject`, with a cause — the panel falls
-      // back to the room rather than offering the actions of something absent.
-      if (selected !== null && !view.objects.some((object) => object.id === selected)) {
+      // room. When it goes — `removeObject`, with a cause, or a whole screen
+      // change into a fight — the panel falls back to the room rather than
+      // offering the actions of something absent.
+      if (selected !== null && !(source.objects ?? []).some((object) => object.id === selected)) {
         selected = null;
       }
       draw();

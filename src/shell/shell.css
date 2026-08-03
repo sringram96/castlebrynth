@@ -113,6 +113,87 @@ body {
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
+/* ────────────────────────────────────────────── the fight screen (D006) ── */
+
+/* FLOOR DICE IN-SCENE. The bones land in the room, over the still, not in the
+ * panel — the panel is where the three words are. The screen sits above the
+ * scene and below the end card. */
+.fight {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 0.5em;
+  padding: 0.5em;
+  background: #000;
+}
+
+/* THE INTENT SHOWS BEFORE YOU ROLL — always, and at the top, because it is what
+   the whole turn is decided against. Tappable: it is the foe's inspect, which
+   declares the pursuit chance alongside the intent (DESIGN §the lots). */
+.fight-intent {
+  min-height: var(--tap-min);
+  padding: 0.5em 0.75em;
+  border: 0.0625em solid #333;
+  background: #0a0a0a;
+  color: #e8e8e8;
+  font: inherit;
+  font-size: 0.8125rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.floor {
+  display: grid;
+  /* Six bones, three across. At 390 points of frame that is ~0.29 of the frame
+     width each — comfortably over art.md's "dice read at ≥0.10 of frame width"
+     and over the thumb minimum below. */
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: min-content;
+  gap: 0.5em;
+  align-content: center;
+  justify-items: center;
+}
+
+.bone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 1;
+  min-width: var(--tap-min);
+  min-height: var(--tap-min);
+  border: 0.125em solid #3a3a3a;
+  border-radius: 0.25em;
+  background: #141414;
+  color: #cfcfcf;
+  font: inherit;
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+/* Would raise what you are holding to a better tier. A highlight of the legal
+   moves from here — not a recommendation. */
+.bone--completes {
+  border-color: #6a6a6a;
+}
+
+/* Picked up, and about to be thrown. */
+.bone--chosen {
+  border-color: #e8e8e8;
+  background: #262626;
+  color: #ffffff;
+}
+
+/* The inspect line: what the last thing you touched leans toward, or what the
+   foe declares. Derived from the weights — it cannot lie about the odds. */
+.fight-inspect {
+  margin: 0;
+  min-height: 2.7em;
+  color: #8a8a8a;
+  font-size: 0.75rem;
+}
+
 /* ──────────────────────────────────────────────────── the end card (H114) ── */
 
 /* THE STRIP STAYS VISIBLE. The overlay covers the frame, and the strip is
