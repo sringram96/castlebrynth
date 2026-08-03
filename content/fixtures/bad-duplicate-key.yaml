@@ -1,0 +1,42 @@
+# BROKEN ON PURPOSE — a fixture, not content. See bad-unknown-word.yaml.
+#
+# THE MISTAKE: the file, not the card. `tap` is written twice on one object —
+# an author rewrote the line and left the old one above it.
+#
+# This is the fixture that justifies the whole compiler existing. Parse this
+# file leniently and it loads CLEAN: two keys collapse into one, the second
+# value wins silently, and the first line the author wrote is simply not there
+# for any card check to find. `loadRoom` is handed data, and by then the fact is
+# gone. Only the layer that reads the FILE can see it, so only that layer can
+# refuse it. src/core/compile.test.ts asserts both halves — that a lenient parse
+# hides it, and that `compileRoom` does not.
+#
+# Everything else about this room is correct, deliberately: the one problem
+# reported must be the file's.
+#
+# EXPECTED, and asserted:
+#   (root) — Map keys must be unique at line <the second `tap`>, column 5
+#            (yaml DUPLICATE_KEY)
+
+id: room:bad-duplicate-key
+tier: T0
+still: still:bad-duplicate-key
+line: A small room. Nothing in it moves.
+
+doors:
+  - id: door:on
+    sense: Light under the far door.
+  - id: door:down
+    sense: Cold air off the near stair.
+
+objects:
+  way:
+    tap: Two doors, both shut.
+    tap: Two doors, and a draught off the near one.
+    actions:
+      go:
+        - say: You go on.
+          goto: door:on
+      down:
+        - say: You go down.
+          goto: door:down

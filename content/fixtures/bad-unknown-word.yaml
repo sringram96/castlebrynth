@@ -1,0 +1,44 @@
+# BROKEN ON PURPOSE — a fixture, not content.
+#
+# Everything under content/fixtures/ is authored wrong so that the compiler can
+# be shown refusing it (src/core/compile.test.ts). Nothing here is a room the
+# game may draw: a build that walks content/rooms/ never meets these files, and
+# it must stay that way.
+#
+# THE MISTAKE: the closed language. `harm` was a delta word once and H009 took
+# it away; the arithmetic it did is `adjust: { hp: -1 }` now. An author
+# migrating an old card writes it from memory, and the loader must say so by
+# name and by key path rather than quietly dropping the line — a dropped `harm`
+# is a room that telegraphs a burn and then does not burn you.
+#
+# EXPECTED, and asserted:
+#   objects.brazier.actions.reach[0].harm — unknown response word "harm"
+
+id: room:bad-unknown-word
+tier: T0
+still: still:bad-unknown-word
+line: A small room. Nothing in it moves.
+
+doors:
+  - id: door:on
+    sense: Light under the far door.
+  - id: door:down
+    sense: Cold air off the near stair.
+
+objects:
+  way:
+    tap: Two doors, both shut.
+    actions:
+      go:
+        - say: You go on.
+          goto: door:on
+      down:
+        - say: You go down.
+          goto: door:down
+
+  brazier:
+    tap: A brazier, long cold. The rim is bright where hands have held it.
+    actions:
+      reach:
+        - say: The rim is not cold. It takes the skin off two fingers.
+          harm: -1
