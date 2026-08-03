@@ -29,6 +29,12 @@ version: 1
 # `run: 4` is the one number here DESIGN does not spell. It is the length of a
 # straight, and it is data on purpose: an experiment moves it, and the sim
 # rules on it. Four is the honest starting guess against a hand of six.
+#
+# The loader checks a `run` against the ALPHABET — it may not be longer than
+# the longest consecutive stretch of declared pips, which is 6 here — and not
+# against the hand, because the hand is the loadout's shape and not the
+# grammar's. A run of 6 would load; whether six dice can be held to throw it
+# is the sim's question, not this file's.
 
 tiers:
   pair:
@@ -52,6 +58,12 @@ tiers:
 # The alphabet. Six of them, and every face scores a number — there are no
 # verb-faces (DESIGN §the lots). A blank, when the Hollow Die arrives, is a
 # face with `pips: 0`, not a face left out.
+#
+# A face has no `enabled`, and no experiment may switch one off: this section
+# is the only one an overlay cannot address. "Loaded bones: all six faces
+# always possible" (DESIGN §the lots) — you do not switch off a letter. A die
+# chooses WEIGHTS over these six; it never chooses which six exist. To make a
+# face rare, give it a small `lean` weight on the die that wants it rare.
 #
 # A gilded trigger hangs off a face here, and a die may carry at most one such
 # face. None is gilded yet: a gilded face is a power, and powers are authored

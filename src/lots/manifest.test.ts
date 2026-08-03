@@ -440,6 +440,26 @@ describe("the closed language", () => {
     expect(hook.message).toContain("NO REROLLS EVER");
   });
 
+  it("answers a SHOUTED `retrigger` with the same reason", () => {
+    // Refusing it either way is not the point — the ban exists so the author
+    // who reaches for the word is told why it is gone, and a cased spelling is
+    // the same reach.
+    for (const spelling of ["RETRIGGER", "ReTrigger", "reTRIGGER"]) {
+      const asVerb = copy();
+      dig(asVerb, "jokers", "knife", "effects", 0)["verb"] = spelling;
+      const verb = pointedAt(refused(loadManifest(FIXTURE, asVerb)), "jokers.knife.effects[0].verb");
+      expect(verb.message).toContain(`"${spelling}" is a BANNED verb`);
+      expect(verb.message).toContain("F5 termination");
+      expect(verb.message).not.toContain("unknown effect verb");
+
+      const asHook = copy();
+      dig(asHook, "jokers", "knife")["hook"] = spelling;
+      const hook = pointedAt(refused(loadManifest(FIXTURE, asHook)), "jokers.knife.hook");
+      expect(hook.message).toContain("BANNED");
+      expect(hook.message).not.toContain("unknown hook");
+    }
+  });
+
   it("refuses an unknown manifest key", () => {
     const source = copy();
     source["curses"] = {};
@@ -507,6 +527,17 @@ describe("a loaded bone", () => {
     expect(problem.message).toContain("At most ONE gilded trigger face per die");
   });
 
+  it("keeps its six faces when an experiment leans hard on one", () => {
+    // A lean moves the odds and never the count. Even a punishing weight
+    // leaves six faces on the die and every one of them possible.
+    const source = copy();
+    dig(source, "dice", "bone")["lean"] = { six: 0.001 };
+    const manifest = loaded(loadManifest(FIXTURE, source));
+    expect(manifest.dice["bone"]?.faces).toHaveLength(6);
+    expect(manifest.dice["bone"]?.faces).toContain("six");
+    expect(isEnabled(manifest, "faces.six")).toBe(true);
+  });
+
   it("gates access on a stat, and nothing else", () => {
     const manifest = loaded(loadManifest(FIXTURE, copy()));
     expect(manifest.dice["hollow"]?.requires).toEqual({ will: 2 });
@@ -515,6 +546,80 @@ describe("a loaded bone", () => {
     dig(source, "dice", "hollow")["requires"] = { luck: 3 };
     expect(pointedAt(refused(loadManifest(FIXTURE, source)), "dice.hollow.requires.luck").message)
       .toContain('unknown stat "luck"');
+  });
+});
+
+// ───────────────────────────────── 4b · the alphabet, which has no switch ──
+//
+// "Loaded bones: all six faces always possible" has TWO doors, and the lean
+// above is only the first. A face is not content — it is the alphabet — so it
+// carries no `enabled` and nothing may address it. These are the three routes
+// by which a die could otherwise end up with five faces while still claiming
+// six: an overlay's `disable`, a set that lists the face, and an `enabled`
+// written straight into the base. Each is refused at LOAD, with the reason.
+
+describe("the six faces", () => {
+  const base = (): Manifest => loaded(loadManifest(GRAMMAR, parse(grammarSource)));
+  const shipped = (): Bag => parse(grammarSource) as Bag;
+
+  it("cannot be switched off by an overlay", () => {
+    const problem = pointedAt(
+      refused(applyOverlay(base(), OVERLAY, { disable: ["faces.six"] })),
+      "disable[0]",
+    );
+    expect(problem.file).toBe(OVERLAY);
+    expect(problem.message).toContain("cannot be switched");
+    expect(problem.message).toContain("ALPHABET");
+    expect(problem.message).toContain("all six faces always possible");
+
+    // `enable` is the same door, and it is shut from the same side: the point
+    // is not that faces ship on, it is that they have no state to address.
+    expect(
+      pointedAt(refused(applyOverlay(base(), OVERLAY, { enable: ["faces.six"] })), "enable[0]")
+        .message,
+    ).toContain("ALPHABET");
+  });
+
+  it("cannot be switched off by a set", () => {
+    const source = shipped();
+    dig(source, "sets")["alphabet"] = { enabled: false, entries: ["faces.six"] };
+    const problem = pointedAt(refused(loadManifest(GRAMMAR, source)), "sets.alphabet.entries[0]");
+    expect(problem.message).toContain('"faces.six" is a face');
+    expect(problem.message).toContain("ALPHABET");
+  });
+
+  it("cannot be switched off in the base either", () => {
+    const source = shipped();
+    dig(source, "faces", "six")["enabled"] = false;
+    const problem = pointedAt(refused(loadManifest(GRAMMAR, source)), "faces.six.enabled");
+    expect(problem.message).toContain("ALPHABET");
+    expect(problem.message).toContain("small `lean` weight");
+    // and NOT the generic unknown-key message: whoever wrote `enabled: false`
+    // on a face made a design decision, and is owed which one.
+    expect(problem.message).not.toContain("vocabulary is closed");
+  });
+
+  it("cannot be reached by an override, because there is no switch to move", () => {
+    expect(
+      pointedAt(
+        refused(applyOverlay(base(), OVERLAY, { override: { "faces.six.enabled": 0 } })),
+        "override.faces.six.enabled",
+      ).message,
+    ).toContain("not in the base manifest");
+  });
+
+  it("so no die ever disagrees with the manifest about how many it has", () => {
+    // The contradiction all of the above exists to make unreachable: a face
+    // reported OFF while every die that names it still throws it, and the F2
+    // anchor still measured over it.
+    const manifest = base();
+    for (const [id, die] of Object.entries(manifest.dice)) {
+      expect(die.faces).toHaveLength(6);
+      for (const face of die.faces) expect(isEnabled(manifest, `faces.${face}`)).toBe(true);
+      expect(dieEv(manifest, id)).toBe(3.5);
+    }
+    // A face that was never declared is not on, because it is not there.
+    expect(isEnabled(manifest, "faces.seven")).toBe(false);
   });
 });
 
@@ -562,11 +667,15 @@ describe("what an entry may say", () => {
       .toContain("spent AFTER the dice land");
   });
 
-  it("makes a socketed spell obey the law of the face it becomes", () => {
+  it("fires a socketed spell where the faces fire, without calling it one", () => {
     const source = copy();
     dig(source, "spells", "ascension")["hook"] = "action";
-    expect(pointedAt(refused(loadManifest(FIXTURE, source)), "spells.ascension.hook").message)
-      .toContain("the roll is the cost");
+    const problem = pointedAt(refused(loadManifest(FIXTURE, source)), "spells.ascension.hook");
+    expect(problem.message).toContain("the roll is the cost");
+    // It shares the hook, not the identity: the wizard sockets onto blankS, and
+    // the one-gilded-face-per-die rule counts DECLARED gilded faces. L002 must
+    // not inherit "a socket is a gilded face" and cap the wizard at one spell.
+    expect(problem.message).toContain("It is not itself a gilded face");
     // a consumable is an instant and may fire anywhere
     const instant = copy();
     dig(instant, "spells", "ember")["hook"] = "intent_shown";
@@ -634,6 +743,63 @@ describe("a tier", () => {
     dig(source, "tiers", "straight")["match"] = { run: 9 };
     expect(pointedAt(refused(loadManifest(FIXTURE, source)), "tiers.straight.match.run").message)
       .toContain("a tier that can never be thrown");
+  });
+
+  it("measures a run against CONSECUTIVE pips, not against how many exist", () => {
+    // Six distinct pip values and not two of them adjacent: counting the
+    // alphabet's size would let this ship, and no throw could ever make it.
+    const source = copy();
+    dig(source, "faces")["one"] = { pips: 0 };
+    dig(source, "faces")["two"] = { pips: 10 };
+    dig(source, "faces")["three"] = { pips: 20 };
+    dig(source, "faces")["four"] = { pips: 30 };
+    dig(source, "faces")["five"] = { pips: 40 };
+    dig(source, "faces")["six"] = { pips: 50 };
+    delete dig(source, "faces")["gilded_six"];
+    delete dig(source, "faces")["gilded_one"];
+    dig(source, "dice", "hollow")["faces"] = ["one", "two", "three", "four", "five", "six"];
+    delete dig(source, "dice", "hollow")["lean"];
+    dig(source, "enemy_rules", "seals_sixes", "effects", 0)["face"] = "six";
+    dig(source, "tiers", "straight")["match"] = { run: 6 };
+    expect(pointedAt(refused(loadManifest(FIXTURE, source)), "tiers.straight.match.run").message)
+      .toContain("no two of the 6 distinct pip values");
+
+    // A gap that still leaves a stretch: {1,2,3,9,10} runs 3, and no further.
+    const gapped = copy();
+    dig(gapped, "faces")["four"] = { pips: 9 };
+    dig(gapped, "faces")["five"] = { pips: 10 };
+    dig(gapped, "faces")["six"] = { pips: 11 };
+    dig(gapped, "faces")["gilded_six"] = {
+      pips: 11,
+      gilded: { hook: "on_score", effects: [{ verb: "add", amount: 2 }] },
+    };
+    dig(gapped, "tiers", "straight")["match"] = { run: 4 };
+    const problem = pointedAt(
+      refused(loadManifest(FIXTURE, gapped)),
+      "tiers.straight.match.run",
+    );
+    expect(problem.message).toContain("from 2 to 3");
+    expect(problem.message).toContain("longest consecutive stretch");
+
+    // and a run inside that stretch loads
+    dig(gapped, "tiers", "straight")["match"] = { run: 3 };
+    expect(loaded(loadManifest(FIXTURE, gapped)).tiers["straight"]?.match.run).toBe(3);
+  });
+
+  it("checks the alphabet and not the hand, and says which", () => {
+    // The guard is against pips that were never declared, NOT against holding
+    // enough dice: "Hand = 5 plain bones + 1 signature die" is the loadout's
+    // shape, not the grammar's. Eight consecutive pips make `run: 8` legal
+    // here, and whether any hand can throw it is the sim's question (L007).
+    const source = copy();
+    dig(source, "faces")["seven"] = { pips: 7 };
+    dig(source, "faces")["eight"] = { pips: 8 };
+    dig(source, "tiers", "straight")["match"] = { run: 8 };
+    expect(loaded(loadManifest(FIXTURE, source)).tiers["straight"]?.match.run).toBe(8);
+
+    dig(source, "tiers", "straight")["match"] = { run: 9 };
+    expect(pointedAt(refused(loadManifest(FIXTURE, source)), "tiers.straight.match.run").message)
+      .toContain("not your hand");
   });
 
   it("counts groups as minimums, so quads+ is just [4]", () => {
