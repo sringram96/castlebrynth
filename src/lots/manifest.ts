@@ -39,10 +39,21 @@
 //          says the words "full house".
 //   "Loaded bones: all six faces always possible; weighting is a declared
 //    probability lean"
-//        → a die declares exactly SIX faces, and a `lean` is a table of
-//          weights whose every entry must be greater than zero. A weight of 0
-//          is refused: a lean shifts odds, it does not delete a face. This is
-//          the whole of what makes a loaded bone honest.
+//        → TWO doors, because a face can be deleted through either one.
+//          FIRST, the lean: a die declares exactly SIX faces, all different,
+//          and a `lean` is a table of weights whose every entry is greater
+//          than zero. A weight of 0 is refused — a lean SHIFTS the odds and
+//          never deletes a face.
+//          SECOND, and this is the door that is easy to leave open: `faces` is
+//          the ALPHABET, not content. It carries no `enabled`, it is not a
+//          collection an overlay may address, and no set may list one. You do
+//          not switch off a letter. A die chooses WEIGHTS over the six; it
+//          never chooses which six exist. Were `faces` switchable, an
+//          experiment file could hand a knucklebone five faces silently, and
+//          every other check here would still pass.
+//          What neither door holds is the RATIO between weights — a weight of
+//          1e-12 is greater than zero. That is a real gap and it is named in
+//          "deliberately absent" below, where it says whose it is.
 //   "At most one gilded trigger face per die."
 //        → a face may carry a `gilded` trigger; a die may reference at most
 //          one face that has one, and the loader names both when it finds two.
@@ -58,9 +69,20 @@
 //   "Spells are instants: consumables for everyone; socketed faces for the
 //    wizard (the roll is the cost). Mana does not exist."
 //        → `spells`, with `sockets: true` for the ones that may be set into a
-//          socketable die's face. A socketed spell IS a gilded face, so it
-//          must fire at `on_score` like one. There is no cost key anywhere in
-//          this file: see "deliberately absent".
+//          socketable die's face. A socketed spell fires WHERE a gilded face
+//          fires — `on_score` — because the roll is what pays for it, and the
+//          roll happens there.
+//          It is NOT the same thing as a gilded face, and nothing downstream
+//          should read it as one. DESIGN gives the wizard "blank faces + one
+//          power face; spells socket onto blanks" — blankS, plural, and that
+//          plural is the class's whole scaling story. The one-gilded-face-per-
+//          die rule counts the gilded faces a die DECLARES; it must never be
+//          made to count sockets, or the wizard sockets exactly one spell
+//          forever. Sockets are not modelled as faces in this file at all:
+//          what fills one, and how many, is L002's and L006's to decide, and
+//          this comment is not an equation for them to inherit.
+//          There is no cost key anywhere in this file: see "deliberately
+//          absent".
 //   "skills (found, uses-per-rest, spent AFTER the dice land)"
 //        → `skills` carry `uses`, and a skill's hook may not be
 //          `intent_shown` or `roll` — everything from `skill_window` onward is
@@ -146,16 +168,52 @@
 //                    DERIVED from the weight table. A hand-written lean line
 //                    is a line that can lie about the odds, and THE ART NEVER
 //                    LIES (DESIGN §art direction).
+//   a bound on a lean's RATIO
+//                    Weights must be greater than zero; nothing here bounds
+//                    how far apart two of them may sit, and the consequences
+//                    are measurable rather than theoretical. `lean: {six:
+//                    1e-12}` loads at P(six) = 2e-13 — "possible" in the
+//                    arithmetic and in nothing a player will ever meet — and
+//                    `lean: {six: 1e12}` loads at EV 5.999 on a die F2 anchors
+//                    at 3.5, which is outside every F3 band. An overlay can
+//                    reach both, because a lean weight is a number and moving
+//                    numbers is what an experiment does.
+//                    That is a law being broken, and the law already exists:
+//                    F3, "EV bands by rarity (±15% / +25% / +40%); rare power
+//                    = RELIABILITY via lean, not raw EV" (DESIGN §fairness
+//                    laws). It is simply not this file's to enforce. A band is
+//                    read against a RARITY this schema does not carry (see
+//                    `rarity` above) and against a whole arsenal, so the check
+//                    needs a roster and a tournament: it belongs to L007, the
+//                    F-law prover — sim plus static lints, wired into `npm run
+//                    law` for every PR that touches a manifest.
+//                    Inventing a floor or a ratio ceiling here would be a
+//                    number DESIGN does not state, which is to say a DESIGN
+//                    amendment made quietly, and this file refuses those
+//                    everywhere else. So the gap is written down instead of
+//                    guessed at. Until L007 lands, the shipped `river-stone`
+//                    is the argument by example — a lean that changes spread
+//                    and leaves EV at 3.5 exactly — and a test holds it there.
 //
 // ─────────────────────────────────────────────── what is NOT checked here ──
 //
 // Every check below is answerable from one manifest (plus its overlays) alone.
 // Not answerable, and so not attempted: whether an arsenal has a dominant
-// entry (F6), whether EV sits in its rarity band (F3), whether upside carries
-// its cost (F4), whether a throw can exceed 60% of a boss (F7), or whether the
-// tier table's ties resolve sensibly. Those need a tournament and a roster.
+// entry (F6), whether EV sits in its rarity band (F3 — see "a bound on a
+// lean's RATIO" above, which is the sharp end of this one), whether upside
+// carries its cost (F4), whether a throw can exceed 60% of a boss (F7), or
+// whether the tier table's ties resolve sensibly. Those need a tournament and
+// a roster, and they are L007's, the F-law prover.
+//
+// `dieEv` is here so that when L007 arrives it measures the anchor rather than
+// re-deriving it, and so that F2 is a number a test can hold today. Measuring
+// is not enforcing: this file will tell you a die's EV, and it will not tell
+// you whether that EV is allowed.
+//
 // Scoring — running the pipeline — is the next card in this chain; nothing
-// here scores anything.
+// here scores anything. Nor is the HAND anything this file knows: a `run`
+// tier is checked against the alphabet's pips, never against how many dice
+// you hold.
 
 import type { Id } from "../core/types";
 
@@ -254,11 +312,17 @@ export interface TierEntry {
  * scores a number. A blank (the Hollow Die's) is `pips: 0`, not a missing
  * field. `gilded` is the trigger a gilded face carries, and a die may
  * reference at most one face that has one.
+ *
+ * There is no `enabled` here, and that absence is load-bearing. Every other
+ * entry kind in this manifest carries one; a face does not, because the faces
+ * are the ALPHABET the Lots is written in. "Loaded bones: all six faces always
+ * possible" (DESIGN §the lots) is a fact about the medium, not a state an
+ * experiment may switch — and a switchable face is a knucklebone with five of
+ * them, arrived at silently from a file nobody reads twice.
  */
 export interface FaceEntry {
   readonly pips: number;
   readonly gilded?: Trigger;
-  readonly enabled?: boolean;
 }
 
 // ──────────────────────────────────────────────────────────────────── dice ──
@@ -425,7 +489,7 @@ const EFFECT_KEY_TABLE: KeyTable<Effect> = { verb: true, amount: true, face: tru
 const TRIGGER_KEY_TABLE: KeyTable<Trigger> = { hook: true, effects: true };
 const TIER_KEY_TABLE: KeyTable<TierEntry> = { mult: true, match: true, enabled: true };
 const MATCH_KEY_TABLE: KeyTable<TierMatch> = { counts: true, run: true };
-const FACE_KEY_TABLE: KeyTable<FaceEntry> = { pips: true, gilded: true, enabled: true };
+const FACE_KEY_TABLE: KeyTable<FaceEntry> = { pips: true, gilded: true };
 const DIE_KEY_TABLE: KeyTable<DieEntry> = {
   name: true,
   faces: true,
@@ -497,6 +561,19 @@ export const OVERLAY_KEYS = Object.keys(OVERLAY_KEY_TABLE) as readonly (keyof Ov
  */
 export const BANNED_VERBS: readonly string[] = ["retrigger"];
 
+/**
+ * The banned word this text reached for, however it was cased, or null.
+ *
+ * `RETRIGGER` and `ReTrigger` are the same reach for the same word, and the
+ * whole point of the ban list is that the reach gets an answer. An exact-match
+ * compare would drop a cased one into the generic unknown-word message and lose
+ * the reason — refused either way, but told nothing either way.
+ */
+function bannedVerb(word: string): string | null {
+  const lower = word.toLowerCase();
+  return BANNED_VERBS.find((banned) => banned === lower) ?? null;
+}
+
 const BANNED_REASON =
   "it re-enters scoring, and nothing re-enters scoring — F5 termination, " +
   "NO REROLLS EVER (DESIGN §content laws), and no takebacks anywhere " +
@@ -509,10 +586,24 @@ const AFTER_THE_DICE_LAND = HOOKS.slice(HOOKS.indexOf("skill_window"));
 /** Where faces and jokers resolve — DESIGN's pipeline spells it "faces-then-jokers". */
 const SCORING_HOOK: Hook = "on_score";
 
-/** The entry collections, in manifest order. `sets` is not one: it groups them. */
+/**
+ * The alphabet: the one section of the manifest that is not a collection.
+ *
+ * `faces` is deliberately absent from `COLLECTIONS` and therefore from
+ * `PATHABLE`. It is not addressable by an overlay, it may not be listed in a
+ * set, and its entries carry no `enabled`. See `ALPHABET_REASON`.
+ */
+const ALPHABET = "faces";
+
+/**
+ * The entry collections — everything that can be switched on and off — in
+ * manifest order.
+ *
+ * `sets` is not one: it groups them. `faces` is not one either, and that is
+ * the point: the six faces are the medium, not the content. See `ALPHABET`.
+ */
 const COLLECTIONS = [
   "tiers",
-  "faces",
   "dice",
   "jokers",
   "spells",
@@ -524,8 +615,28 @@ const COLLECTIONS = [
 
 type Collection = (typeof COLLECTIONS)[number];
 
-/** The collections an entry path may name, plus `sets`. */
+/** Every section `readCollection` reads: the switchable ones, the alphabet, the sets. */
+type Section = Collection | typeof ALPHABET | "sets";
+
+/** The collections an entry path may name, plus `sets`. `faces` is not among them. */
 const PATHABLE: readonly string[] = [...COLLECTIONS, "sets"];
+
+/**
+ * Why a face has no switch, said once and quoted wherever someone reaches for
+ * one — in an entry's keys, in an overlay's `enable`/`disable`, in a set's
+ * entry list. Like `BANNED_REASON`, this is a refusal with a reason attached:
+ * whoever writes `disable: [faces.six]` is not making a typo, they are making a
+ * design decision, and they deserve to be told which one.
+ */
+const ALPHABET_REASON =
+  "`faces` is the ALPHABET the Lots is written in, not content, so a face has " +
+  "no on/off state to address. \"Loaded bones: all six faces always possible\" " +
+  "(DESIGN §the lots) — a die chooses WEIGHTS over the six, never which of them " +
+  "exist, and switching one off would hand a six-faced die five faces from an " +
+  "experiment file, silently. To make a face rare, give it a small `lean` " +
+  "weight on the die that wants it rare; you cannot lean it to nothing. To " +
+  "make a face score nothing, that is `pips: 0` — a blank, which is still a " +
+  "face and still lands.";
 
 // ──────────────────────────────────────────────────────────────── problems ──
 
@@ -564,7 +675,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /** A word not in the table does not exist. The message carries the whole
- *  vocabulary so the fix needs no engine read. */
+ *  vocabulary so the fix needs no engine read.
+ *
+ *  `refused` names keys that are not merely unknown — they were considered and
+ *  left out — and maps each to the reason, so the author gets the argument
+ *  instead of a word list. It is the `BANNED_VERBS` idea at the key level. */
 function closed(
   value: Record<string, unknown>,
   table: Readonly<Record<string, true>>,
@@ -572,8 +687,13 @@ function closed(
   what: string,
   vocabulary: readonly string[],
   fault: Fault,
+  refused: Readonly<Record<string, string>> = {},
 ): void {
   for (const key of Object.keys(value)) {
+    if (Object.prototype.hasOwnProperty.call(refused, key)) {
+      fault(at(path, key), `\`${key}\` is not a ${what} here — ${refused[key] ?? ""}`);
+      continue;
+    }
     if (!Object.prototype.hasOwnProperty.call(table, key)) {
       fault(
         at(path, key),
@@ -649,7 +769,7 @@ function readEffect(
     fault(at(path, "verb"), "`verb` is required, and is one of: " + EFFECT_VERBS.join(", "));
     return null;
   }
-  if (BANNED_VERBS.includes(raw)) {
+  if (bannedVerb(raw) !== null) {
     fault(at(path, "verb"), `"${raw}" is a BANNED verb — ${BANNED_REASON}`);
     return null;
   }
@@ -762,7 +882,7 @@ function readTrigger(
   const raw = value["hook"];
   if (typeof raw !== "string" || raw === "") {
     fault(at(path, "hook"), "`hook` is required, and is one of: " + HOOKS.join(" → "));
-  } else if (BANNED_VERBS.includes(raw)) {
+  } else if (bannedVerb(raw) !== null) {
     fault(at(path, "hook"), `"${raw}" is not a hook, and as a verb it is BANNED — ${BANNED_REASON}`);
   } else if (!Object.prototype.hasOwnProperty.call(HOOK_TABLE, raw)) {
     fault(
@@ -785,7 +905,7 @@ function readTrigger(
 /** A collection is a map keyed by id, and an id must survive being a path step. */
 function readCollection(
   source: Record<string, unknown>,
-  name: Collection | "sets",
+  name: Section,
   fault: Fault,
   read: (entry: Record<string, unknown>, path: string, key: string) => void,
 ): readonly string[] {
@@ -846,9 +966,18 @@ export function loadManifest(file: string, source: unknown): LoadResult {
   closed(source, MANIFEST_KEY_TABLE, "", "manifest key", MANIFEST_KEYS, fault);
   whole(source["version"], "version", "`version` — the manifest format, and it", 1, fault);
 
-  // Faces first: dice reference them, and `seal` names one.
-  const faces = readCollection(source, "faces", fault, (entry, path) => {
-    closed(entry, FACE_KEY_TABLE, path, "face key", Object.keys(FACE_KEY_TABLE), fault);
+  // Faces first: dice reference them, and `seal` names one. The alphabet has no
+  // `enabled` — reaching for one is refused with the reason, not with a word list.
+  const faces = readCollection(source, ALPHABET, fault, (entry, path) => {
+    closed(
+      entry,
+      FACE_KEY_TABLE,
+      path,
+      "face key",
+      Object.keys(FACE_KEY_TABLE),
+      fault,
+      { enabled: ALPHABET_REASON },
+    );
     whole(
       entry["pips"],
       at(path, "pips"),
@@ -857,19 +986,18 @@ export function loadManifest(file: string, source: unknown): LoadResult {
       0,
       fault,
     );
-    flag(entry["enabled"], at(path, "enabled"), "`enabled`", false, fault);
   });
 
   // The gilded triggers, read once faces are known so `seal` can be checked.
   const gilded: string[] = [];
-  const faceMap = isRecord(source["faces"]) ? source["faces"] : {};
+  const faceMap = isRecord(source[ALPHABET]) ? source[ALPHABET] : {};
   for (const key of faces) {
     const entry = faceMap[key];
     if (!isRecord(entry)) continue;
     const trigger = entry["gilded"];
     if (trigger === undefined) continue;
     gilded.push(key);
-    const path = at(at("faces", key), "gilded");
+    const path = at(at(ALPHABET, key), "gilded");
     if (!isRecord(trigger)) {
       fault(path, "`gilded` is a map: the hook it fires at, and its effects");
       continue;
@@ -936,8 +1064,10 @@ export function loadManifest(file: string, source: unknown): LoadResult {
       faces,
       socketed ? [SCORING_HOOK] : HOOKS,
       socketed
-        ? "a socketed spell IS a gilded face — the roll is the cost (DESIGN §the lots), " +
-            "so it fires where faces fire"
+        ? "a socketed spell fires WHERE a gilded face fires — the roll is the cost " +
+            "(DESIGN §the lots), and the roll happens there. It is not itself a " +
+            "gilded face: a die may declare only one of those, while the wizard " +
+            'sockets spells onto "blanks", plural'
         : "an instant may fire anywhere in the pipeline",
       fault,
     );
@@ -1048,6 +1178,10 @@ export function loadManifest(file: string, source: unknown): LoadResult {
         );
         return;
       }
+      if (member.startsWith(`${ALPHABET}.`)) {
+        fault(where, `"${member}" is a face, and a set switches what it lists — ${ALPHABET_REASON}`);
+        return;
+      }
       if (!known.includes(member)) {
         fault(
           where,
@@ -1105,21 +1239,57 @@ function readTierMatch(
     });
     return;
   }
-  // `run` — and it can be measured against the faces that exist.
+  // `run` — CONSECUTIVE pips, and consecutiveness is the half that has to be
+  // measured rather than counted. Six faces pipped 0, 10, 20, 30, 40, 50 are
+  // six distinct values and no run at all, so counting distinct pips would let
+  // `run: 6` ship against an alphabet that cannot make a run of two.
+  //
+  // What this measures is the ALPHABET, and it is worth being exact about the
+  // limit of that: it is not a guarantee that the tier is throwable. "Hand = 5
+  // plain bones + 1 signature die" is the loadout's shape and not the
+  // grammar's (see "deliberately absent"), so nothing here counts your dice,
+  // and `run: 8` over eight consecutive pips loads. What is ruled out is the
+  // stronger thing — a run no hand of any size could ever throw, because the
+  // pips to make it were never declared.
   const pips = new Set<number>();
   for (const key of faces) {
     const face = faceMap[key];
     if (isRecord(face) && isNumber(face["pips"])) pips.add(face["pips"]);
   }
-  const ceiling = Math.max(pips.size, 2);
-  if (!isNumber(run) || !Number.isInteger(run) || run < 2 || run > ceiling) {
+  const longest = longestRun(pips);
+  if (longest < 2) {
     fault(
       at(path, "run"),
-      `\`run\` is a whole number of consecutive pips, from 2 to ${ceiling} — ` +
-        `${pips.size} distinct pip values are declared in \`faces\`, so a longer ` +
-        `run is a tier that can never be thrown`,
+      `no two of the ${pips.size} distinct pip values declared in \`faces\` are ` +
+        `consecutive, so this is a tier that can never be thrown by any hand — a ` +
+        `run tier needs an alphabet that runs.`,
+    );
+    return;
+  }
+  if (!isNumber(run) || !Number.isInteger(run) || run < 2 || run > longest) {
+    fault(
+      at(path, "run"),
+      `\`run\` is a whole number of consecutive pips, from 2 to ${longest} — the ` +
+        `longest consecutive stretch among the ${pips.size} distinct pip values ` +
+        `declared in \`faces\` is ${longest}, so a longer run is a tier that can ` +
+        `never be thrown. This measures the alphabet, not your hand: how many dice ` +
+        `you hold is the loadout's business, not the grammar's.`,
     );
   }
+}
+
+/** The longest stretch of consecutive values in a set of pips: {1,2,3,5,6} → 3.
+ *  A run tier longer than this cannot be thrown by any hand of any size,
+ *  because the pips it needs were never declared. */
+function longestRun(pips: ReadonlySet<number>): number {
+  let longest = 0;
+  for (const pip of pips) {
+    if (pips.has(pip - 1)) continue; // not the start of a stretch
+    let length = 1;
+    while (pips.has(pip + length)) length += 1;
+    if (length > longest) longest = length;
+  }
+  return longest;
 }
 
 function readDieFaces(
@@ -1371,6 +1541,10 @@ export function applyOverlay(base: Manifest, file: string, source: unknown): Loa
         );
         return;
       }
+      if (collection === ALPHABET) {
+        fault(where, `"${entry}" cannot be switched — ${ALPHABET_REASON}`);
+        return;
+      }
       if (!PATHABLE.includes(collection)) {
         fault(
           where,
@@ -1461,6 +1635,12 @@ export function applyOverlay(base: Manifest, file: string, source: unknown): Loa
  * An entry is on when its own flag is not false AND every set that lists it is
  * on. Nothing that does not exist is on, so an unknown path is false rather
  * than an exception — the paths were all checked at load.
+ *
+ * A DECLARED FACE IS ALWAYS ON. It has no switch to read (see `ALPHABET`), and
+ * answering `false` for one would be the exact lie this function must never
+ * tell: a face reported off while every die that names it still throws it.
+ * "All six faces always possible" is a fact about the alphabet, so here it is
+ * a fact about the answer.
  */
 export function isEnabled(manifest: Manifest, path: string): boolean {
   const steps = parsePath(path);
@@ -1468,6 +1648,9 @@ export function isEnabled(manifest: Manifest, path: string): boolean {
   const collection = steps[0];
   const key = steps[1];
   if (typeof collection !== "string" || typeof key !== "string") return false;
+  if (collection === ALPHABET) {
+    return Object.prototype.hasOwnProperty.call(manifest.faces, key);
+  }
   if (!PATHABLE.includes(collection)) return false;
   const bag = (manifest as unknown as Record<string, unknown>)[collection];
   if (!isRecord(bag)) return false;
