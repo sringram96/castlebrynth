@@ -14,10 +14,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { newRun } from "../core/api";
 import { resolve } from "../core/resolve";
-import { endingOf, mountEnd } from "./end";
+import { SAVE_KEY, restore } from "./storage";
+import { endingOf, freshSeed, mountEnd, startOver } from "./end";
 import type { RoomCard } from "../core/cards";
 import type { Emission } from "../core/resolve";
 import type { GameState } from "../core/types";
+import type { Store } from "./storage";
 
 const BUNDLE = { version: 1, start: "room:the-cold-ring" } as const;
 
@@ -86,8 +88,97 @@ const overlay = (host: HTMLElement): HTMLElement => {
   return found;
 };
 
+/** A store that can be made to refuse, the way a real one does. */
+function fakeStore(seed: Record<string, string> = {}): Store & {
+  readonly cells: Record<string, string>;
+  failWrites: boolean;
+} {
+  const cells: Record<string, string> = { ...seed };
+  return {
+    cells,
+    failWrites: false,
+    getItem: (key) => (Object.prototype.hasOwnProperty.call(cells, key) ? (cells[key] as string) : null),
+    setItem(key, value) {
+      if (this.failWrites) throw new DOMException("QuotaExceededError");
+      cells[key] = value;
+    },
+    removeItem: (key) => {
+      delete cells[key];
+    },
+  };
+}
+
 beforeEach(() => {
   document.body.replaceChildren();
+});
+
+describe("H114 · begin again: clear save, fresh seed", () => {
+  const FINISHED = '{"version":3,"state":{"the run that just ended":true}}';
+
+  it("mints a run on the seed it is given, and writes it over the old save", () => {
+    const store = fakeStore({ [SAVE_KEY]: FINISHED });
+
+    const begun = startOver(store, BUNDLE, 4_242);
+
+    expect(begun.seed).toBe(4_242);
+    expect(begun.deaths).toBe(0);
+    expect(begun.run.roomId).toBe(BUNDLE.start);
+    // The old save is gone, and what is there now is the new run.
+    expect(store.cells[SAVE_KEY]).not.toBe(FINISHED);
+    const found = restore(store);
+    expect(found.kind).toBe("resumed");
+    if (found.kind === "resumed") expect(found.state).toEqual(begun);
+  });
+
+  it("starts a WHOLE NEW CAMPAIGN — the reading to confirm", () => {
+    const begun = startOver(fakeStore(), BUNDLE, 7);
+
+    // `newRun` mints a fresh campaign ledger: the dice, knowledge, landmarks
+    // and grants of the run that just ended are gone. That is what "clear save"
+    // says, and it is emphatically NOT what death does — "DICE SURVIVE DEATH".
+    expect(begun.campaign.dice).toEqual([]);
+    expect(begun.campaign.knowledge).toEqual([]);
+    expect(begun.campaign.landmarks).toEqual([]);
+    expect(begun.campaign.signature).toBeNull();
+  });
+
+  it("clears the old save even when the new one cannot be written", () => {
+    const store = fakeStore({ [SAVE_KEY]: FINISHED });
+    store.failWrites = true;
+
+    const begun = startOver(store, BUNDLE, 7);
+
+    // A finished run that comes back on reload is worse than no save at all:
+    // the end card would raise again over a state nothing can move.
+    expect(store.cells[SAVE_KEY]).toBeUndefined();
+    expect(restore(store).kind).toBe("fresh");
+    // And the run in memory is still the new one.
+    expect(begun.seed).toBe(7);
+  });
+
+  it("mints a fresh seed the engine could not have minted itself", () => {
+    // "no Date, no Math.random" binds src/core; the whole point of a seed is
+    // that it comes from outside the deterministic world it defines.
+    const seeds = new Set(Array.from({ length: 32 }, () => freshSeed()));
+
+    for (const seed of seeds) {
+      expect(Number.isSafeInteger(seed)).toBe(true);
+      expect(seed).toBeGreaterThanOrEqual(0);
+    }
+    // Not a constant. (32 draws colliding into one value is ~2^-960.)
+    expect(seeds.size).toBeGreaterThan(1);
+  });
+
+  it("survives the save envelope on a minted seed", () => {
+    const store = fakeStore();
+    const begun = startOver(store, BUNDLE, freshSeed());
+    const found = restore(store);
+
+    // `save.ts` audits `seed: isSafeInt` — a float or an out-of-range seed
+    // would load back as null and the next boot would offer a new run.
+    expect(found.kind).toBe("resumed");
+    if (found.kind === "resumed") expect(found.state.seed).toBe(begun.seed);
+  });
 });
 
 describe("H114 · the layering law: only an `end` word raises the card", () => {

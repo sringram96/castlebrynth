@@ -47,15 +47,20 @@
 //   not the REBIRTH         "Death wakes you at the Crossing ... doors redraw"
 //                           is a lifecycle transition that keeps the campaign
 //                           and increments `deaths` (types.ts
-//                           `DeathTransition`). BEGIN AGAIN calls out to
-//                           whoever owns that; this file only stops showing the
-//                           card.
+//                           `DeathTransition`). That is DEATH's path and it
+//                           never reaches this file. What IS here is the card's
+//                           own GOAL — begin again on a cleared save and a
+//                           fresh seed (`startOver`), which is a different
+//                           thing entirely and starts a new campaign.
 //   not DEATH               death is a bar at zero (death.ts) and it does not
 //                           end a run — it wakes you at the Crossing. Only the
 //                           `end` word ends one.
 
+import { newRun } from "../core/api";
+import { SAVE_KEY, autosave } from "./storage";
 import type { Emission } from "../core/resolve";
-import type { Id } from "../core/types";
+import type { ContentBundle, GameState, Id } from "../core/types";
+import type { Store } from "./storage";
 
 /**
  * The ending in these emissions, or null.
@@ -75,15 +80,77 @@ export function endingOf(emissions: readonly Emission[]): Id | null {
   return null;
 }
 
+// ────────────────────────────────────────────────────────── beginning again ──
+
+/**
+ * A seed for a run nobody has played yet.
+ *
+ * The shell may do this and the engine may not: "no Date, no Math.random"
+ * binds src/core (.llm/rules/engine.md), and the whole point of a seed is that
+ * it comes from outside the deterministic world it then defines. A run is
+ * `seed + deaths + inputs, exactly` — this is where the first of the three
+ * comes from.
+ *
+ * A uint32, so it survives the save envelope's `isSafeInt` audit (save.ts) and
+ * `runStream`'s mixing without ever being a float. `crypto` where there is one,
+ * and a clock where there is not — a repeated seed is a repeated labyrinth, not
+ * a crash, so the fallback degrades quietly.
+ */
+export function freshSeed(): number {
+  const source = globalThis.crypto;
+  if (source !== undefined && typeof source.getRandomValues === "function") {
+    const drawn = source.getRandomValues(new Uint32Array(1))[0];
+    if (drawn !== undefined) return drawn;
+  }
+  return Date.now() >>> 0;
+}
+
+/**
+ * BEGIN AGAIN: clear the save, mint a run on a fresh seed, and write it.
+ *
+ * This is the card's GOAL — "begin-again (clear save, fresh seed)" — and it is
+ * a function rather than something the button does, because the button is in a
+ * document and this is not. `mountEnd` takes the card down and calls the
+ * handler; a shell that has a bundle calls THIS from that handler.
+ *
+ * THE OLD SAVE DOES NOT SURVIVE, whatever happens. The new run is written over
+ * it, and if that write is refused — quota, private mode, a locked origin — the
+ * key is removed instead. Either way the next boot cannot resume the run that
+ * just ended: a finished run that comes back on reload is worse than no save at
+ * all, because the end card would raise again over a state nothing can move.
+ *
+ * A WHOLE NEW CAMPAIGN, and this is the reading to confirm. `newRun` mints a
+ * fresh campaign ledger, so the dice, knowledge, landmarks and grants of the
+ * run that just ended are gone. That is what "clear save, fresh seed" says, and
+ * it is right for an ENDING — endings "read ledger + choices, severance through
+ * inheritance" (DESIGN §spoilers), and a campaign that continued past its own
+ * ending would have nothing to have ended. It is emphatically NOT what death
+ * does: "DICE SURVIVE DEATH — law", death "wakes you at the Crossing" and never
+ * reaches this function. If an ending is meant to keep the campaign ledger, this
+ * is the line to change, and it is one line.
+ */
+export function startOver(store: Store, bundle: ContentBundle, seed: number): GameState {
+  const begun = newRun(seed, bundle);
+  if (autosave(store, begun) === "refused") {
+    try {
+      store.removeItem(SAVE_KEY);
+    } catch {
+      // A store that will not write and will not delete is a store with nothing
+      // we can do about it. The run in memory is still the new one.
+    }
+  }
+  return begun;
+}
+
 export interface EndHandlers {
   /**
    * Begin again, from this ending.
    *
-   * The transition is not this file's — it keeps the campaign ledger, raises
-   * the death count and rebuilds the run branch, and none of that is a
-   * rendering decision. The ending id is passed on because what a new run opens
-   * with may depend on which ending you got, and losing it here would make that
-   * unknowable later.
+   * The CARD's part is done before this is called: it takes itself down. What
+   * happens next needs a bundle and a store, which a renderer has no business
+   * holding, so the shell wires `startOver` (above) in here. The ending id is
+   * passed on because what a new run opens with may depend on which ending you
+   * got, and losing it here would make that unknowable later.
    */
   readonly beginAgain: (ending: Id) => void;
 }
