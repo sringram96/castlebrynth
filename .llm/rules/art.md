@@ -1,50 +1,62 @@
-# art rules — graphics conformance review
+# art rules — the projective system (non-negotiable)
 
-Run this against any change that draws, renders, or ships art. Answer
-every item PASS/FAIL **with evidence** — a screenshot, a measurement, a
-test, or the line of code. "Looks right" is not evidence.
+THREE SPACES, three units. Never leak one into another:
+- WORLD space: game geometry, in world units (1u = 10cm).
+- FRAME space: composition, in FRACTIONS of the logical frame.
+- PHYSICAL space: touch, in device-independent points / millimeters.
+Raw pixel constants are FORBIDDEN everywhere except inside a named
+ASSET GRID PROFILE (see below).
 
-Items marked → cite the file that already owns the law; this list is
-the review instrument, not a second copy of the rule.
+- THE BODY IS THE CONSTANT: eye height = 15u above the floor in
+  every scene, forever — rooms scale, the protagonist does not. The
+  horizon is the eye line; the vanishing point lives on it. Horizon
+  sits at ≈0.45 of frame height in the room register.
+- FRONTAL LAW: the camera never rotates. Every room is one-point
+  perspective looking straight down +z. The stare is the style.
+- LENSES ARE FIELDS OF VIEW, by register: rooms ≈92° horizontal ·
+  cinema ≈70° or tighter (compression is the claustrophobia). Focal
+  length is derived per frame: F = (frameWidth/2) / tan(FOV/2).
+- PROJECTION: sx = cx + F·X/z · sy = horizon − F·Y/z. Size falls as
+  1/z; equal world spacing compresses harmonically.
+- SCENES ARE PLANES + BOXES in that camera; per pixel the first hit
+  (smallest z) wins — seams exact by construction; the contour cut
+  is drawn on surface boundaries, not guessed.
+- TEXTURE IN WORLD SPACE: brick courses, mortar, grime hash on world
+  coordinates — mortar thins with distance on its own; dirt sticks
+  to the wall under any camera shift.
+- OBJECTS ARE DECLARATIVE: placed at world (X, z) with world sizes;
+  screen position, scale, contact shadow, and TAP HOTSPOT are all
+  derived by projection, never hand-placed.
+- DEPTH CUES, in order: reference geometry at equal world intervals
+  (courses, flags, colonnades, treads) · z-dithered fog · known-size
+  props (the body, a door, a die).
+- SPRITE MINIMUMS in frame fractions: dice read at ≥0.10 of frame
+  width; no gameplay-critical read below ≈0.03 of frame width.
+- ASSET GRID PROFILE: hand-painted pixel art is authored on ONE
+  named logical grid per asset set (current profile: GRID-240,
+  portrait). The profile is a product choice, not law; switching
+  profiles re-authors assets and changes no rule and no code.
+- Hand art is painted OVER the solver's guides: VP + corner rays +
+  harmonic rungs. The math scaffolds; the hand bricks.
 
-## projective law (owned here)
+## image laws
 
-1. One camera, frontal one-point only — no rotation, no second VP.
-2. Eye height constant: horizon (CY) = eye line; HF = 15u in every
-   scene.
-3. Lens by register: rooms F≈115, cinema F≈170+ — no per-scene whims.
-4. Geometry solved, not sketched: surfaces from first-hit projection
-   (or hand art drawn over the solver's guides); seams meet exactly.
-5. Texture in world space: mortar/detail thins with distance as 1/z;
-   grime hashes on world coords, not screen coords.
+Carried forward from the conformance review (PR #12). The projective
+system above supersedes that file's camera items — with better math,
+since FOV survives a frame-size change and a fixed focal length does
+not. These were not restated there, so they are kept, not superseded.
+Answer each PASS/FAIL with evidence.
 
-## canvas & rendering (→ ui.md, DESIGN.md §art direction)
-
-6. Logical 240-wide portrait; INTEGER upscale only; crisp-edges /
-   `imageSmoothingEnabled = false`; never fractional-scale the art
-   layer.
-7. True-black letterbox fills the remainder.
-8. UI text is native-res DOM/type OVER the art — never dithered canvas
-   text, never scaled pixel text for body copy.
-9. Vignette = ordered-dither aperture ON the pixel grid — not a CSS
-   radial-gradient; maps to sanity; never occludes the panel; no
-   sanity number rendered anywhere.
-
-## image laws (owned here)
-
-10. One motivated light source per scene; 30–40% true black.
-11. Hand dither only: no tool gradients, no auto-AA, no mixels, no
-    off-grid rotation/scaling.
-12. CONTOUR: every gameplay mass has a continuous silhouette (dark cut
-    vs light, lit edge vs dark) + a contact shadow.
-13. If it's tappable, it catches the light — rim readable with the
-    outline toggle OFF.
-14. Stillness: ≤2 ambient touches; no idle animation; motion only on
-    declared scares.
-15. Palette: on-master colors only; per-depth base + ONE accent; dice
-    sprites ≥24 logical px with leans drawn physically.
-
-## engine purity, if renderer code (→ ui.md, engine.md)
-
-16. Free tap mutates nothing — deep-clone-proven in a test.
-17. Renderer reads View, computes nothing, never writes state.
+- One motivated light source per scene; 30–40% true black.
+- Hand dither only: no tool gradients, no auto-AA, no mixels, no
+  off-grid rotation/scaling.
+- CONTOUR: every gameplay mass has a continuous silhouette (dark cut
+  vs light, lit edge vs dark) + a contact shadow.
+- If it's tappable, it catches the light — rim readable with the
+  outline toggle OFF.
+- Stillness: ≤2 ambient touches; no idle animation; motion only on
+  declared scares.
+- Palette: on-master colors only; per-depth base + ONE accent.
+- Renderer purity (→ ui.md, engine.md): the free tap mutates nothing,
+  proven by deep clone in a test; the renderer reads View, computes
+  nothing, and never writes state.
