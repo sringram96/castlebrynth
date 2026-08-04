@@ -23,6 +23,7 @@ export {
 export { LADDER, STRAIGHT, ANY_DICE, PAIRISH } from './ladder.js'
 export { THE_OSSUARY, THE_ZEALOT, RUSTED_PLATE, LEECH, BASE_ARMOR } from './items.js'
 export { YOUR_HEALTH_AT_WAKING, BARE_BODY } from './body.js'
+export { DEMO_HAND, DEMO_GOODS, DEMO_ARMOR, DEMO_HEALTH } from './reference.js'
 export {
   THE_GNAWING,
   GNAWING_SCRIPT,
