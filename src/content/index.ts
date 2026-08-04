@@ -9,8 +9,17 @@ export { GRID, AUTHORED_HEIGHT, RENDER, atGrid } from './render.js'
 export type { School } from './palettes.js'
 export { MUTED, NOIR, roomPalette } from './palettes.js'
 export { WAKE } from './plates/wake.js'
-export { PLAIN_POUCH, REFERENCE_POUCH, THE_ORPHAN, HAND_SIZE } from './dice.js'
-export { LADDER, GREAT_STRAIGHT } from './ladder.js'
+export {
+  PLAIN_POUCH,
+  THE_ORPHAN,
+  THE_SISTERS,
+  THE_LEECH,
+  SISTERS_BOND,
+  LEECH_RIDER,
+  HAND_SIZE,
+} from './dice.js'
+export { LADDER, STRAIGHT, ANY_DICE, PAIRISH } from './ladder.js'
+export { THE_OSSUARY, THE_ZEALOT, RUSTED_PLATE, BASE_ARMOR } from './items.js'
 export { CRAWLING_ONE, YOUR_HEALTH_AT_WAKING } from './horrors.js'
 export { BEATS, NOUNS, LOOKS, DOOR_SENSES, END_LINES } from './prose.js'
 export type { VoiceComplaint } from './voice.js'

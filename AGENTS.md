@@ -7,10 +7,10 @@ questions. Every agent file lives in `.claude/agents/`.
 ## The four
 
 ### arithmetic — "is it fair?"
-Owns the numbers: dice math, the combo ladder, brace, power budgets,
+Owns the numbers: dice math, the ladder, the card, armor, power budgets,
 generator winnability, declared odds.
-Law: rules/the-lots.md (arts 45–56, 60), the-world.md (art. 33).
-Test: `reference/the-crawling-one-encounter.md`, turn for turn.
+Law: rules/the-lots.md (arts 41–66), the-world.md (art. 33).
+Test: `reference/castlebrynth-lots-demo.html` (playable spec; fixture re-authoring on the board).
 Never: hidden math, an unpaid power, a silently changed probability.
 
 ### engagement — "is it fun?"
@@ -36,7 +36,7 @@ Never: unresumable state, a hardcoded pixel, content logic in the engine.
 `.claude/rules/` holds 62 numbered articles, cited in tasks as "art. N":
 - **the-world.md** — time, touch, structure, the chain, room grammar
 - **the-room.md** — parallax law, scale, the look, the screen
-- **the-lots.md** — the dice: turn, duel, collection
+- **the-lots.md** — the dice: turn, duel, the card, collection, armor
 - **voice.md** — every player-facing string
 
 Statuses: SETTLED binds. STANDING is inherited from GAME.md, unamended.

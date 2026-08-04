@@ -7,7 +7,18 @@
  * killing the process at any moment loses nothing.
  */
 
-import type { Die, DieId, Hand, Pouch, Talisman } from '../lots/index.js'
+import type {
+  Armor,
+  Card,
+  Die,
+  DieId,
+  Hand,
+  Line,
+  Pouch,
+  Talisman,
+  Wearable,
+  WearableId,
+} from '../lots/index.js'
 
 const unimplemented = (): never => {
   throw new Error('not implemented')
@@ -32,6 +43,13 @@ export interface RunLedger {
   readonly at: RoomVisit
   /** art. 60: assembled from the pouch for this descent. */
   readonly hand: Hand
+  /**
+   * art. 47: armor is a body stat, in force for the descent — the worn
+   * wearables summed, then moved by mercies, wounds, and curses. It burns
+   * with the run; the wearables themselves do not (art. 49).
+   */
+  readonly armor: Armor
+  readonly worn: readonly WearableId[]
   readonly carried: readonly ItemId[]
   /** art. 4: a window open when the app closes resolves as missed. */
   readonly window: OpenWindow | null
@@ -48,7 +66,10 @@ export interface PermanentLedger {
   readonly pouch: Pouch
   /** art. 56: the signature is simply the first die you collect. */
   readonly signature: DieId | null
+  /** art. 53: talismans are keepsakes, and keepsakes are permanent. */
   readonly keepsakes: readonly Talisman[]
+  /** art. 49: wearables are collectible like dice, so they survive death. */
+  readonly wearables: readonly Wearable[]
   /** art. 34: keyed on room and entity identity, never on position. */
   readonly known: readonly Clue[]
   readonly bookOfEnds: readonly EndLine[]
@@ -102,8 +123,19 @@ export interface FightSave {
   readonly horror: string
   readonly horrorHealth: number
   readonly turnNumber: number
-  readonly frozen: readonly DieId[]
+  /** art. 41: *keep* is mid-turn holding. "Brace" has left the vocabulary. */
+  readonly kept: readonly DieId[]
   readonly castingsSpent: number
+  /** art. 63: the card belongs to the fight, so a resume finds it as spent. */
+  readonly card: Card
+  /** art. 45: claims already made this turn, each holding its own dice. */
+  readonly claims: readonly ClaimSave[]
+}
+
+/** One claim, small enough to write down: a line and the dice inside it. */
+export interface ClaimSave {
+  readonly line: Line
+  readonly dice: readonly DieId[]
 }
 
 // ── The rituals ────────────────────────────────────────────────────────
@@ -120,10 +152,14 @@ export function learn(permanent: PermanentLedger, clue: Clue): PermanentLedger {
   return unimplemented()
 }
 
-/** A die or a keepsake crosses from the run to the permanent — dice survive. */
-export function keep(
+/**
+ * A die, a keepsake, or a wearable crosses from the run to the permanent —
+ * the collection survives death (arts 11, 49). Not to be confused with the
+ * turn's *keep*, which only holds dice between castings (art. 41).
+ */
+export function collect(
   permanent: PermanentLedger,
-  taken: Die | Talisman,
+  taken: Die | Talisman | Wearable,
 ): PermanentLedger {
   return unimplemented()
 }

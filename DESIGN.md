@@ -17,7 +17,7 @@ keeps the knowledge. `reference/GAME.md` is the fantasy. The binding law is in
 - **src/room** — the computed-box renderer on the GRID dial; the port of
   `reference/castlebrynth-wake-v3.html`. (arts 13–25)
 - **src/descent** — plays a room: candles, taps, acts, doors. (arts 5–9, 29)
-- **src/lots** — the dice engine: turn, ladder, brace, riders. (arts 41–60)
+- **src/lots** — the dice engine: turn, ladder, the card, armor, riders. (arts 41–66)
 - **src/hinge** — a door that is a fight; the advance; death routing.
   (art. 30)
 - **src/content** — every room, horror, die, and player-facing word, as
@@ -34,8 +34,9 @@ all state client-side.
 - **Blind chains, reseeded every death, provably winnable.** (arts 31–33)
 - **Knowledge attaches to things, not places** — it survives the reseed.
   (arts 10, 34)
-- **The poker duel** — combos only, brace-as-sum, intent first, Yahtzee
-  turns; a full hand cannot whiff. (arts 41–48)
+- **The poker duel, carded** — intent first, keep-and-recast, then
+  multi-combo claims scored sum × tier, each line once per fight;
+  defense is armor from items, not dice. (arts 41–48, 63–66)
 - **Dice are the loot** — shape, riders, bonds, talismans; every power
   declared and budgeted. v1 ships the sockets empty. (arts 49–56, 60)
 - **No battle screen** — a fight is the room with the thing come close.
@@ -71,15 +72,17 @@ Vite + strict TypeScript, no framework, no backend, no state library.
 
 **Stubs** — every export typed, every body `not implemented`:
 - `src/state` — the two branded ledgers, the rituals (`wake`, `learn`,
-  `keep`, `die`, `finish`), the `Vault` port, `snapshot` / `save` /
+  `collect`, `die`, `finish`), the `Vault` port, `snapshot` / `save` /
   `load`. (arts 11, 36)
 - `src/gen` — `deal`, `isWinnable`, `explainWinnability`, the room
   taxonomy, the `Grammar` constraints. (arts 31–39)
 - `src/descent` — the three bands, `look`, `act`, `doors`,
   `chooseDoor`, beats. (arts 5–9, 29)
-- `src/lots` — `Face` with both rider sockets, `Die`, `Pouch`, `Hand`,
-  the turn (`openTurn` / `freeze` / `recast` / `decide`), the duel
-  (`bestCombo` / `harm` / `brace`), the `Ladder`. (arts 41–60)
+- `src/lots` — `Face` with its one rider socket, `Die`, `Wearable`,
+  `Pouch`, `Hand`, the turn (`openTurn` / `keep` / `recast` / `decide`),
+  the duel (`claimable` / `claim` / `disband` / `harm` / `attack`), the
+  card (`freshCard` / `spend` / `unspent`), armor (`armorFrom` /
+  `armorAgainst`), the `Ladder`. (arts 41–65)
 - `src/hinge` — `openFightDoor`, `advance`, `routeTurn`, `routeDeath`.
   (art. 30)
 - `src/content/voice.ts` — `lintVoice`, the only stub in content.
@@ -93,15 +96,17 @@ the reference at GRID 240.
 
 **Content** — the two palette schools, the wake plate (three authored
 numbers, masonry, four props), the render dial, six plain bones and the
-Orphan, the ladder, the Crawling One's intents, the first prose.
+Orphan, the demo's goods (the Sisters, the Leech, the Ossuary, the
+Zealot, the Rusted Plate), the expanded ladder, the Crawling One's
+intents, the first prose.
 
-**Acceptance tests** — 6 files, 22 tests, 14 failing:
+**Acceptance tests** — 6 files, 21 tests, 13 failing:
 | area | what it enforces | state |
 | --- | --- | --- |
 | `state` | kill and restore mid-turn; nothing lost (arts 11, 36) | failing |
 | `gen` | 1000 seeds, every arrangement winnable (arts 32, 33, 36, 38) | failing |
-| `lots` | the Crawling One turn for turn, turn two's brace (arts 41–48) | failing |
-| `lots` | no hand of six or more can whiff (arts 46, 48, 50) | failing |
+| `lots` | the reference fight turn for turn (fixture re-authoring on the board) | failing |
+| `lots` | every hand has a line to claim; an empty card has none (arts 46, 48, 63, 64) | failing |
 | `room` | the same room renders byte-identical twice (arts 13–18, 22–23) | passing |
 | `content` | every player-facing string passes the voice lint | failing |
 
@@ -114,8 +119,74 @@ rules:
   traveler over the light shaft standing nearer than it. The reference's
   order is kept, and the light is arguably atmosphere rather than a
   sprite — but the law does not say so.
-- art. 48 leaves the great straight's multiplier open; ×6 is the placed
-  straw, one above the ×5 a six-long run would earn.
-- art. 46 says a hand below six can whiff. Under sets of 2 and runs of
-  3, five dice cannot whiff either — every five distinct values out of
-  six contain a run. The shortest legal run is the loose screw.
+- resolved by the demo ruling: the straight is ×6 in the expanded
+  ladder (art. 48), and the whiff clause is repealed — unused dice do
+  nothing and the ANY DICE line is the floor (art. 46).
+
+**The amendment of 2026-08-04** — the dice ruling, applied. The law
+moved first; this repo followed it, and nothing here implements the
+mechanics: the nine board tasks starting with "1 · Lots — the turn
+core" still own that.
+
+Law and reference, replaced wholesale: `.claude/rules/the-lots.md` (BRACE
+repealed for armor, multi-combo claims, the card at arts 63–65, the
+whiff clause struck), `.claude/agents/arithmetic.md`,
+`.claude/agents/design.md`, `AGENTS.md`, and this file's prose.
+`reference/the-crawling-one-encounter.md` is now a superseded notice;
+`reference/castlebrynth-lots-demo.html` arrives as the playable spec and
+wins ties about behaviour until the encounter fixture is re-authored.
+
+Tests: `test/lots.crawling-one.test.ts` is gone — renamed to
+`test/lots.fight.test.ts` and gutted to one failing placeholder naming
+the amended articles, because every assertion in it tested turn two's
+BRACE. That is 4 tests replaced by 1.
+
+`test/lots.whiff.test.ts` is gone too, re-authored as
+`test/lots.floor.test.ts`: its subject was the repealed whiff clause,
+and what replaces it is the ANY DICE floor. It still sweeps all 46656
+hands of six, but now asks that every one leaves a line to claim (art.
+46), that 1-2-3-4-5-6 is named the straight and not a run of six (art.
+48), that a composite offers one line and not the lines inside it (art.
+64), that a spent line is not offered twice, and that an empty card
+leaves nothing to claim (art. 63). It fails against the stubs, as it
+should. The suite is 21 tests, 13 failing. No other test was touched.
+
+Types, stubs only: `src/lots` loses the brace-rider socket (art. 51) and
+BRACE from the decision type (now `end-turn` / `flee`), and gains the
+`Line` keys of the expanded ladder, `Claim` with `claimable` / `claim` /
+`disband` / `unused`, `Card` with `freshCard` / `spend` / `unspent`,
+`Armor` with `Wearable` / `armorFrom` / `armorAgainst`, `IntentEffect`
+for sealing, cursing, and corroding (art. 65), and `TalismanSpecies`
+(art. 53). `src/state` carries armor and the worn wearables on the run,
+the wearable collection on the permanent beside the keepsakes, and a
+`FightSave` that now writes down the card and the turn's claims.
+`src/content` holds every multiplier (`ladder.ts`), the demo's goods
+(`items.ts`, `dice.ts`), and `BASE_ARMOR`.
+
+What the amended rules still do not cover, and what the code left open:
+- `AGENTS.md` and this file cite "arts 41–66", but `the-lots.md` ends at
+  art. 65. Either an article is missing from the ruling or the citation
+  is off by one.
+- Base armor has no number. Art. 55 ships the start bare, and the demo's
+  blocked 3 comes from the Rusted Plate, so `BASE_ARMOR` is the straw 0
+  — a bare player blocks nothing. Arithmetic's call, not a stub's.
+- Art. 46 no longer says anything about a hand of six. Pigeonhole is
+  still true of the dice, but it is the card, not the values, that can
+  leave a turn with nothing to claim — so `lots.floor.test.ts` asks
+  about the floor and the card, and the old guarantee is unstated law.
+- The card's refill boundary is "between fights" (art. 63); nothing says
+  what a fled fight leaves behind, or whether an unfinished fight
+  resumed from a `FightSave` keeps its spent lines. The save assumes it
+  does.
+- Art. 52 gives the Sisters a ghost that scores the pair at triple tier
+  on the PAIR line, but not whether the ghost's value is taxed by a
+  cursing intent, nor which line a bond spends when the pair is part of
+  a composite.
+- Art. 53's three talisman species are named, not bounded: nothing says
+  how a value modifier and a ladder modifier stack, or whether two shape
+  triggers can both read one turn.
+- Combo names (`ladder.ts`) and item names reach the player but are not
+  in `everyString()`, so the voice lint cannot see them. That predates
+  the amendment; the amendment adds thirteen more of them.
+- `src/state`'s ritual `keep` is renamed `collect`: art. 41 now spends
+  *keep* on mid-turn holding, and one word could not mean both.
