@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Castlebrynth — dice demo v2</title>
+<style>
+  :root{
+    --ink:#0a0908; --ink2:#141210; --ink3:#1e1b17;
+    --bone:#d8d0c0; --bone-dim:#8a8478; --bone-faint:#55504a;
+    --blood:#a8331f; --frost:#7fa8b8; --wax:#d9b36a; --sister:#9b7fb8;
+    --line:#2b2722;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{margin:0; background:var(--ink); color:var(--bone);
+    font-family:"Iowan Old Style",Palatino,"Palatino Linotype",Georgia,serif;
+    font-size:16px; line-height:1.45; height:100%;}
+  #stage{max-width:430px; margin:0 auto; min-height:100%;
+    display:flex; flex-direction:column; padding:10px 12px 18px;}
+  .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+
+  #word{min-height:84px; padding:6px 2px 10px; border-bottom:1px solid var(--line)}
+  #word .ln{margin:0 0 4px; color:var(--bone-dim); font-size:.95rem}
+  #word .ln:last-child{color:var(--bone)}
+  #word .ln .harm{color:var(--blood)}
+  #word .ln .gain{color:var(--wax)}
+
+  #world{padding:14px 6px 12px; border-bottom:1px solid var(--line); position:relative}
+  #horror{background:var(--ink2); border:1px solid var(--line); padding:14px 12px 12px; position:relative; overflow:hidden}
+  #horror::after{content:""; position:absolute; inset:auto 0 0 0; height:26px; opacity:.5;
+    background-image:repeating-linear-gradient(90deg,#000 0 2px,transparent 2px 4px),
+                     repeating-linear-gradient(0deg,#000 0 2px,transparent 2px 4px);}
+  .eyes{display:flex; gap:26px; justify-content:center; margin:6px 0 10px}
+  .eye{width:10px; height:10px; background:var(--bone); box-shadow:0 0 0 2px var(--ink), 0 0 14px 1px rgba(216,208,192,.35)}
+  #hname{text-align:center; letter-spacing:.35em; font-variant:small-caps; font-size:1.05rem}
+  #hbar{height:4px; background:var(--ink3); margin:10px 18px 6px; position:relative}
+  #hbarfill{position:absolute; inset:0 auto 0 0; background:var(--blood); width:100%}
+  #hhp{text-align:center; font-size:.85rem; color:var(--bone-dim)}
+  #intent{margin-top:10px; text-align:center}
+  #intent b{color:var(--blood); letter-spacing:.05em}
+  #intent .fx{display:block; font-size:.82rem; color:var(--wax); margin-top:2px}
+
+  #tray{flex:1; padding-top:10px; display:flex; flex-direction:column; gap:10px}
+  #php{text-align:center; font-size:.9rem}
+  #php b{color:var(--bone)} #php .low{color:var(--blood)}
+  #offers{min-height:1.2em; font-size:.85rem; color:var(--wax); text-align:center; font-style:italic}
+
+  #dice{display:flex; gap:8px; justify-content:center; flex-wrap:wrap}
+  .die{width:52px; height:52px; background:var(--bone); border:2px solid var(--bone);
+    position:relative; display:grid; grid-template:repeat(3,1fr)/repeat(3,1fr); padding:6px; cursor:pointer;
+    transition:transform .08s ease, opacity .12s ease}
+  .die .pip{width:8px; height:8px; background:var(--ink); border-radius:50%; place-self:center; visibility:hidden}
+  .die[data-v="1"] .p5,.die[data-v="2"] .p1,.die[data-v="2"] .p9,
+  .die[data-v="3"] .p1,.die[data-v="3"] .p5,.die[data-v="3"] .p9,
+  .die[data-v="4"] .p1,.die[data-v="4"] .p3,.die[data-v="4"] .p7,.die[data-v="4"] .p9,
+  .die[data-v="5"] .p1,.die[data-v="5"] .p3,.die[data-v="5"] .p5,.die[data-v="5"] .p7,.die[data-v="5"] .p9,
+  .die[data-v="6"] .p1,.die[data-v="6"] .p3,.die[data-v="6"] .p4,.die[data-v="6"] .p6,.die[data-v="6"] .p7,.die[data-v="6"] .p9{visibility:visible}
+  .die.frozen{background:#b9cdd6; border-color:var(--frost); box-shadow:inset 0 0 0 2px var(--frost)}
+  .die.sel{transform:translateY(-6px); border-color:var(--wax)}
+  .die.incombo{opacity:.92; border-color:var(--blood)}
+  .die.idle-dim{opacity:.45}
+  .die .tag{position:absolute; left:0; right:0; bottom:-16px; text-align:center; font-size:.6rem;
+    letter-spacing:.05em; color:var(--bone-dim); font-family:ui-monospace,monospace; white-space:nowrap; overflow:hidden}
+  .die .mark{position:absolute; top:2px; right:2px; width:7px; height:7px; border-radius:50%}
+  .die.m-sister .mark{background:var(--sister)}
+  .die.m-leech .mark{background:var(--blood)}
+  .die.shake{animation:sh .18s linear 2}
+  @keyframes sh{25%{transform:translateX(-2px) rotate(-2deg)}75%{transform:translateX(2px) rotate(2deg)}}
+  @media (prefers-reduced-motion: reduce){.die.shake{animation:none}.die.sel{transform:none; outline:2px solid var(--wax)}}
+
+  #claims{display:flex; flex-wrap:wrap; gap:6px; justify-content:center; min-height:30px; margin-top:14px}
+  .chip{border:1px solid var(--line); background:var(--ink2); padding:5px 9px; font-size:.8rem; cursor:pointer}
+  .chip b{color:var(--blood)}
+  .chip .x{color:var(--bone-faint); margin-left:6px}
+
+  #actions{display:flex; flex-wrap:wrap; gap:8px; justify-content:center}
+  button{font:inherit; background:var(--ink3); color:var(--bone); border:1px solid var(--bone-faint);
+    padding:11px 16px; letter-spacing:.14em; font-variant:small-caps; cursor:pointer; min-height:44px}
+  button.primary{border-color:var(--bone); background:#241f1a}
+  button.hot{border-color:var(--blood); color:#e6c9c2}
+  button:disabled{opacity:.35; cursor:default}
+  #totals{text-align:center; font-size:.85rem; color:var(--bone-dim); min-height:1.2em}
+  #totals b{color:var(--bone)}
+
+  #cardlbl{text-align:center; font-size:.68rem; letter-spacing:.2em; color:var(--bone-faint);
+    font-variant:small-caps; padding-top:8px; border-top:1px solid var(--line)}
+  #card{display:flex; flex-wrap:wrap; gap:5px; justify-content:center; padding-top:6px}
+  .lineC{font-family:ui-monospace,monospace; font-size:.68rem; letter-spacing:.05em;
+    border:1px solid var(--line); padding:3px 6px; color:var(--bone-dim)}
+  .lineC.spent{text-decoration:line-through; color:var(--bone-faint); border-style:dashed}
+  .lineC.sealed{color:var(--wax); border-color:var(--wax)}
+  #trinkets{display:flex; flex-wrap:wrap; gap:6px; justify-content:center}
+  .trk{font-size:.72rem; border:1px solid var(--line); padding:4px 8px; color:var(--bone-dim); cursor:pointer}
+  .trk i{font-style:normal; color:var(--wax)}
+  .trk.b i{color:var(--sister)} .trk.r i{color:var(--blood)} .trk.a i{color:var(--frost)}
+
+  .veil{position:fixed; inset:0; background:rgba(6,5,4,.94); display:none;
+    align-items:center; justify-content:center; padding:24px; z-index:9}
+  .veil.on{display:flex}
+  .panel{max-width:380px; border:1px solid var(--line); background:var(--ink2); padding:22px 20px}
+  .panel h2{font-variant:small-caps; letter-spacing:.3em; font-weight:500; margin:0 0 12px; text-align:center}
+  .panel p{color:var(--bone-dim); font-size:.92rem; margin:0 0 10px}
+  .panel p b{color:var(--bone); font-weight:600}
+  .panel .center{text-align:center; margin-top:16px}
+  #help{position:absolute; top:8px; right:10px; border:1px solid var(--line); width:30px; height:30px;
+    min-height:30px; padding:0; color:var(--bone-dim)}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="word"></div>
+
+  <div id="world">
+    <button id="help">?</button>
+    <div id="horror">
+      <div class="eyes"><div class="eye"></div><div class="eye"></div></div>
+      <div id="hname">the gnawing</div>
+      <div id="hbar"><div id="hbarfill"></div></div>
+      <div id="hhp" class="mono"></div>
+      <div id="intent"></div>
+    </div>
+  </div>
+
+  <div id="tray">
+    <div id="php" class="mono"></div>
+    <div id="offers"></div>
+    <div id="dice"></div>
+    <div id="claims"></div>
+    <div id="totals" class="mono"></div>
+    <div id="actions"></div>
+    <div id="trinkets">
+      <div class="trk b" data-t="sisters"><i>●</i> the sisters</div>
+      <div class="trk r" data-t="leech"><i>●</i> the leech</div>
+      <div class="trk" data-t="ossuary"><i>◆</i> the ossuary</div>
+      <div class="trk" data-t="zealot"><i>◆</i> the zealot</div>
+      <div class="trk a" data-t="plate"><i>■</i> rusted plate</div>
+    </div>
+    <div id="cardlbl">combos — each once per fight</div>
+    <div id="card"></div>
+  </div>
+</div>
+
+<div class="veil" id="rules">
+  <div class="panel">
+    <h2>how to play</h2>
+    <p><b>1 · See its attack.</b> The enemy always shows its next attack before you roll.</p>
+    <p><b>2 · Roll 6 dice.</b> Tap dice to keep them, then re-roll the rest once.</p>
+    <p><b>3 · Make combos.</b> Select dice and attack — pair, run, full house, two pair... You can claim several combos in one turn; each die counts once. Dice that fit nothing go unused.</p>
+    <p><b>4 · Each combo works once per fight.</b> The list at the bottom crosses off as you spend it.</p>
+    <p><b>5 · Your armor blocks 3</b> of every attack, automatically. Items are listed at the bottom — tap one to see what it does.</p>
+    <div class="center"><button id="rulesx" class="primary">start</button></div>
+  </div>
+</div>
+
+<div class="veil" id="endveil">
+  <div class="panel">
+    <h2 id="endtitle"></h2>
+    <p id="endtext"></p>
+    <div class="center"><button id="again" class="primary">try again</button></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* Straw numbers throughout — multipliers, health, armor, intents are all tuning. */
+
+const LINES = {
+  PAIR:      {label:"pair",        mult:2},
+  TWOPAIR:   {label:"two pair",    mult:3},
+  TRIPLE:    {label:"triple",      mult:3},
+  FULLHOUSE: {label:"full house",  mult:4},
+  THREEPAIR: {label:"three pairs", mult:4},
+  QUAD:      {label:"quad",        mult:4},
+  DBLTRIPLE: {label:"two triples", mult:5},
+  QUINT:     {label:"quint",       mult:5},
+  RUN3:      {label:"run of 3",    mult:2},
+  RUN4:      {label:"run of 4",    mult:3},
+  RUN5:      {label:"run of 5",    mult:4},
+  STRAIGHT:  {label:"straight",    mult:6},
+  ALMS:      {label:"any dice",    mult:1},
+};
+const PAIRISH = new Set(["PAIR","TWOPAIR","FULLHOUSE","THREEPAIR"]);
+const ARMOR = 3;
+
+const INTENTS = [
+  {n:7,  fx:null,     say:"It swipes at you."},
+  {n:6,  fx:"seal",   say:"It jams your pair combos.",  fxs:"pair-type combos locked this turn"},
+  {n:5,  fx:"covet",  say:"It curses your sixes.",      fxs:"sixes count as 0 in attacks this turn"},
+  {n:9,  fx:"corrode",say:"It spits something corrosive.", fxs:"your armor doesn't work this turn"},
+  {n:16, fx:null,     say:"It takes a huge breath — big attack coming."},
+  {n:8,  fx:null,     say:"It attacks again."},
+];
+
+const S = {};
+function reset(){
+  S.player = 26; S.pmax = 26;
+  S.horror = 150; S.hmax = 150;
+  S.turn = 0; S.loop = 0; S.intentIdx = 0;
+  S.phase = "pre"; S.casts = 0;
+  S.dice = [0,1,2,3,4,5].map(i=>({id:i, v:0, frozen:false, sel:false, zone:"hand", tag:null,
+    mark: i===1||i===2 ? "sister" : (i===5 ? "leech" : null)}));
+  S.claims = [];
+  S.card = Object.fromEntries(Object.keys(LINES).map(k=>[k,false]));
+  S.log = ["You have 6 dice, armor 3, and a combo list. Each combo works once per fight.","Tap ? any time for how to play."];
+  render();
+}
+
+const $ = s=>document.querySelector(s);
+const el=(t,c,h)=>{const e=document.createElement(t); if(c)e.className=c; if(h!=null)e.innerHTML=h; return e;};
+const intent = ()=>INTENTS[S.intentIdx];
+const idmg = ()=>intent().n + S.loop*3;
+const armorNow = ()=>intent().fx==="corrode" ? 0 : ARMOR;
+function say(t,cls){ S.log.push(cls?`<span class="${cls}">${t}</span>`:t); if(S.log.length>40)S.log.shift(); }
+
+/* ---------- rendering ---------- */
+function render(){
+  const w=$("#word"); w.innerHTML="";
+  S.log.slice(-3).forEach(t=>w.appendChild(el("p","ln",t)));
+
+  $("#hbarfill").style.width=(100*S.horror/S.hmax)+"%";
+  $("#hhp").textContent=S.horror+" / "+S.hmax;
+  const it=intent();
+  $("#intent").innerHTML=`next attack: <b>${idmg()} damage</b>`+(it.fxs?`<span class="fx">${it.fxs}</span>`:"");
+
+  $("#php").innerHTML=`you <b class="${S.player<=8?'low':''}">${S.player}</b> / ${S.pmax} · armor ${armorNow()}${intent().fx==="corrode"?" (corroded)":""}`;
+
+  const d=$("#dice"); d.innerHTML="";
+  S.dice.forEach(die=>{
+    const b=el("div","die"+(die.frozen?" frozen":"")+(die.sel?" sel":"")
+      +(die.zone==="combo"?" incombo":"")
+      +(die.mark==="sister"?" m-sister":"")+(die.mark==="leech"?" m-leech":""));
+    b.dataset.v=die.v||"";
+    for(let i=1;i<=9;i++) b.appendChild(el("span","pip p"+i));
+    if(die.mark) b.appendChild(el("span","mark"));
+    b.appendChild(el("span","tag", die.zone==="combo"?die.tag:(die.frozen?"kept":"")));
+    b.onclick=()=>tapDie(die);
+    d.appendChild(b);
+  });
+
+  const c=$("#claims"); c.innerHTML="";
+  S.claims.forEach((cl,i)=>{
+    const ch=el("div","chip",`${cl.name} <b>${cl.score}</b><span class="x">✕</span>`);
+    ch.onclick=()=>disband(i);
+    c.appendChild(ch);
+  });
+
+  $("#offers").textContent = S.phase==="partition" ? offersText()
+    : (S.phase==="freeze" ? "Tap dice to KEEP, then re-roll the rest — or keep all." : "");
+  if(S.phase==="partition"){
+    const take=Math.max(0, idmg()-armorNow());
+    $("#totals").innerHTML=`attack <b>${previewHarm()}</b> · you'll take <b>${take}</b> (${idmg()} − armor ${armorNow()}) · unused ${S.dice.filter(x=>x.zone==="hand").length}`;
+  } else $("#totals").innerHTML="";
+
+  const a=$("#actions"); a.innerHTML="";
+  if(S.phase==="pre"){
+    a.appendChild(btn("roll dice","primary",()=>cast(true)));
+  } else if(S.phase==="freeze"){
+    a.appendChild(btn("re-roll the rest","primary",()=>cast(false)));
+    a.appendChild(btn("keep all","",()=>{S.phase="partition"; clearSel(); say("You kept all your dice."); render();}));
+  } else if(S.phase==="partition"){
+    claimButtons(a);
+    a.appendChild(btn("end turn","hot",resolve));
+    a.appendChild(btn("run","",flee));
+  }
+
+  const cd=$("#card"); cd.innerHTML="";
+  const sealed = intent().fx==="seal" && S.phase!=="pre";
+  Object.entries(LINES).forEach(([k,L])=>{
+    const isSealed = sealed && PAIRISH.has(k) && !S.card[k];
+    cd.appendChild(el("span","lineC"+(S.card[k]?" spent":"")+(isSealed?" sealed":""),`${L.label}×${L.mult}`));
+  });
+}
+function btn(t,cls,fn,dis){ const b=el("button",cls,t); b.onclick=fn; if(dis)b.disabled=true; return b; }
+
+/* ---------- phases ---------- */
+function cast(first){
+  S.dice.forEach(d=>{ if(first||!d.frozen){ d.v=1+Math.floor(Math.random()*6); } });
+  document.querySelectorAll(".die").forEach(n=>n.classList.add("shake"));
+  if(first){ S.casts=1; S.phase="freeze"; S.turn++; say(`Turn ${S.turn}. You rolled.`); }
+  else { S.casts=2; S.phase="partition"; clearSel(); say("Re-rolled. Select dice and make combos."); }
+  render();
+}
+function tapDie(d){
+  if(S.phase==="freeze"){ d.frozen=!d.frozen; }
+  else if(S.phase==="partition"){ if(d.zone!=="hand")return; d.sel=!d.sel; }
+  render();
+}
+function clearSel(){ S.dice.forEach(d=>{d.sel=false; d.frozen=false;}); }
+function home(id){ const d=S.dice.find(x=>x.id===id); d.zone="hand"; d.tag=null; }
+function disband(i){ S.claims[i].ids.forEach(home); S.card[S.claims[i].key]=false; S.claims.splice(i,1); render(); }
+
+/* ---------- combos ---------- */
+function selDice(){ return S.dice.filter(d=>d.sel); }
+function shapeOf(sel){
+  const vs=sel.map(d=>d.v);
+  const counts={}; vs.forEach(v=>counts[v]=(counts[v]||0)+1);
+  const sig=Object.values(counts).sort((a,b)=>b-a).join("");
+  const distinct=new Set(vs).size===vs.length;
+  const sorted=[...vs].sort((a,b)=>a-b);
+  const consec=distinct && sorted.every((v,i)=>i===0||v===sorted[i-1]+1);
+  return {sig, consec, n:sel.length};
+}
+function classify(sel){
+  const out=[]; if(!sel.length) return out;
+  const {sig, consec, n}=shapeOf(sel);
+  const add=(key,name,ghost)=>{ if(!S.card[key]) out.push({key, name:name||LINES[key].label, ghost:!!ghost}); };
+  if(n===2&&sig==="2"){
+    const sis=sel.every(d=>d.mark==="sister");
+    if(sis) add("PAIR","the sisters",true); else add("PAIR");
+  }
+  if(n===3&&sig==="3") add("TRIPLE");
+  if(n===4&&sig==="4") add("QUAD");
+  if(n===5&&sig==="5") add("QUINT");
+  if(n===4&&sig==="22") add("TWOPAIR");
+  if(n===5&&sig==="32") add("FULLHOUSE");
+  if(n===6&&sig==="222") add("THREEPAIR");
+  if(n===6&&sig==="33") add("DBLTRIPLE");
+  if(consec&&n===3) add("RUN3");
+  if(consec&&n===4) add("RUN4");
+  if(consec&&n===5) add("RUN5");
+  if(consec&&n===6) add("STRAIGHT");
+  add("ALMS");
+  return out;
+}
+function comboSum(sel, ghost){
+  let s=0;
+  sel.forEach(d=>{
+    let v=d.v;
+    if(intent().fx==="covet"&&v===6) v=0;
+    else if(v===6) v=12;                 /* the ossuary */
+    s+=v;
+  });
+  if(ghost){ let g=sel[0].v; if(intent().fx==="covet"&&g===6)g=0; else if(g===6)g=12; s+=g; }
+  return s;
+}
+function scoreFor(opt, sel){ return comboSum(sel,opt.ghost)*(opt.ghost?3:LINES[opt.key].mult); }
+function claimButtons(a){
+  const sel=selDice();
+  const sealed=intent().fx==="seal";
+  classify(sel).forEach(opt=>{
+    if(sealed&&PAIRISH.has(opt.key)){ a.appendChild(btn(`${opt.name} — locked`,"",null,true)); return; }
+    const sc=scoreFor(opt,sel);
+    a.appendChild(btn(`attack: ${opt.name} ×${opt.ghost?3:LINES[opt.key].mult} = ${sc}`,"primary",()=>{
+      S.card[opt.key]=true;
+      sel.forEach(d=>{d.zone="combo"; d.sel=false; d.tag=opt.name;});
+      S.claims.push({name:opt.name, key:opt.key, ids:sel.map(d=>d.id), score:sc,
+        leech: sel.some(d=>d.mark==="leech"&&d.v===6)});
+      say(`Attack ready: ${opt.name} = ${sc} damage.`);
+      render();
+    }));
+  });
+}
+function offersText(){
+  const hand=S.dice.filter(d=>d.zone==="hand").map(d=>d.v);
+  const counts={}; hand.forEach(v=>counts[v]=(counts[v]||0)+1);
+  const cs=Object.values(counts);
+  const pairsN=cs.filter(c=>c>=2).length, triplesN=cs.filter(c=>c>=3).length;
+  const names=new Set();
+  const sealed=intent().fx==="seal";
+  const ok=k=>!S.card[k]&&!(sealed&&PAIRISH.has(k));
+  if(cs.some(c=>c>=2)&&ok("PAIR"))names.add("pair");
+  if(cs.some(c=>c>=3)&&ok("TRIPLE"))names.add("triple");
+  if(cs.some(c=>c>=4)&&ok("QUAD"))names.add("quad");
+  if(cs.some(c=>c>=5)&&ok("QUINT"))names.add("quint");
+  if(pairsN>=2&&ok("TWOPAIR"))names.add("two pair");
+  if(triplesN>=1&&pairsN>=2&&ok("FULLHOUSE"))names.add("full house");
+  if(pairsN>=3&&ok("THREEPAIR"))names.add("three pairs");
+  if(triplesN>=2&&ok("DBLTRIPLE"))names.add("two triples");
+  const u=[...new Set(hand)].sort((a,b)=>a-b);
+  let best=1,run=1;
+  for(let i=1;i<u.length;i++){ run=u[i]===u[i-1]+1?run+1:1; best=Math.max(best,run); }
+  if(best>=3&&ok("RUN3"))names.add("run of 3");
+  if(best>=4&&ok("RUN4"))names.add("run of 4");
+  if(best>=5&&ok("RUN5"))names.add("run of 5");
+  if(best>=6&&ok("STRAIGHT"))names.add("straight");
+  return names.size? "Combos you can make: "+[...names].join(", ")
+    : "No combos available — end turn, or use 'any dice'.";
+}
+
+/* ---------- resolution ---------- */
+function previewHarm(){
+  let t=S.claims.reduce((s,c)=>s+c.score,0);
+  if(t>0&&S.dice.every(d=>d.zone==="combo")) t*=2;   /* the zealot */
+  return t;
+}
+function resolve(){
+  let total=S.claims.reduce((s,c)=>s+c.score,0);
+  const zeal=total>0&&S.dice.every(d=>d.zone==="combo");
+  if(zeal){ total*=2; say("Zealot bonus: all 6 dice in combos — attack doubled.","gain"); }
+  if(total>0){ S.horror=Math.max(0,S.horror-total); say(`You deal <span class="harm">${total} damage</span>.`); }
+  else say("No attack this turn.");
+  S.claims.forEach(c=>{ if(c.leech){ S.player=Math.min(S.pmax,S.player+2); say(`<span class="gain">Leech bonus: you heal 2.</span>`); }});
+  if(S.horror<=0) return win();
+
+  const raw=idmg(), arm=armorNow(), through=Math.max(0,raw-arm);
+  if(arm>0) say(`Armor blocks ${Math.min(arm,raw)}.`);
+  else say("Armor corroded — blocks nothing.");
+  if(through>0){ S.player-=through; say(`You take <span class="harm">${through} damage</span>.`); }
+  else say("You take 0 damage.");
+  if(S.player<=0) return lose();
+
+  S.intentIdx++;
+  if(S.intentIdx>=INTENTS.length){ S.intentIdx=0; S.loop++; say(`<span class="harm">It gets stronger: its attacks now deal +${S.loop*3}.</span>`); }
+  S.dice.forEach(d=>{ d.zone="hand"; d.tag=null; d.frozen=false; d.sel=false; });
+  S.claims=[]; S.phase="pre";
+  say(intent().say);
+  render();
+}
+function flee(){
+  say("You ran. Fight over.");
+  end("you escaped","In the real game you keep your dice, your items, and everything you learned about its moves.");
+}
+function win(){ end("you win","You beat it with "+S.player+" health left, using "+spentCount()+" combo slots. The door opens."); }
+function lose(){ end("you died","In the real game your dice and items survive — and next time you already know its moves."); }
+function spentCount(){ return Object.values(S.card).filter(Boolean).length; }
+function end(t,txt){ $("#endtitle").textContent=t; $("#endtext").textContent=txt; $("#endveil").classList.add("on"); }
+
+/* ---------- items ---------- */
+const LORE={
+  sisters:"THE SISTERS (bond) — the 2 purple-marked dice. Attack with them as a matching pair and a ghost copy joins in: the pair scores like a triple (×3). Uses your Pair slot.",
+  leech:"THE LEECH (rider) — the red-marked die. If it shows 6 and you use it in an attack, you heal 2. Keeping it or leaving it unused does nothing.",
+  ossuary:"THE OSSUARY (talisman) — every 6 counts as 12 when adding up an attack.",
+  zealot:"THE ZEALOT (talisman) — if all 6 dice end up in combos (none unused), your total attack is doubled.",
+  plate:"RUSTED PLATE (armor) — blocks 3 of every attack, automatically. Corrosive attacks ignore it."};
+document.querySelectorAll(".trk").forEach(t=>t.onclick=()=>{ say(`<span class="gain">${LORE[t.dataset.t]}</span>`); render(); });
+
+$("#help").onclick=()=>$("#rules").classList.add("on");
+$("#rulesx").onclick=()=>$("#rules").classList.remove("on");
+$("#again").onclick=()=>{ $("#endveil").classList.remove("on"); reset(); };
+
+reset();
+$("#rules").classList.add("on");
+</script>
+</body>
+</html>

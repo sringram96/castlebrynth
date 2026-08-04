@@ -1,11 +1,14 @@
 /**
- * src/lots — the dice engine: turn, ladder, brace, riders (arts 41–60).
+ * src/lots — the dice engine: turn, ladder, claims, the card, armor, riders
+ * (arts 41–65, as amended by the demo ruling of 2026-08-04).
  *
- * Stubs only. `reference/the-crawling-one-encounter.md` is the executable
- * truth this module owes: turn for turn, including turn two's brace.
+ * Stubs only. `reference/castlebrynth-lots-demo.html` is the playable spec
+ * this module owes until the encounter fixture is re-authored; where prose
+ * and the demo disagree about behaviour, the demo wins.
  *
- * No tuning number lives here. The ladder's multipliers, the hand's size,
- * every horror's intent and every die's faces arrive from `src/content`.
+ * No tuning number lives here. Shapes are law and live here; the ladder's
+ * multipliers, the hand's size, armor values, every horror's intent and
+ * every die's faces arrive from `src/content` (art. 48).
  */
 
 const unimplemented = (): never => {
@@ -28,33 +31,63 @@ declare const bondBrand: unique symbol
 export type BondId = string & { readonly [bondBrand]: 'bond' }
 declare const talismanBrand: unique symbol
 export type TalismanId = string & { readonly [talismanBrand]: 'talisman' }
+declare const wearableBrand: unique symbol
+export type WearableId = string & { readonly [wearableBrand]: 'wearable' }
 
 /**
- * art. 51: the face schema — a value, an optional throw-rider, an optional
- * brace-rider. Riders fire only when the face is used; a frozen face fires
- * nothing; passive faces are banned. v1 ships every rider empty (art. 55)
- * and the sockets typed anyway.
+ * art. 51 (amended): the face schema — a value and an optional rider. The
+ * rider fires only when its face is spent in a claimed combo; kept or unused
+ * faces fire nothing; passive faces are banned. The brace-rider socket is
+ * repealed with art. 47. v1 ships every rider empty (art. 55) and the socket
+ * typed anyway.
  */
 export interface Face {
   readonly value: Value
-  readonly throwRider?: RiderId
-  readonly braceRider?: RiderId
+  readonly rider?: RiderId
 }
 
-/** art. 49: dice are collectible on four axes — shape, riders, bonds, talismans. */
+/**
+ * art. 49 (amended): dice and their company are collectible on five axes —
+ * shape, riders, bonds, talismans, and wearables.
+ */
 export interface Die {
   readonly id: DieId
   /** How many faces the body has: 4, 6, 8, 20 — free (art. 50). */
   readonly body: number
   /** Exactly `body` faces, each declaring its value on inspect (art. 54). */
   readonly faces: readonly Face[]
-  /** art. 52: bonds trigger when both halves are used at equal value. */
+  /** art. 52: bonds trigger when both halves are spent in the same claim. */
   readonly bond?: BondId
 }
 
-/** art. 53: talismans are keepsakes outside the hand that upgrade the ladder. */
+/**
+ * art. 53: talismans (never "jokers") upgrade scoring from outside the hand,
+ * in three species — value modifiers, ladder modifiers, and shape triggers
+ * that read the whole turn. They are keepsakes on the permanent ledger.
+ */
+export type TalismanSpecies = 'value' | 'ladder' | 'shape'
+
 export interface Talisman {
   readonly id: TalismanId
+  readonly species: TalismanSpecies
+}
+
+/**
+ * art. 47 (amended): defense is a body stat — armor, granted by items and
+ * mercies, automatically blocking its value from every attack. A wearable is
+ * where that value comes from; art. 49 makes it collectible like a die.
+ */
+export interface Wearable {
+  readonly id: WearableId
+  /** How much of every attack it blocks. Tuning, so it is authored (art. 48). */
+  readonly armor: number
+}
+
+/** art. 47: the stat itself, once the worn wearables and mercies are summed. */
+export type Armor = number
+
+export function armorFrom(worn: readonly Wearable[]): Armor {
+  return unimplemented()
 }
 
 /** art. 60: the pouch is the collection, on the permanent ledger. */
@@ -79,31 +112,134 @@ export function inspect(die: Die): readonly Face[] {
   return unimplemented()
 }
 
+// ── The ladder & the card ──────────────────────────────────────────────
+
+/**
+ * art. 48 (amended): the ladder, expanded — sets, runs, composites, and the
+ * ANY DICE floor. The shapes are law and are named here; every multiplier is
+ * tuning and lives in content.
+ */
+export type Line =
+  | 'pair'
+  | 'two-pair'
+  | 'triple'
+  | 'full-house'
+  | 'three-pairs'
+  | 'quad'
+  | 'two-triples'
+  | 'quint'
+  | 'run-3'
+  | 'run-4'
+  | 'run-5'
+  | 'straight'
+  | 'any-dice'
+
+/** Every line of the ladder, in ascending order of what it asks of a hand. */
+export const LINES: readonly Line[] = [
+  'pair',
+  'two-pair',
+  'triple',
+  'full-house',
+  'three-pairs',
+  'quad',
+  'two-triples',
+  'quint',
+  'run-3',
+  'run-4',
+  'run-5',
+  'straight',
+  'any-dice',
+]
+
+/** art. 45: harm is sum × tier. The multiplier is content's; the shape is not. */
+export interface Tier {
+  readonly name: string
+  readonly multiplier: number
+}
+
+/** The ladder is authored: every number in it is tuning (art. 48). */
+export type Ladder = Readonly<Record<Line, Tier>>
+
+/**
+ * art. 63: the card — every line claimable once per fight, refilling between
+ * fights. `true` is spent. An empty card leaves only armor and flight.
+ */
+export type Card = Readonly<Record<Line, boolean>>
+
+/** art. 63: the card refills between fights, never within one. */
+export function freshCard(): Card {
+  return unimplemented()
+}
+
+export function spend(card: Card, line: Line): Card {
+  return unimplemented()
+}
+
+/** art. 63: what is left to spend — the fight's fuse, seen at a glance. */
+export function unspent(card: Card): readonly Line[] {
+  return unimplemented()
+}
+
 // ── The turn ───────────────────────────────────────────────────────────
 
-/** art. 58: a declared verb + number + optional rider. Taxonomy is content. */
+/**
+ * art. 65: an intent may attack the plan, not just the body — sealing lines,
+ * cursing a value, corroding armor. Each is declared on the intent like any
+ * number (art. 58); which horror declares which is content, not law.
+ */
+export type IntentEffect =
+  | { readonly kind: 'seal'; readonly lines: readonly Line[] }
+  | { readonly kind: 'curse'; readonly value: Value }
+  | { readonly kind: 'corrode' }
+
+/** art. 58: a declared verb + number + optional effect. Taxonomy is content. */
 export interface Intent {
   readonly verb: string
   readonly amount: number
-  readonly rider?: string
+  readonly effect?: IntentEffect
+}
+
+/** art. 65: which lines this turn's intent has sealed shut. */
+export function sealed(intent: Intent): readonly Line[] {
+  return unimplemented()
+}
+
+/** art. 47: armor blocks its value from every attack, unless corroded. */
+export function armorAgainst(intent: Intent, armor: Armor): Armor {
+  return unimplemented()
 }
 
 /** One die as it landed, and whether it is being kept mid-turn (art. 41). */
 export interface Landed {
   readonly die: DieId
   readonly face: Face
-  /** *Freeze* is mid-turn keeping. It is never the word for BRACE (art. 41). */
-  readonly frozen: boolean
+  /** *Keep* is mid-turn holding. "Brace" has left the vocabulary (art. 41). */
+  readonly kept: boolean
 }
 
 export type Casting = readonly Landed[]
 
-/** art. 41: THROW, BRACE, or FLEE — one decision, after two castings. */
-export type Decision = 'throw' | 'brace' | 'flee'
+/**
+ * art. 45 (amended): one combo, claimed. A turn may hold several; each die is
+ * spent in at most one of them.
+ */
+export interface Claim {
+  readonly line: Line
+  readonly dice: readonly Landed[]
+  readonly sum: number
+  readonly tier: Tier
+}
+
+/**
+ * art. 41 (amended): the THROW / BRACE / FLEE trio is repealed. Attacking is
+ * claiming, and claims are made before the turn ends; the decision left is
+ * whether to end the turn or to flee, and FLEE is always offered.
+ */
+export type Decision = 'end-turn' | 'flee'
 
 /**
  * A turn in flight. art. 42: the intent is visible from the top, before the
- * first casting, so freezing is planning.
+ * first casting, so keeping is planning.
  */
 export interface Turn {
   readonly intent: Intent
@@ -111,6 +247,10 @@ export interface Turn {
   readonly castings: readonly Casting[]
   /** art. 43: two are free; a third is merchandise, never a default. */
   readonly castingsAllowed: number
+  /** art. 45: what has been claimed so far this turn, in claiming order. */
+  readonly claims: readonly Claim[]
+  /** art. 63: the fight's card as this turn has spent it. */
+  readonly card: Card
 }
 
 /** A source of chance. Seeded, because a run is seeded at waking (art. 36). */
@@ -118,11 +258,12 @@ export interface Lot {
   next(): number
 }
 
-export function openTurn(hand: Hand, intent: Intent, lot: Lot): Turn {
+export function openTurn(hand: Hand, intent: Intent, card: Card, lot: Lot): Turn {
   return unimplemented()
 }
 
-export function freeze(turn: Turn, dice: readonly DieId[]): Turn {
+/** art. 41: *keep* is mid-turn holding, between the two castings. */
+export function keep(turn: Turn, dice: readonly DieId[]): Turn {
   return unimplemented()
 }
 
@@ -130,64 +271,68 @@ export function recast(turn: Turn, lot: Lot): Turn {
   return unimplemented()
 }
 
-// ── The duel ───────────────────────────────────────────────────────────
-
-export type ComboKind = 'set' | 'run' | 'great-straight'
-
-/** art. 45: dice are numbered; combos are sets and runs; harm = sum × tier. */
-export interface Combo {
-  readonly kind: ComboKind
-  readonly faces: readonly Landed[]
-  readonly sum: number
-  readonly tier: Tier
-}
-
-/** art. 48: sets ×count; runs ×(length−1); the great straight its own tier. */
-export interface Tier {
-  readonly name: string
-  readonly multiplier: number
-}
-
-/** The ladder is authored: all its numbers are tuning, all in content (art. 48). */
-export interface Ladder {
-  set(count: number): Tier
-  run(length: number): Tier
-  readonly greatStraight: Tier
-}
+// ── The claims ─────────────────────────────────────────────────────────
 
 /**
- * art. 46: combos only — no set, no run, no THROW this turn. At six dice or
- * more a hand cannot whiff; below six it can, and that is the true wound.
+ * art. 63: which lines this selection could claim — unspent, unsealed, and
+ * matching the shape the dice make. art. 64: a composite offers one line, not
+ * the simple lines it contains.
  */
-export function bestCombo(faces: Casting, ladder: Ladder): Combo | null {
-  return unimplemented()
-}
-
-export function harm(combo: Combo): number {
+export function claimable(turn: Turn, dice: readonly DieId[], ladder: Ladder): readonly Line[] {
   return unimplemented()
 }
 
 /**
- * art. 47: BRACE is valued — the committed dice absorb their summed value.
- * Not "eats one blow": the dice had to be there.
+ * art. 63: claiming spends the line for the rest of the fight. art. 45: the
+ * dice go with it, and cannot be spent in a second claim this turn.
  */
-export function brace(committed: Casting): number {
+export function claim(
+  turn: Turn,
+  dice: readonly DieId[],
+  line: Line,
+  ladder: Ladder,
+): Turn {
   return unimplemented()
 }
 
-/** What a decision did, and what the intent did back. */
+/** Undo, before the turn ends: the dice come home and the line refills. */
+export function disband(turn: Turn, line: Line): Turn {
+  return unimplemented()
+}
+
+/** art. 45: dice that fit nothing go unused and do nothing. */
+export function unused(turn: Turn): Casting {
+  return unimplemented()
+}
+
+/** art. 45: harm = sum × tier. Nothing else multiplies a single claim. */
+export function harm(claim: Claim): number {
+  return unimplemented()
+}
+
+/**
+ * The turn's whole attack: every claim summed, then the talismans that read
+ * the whole turn rather than one claim (art. 53).
+ */
+export function attack(turn: Turn, talismans: readonly Talisman[]): number {
+  return unimplemented()
+}
+
+/** What the turn did, and what the intent did back. */
 export interface Resolution {
   readonly decision: Decision
   readonly harmDealt: number
   readonly harmTaken: number
+  /** art. 63: the lines this turn burned off the card. */
+  readonly linesSpent: readonly Line[]
   readonly fled: boolean
 }
 
 export function decide(
   turn: Turn,
   decision: Decision,
-  committed: readonly DieId[],
-  ladder: Ladder,
+  armor: Armor,
+  talismans: readonly Talisman[],
 ): Resolution {
   return unimplemented()
 }
@@ -197,7 +342,7 @@ export function decide(
 export interface Horror {
   readonly id: string
   readonly health: number
-  /** art. 57: the health and the intent sit at the top of the frame. */
+  /** art. 57: the health and the next attack sit at the top of the frame. */
   intentFor(turnNumber: number): Intent
 }
 
@@ -205,11 +350,21 @@ export interface Fight {
   readonly horror: Horror
   readonly horrorHealth: number
   readonly yourHealth: number
+  /** art. 47: the stat in force, before this turn's intent corrodes it. */
+  readonly armor: Armor
+  /** art. 63: one card per fight, refilled at the door. */
+  readonly card: Card
   readonly turnNumber: number
   readonly turn: Turn
 }
 
-export function openFight(horror: Horror, hand: Hand, yourHealth: number, lot: Lot): Fight {
+export function openFight(
+  horror: Horror,
+  hand: Hand,
+  yourHealth: number,
+  armor: Armor,
+  lot: Lot,
+): Fight {
   return unimplemented()
 }
 
