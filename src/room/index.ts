@@ -25,8 +25,8 @@ export type { Framebuffer } from './framebuffer.js'
 export { framebuffer } from './framebuffer.js'
 export type { Brush, Prop, RoomPalette, Scene, SurfaceShaders, SurfaceId } from './scene.js'
 export { Surface } from './scene.js'
-export type { Projected, RoomShape, View } from './view.js'
-export { viewOf } from './view.js'
+export type { MarkRect, Projected, RoomShape, View, WorldMark } from './view.js'
+export { markRect, viewOf } from './view.js'
 
 /** One rendered room: the pixels, and the buffers that explain them. */
 export interface RenderedRoom {
@@ -50,6 +50,23 @@ export function renderRoom(scene: Scene, config: RenderConfig): RenderedRoom {
   // and the reference wins ties about intent.
   for (const prop of scene.props(view)) prop.paint(brush)
   return { view, frame: cast.target, surface: cast.surface, depth: cast.depth }
+}
+
+/**
+ * The same room with more props standing in it, without casting the box
+ * again. art. 17 makes a rendered box reusable forever, and art. 28 wants
+ * motions that matter — the advance is one, and it cannot cost a per-pixel
+ * cast per step. The cast frame is left untouched; the copy is painted.
+ */
+export function overpaint(room: RenderedRoom, props: readonly Prop[]): Framebuffer {
+  const copy: Framebuffer = {
+    width: room.frame.width,
+    height: room.frame.height,
+    pixels: new Uint8ClampedArray(room.frame.pixels),
+  }
+  const brush = brushOf(room.view, copy, room.depth)
+  for (const prop of props) prop.paint(brush)
+  return copy
 }
 
 /** True when a plate declares its props far to near, as art. 19 asks. */

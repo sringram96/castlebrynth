@@ -15,6 +15,13 @@ export const GRID = 240
  */
 export const AUTHORED_HEIGHT = 260
 
+/**
+ * The grid every sprite in `plates/` was drawn on. Authored pixels pass
+ * through it rather than through GRID directly, so turning the dial scales
+ * the props with the box instead of stranding them (art. 23).
+ */
+export const AUTHORED_GRID = GRID
+
 export const RENDER: RenderConfig = {
   grid: GRID,
   height: AUTHORED_HEIGHT,

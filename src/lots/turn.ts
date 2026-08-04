@@ -76,8 +76,18 @@ export function keep(turn: Turn, dice: readonly DieId[]): Turn {
 }
 
 /**
- * art. 41: exactly one second casting of the rest. Kept dice keep their face
- * and stay kept; everything else is thrown again.
+ * art. 41: exactly one second casting of the rest. A kept die keeps its
+ * face; everything else is thrown again.
+ *
+ * art. 72: **keep-marks are mortal.** The instant the second casting lands,
+ * every keep-mark clears. After the recast the hand is statistically a fresh
+ * hand, so which dice survived the first casting has stopped being
+ * information, and showing it is noise. The mark dies here rather than in
+ * the tray, because a tray that has to remember not to draw something is a
+ * tray that will one day draw it.
+ *
+ * The first casting keeps its marks, and nothing player-facing reads them:
+ * they are what a resume replays the turn from (art. 75).
  */
 export function recast(turn: Turn, lot: Lot): Turn {
   if (turn.castings.length === 0) throw new Error('nothing is cast to recast')
@@ -87,12 +97,19 @@ export function recast(turn: Turn, lot: Lot): Turn {
   if (turn.claims.length > 0) throw new Error('the turn is already claiming')
   const byId = new Map(turn.hand.dice.map((die) => [die.id as string, die] as const))
   const next = casting(turn).map((landed) => {
-    if (landed.kept) return landed
+    if (landed.kept) return { ...landed, kept: false }
     const die = byId.get(landed.die)
     if (die === undefined) throw new Error(`a die that is not in the hand: ${landed.die}`)
     return land(die, throwDie(die, lot))
   })
   return { ...turn, castings: [...turn.castings, next] }
+}
+
+/** Which dice the first casting was told to hold — what a resume replays. */
+export function keptAtRecast(turn: Turn): readonly DieId[] {
+  return (turn.castings[0] ?? [])
+    .filter((landed) => landed.kept)
+    .map((landed) => landed.die)
 }
 
 /** How many castings this turn has left before art. 41 shuts it. */

@@ -1,26 +1,37 @@
 /**
- * A room with nothing standing in it — the computed box and its masonry,
- * and no props at all.
+ * An ordinary room: the computed box, its masonry, and whatever stands in
+ * it.
  *
- * The skeleton's ordinary rooms are exactly art. 26's first tier: the
- * computed box plus sprites, deliberately basic now and improved over time.
- * There are no sprites yet, so what is left is honest — three authored
- * numbers, a palette school, and the same world-space masonry the wake is
- * cut from.
+ * art. 26's first tier — the computed box plus sprites, deliberately basic
+ * now and improved over time. What makes one room not another is authorial
+ * and lives with the scene (art. 21): its school, its three numbers, and its
+ * own props. The engine only computes; this decides.
  */
 
-import type { RoomShape, Scene } from '../../room/index.js'
+import type { Prop, RoomShape, Scene, View } from '../../room/index.js'
 import type { School } from '../palettes.js'
 import { roomPalette } from '../palettes.js'
 import { RENDER } from '../render.js'
 import { masonry } from './wake.js'
 
-export function plainScene(id: string, school: School, shape: RoomShape): Scene {
+/** What a room puts in front of the player, given the view it is seen from. */
+export type Dressing = (view: View) => readonly Prop[]
+
+/** A room with nothing standing in it. */
+export const BARE: Dressing = () => []
+
+export function plainScene(
+  id: string,
+  school: School,
+  shape: RoomShape,
+  dressing: Dressing = BARE,
+): Scene {
   return {
     id,
     shape,
     palette: roomPalette(school),
     surfaces: masonry(school, shape, RENDER.eye),
-    props: () => [],
+    // art. 19: painted near over far, so the list is declared far to near.
+    props: (view) => [...dressing(view)].sort((one, other) => other.z - one.z),
   }
 }

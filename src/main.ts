@@ -2,13 +2,17 @@
  * The shell — boot and route. The whole install is a URL.
  *
  * A state machine over the three bands (art. 29): boot into a first waking
- * or a resume, play a room, open a door, fight what is behind it, die, read
+ * or a resume, play a room, sense a door, fight what is behind it, die, read
  * the Book, and go down again.
  *
- * **Bare on purpose.** The look is the design agent's territory under arts
- * 26–30, and this tranche is explicitly authorised to skip that consult:
- * the animatronic walks before the cover goes on. Nothing here invests in
- * style, and none of it is the real combat UI.
+ * **The thumb is law here** (arts 66–76). The tray is anatomy and not a
+ * menu: three regions in fixed places, plus the card's glyph, and nothing
+ * else ever in it. Controls are plain imperative verbs; prose lives in the
+ * word band and in what a tap answers. Things in the world are tapped where
+ * they stand. Every commitment is a verb you pressed.
+ *
+ * The look proper is still the design agent's, under arts 26–30. What is
+ * here is legibility, which is law, rather than style, which is not.
  */
 
 import {
@@ -19,22 +23,57 @@ import {
   GRAMMAR,
   GRID,
   HAND_SIZE,
-  INTENT_SAYS,
   LABELS,
   LADDER,
   NOTICES,
   PLAIN_POUCH,
+  READOUT,
   ROOM_BOOK,
+  VERBS,
   atGrid,
   horrorAt,
+  horrorById,
+  intentChip,
+  itemLabel,
   roomContent,
+  type RoomContent,
+  saysClaim,
+  saysDie,
+  saysIntent,
+  saysItem,
 } from './content/index.js'
-import type { Act, Bands } from './descent/index.js'
-import { act, canOpen, chooseDoor, doors, enterRoom, look, nextBeat, remember } from './descent/index.js'
+import type { Act, Bands, Tappable } from './descent/index.js'
+import {
+  act,
+  canOpen,
+  chooseDoor,
+  doors,
+  enterRoom,
+  look,
+  mayLeave,
+  nextBeat,
+  openDoor,
+  remember,
+  sceneKey,
+  sceneStateOf,
+} from './descent/index.js'
 import type { Chain, Door } from './gen/index.js'
-import { deal, lotFrom, reseed } from './gen/index.js'
-import { advance, carryOut, openFightDoor, routeDeath, routeTurn } from './hinge/index.js'
-import type { Card, DieId, Fight, Goods, Line, Lot, Tier } from './lots/index.js'
+import { deal, reseed } from './gen/index.js'
+import type { Standing } from './hinge/index.js'
+import {
+  advance,
+  carryOut,
+  keepFight,
+  openFightDoor,
+  pausedAt,
+  restoreFight,
+  routeDeath,
+  routeFlight,
+  routeTurn,
+  saveFight,
+  turnLots,
+} from './hinge/index.js'
+import type { Card, Die, DieId, Fight, Goods, Landed, Line, Resolution } from './lots/index.js'
 import {
   LINES,
   advanceFight,
@@ -44,10 +83,12 @@ import {
   castingsLeft,
   claim,
   claimable,
+  claimedDice,
   cursedValue,
   decide,
   disband,
   fitsNothing,
+  freshCard,
   harm,
   keep,
   recast,
@@ -55,17 +96,22 @@ import {
   unused,
   withTurn,
 } from './lots/index.js'
-import type { Ledgers, Seed } from './state/index.js'
+import type { FightPhase, ItemId, Ledgers, RoomId, Seed } from './state/index.js'
 import { browserVault, collect, finish, firstPermanent, load, save, wake } from './state/index.js'
-import type { Framebuffer, Prop, Scene } from './room/index.js'
-import { fillScale, present, renderRoom } from './room/index.js'
+import type { Framebuffer, RenderedRoom, WorldMark } from './room/index.js'
+import { fillScale, markRect, overpaint, present, renderRoom } from './room/index.js'
 
 // ── The bands ──────────────────────────────────────────────────────────
 
 const wordBand = must<HTMLDivElement>('word')
 const worldBand = must<HTMLElement>('world')
-const trayBand = must<HTMLDivElement>('tray')
 const canvas = must<HTMLCanvasElement>('view')
+const markLayer = must<HTMLDivElement>('marks')
+const crownBand = must<HTMLDivElement>('crown')
+const sheetBand = must<HTMLDivElement>('sheet')
+const vitalsRegion = must<HTMLDivElement>('vitals')
+const pouchRegion = must<HTMLDivElement>('pouch')
+const actStrip = must<HTMLDivElement>('acts')
 
 function must<T extends HTMLElement>(id: string): T {
   const found = document.getElementById(id)
@@ -81,9 +127,6 @@ type Screen =
   | { readonly kind: 'fight'; readonly door: Door }
   | { readonly kind: 'dead' }
   | { readonly kind: 'finished' }
-  | { readonly kind: 'book' }
-
-type Phase = 'pre' | 'keep' | 'claim'
 
 const vault = browserVault(localStorage)
 
@@ -94,12 +137,22 @@ let screen: Screen
 let notice: string | null = null
 /** Set when a door has already refused you here, so the room can say so. */
 let refused = false
+/** art. 74: the card and the Book live behind glyphs, never mid-screen. */
+let sheet: 'card' | 'book' | null = null
+/** Which door the thumb has sensed. Sensing and going are two acts (art. 71). */
+let chosen: Door | null = null
 
-/** Live only while a fight is on: mid-fight resume is a later tranche. */
+/** art. 75: mirrored into the run on every mutation, never only here. */
 let fight: Fight | null = null
-let phase: Phase = 'pre'
+let phase: FightPhase = 'pre'
 let selected: readonly DieId[] = []
-let fightLot: Lot | null = null
+/** art. 28: the advance is a motion that matters, so it is remembered. */
+let advanced = false
+let closeness = 1
+let advanceTimer: number | undefined
+/** art. 1: a pulse in presentation, skippable, with a settled end state. */
+let resolving: Resolution | null = null
+let resolveTimer: number | undefined
 
 function goods(): Goods {
   return { talismans: ledgers.permanent.keepsakes, riders: ALL_RIDERS }
@@ -119,6 +172,17 @@ function boot(): void {
   }
   chain = deal(ledgers.run!.seed, ledgers.run!.depth, CATALOG, GRAMMAR)
   bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.room)
+  chosen = doors(bands)[0] ?? null
+  // art. 75: a half-spent turn survives the lock screen. If one was in
+  // flight rather than paused, boot lands back inside it, selection and all.
+  // A fight you ran out on is saved the same way and stays where you left
+  // it — in the room, behind its door (art. 63).
+  const held = pausedAt(ledgers, ledgers.run!.at.room)
+  const gate = doors(bands).find((door) => door.fight !== undefined)
+  if (held !== null && held.engaged && gate !== undefined) {
+    resume(held.at)
+    if (fight !== null) screen = { kind: 'fight', door: gate }
+  }
   persist()
   paint()
 }
@@ -131,6 +195,12 @@ function freshSeed(): Seed {
 /** art. 36: every mutation persists. This is the only place that writes. */
 function persist(): void {
   ledgers = remember(ledgers, bands)
+  if (fight !== null && screen.kind === 'fight') {
+    ledgers = keepFight(
+      ledgers,
+      saveFight(fight, ledgers.run!.at.room, phase, selected, advanced, true),
+    )
+  }
   save(ledgers, vault)
 }
 
@@ -140,21 +210,35 @@ function persist(): void {
  * art. 17: a room renders identical every visit, so a room rendered once is
  * a room rendered forever. The cache is the whole of the shell's
  * performance story — the box is computed per pixel, and it is not cheap.
+ *
+ * art. 70 is why the key is the *scene state* and not the room id. A frame
+ * cached by room alone is a room that cannot show what you did in it: the
+ * taken key would still be lying on the floor of a repaint.
  */
-const painted = new Map<string, Framebuffer>()
+const painted = new Map<string, RenderedRoom>()
 
-function paintRoom(scene: Scene, extra: readonly Prop[], key: string): void {
-  const height = Math.max(120, Math.round((GRID * worldBand.clientHeight) / worldBand.clientWidth))
-  const stamp = `${key}:${height}`
-  let frame = painted.get(stamp)
-  if (frame === undefined) {
-    const dressed: Scene =
-      extra.length === 0
-        ? scene
-        : { ...scene, props: (view) => [...scene.props(view), ...extra] }
-    frame = renderRoom(dressed, atGrid(GRID, height)).frame
-    painted.set(stamp, frame)
+function frameHeight(): number {
+  return Math.max(120, Math.round((GRID * worldBand.clientHeight) / worldBand.clientWidth))
+}
+
+function world(): void {
+  const room = ledgers.run!.at.room
+  const content = roomContent(room)
+  const state = sceneStateOf(ledgers, ROOM_BOOK, room)
+  const stamp = `${sceneKey(state)}:${frameHeight()}`
+  let base = painted.get(stamp)
+  if (base === undefined) {
+    base = renderRoom(content.scene(state), atGrid(GRID, frameHeight()))
+    painted.set(stamp, base)
   }
+  // art. 30: no battle screen — the horror is a prop laid into this room's
+  // own frame, so the box behind it is never cast twice for a motion.
+  const close = screen.kind === 'fight' && fight !== null ? [advance(fight, closeness).prop] : []
+  show(close.length === 0 ? base.frame : overpaint(base, close))
+  layMarks(base, content)
+}
+
+function show(frame: Framebuffer): void {
   present(frame, canvas)
   // art. 25 (amended): exact fill via sharp upscale. The frame's height came
   // from this band's aspect, so filling one dimension all but fills both.
@@ -163,188 +247,557 @@ function paintRoom(scene: Scene, extra: readonly Prop[], key: string): void {
   canvas.style.height = `${frame.height * scale}px`
 }
 
+/** The smallest a mark may be drawn, in device pixels. A thumb is a thumb. */
+const THUMB = 40
+
+/**
+ * art. 68: a tap investigates, and it investigates the *thing* — so the
+ * regions that answer sit exactly over what they answer for, derived from
+ * the same world coordinates the props are painted at (art. 19).
+ */
+function layMarks(base: RenderedRoom, content: RoomContent): void {
+  markLayer.replaceChildren()
+  if (sheet !== null) return
+  const scale = fillScale(base.frame, worldBand.clientWidth, worldBand.clientHeight)
+  const offsetX = canvas.offsetLeft
+  const offsetY = canvas.offsetTop
+
+  const laid: { area: number; el: HTMLButtonElement }[] = []
+  const place = (mark: WorldMark, el: HTMLButtonElement): void => {
+    const rect = markRect(base.view, mark)
+    const w = Math.max(THUMB, rect.width * scale)
+    const h = Math.max(THUMB, rect.height * scale)
+    const cx = offsetX + (rect.x + rect.width / 2) * scale
+    const cy = offsetY + (rect.y + rect.height / 2) * scale
+    el.style.left = `${Math.round(cx - w / 2)}px`
+    el.style.top = `${Math.round(cy - h / 2)}px`
+    el.style.width = `${Math.round(w)}px`
+    el.style.height = `${Math.round(h)}px`
+    laid.push({ area: w * h, el })
+  }
+
+  // art. 6: everything ever clickable is always clickable, and art. 69: it
+  // always answers. A fight does not take the room's things away.
+  for (const target of bands.tappables) place(target.at, markFor(target))
+
+  if (screen.kind !== 'fight') {
+    const ahead = doors(bands)
+    ahead.forEach((door, i) => {
+      // art. 31 will one day put two or three doors in a room; when it does,
+      // they stand apart rather than on top of each other.
+      const spread = (i - (ahead.length - 1) / 2) * content.door.width * 1.4
+      place({ ...content.door, X: content.door.X + spread }, doorMark(door))
+    })
+  }
+
+  // arts 6 and 69: the small thing sits on the large thing it is part of, or
+  // the lock is a pixel of the door and can never be tapped.
+  laid.sort((one, other) => other.area - one.area)
+  markLayer.append(...laid.map((one) => one.el))
+}
+
+function markFor(target: Tappable): HTMLButtonElement {
+  const el = document.createElement('button')
+  el.className = 'lit'
+  el.setAttribute('aria-label', target.noun)
+  el.onclick = () => {
+    settle()
+    notice = look(ROOM_BOOK, bands, target).text
+    paint()
+  }
+  return el
+}
+
+function doorMark(door: Door): HTMLButtonElement {
+  const el = document.createElement('button')
+  el.className = `door${chosen?.to === door.to ? ' chosen' : ''}`
+  el.setAttribute('aria-label', door.sense)
+  el.onclick = () => {
+    settle()
+    // art. 71: a bare tap never walks you through a door. It senses it, and
+    // the going is a verb in the act strip.
+    chosen = door
+    notice = door.sense
+    paint()
+  }
+  return el
+}
+
 // ── Painting ───────────────────────────────────────────────────────────
 
 function paint(): void {
   say()
   tray()
   world()
-}
-
-function world(): void {
-  if (screen.kind === 'fight' && fight !== null) {
-    const scene = roomContent(ledgers.run!.at.room).scene
-    paintRoom(scene, [advance(fight).prop], `fight:${scene.id}:${fight.horrorHealth}`)
-    return
-  }
-  const room = screen.kind === 'waking' ? CROSSING : ledgers.run!.at.room
-  const scene = roomContent(room).scene
-  paintRoom(scene, [], scene.id)
+  crown()
+  drawSheet()
 }
 
 let fadeTimer: number | undefined
 
-function say(text?: string): void {
-  const said = text ?? wordOf()
-  wordBand.textContent = said
-  wordBand.classList.remove('faded')
-  wordBand.onclick = () => {
-    // art. 29: tap to recall. Presentation fades; knowledge does not.
-    wordBand.classList.remove('faded')
+function say(): void {
+  const said = notice ?? wordOf()
+  wordBand.replaceChildren(document.createTextNode(said))
+  const reading = screen.kind === 'room' || screen.kind === 'waking'
+  const left = bands.beats.length - 1 - (bands.word?.index ?? 0)
+  if (notice === null && reading && left > 0) {
+    const more = document.createElement('span')
+    more.className = 'more'
+    // Not a word: a mark, so the candle that is still to come is visible
+    // without the word band ever instructing (arts 29, 66).
+    more.textContent = ` ${'·'.repeat(left)}`
+    wordBand.append(more)
   }
+  wordBand.classList.remove('faded')
   clearTimeout(fadeTimer)
   fadeTimer = setTimeout(() => wordBand.classList.add('faded'), 4000) as unknown as number
 }
 
+wordBand.onclick = () => {
+  settle()
+  // art. 29: presentation fades, knowledge doesn't. One tap recalls the
+  // word; the same tap turns the candle when there is another (art. 67 keeps
+  // the beat advance out of the tray).
+  if (notice !== null) {
+    notice = null
+  } else if (bands.word !== null && !bands.word.last) {
+    bands = nextBeat(bands)
+    persist()
+  }
+  paint()
+}
+
 function wordOf(): string {
-  if (notice !== null) return notice
   switch (screen.kind) {
     case 'dead':
       return NOTICES['run.dead'] ?? ''
     case 'finished':
       return NOTICES['run.finished'] ?? ''
-    case 'book':
-      return NOTICES['book.title'] ?? ''
     case 'fight':
-      return fight === null ? '' : (INTENT_SAYS[fight.turn.intent.verb] ?? '')
+      return fight === null ? '' : saysIntent(fight.turn.intent)
     default:
       return bands.word?.text ?? ''
   }
 }
 
-function tray(): void {
-  trayBand.replaceChildren()
-  switch (screen.kind) {
-    case 'waking':
-      return wakingTray()
-    case 'room':
-      return roomTray()
-    case 'fight':
-      return fightTray()
-    case 'dead':
-      return endTray('down again')
-    case 'finished':
-      return endTray('wake')
-    case 'book':
-      return bookTray()
+// ── The crown: the horror, at the top of the frame (arts 30, 57, 73) ────
+
+function crown(): void {
+  crownBand.replaceChildren()
+  crownBand.classList.toggle('on', screen.kind === 'fight' && fight !== null && sheet === null)
+  const now = fight
+  if (now === null || screen.kind !== 'fight') return
+
+  const name = document.createElement('span')
+  name.className = 'name'
+  name.textContent = `${LABELS[now.horror.id] ?? now.horror.id} ${now.horrorHealth}/${now.horror.health}`
+
+  const bar = document.createElement('span')
+  bar.className = 'bar'
+  const fill = document.createElement('i')
+  fill.style.width = `${Math.max(0, (100 * now.horrorHealth) / now.horror.health)}%`
+  bar.append(fill)
+
+  // art. 73: the intent is tappable, and explains itself in plain words.
+  const intent = document.createElement('button')
+  intent.className = 'intent'
+  intent.textContent = intentChip(now.turn.intent)
+  intent.onclick = () => {
+    settle()
+    notice = saysIntent(now.turn.intent)
+    paint()
   }
+
+  crownBand.append(name, bar, intent)
+}
+
+// ── The sheet: the card, the Book (art. 74) ────────────────────────────
+
+function drawSheet(): void {
+  sheetBand.replaceChildren()
+  sheetBand.classList.toggle('on', sheet !== null)
+  if (sheet === null) return
+  const title = document.createElement('h1')
+  title.textContent = NOTICES[sheet === 'card' ? 'card.title' : 'book.title'] ?? ''
+  sheetBand.append(title)
+  if (sheet === 'card') cardLines()
+  else bookLines()
+  sheetBand.append(row(verb('close', () => { sheet = null; paint() })))
+}
+
+function cardLines(): void {
+  const card: Card = fight?.turn.card ?? freshCard()
+  const shut = fight === null ? [] : sealed(fight.turn.intent)
+  for (const line of LINES) {
+    const div = document.createElement('div')
+    div.className = `line ${card[line] ? 'spent' : shut.includes(line) ? 'sealed' : 'open'}`
+    const name = document.createElement('span')
+    name.textContent = LADDER[line].name
+    const tier = document.createElement('span')
+    tier.textContent = `×${LADDER[line].multiplier}`
+    div.append(name, tier)
+    sheetBand.append(div)
+  }
+}
+
+function bookLines(): void {
+  const lines = ledgers.permanent.bookOfEnds
+  if (lines.length === 0) {
+    const empty = document.createElement('div')
+    empty.className = 'line open'
+    empty.textContent = NOTICES['book.empty'] ?? ''
+    sheetBand.append(empty)
+    return
+  }
+  for (const [n, line] of lines.entries()) {
+    const div = document.createElement('div')
+    div.className = 'line open'
+    const left = document.createElement('span')
+    left.textContent = `${n + 1} · ${READOUT.depth} ${line.depth}`
+    const right = document.createElement('span')
+    right.textContent = `${READOUT.seed} ${line.seed}`
+    div.append(left, right)
+    sheetBand.append(div)
+  }
+}
+
+// ── The tray: anatomy, not a menu (art. 67) ────────────────────────────
+
+function tray(): void {
+  vitals()
+  pouch()
+  acts()
 }
 
 function row(...kids: readonly Node[]): HTMLDivElement {
   const div = document.createElement('div')
-  div.className = 'row'
+  div.style.display = 'flex'
+  div.style.gap = '6px'
+  div.style.marginTop = '8px'
   div.append(...kids)
   return div
 }
 
-function note(text: string): HTMLDivElement {
-  const div = document.createElement('div')
-  div.className = 'note'
-  div.textContent = text
-  return div
-}
-
-function button(label: string, onClick: () => void, options: { on?: boolean; off?: boolean; cls?: string } = {}): HTMLButtonElement {
+/** art. 66: a control is a plain imperative verb, and it comes from content. */
+function verb(key: string, onClick: () => void, off = false): HTMLButtonElement {
   const el = document.createElement('button')
-  el.textContent = label
-  el.className = [options.cls ?? '', options.on === true ? 'on' : ''].join(' ').trim()
-  el.disabled = options.off === true
+  el.textContent = VERBS[key] ?? key
+  el.disabled = off
   el.onclick = onClick
   return el
 }
 
+function reading(label: string, value: string): HTMLSpanElement {
+  const span = document.createElement('span')
+  if (label !== '') span.textContent = `${label} `
+  const strong = document.createElement('b')
+  strong.textContent = value
+  span.append(strong)
+  return span
+}
+
+/**
+ * Region one: the body's numbers, and the turn's. art. 57 wants the running
+ * totals visible and art. 67 wants them in a fixed place; this is that
+ * place, and it never moves.
+ */
+function vitals(): void {
+  vitalsRegion.replaceChildren()
+  const run = ledgers.run!
+  const now = fight
+
+  if (now !== null && screen.kind === 'fight') {
+    const corroded = now.turn.intent.effect?.kind === 'corrode'
+    const armorNow = corroded ? 0 : now.armor
+    vitalsRegion.append(
+      reading(READOUT.health ?? '', `${now.yourHealth}/${now.yourHealthMax}`),
+      reading(READOUT.armor ?? '', corroded ? `0 ${READOUT.corroded}` : `${armorNow}`),
+      reading(
+        READOUT.attack ?? '',
+        `${now.turn.claims.reduce((sum, made) => sum + harm(made), 0)}`,
+      ),
+      reading(READOUT.incoming ?? '', `${Math.max(0, now.turn.intent.amount - armorNow)}`),
+      reading(READOUT.unused ?? '', `${unused(now.turn).length}`),
+    )
+    const offer = claimOffer()
+    if (offer !== null) vitalsRegion.append(reading('', offer))
+  } else {
+    vitalsRegion.append(
+      reading(READOUT.health ?? '', `${run.health}/${run.healthMax}`),
+      reading(READOUT.armor ?? '', `${run.armor}`),
+    )
+  }
+
+  // art. 74: the card lives behind a small, persistent glyph. One tap opens
+  // it; it is never parked mid-screen.
+  const glyph = document.createElement('button')
+  glyph.className = 'glyph'
+  glyph.textContent = '▤'
+  glyph.setAttribute('aria-label', VERBS.card ?? 'Card')
+  glyph.onclick = () => {
+    settle()
+    sheet = sheet === 'card' ? null : 'card'
+    paint()
+  }
+  vitalsRegion.append(glyph)
+}
+
+/** What the current selection would take, and for how much (arts 57, 72). */
+function claimOffer(): string | null {
+  const now = fight
+  if (now === null || phase !== 'claim') return null
+  if (selected.length === 0) return null
+  const line = bestLine()
+  if (line === null) return NOTICES['claim.exact'] ?? null
+  const offer = saysClaim(line, scoreOf(line))
+  // The floor is always on offer (art. 46), so "the offer is the floor" is
+  // exactly the case art. 72 says owes the thumb a reason as well as a price.
+  return fitsNothing(now.turn, selected, LADDER)
+    ? `${offer} · ${NOTICES['claim.exact'] ?? ''}`
+    : offer
+}
+
+/**
+ * art. 72's DEFAULT: offers match the exact selection. A selection makes at
+ * most one combo (plus the ANY DICE floor, which is never better), so the
+ * offer is the highest tier on the table and `Claim` is one verb rather than
+ * a row of names and numbers wearing the coat of controls (art. 66).
+ */
+function bestLine(): Line | null {
+  const now = fight
+  if (now === null) return null
+  const lines = claimable(now.turn, selected, LADDER)
+  if (lines.length === 0) return null
+  return lines.reduce((best, line) =>
+    LADDER[line].multiplier > LADDER[best].multiplier ? line : best,
+  )
+}
+
+function scoreOf(line: Line): number {
+  const now = fight
+  if (now === null) return 0
+  const chosenDice = casting(now.turn).filter((landed) => selected.includes(landed.die))
+  return harm(assemble(line, chosenDice, LADDER, cursedValue(now.turn.intent), goods()))
+}
+
+/**
+ * Region two: the pouch, as visible slots — empty ones included, because
+ * hand size is a stat the player should be able to see (art. 67). In a fight
+ * the same slots hold the same dice, cast: the hand is assembled from the
+ * pouch, so the region is the pouch either way.
+ */
+function pouch(): void {
+  pouchRegion.replaceChildren()
+  const run = ledgers.run!
+  const now = fight
+  const laid = now !== null && screen.kind === 'fight' ? casting(now.turn) : []
+  const byId = new Map(run.hand.dice.map((die) => [die.id as string, die] as const))
+
+  if (laid.length > 0) {
+    const spent = claimedDice(now!.turn)
+    for (const landed of laid) {
+      const die = byId.get(landed.die)
+      if (die === undefined) continue
+      pouchRegion.append(dieSlot(die, landed, spent.has(landed.die)))
+    }
+  } else {
+    for (const die of run.hand.dice) pouchRegion.append(dieSlot(die, null, false))
+  }
+
+  for (let n = run.hand.dice.length; n < ledgers.permanent.handSize; n++) {
+    pouchRegion.append(emptySlot())
+  }
+  // art. 68: a possession's answer is its declared truth, and what you carry
+  // is a possession. It sits in the same region and answers the same way.
+  for (const item of run.carried) pouchRegion.append(carriedSlot(item))
+}
+
+function slot(className: string): HTMLButtonElement {
+  const el = document.createElement('button')
+  el.className = `slot ${className}`
+  return el
+}
+
+/** The pips, so a die reads as a die rather than as a number (art. 72). */
+const PIP_AT: Readonly<Record<number, readonly number[]>> = {
+  1: [4],
+  2: [0, 8],
+  3: [0, 4, 8],
+  4: [0, 2, 6, 8],
+  5: [0, 2, 4, 6, 8],
+  6: [0, 2, 3, 5, 6, 8],
+}
+
+function pips(value: number): HTMLSpanElement {
+  const grid = document.createElement('span')
+  grid.className = 'pips'
+  const at = new Set(PIP_AT[value] ?? [])
+  for (let cell = 0; cell < 9; cell++) {
+    const box = document.createElement('span')
+    if (at.has(cell)) box.append(document.createElement('i'))
+    grid.append(box)
+  }
+  return grid
+}
+
+/**
+ * art. 72: four states, unmistakably distinct. Idle is a plain face; kept
+ * wears a tab along its top and only ever in the keep phase; selected
+ * inverts entirely; claimed is sunk and ringed. Unused dims at resolve.
+ */
+function dieSlot(die: Die, landed: Landed | null, claimed: boolean): HTMLButtonElement {
+  const isSelected = landed !== null && selected.includes(landed.die)
+  const kept = landed !== null && landed.kept && phase === 'keep'
+  const idle =
+    resolving !== null && landed !== null && !claimed
+      ? ' unused'
+      : ''
+  const el = slot(
+    `die${landed === null ? ' rest' : ''}${kept ? ' kept' : ''}${isSelected ? ' sel' : ''}${
+      claimed ? ' claimed' : ''
+    }${idle}`,
+  )
+  if (landed !== null) el.append(pips(landed.face.value))
+  el.setAttribute('aria-label', saysDie(die, landed?.face))
+  // art. 69: silence is a bug. A die answers with its declared truth whether
+  // or not the tap also does something to it.
+  el.onclick = () => {
+    settle()
+    const spentIn = claimed ? claimIn(landed!.die) : undefined
+    notice = saysDie(die, landed?.face, spentIn ?? undefined)
+    if (landed !== null) tapDie(landed.die)
+    paint()
+  }
+  return el
+}
+
+function claimIn(die: DieId): Line | null {
+  const now = fight
+  if (now === null) return null
+  return now.turn.claims.find((made) => made.dice.some((one) => one.die === die))?.line ?? null
+}
+
+function emptySlot(): HTMLButtonElement {
+  const el = slot('empty')
+  el.onclick = () => {
+    settle()
+    notice = NOTICES['pouch.empty'] ?? ''
+    paint()
+  }
+  return el
+}
+
+function carriedSlot(item: ItemId): HTMLButtonElement {
+  const el = slot('carried')
+  el.textContent = itemLabel(item).replace(/^the /, '')
+  el.onclick = () => {
+    settle()
+    notice = saysItem(item)
+    paint()
+  }
+  return el
+}
+
+/**
+ * Region three: the act strip. Every commitment in the game is a plain verb
+ * pressed here (arts 66, 71) — nothing else commits, and nothing here
+ * narrates.
+ */
+function acts(): void {
+  actStrip.replaceChildren()
+  switch (screen.kind) {
+    case 'waking':
+      return wakingActs()
+    case 'room':
+      return roomActs()
+    case 'fight':
+      return fightActs()
+    case 'dead':
+      return actStrip.append(
+        verb('descend', () => { screen = { kind: 'room' }; notice = null; persist(); paint() }),
+        verb('read', () => { sheet = 'book'; paint() }),
+      )
+    case 'finished':
+      return actStrip.append(
+        verb('wake', () => { screen = { kind: 'room' }; notice = null; persist(); paint() }),
+        verb('read', () => { sheet = 'book'; paint() }),
+      )
+  }
+}
+
 // ── The first waking ───────────────────────────────────────────────────
 
-function wakingTray(): void {
+function wakingActs(): void {
   const pale = PLAIN_POUCH.dice.at(-1)
-  const more = bands.word !== null && !bands.word.last
-  trayBand.append(
-    row(
-      ...(more
-        ? [button('go on', () => { bands = nextBeat(bands); notice = null; persist(); paint() })]
-        : []),
-      button('take the pale bone', () => {
-        if (pale === undefined) return
-        // art. 56: the signature is simply the first die you collect, and
-        // art. 11: it crosses to the permanent only by the named ritual.
-        ledgers = { ...ledgers, permanent: collect(ledgers.permanent, pale) }
-        screen = { kind: 'room' }
-        notice = null
-        persist()
-        paint()
-      }),
-    ),
-    note('six plain bones, and one of them is yours'),
+  actStrip.append(
+    verb('act.take-key', () => {
+      if (pale === undefined) return
+      // art. 56: the signature is simply the first die you collect, and
+      // art. 11: it crosses to the permanent only by the named ritual.
+      ledgers = { ...ledgers, permanent: collect(ledgers.permanent, pale) }
+      screen = { kind: 'room' }
+      notice = null
+      persist()
+      paint()
+    }),
   )
 }
 
 // ── The room ───────────────────────────────────────────────────────────
 
-function roomTray(): void {
+function roomActs(): void {
   const run = ledgers.run!
-  const more = bands.word !== null && !bands.word.last
-  const acts = bands.tray.flatMap((offer) => (offer.kind === 'act' ? [offer.act] : []))
+  for (const one of bands.tray.flatMap((offer) => (offer.kind === 'act' ? [offer.act] : []))) {
+    actStrip.append(verb(one.id, () => doAct(one)))
+  }
 
-  if (more) {
-    trayBand.append(
-      row(button('go on', () => { bands = nextBeat(bands); notice = null; persist(); paint() })),
+  const ahead = doors(bands)
+  if (chosen === null || !ahead.some((door) => door.to === chosen!.to)) chosen = ahead[0] ?? null
+  const door = chosen
+  if (door !== null) {
+    actStrip.append(
+      verb(door.fight !== undefined ? 'fight' : door.ends === true ? 'descend' : 'open', () =>
+        commitDoor(door),
+      ),
     )
   }
 
-  trayBand.append(
-    row(
-      ...bands.tappables.map((target) =>
-        // art. 5: tapping never harms. art. 6: looking always answers.
-        button(target.noun, () => {
-          notice = look(ROOM_BOOK, bands, target).text
-          paint()
-        }),
-      ),
-    ),
-  )
-
-  if (acts.length > 0) {
-    trayBand.append(row(...acts.map((one) => button(one.verb, () => doAct(one)))))
-  }
-
-  trayBand.append(row(...doors(bands).map((door) => button(doorLabel(door), () => takeDoor(door)))))
-
-  // A run that walked past its key reaches a door it cannot open, and the
-  // engine has no back (art. 9). Being kept is an end like any other: it
-  // burns the run, writes its own line, and reseeds (arts 11, 32). The real
-  // ruling on a stranded run is a question for the human — see DESIGN.md.
-  if (refused && doors(bands).every((door) => !canOpen(ledgers, door))) {
-    trayBand.append(row(button('the labyrinth keeps you', () => died('end.kept'))))
+  // A run that walked past its key would reach a door it cannot open, and
+  // the engine has no back (art. 9). art. 3 now makes that unreachable — the
+  // door refuses to commit while the key is still on the floor — so this is
+  // the valve for a chain that failed the guarantee, not the ordinary path.
+  if (refused && ahead.every((one) => !canOpen(ledgers, one))) {
+    actStrip.append(verb('end', () => died('end.kept')))
   }
 
   if (run.at.room === CROSSING) {
-    trayBand.append(
-      row(button('the book of ends', () => { screen = { kind: 'book' }; notice = null; paint() })),
-    )
+    actStrip.append(verb('read', () => { sheet = 'book'; paint() }))
   }
-
-  trayBand.append(
-    note(
-      `you ${run.health}/${run.healthMax} · armor ${run.armor}` +
-        (run.carried.length > 0 ? ` · carrying ${run.carried.length}` : ''),
-    ),
-  )
-}
-
-function doorLabel(door: Door): string {
-  const locked = door.demands.length > 0 && !canOpen(ledgers, door)
-  return `${door.sense}${locked ? ' (locked)' : ''}`
 }
 
 function doAct(one: Act): void {
   ledgers = act(ledgers, one)
   bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.room)
+  // art. 70: prose confirms, pixels prove — the answer is the room without
+  // the thing in it, which the scene state has already stopped drawing.
   notice = null
   persist()
   paint()
 }
 
-function takeDoor(door: Door): void {
+/**
+ * arts 3, 5, 71: the one place a door is committed. It refuses three ways,
+ * and every refusal is a line rather than a punishment — something required
+ * still lies here, the lock holds, or there is nothing to open.
+ */
+function commitDoor(door: Door): void {
+  const room = ledgers.run!.at.room
+  if (!mayLeave(ledgers, ROOM_BOOK, room)) {
+    // A stop, not a hint: it names nothing and points at nothing (art. 3).
+    notice = NOTICES['door.held'] ?? ''
+    paint()
+    return
+  }
   if (door.fight !== undefined) return openTheFight(door)
   if (!canOpen(ledgers, door)) {
     // art. 5: the world never punishes touch; it sometimes stops offering.
@@ -359,8 +812,9 @@ function takeDoor(door: Door): void {
 
 function walk(door: Door, said: string | null = null): void {
   refused = false
-  ledgers = chooseDoor(ledgers, chain, door)
+  ledgers = chooseDoor(ledgers, chain, ROOM_BOOK, door)
   bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.room)
+  chosen = doors(bands)[0] ?? null
   notice = said
   persist()
   paint()
@@ -372,196 +826,216 @@ function finishTheDepth(): void {
   ledgers = wake(permanent, reseed(ledgers.run!.seed))
   chain = deal(ledgers.run!.seed, ledgers.run!.depth, CATALOG, GRAMMAR)
   bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.room)
+  chosen = doors(bands)[0] ?? null
   screen = { kind: 'finished' }
   notice = null
   persist()
   paint()
 }
 
-// ── The Book ───────────────────────────────────────────────────────────
-
-function bookTray(): void {
-  const lines = ledgers.permanent.bookOfEnds
-  if (lines.length === 0) trayBand.append(note(NOTICES['book.empty'] ?? ''))
-  for (const [n, line] of lines.entries()) {
-    trayBand.append(note(`${n + 1} · depth ${line.depth} · ${line.cause} · seed ${line.seed}`))
-  }
-  trayBand.append(row(button('back', () => { screen = { kind: 'room' }; notice = null; paint() })))
-}
-
 // ── The fight ──────────────────────────────────────────────────────────
 
+/**
+ * art. 63, as ruled: a door that has a paused fight behind it resumes it.
+ * The card is as spent as you left it and the horror as wounded — running is
+ * a retreat, never a way to launder a card.
+ */
 function openTheFight(door: Door): void {
-  const horror = horrorAt(ledgers.run!.at.room)
+  const room = ledgers.run!.at.room
+  const horror = horrorAt(room)
   if (horror === null) return
+  const held = pausedAt(ledgers, room)
+  if (held !== null) {
+    resume(room)
+    screen = { kind: 'fight', door }
+    ledgers = openDoor(ledgers, door)
+    notice = NOTICES['fight.resumed'] ?? ''
+    persist()
+    paint()
+    return
+  }
   fight = openFightDoor(ledgers, { door, horror }, goods())
-  // art. 36: the fight is seeded off the run, so the same door rolls the
-  // same way — until a flight discards it, which reseeds by construction.
-  fightLot = lotFrom(reseed((ledgers.run!.seed + ledgers.run!.at.step) as unknown as Seed))
   phase = 'pre'
   selected = []
   screen = { kind: 'fight', door }
+  // art. 70: opening a door is an act, and the room it stands in shows it.
+  ledgers = openDoor(ledgers, door)
   notice = null
+  persist()
+  beginAdvance()
   paint()
 }
 
-function fightTray(): void {
-  const now = fight
-  const lot = fightLot
-  if (now === null || lot === null) return
-  const intent = now.turn.intent
-  const armorNow = intent.effect?.kind === 'corrode' ? 0 : now.armor
-  const laid = casting(now.turn)
-  const claimedIds = new Set(now.turn.claims.flatMap((made) => made.dice.map((d) => d.die)))
-
-  // art. 57: everything visible. The horror, its next attack, and its effect.
-  trayBand.append(
-    note(
-      `${LABELS[now.horror.id] ?? now.horror.id} ${now.horrorHealth}/${now.horror.health}` +
-        ` · next: ${intent.verb} ${intent.amount}`,
-    ),
-    note(
-      `you ${now.yourHealth}/${now.yourHealthMax} · armor ${armorNow}` +
-        // art. 65: a corroding intent is declared, so it says so even over a
-        // bare body that had nothing to corrode.
-        (intent.effect?.kind === 'corrode' ? ' (corroded)' : ''),
-    ),
+/** art. 75: the fight as it stood, read back out of the run. */
+function resume(room: RoomId): void {
+  const held = pausedAt(ledgers, room)
+  if (held === null) return
+  const horror = horrorById(held.horror)
+  if (horror === null) return
+  const standing: Standing = restoreFight(
+    held,
+    ledgers,
+    horror,
+    LADDER,
+    goods(),
+    turnLots(ledgers.run!.seed, ledgers.run!.at.step, held.turnNumber),
   )
-
-  // The dice, as they lie.
-  if (laid.length > 0) {
-    trayBand.append(
-      row(
-        ...laid.map((landed) =>
-          button(
-            String(landed.face.value),
-            () => tapDie(landed.die),
-            {
-              cls: `die${landed.kept ? ' kept' : ''}${selected.includes(landed.die) ? ' sel' : ''}${
-                claimedIds.has(landed.die) ? ' spent' : ''
-              }`,
-              off: claimedIds.has(landed.die),
-            },
-          ),
-        ),
-      ),
-    )
-  }
-
-  // The claims made, each one disbandable while the turn is still open.
-  if (now.turn.claims.length > 0) {
-    trayBand.append(
-      row(
-        ...now.turn.claims.map((made) =>
-          button(`${nameOf(made.tier)} ${harm(made)} ✕`, () => {
-            fight = withTurn(now, disband(now.turn, made.line))
-            selected = []
-            paint()
-          }),
-        ),
-      ),
-    )
-  }
-
-  // What the selection could take, with the score it would take it for.
-  if (phase === 'claim' && selected.length > 0) {
-    const lines = claimable(now.turn, selected, LADDER)
-    trayBand.append(
-      row(
-        ...lines.map((line) =>
-          button(`${LADDER[line].name} ${scoreOf(line)}`, () => {
-            fight = withTurn(now, claim(now.turn, selected, line, LADDER, goods()))
-            selected = []
-            paint()
-          }),
-        ),
-      ),
-    )
-    // art. 72: a selection that fits nothing says why. ANY DICE is the floor
-    // and always on offer (art. 46), so "no lines at all" almost never
-    // happens — the thumb that selects all six of a hand holding a full
-    // house is offered the floor and, without this, told nothing.
-    if (fitsNothing(now.turn, selected, LADDER)) {
-      trayBand.append(note(NOTICES['claim.exact'] ?? ''))
-    }
-  }
-
-  trayBand.append(row(...fightButtons()))
-
-  if (phase === 'claim') {
-    const attackSoFar = now.turn.claims.reduce((total, made) => total + harm(made), 0)
-    trayBand.append(
-      note(
-        `attack ${attackSoFar} · incoming ${Math.max(0, intent.amount - armorNow)} · unused ${
-          unused(now.turn).length
-        }`,
-      ),
-    )
-  }
-
-  trayBand.append(cardStrip(now.turn.card, sealed(intent)))
+  fight = standing.fight
+  phase = standing.phase
+  selected = standing.selected
+  advanced = standing.advanced
+  closeness = standing.advanced ? 1 : 0
+  if (!standing.advanced) beginAdvance()
 }
 
-function nameOf(tier: Tier): string {
-  return tier.name
+/**
+ * art. 30: the horror advances to the near depth and fills the lens. art. 28
+ * says a motion that matters never undoes itself, and art. 1 says any pulse
+ * is skippable with a settled end state — so every tap settles it, and the
+ * tray is live throughout.
+ */
+function beginAdvance(): void {
+  clearTimeout(advanceTimer)
+  advanced = false
+  closeness = 0
+  const step = (): void => {
+    closeness = Math.min(1, closeness + 0.1)
+    world()
+    if (closeness >= 1) return settleAdvance()
+    advanceTimer = setTimeout(step, 34) as unknown as number
+  }
+  advanceTimer = setTimeout(step, 34) as unknown as number
 }
 
-function scoreOf(line: Line): number {
+function settleAdvance(): void {
+  clearTimeout(advanceTimer)
+  if (advanced) return
+  closeness = 1
+  advanced = true
+  persist()
+}
+
+/** Every entry point settles whatever pulse is running first (art. 1). */
+function settle(): void {
+  if (screen.kind === 'fight' && !advanced) settleAdvance()
+  if (resolving !== null) settleTurn()
+}
+
+function fightActs(): void {
   const now = fight
-  if (now === null) return 0
-  const chosen = casting(now.turn).filter((landed) => selected.includes(landed.die))
-  return harm(assemble(line, chosen, LADDER, cursedValue(now.turn.intent), goods()))
-}
+  if (now === null) return
+  if (resolving !== null) return
+  // art. 36: each casting's lot is a pure function of where the run stands,
+  // so the shell never has to hold a half-spent generator between paints.
+  const lots = turnLots(ledgers.run!.seed, ledgers.run!.at.step, now.turnNumber)
 
-function fightButtons(): readonly HTMLButtonElement[] {
-  const now = fight
-  const lot = fightLot
-  if (now === null || lot === null) return []
   if (phase === 'pre') {
-    return [
-      button('roll dice', () => {
-        fight = withTurn(now, cast(now.turn, lot))
+    actStrip.append(
+      verb('roll', () => {
+        fight = withTurn(now, cast(now.turn, lots(1)))
         phase = 'keep'
+        notice = null
+        persist()
         paint()
       }),
-    ]
+      verb('run', runFromTheFight),
+    )
+    return
   }
+
   if (phase === 'keep') {
-    return [
-      button('re-roll the rest', () => {
-        fight = withTurn(now, recast(now.turn, lot))
+    actStrip.append(
+      verb(
+        'recast',
+        () => {
+          fight = withTurn(now, recast(now.turn, lots(2)))
+          phase = 'claim'
+          selected = []
+          notice = null
+          persist()
+          paint()
+        },
+        castingsLeft(now.turn) === 0,
+      ),
+      verb('keep-all', () => {
         phase = 'claim'
         selected = []
+        persist()
         paint()
-      }, { off: castingsLeft(now.turn) === 0 }),
-      button('keep all', () => { phase = 'claim'; selected = []; paint() }),
-      button('run', endTurn('flee')),
-    ]
+      }),
+      verb('run', runFromTheFight),
+    )
+    return
   }
-  return [button('end turn', endTurn('end-turn')), button('run', endTurn('flee'))]
+
+  const line = bestLine()
+  const takingBack = now.turn.claims.some((made) =>
+    made.dice.some((one) => selected.includes(one.die)),
+  )
+  if (line !== null) {
+    actStrip.append(
+      verb('claim', () => {
+        fight = withTurn(now, claim(now.turn, selected, line, LADDER, goods()))
+        selected = []
+        notice = null
+        persist()
+        paint()
+      }),
+    )
+  }
+  if (takingBack) {
+    actStrip.append(
+      verb('take-back', () => {
+        let turn = now.turn
+        for (const made of now.turn.claims) {
+          if (made.dice.some((one) => selected.includes(one.die))) turn = disband(turn, made.line)
+        }
+        fight = withTurn(now, turn)
+        selected = []
+        persist()
+        paint()
+      }),
+    )
+  }
+  actStrip.append(verb('end-turn', endTurn), verb('run', runFromTheFight))
 }
 
-function endTurn(decision: 'end-turn' | 'flee'): () => void {
-  return () => {
-    const now = fight
-    if (now === null) return
-    const resolution = decide(now.turn, decision, now.armor, goods())
-    const advanced = advanceFight(now, resolution)
-    fight = advanced
-    phase = 'pre'
-    selected = []
-    switch (routeTurn(advanced, resolution)) {
-      case 'fight-continues':
-        notice = null
-        paint()
-        return
-      case 'room-continues':
-        return wonTheFight()
-      case 'fled':
-        return fledTheFight()
-      case 'death':
-        return died()
-    }
+/**
+ * art. 57: unused dice dim at resolve. The resolve is a beat of presentation
+ * and nothing else — it is skippable, its end state is settled, and no
+ * decision waits on it (art. 1).
+ */
+function endTurn(): void {
+  const now = fight
+  if (now === null) return
+  resolving = decide(now.turn, 'end-turn', now.armor, goods())
+  selected = []
+  paint()
+  resolveTimer = setTimeout(settleTurn, 700) as unknown as number
+}
+
+function settleTurn(): void {
+  clearTimeout(resolveTimer)
+  const now = fight
+  const resolution = resolving
+  resolving = null
+  if (now === null || resolution === null) return
+  const advancedFight = advanceFight(now, resolution)
+  fight = advancedFight
+  phase = 'pre'
+  selected = []
+  switch (routeTurn(advancedFight, resolution)) {
+    case 'fight-continues':
+      notice = null
+      persist()
+      paint()
+      return
+    case 'room-continues':
+      return wonTheFight()
+    case 'fled':
+      return runFromTheFight()
+    case 'death':
+      return died()
   }
 }
 
@@ -569,32 +1043,48 @@ function wonTheFight(): void {
   const now = fight
   const here = screen
   if (now === null || here.kind !== 'fight') return
+  // art. 63: winning is one of the two things that lets a card refill, and
+  // it does it by letting the fight go.
   ledgers = carryOut(ledgers, now)
   fight = null
-  fightLot = null
   screen = { kind: 'room' }
   // Winning opens the door, and the door commits the next room (art. 35).
   walk(here.door, NOTICES['fight.won'] ?? null)
 }
 
-function fledTheFight(): void {
-  // The ruling of 2026-08-04: a fled fight is discarded, and re-entering
-  // the door starts it fresh. The pause-not-refill ruling is deferred.
+/**
+ * art. 63, as ruled: running **pauses** the fight. The spent card and the
+ * horror's wounds go into the run, and the door you back out of is the door
+ * you come back to.
+ */
+function runFromTheFight(): void {
+  const now = fight
+  if (now === null || screen.kind !== 'fight') return
+  clearTimeout(advanceTimer)
+  clearTimeout(resolveTimer)
+  resolving = null
+  ledgers = routeFlight(
+    ledgers,
+    saveFight(now, ledgers.run!.at.room, phase, selected, advanced, false),
+  )
   fight = null
-  fightLot = null
   screen = { kind: 'room' }
   bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.room)
+  chosen = doors(bands)[0] ?? null
   notice = NOTICES['fight.fled'] ?? ''
   persist()
   paint()
 }
 
 function died(cause = 'end.gnawing'): void {
+  clearTimeout(advanceTimer)
+  clearTimeout(resolveTimer)
+  resolving = null
   ledgers = routeDeath(ledgers, cause)
   chain = deal(ledgers.run!.seed, ledgers.run!.depth, CATALOG, GRAMMAR)
   bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.room)
+  chosen = doors(bands)[0] ?? null
   fight = null
-  fightLot = null
   refused = false
   screen = { kind: 'dead' }
   notice = null
@@ -612,42 +1102,17 @@ function tapDie(die: DieId): void {
     fight = withTurn(now, keep(now.turn, held))
   } else if (phase === 'claim') {
     selected = selected.includes(die)
-      ? selected.filter((held) => held !== die)
+      ? selected.filter((one) => one !== die)
       : [...selected, die]
   }
-  paint()
-}
-
-function cardStrip(card: Card, shut: readonly Line[]): HTMLDivElement {
-  const div = document.createElement('div')
-  div.className = 'card'
-  for (const line of LINES) {
-    const span = document.createElement('span')
-    span.className = card[line] ? 'spent' : shut.includes(line) ? 'sealed' : ''
-    span.textContent = `${LADDER[line].name}×${LADDER[line].multiplier}  `
-    div.append(span)
-  }
-  return div
-}
-
-// ── The endings ────────────────────────────────────────────────────────
-
-function endTray(label: string): void {
-  const lines = ledgers.permanent.bookOfEnds
-  if (lines.length > 0) trayBand.append(note(`the book of ends: ${lines.length}`))
-  trayBand.append(
-    row(
-      button(label, () => { screen = { kind: 'room' }; notice = null; persist(); paint() }),
-      button('the book of ends', () => { screen = { kind: 'book' }; notice = null; paint() }),
-    ),
-  )
+  persist()
 }
 
 // ── Go ─────────────────────────────────────────────────────────────────
 
 addEventListener('resize', () => {
   painted.clear()
-  world()
+  paint()
 })
 
 boot()

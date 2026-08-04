@@ -84,7 +84,7 @@ describe('descent — arts 5–6 (tapping never harms), art. 9 (forward only), a
   it('walks forward, and never back (art. 9)', () => {
     const { ledgers, chain } = opened()
     const bands = enterRoom(ledgers, chain, ROOM_BOOK, chain.start)
-    const moved = chooseDoor(ledgers, chain, doors(bands)[0]!)
+    const moved = chooseDoor(ledgers, chain, ROOM_BOOK, doors(bands)[0]!)
     expect(moved.run!.at.room).toBe(chain.nodes[1]!.room)
     expect(moved.run!.at.step).toBe(1)
     expect(moved.run!.at.beat).toBe(0)
