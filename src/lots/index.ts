@@ -84,6 +84,7 @@ export {
   castingsLeft,
   inspect,
   keep,
+  keptAtRecast,
   openTurn,
   recast,
   throwDie,

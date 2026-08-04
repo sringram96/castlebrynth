@@ -54,7 +54,7 @@ describe('death — art. 32 (every death reseeds), art. 11 (the permanent surviv
 
     // Get somewhere, take something, learn something.
     const bands = enterRoom(ledgers, chain, ROOM_BOOK, chain.start)
-    const walked = chooseDoor(ledgers, chain, doors(bands)[0]!)
+    const walked = chooseDoor(ledgers, chain, ROOM_BOOK, doors(bands)[0]!)
     const trove = chain.nodes.find((node) => node.type === 'trove')!
     const taking = enterRoom(walked, chain, ROOM_BOOK, trove.room).tray.flatMap((offer) =>
       offer.kind === 'act' ? [offer.act] : [],

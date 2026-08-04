@@ -7,7 +7,7 @@ novel a candle at a time; the labyrinth is a blind chain of hand-authored
 rooms, procedurally rearranged every run; fights are poker-dice duels
 against horrors whose intents are always shown; death burns the run and
 keeps the knowledge. `reference/GAME.md` is the fantasy. The binding law is in
-`.claude/rules/` — 62 numbered articles; tasks cite them as "art. N".
+`.claude/rules/` — 76 numbered articles; tasks cite them as "art. N".
 
 ## Components
 - **src/state** — the two ledgers (run / permanent) behind named rituals;
@@ -15,11 +15,13 @@ keeps the knowledge. `reference/GAME.md` is the fantasy. The binding law is in
 - **src/gen** — seeds and deals the blind chain under the grammar rules;
   proves winnability. (arts 31–39)
 - **src/room** — the computed-box renderer on the GRID dial; the port of
-  `reference/castlebrynth-wake-v3.html`. (arts 13–25)
-- **src/descent** — plays a room: candles, taps, acts, doors. (arts 5–9, 29)
+  `reference/castlebrynth-wake-v3.html`; the world marks a thumb answers
+  through. (arts 13–25, 68)
+- **src/descent** — plays a room: candles, taps, acts, doors, and what has
+  happened in the room. (arts 3, 5–9, 29, 70)
 - **src/lots** — the dice engine: turn, ladder, the card, armor, riders. (arts 41–65)
-- **src/hinge** — a door that is a fight; the advance; death routing.
-  (art. 30)
+- **src/hinge** — a door that is a fight; the advance; death routing; the
+  fight that survives a lock screen and a retreat. (arts 30, 63, 75)
 - **src/content** — every room, horror, die, and player-facing word, as
   typed data. Engine code contains no prose and no tuning numbers.
 
@@ -42,12 +44,17 @@ all state client-side.
 - **No battle screen** — a fight is the room with the thing come close.
   (art. 30)
 - **Content is data; prose is the sound design** — the voice rule binds
-  every player-facing string. (rules/voice.md)
+  every player-facing string, and art. 66 binds the controls instead.
+  (rules/voice.md, the-thumb.md)
+- **The tray is anatomy, not a menu** — fixed regions, plain imperative
+  verbs, things tapped where they stand, and every act that changes state
+  changing the scene. (arts 66–76)
 
-## The cut: phase 0 — "the skeleton walks"
+## The cut: phase 0 — "the skeleton walks", then reads
 One complete loop: wake → descend a generated chain → fight → die
 knowing more → win because you know. The scope is tracked as tasks on
-the board, not here.
+the board, not here. The first wave of phase 1 makes that loop legible
+rather than adding to it: the thumb's laws, in the shell.
 
 ## Phases (backlog prose, not promises)
 1. **The living depth** — the economy (knucklebones, Merchant, Sanctum,
@@ -68,15 +75,23 @@ accounts, exactly one horror.
 
 
 ## Status
-**The skeleton walks.** `npm run dev` is a playable loop in a portrait
+**The game is legible.** `npm run dev` is a playable loop in a portrait
 browser: wake → descend a generated chain → take the key → fight the
 Gnawing → win or die → the Book gains a line → a reseeded chain → the
 Warden's door, refused without the key and terse with it. `npm test` is
-green: 17 files, 100 tests.
+green: 21 files, 132 tests.
 
-It is an animatronic, not a game. The prose is functional placeholder,
-the UI is bare, and nothing is styled. That is deliberate and it is the
-next tranche's work.
+The skeleton walked; it could not be read. Every room rendered
+identically, acts changed only the bottom text, the tray was a menu of
+prose buttons, four dice states were four border colours, and a
+half-spent turn died with the tab. All of that was written down as a
+violation list under arts 66–76, and this tranche is that list closed.
+A player can now tell where they are, see that their actions did
+something, read the fight at a glance, and never lose progress.
+
+What is still deliberately unfinished: the prose is functional
+placeholder rather than the register, the ordinary rooms are art. 26's
+first tier and not its second, and phase 0's non-goals all still hold.
 
 ### What exists
 - **src/state** — the two branded ledgers and the five rituals (`wake`,
@@ -98,19 +113,34 @@ next tranche's work.
   prose. (arts 41–65)
 - **src/descent** — a room plays: candles one at a time, taps free and
   always answering, doors as sensed lines, forward only, one `take` act.
-  The `RoomBook` port keeps prose out of the engine. (arts 5–9, 29)
-- **src/hinge** — the fight-door, the advance as a prop painted into the
-  same box, the four exits, and death routing. (arts 30, 32)
-- **src/room** — unchanged: the port of
-  `reference/castlebrynth-wake-v3.html`, still byte-identical at GRID 240.
-- **src/content** — six hand-authored rooms, the Gnawing at the demo's
-  numbers, the demo's five goods, the ladder, the reference fight's kit,
-  and every player-facing string. The voice lint is real and runs in two
-  categories: prose owes the whole rule, a name owes it minus second
-  person and present tense.
-- **src/main.ts** — the shell: boot into a first waking or a resume, the
-  three bands, the room, the bare fight tray, death, the Book, and down
-  again. Reload lands at the room you were in.
+  Also `SceneState` — what has happened in this room, which is what the
+  renderer reads and what the frame cache is keyed on (art. 70) — and
+  `mayLeave`, which is art. 3: a required thing still lying here refuses
+  every door in the room. The `RoomBook` port keeps prose out of the
+  engine. (arts 3, 5–9, 29, 70)
+- **src/hinge** — the fight-door, the staged advance as a prop painted
+  into the same box, the four exits, death routing, and the two laws
+  about a fight's place in a *run*: `saveFight`/`restoreFight` (art. 75)
+  and `routeFlight` as a pause rather than a discard (art. 63).
+  `turnLot` derives each casting's lot from seed, step, turn and casting
+  number, which is what lets a turn be replayed instead of stored.
+  (arts 28, 30, 32, 63, 75)
+- **src/room** — the port of `reference/castlebrynth-wake-v3.html`,
+  still byte-identical at GRID 240. Gains `WorldMark`/`markRect`, so the
+  region that answers a tap on a thing is derived from the same world
+  coordinates the thing is painted at (arts 19, 68), and `overpaint`, so
+  a motion can be laid over a cast box without casting it again.
+- **src/content** — six hand-authored rooms, each with its own school
+  and its own props; the Gnawing at the demo's numbers, the demo's five
+  goods, the ladder, the reference fight's kit, and every player-facing
+  string. The voice lint runs in two categories — prose owes the whole
+  rule, a name owes it minus second person and present tense — and the
+  controls in `VERBS` are held to art. 66 instead, which is the same
+  review by a different rule.
+- **src/main.ts** — the shell: boot into a first waking, a resume, or a
+  fight you were mid-turn in; the three bands; the world's tappable
+  marks; the tray as anatomy; the crown and the card's sheet; death, the
+  Book, and down again.
 
 ### Tests
 | area | what it enforces |
@@ -131,43 +161,60 @@ next tranche's work.
 | `hinge` | the fight-door, the four exits, wounds carried out (art. 30) |
 | `death` | the run burns and the permanent survives a reload (arts 11, 32) |
 | `room` | byte-identical renders, the GRID dial, the mouth (arts 13–18, 22–23) |
-| `content.voice` | every player-facing string, in its category |
+| `room.scene` | a palette and a prop per room, distinct pixels, the name in the first candle, the taken key gone, the opened door open (arts 19, 21, 34, 70) |
+| `fight.persist` | the round trip at every point in a turn over 30 seeds, and the card that flight can never refresh (arts 63, 75) |
+| `descent.required` | no legal walk reaches a lock without its key — with the control that proves the law is doing the work (arts 3, 4, 9) |
+| `content.voice` | every player-facing string, in its category; every control against art. 66 |
 
 ### Debt
 Named, not hidden. Each of these is a task, not an accident.
 
-- **Flee is a discard, not a pause.** The ruling of 2026-08-04 says a fled
-  fight resolves as discarded this tranche; re-entering the door starts it
-  fresh on a virgin card. The real ruling — a fled fight pauses, its card
-  and its wounds persisting — is deferred.
-- **Resume granularity is the room.** `FightSave` is typed and unused.
-  Killing the app mid-fight resumes at the room with the fight-door
-  unentered. Mid-turn resume is the later half of art. 36.
 - **The dealer is dumb.** It deals a single path, so art. 31's two-to-three
   doors per room do not exist yet and blind play has nothing to choose
   between. The real grammar engine — adjacency bans, per-depth guarantees,
   fight-count bands, the depth weights of art. 39 — goes in behind the
   same three signatures. `Grammar` is honoured in shape and mostly empty.
-- **No design pass.** Bare UI was authorised for this tranche without the
-  design-agent consult. Nothing in `index.html` or `src/main.ts` is the
-  real look; arts 26–30 are unspent, the tray is not diegetic, and the
-  advance is a view swap with no staging.
+- **Still no design pass.** The shell is now legible, which is law; it is
+  not styled, which is not. arts 26–30's second tier is unspent: the
+  ordinary rooms are the computed box plus basic sprites, there are no
+  hero plates, and art. 28's idle patches do not exist. `index.html`'s
+  CSS is anatomy and four dice states, not a look. The design-agent
+  consult is still owed.
 - **Placeholder prose.** `src/content/prose.ts` is functional second
   person, not the register. Content review is voice review, and the lint
   passes — but passing the lint is not being in register.
 - **One depth, one horror, no economy.** The phase-0 non-goals still hold.
 - **The renderer is the shell's slow part.** The box is computed per pixel,
-  so `src/main.ts` caches every rendered frame by scene and height. A room
-  first seen costs about a second.
+  so `src/main.ts` caches every rendered frame by scene state and height.
+  A room first seen costs about a second, and a *state* first seen costs
+  it again — taking the key re-casts the box. `overpaint` fixed this for
+  the advance, which needed to be cheap per frame; the same trick would
+  fix it for props generally, and has not been applied.
+- **New: the resolve beat is not persisted.** Art. 57's dimming of unused
+  dice needed a moment to happen in, so `End turn` shows one for 700ms
+  before advancing. Killing the app inside that window restores the turn
+  as it was *before* the press — a settled state, and a legal one under
+  art. 1, but the press is lost and no other pulse in the game loses one.
+- **New: the Book of Ends reaches the player through `Read`.** Art. 67
+  bans its lines from the tray, so they live in the sheet behind a plain
+  verb, offered at the Crossing and on the two ending screens. That is
+  one verb in the act strip doing what art. 74's glyph does for the card;
+  whether the Book deserves its own glyph is a design question, not a
+  law one.
+- **New: `end.kept` is unreachable.** Art. 3 now refuses the door rather
+  than letting a run strand, so the ending that burned a stranded run
+  cannot be arrived at by play. The valve is kept in `roomActs` against a
+  chain that failed art. 33's guarantee, and its line is still authored.
 
 ### What the rules still do not cover
-- **A stranded run.** Art. 33 binds the generator, and it holds: the key is
-  always upstream of the lock. But a player may walk past the key, and the
-  engine has no back (art. 9) — so the Warden's door refuses a run that can
-  no longer be finished. The shell offers that run an end ("the labyrinth
-  keeps you"), which burns it and writes its own Book line under art. 32.
-  Whether a run may strand itself at all, and whether being kept is a death
-  or something else, is a question for the human.
+- **What may block a door, beyond a required item.** Art. 3 is now
+  enforced: a required thing lying in the room refuses every door in it,
+  and `test/descent.required.test.ts` proves no legal walk reaches a lock
+  without its key. What the article does not say is where the line falls
+  once there is more than one required thing per depth, or whether a
+  *required* flag can ever be earned rather than authored — the flag is
+  content's word today, and the test checks it against the chain's own
+  demands rather than trusting it.
 - **The whiff guarantee is unstated law.** Art. 46 no longer says anything
   about a hand of six. Pigeonhole is still true of the dice, but it is the
   card and not the values that can leave a turn with nothing to claim, so
@@ -212,86 +259,116 @@ other rule file — the two registers (66), the tray as anatomy (67), look-
 then-take (68–71), the dice under the thumb (72–73), the card behind a
 glyph and interaction as state (74–75), and the interaction budget (76).
 The law index, the design agent, and the pointers in voice.md,
-the-world.md and the-room.md are wired to it. **No UI was built here.**
+the-world.md and the-room.md are wired to it. No UI was built in that
+tranche; the tranche after it is the one below.
 
-**The full-house defect was interactive, and it is fixed at the
-interaction layer.** The engine was never wrong: `shapesOf` names
-FULL HOUSE for every five-die selection of signature 3-2, and
-`test/thumb.claim.test.ts` now proves that exhaustively — all 7776
-five-die hands, and all 300 arrangements of AAABB through the claim path
-the shell calls. What failed was the sentence the shell never said. Claim
-offers match the *exact* selection (art. 72's DEFAULT), so a hand of six
-holding a full house offers FULL HOUSE on the exact five and nothing on
-all six — and the thumb that selects the whole hand is shown the ANY DICE
-floor, which art. 46 always keeps on offer. The shell's one guard,
-`if (lines.length === 0)`, was therefore unreachable: `claimable` is never
-empty while the floor stands. The player saw a full house on the table, an
-offer that was not it, and no reason. Reproduced through the shell's own
-call sequence at seed 6 — `4-1-4-2-4-1`, three fours and two ones and a
-two that belongs to nothing.
+### Where the shell broke the thumb, and where it no longer does
+The list below is the audit taken when `.claude/rules/the-thumb.md` was
+ratified. Every line of it is closed. What each article got is named, so
+that a later playtest can argue with the reading rather than guess it.
 
-The fix is the missing explanation and nothing else. `fitsNothing(turn,
-dice, ladder)` in `src/lots/card.ts` is art. 72's other half: a selection
-is owed a reason when dice are on the table and no *combo* is on offer —
-the floor is the floor (art. 46), not a combo, so a selection down to it
-still fits nothing. The line itself is content, `NOTICES['claim.exact']`,
-which also takes the last prose literal out of the shell. Nothing was
-restyled.
+- **art. 66 — controls narrated.** Closed. Controls come from `VERBS` in
+  content and are plain imperative verbs of two words or fewer: Take,
+  Open, Fight, Descend, Roll, Recast, Keep all, Claim, Take back, End
+  turn, Run, Read, Close, Wake, End run. A door's sensed line is what
+  tapping the door answers with, never what a button says.
+  `test/content.voice.test.ts` holds every verb to the article — two
+  words, a capital, no punctuation, no article and no second person —
+  and checks that no act invents a verb of its own.
+- **art. 67 — the tray was a menu.** Closed. Three regions in fixed
+  places, rebuilt in place rather than appended to: vitals (the body's
+  numbers, and in a fight the turn's running totals under art. 57), the
+  pouch as slots with the empty ones drawn, and the act strip. The card's
+  glyph sits at the end of vitals and never moves. What art. 67 says
+  never appears there no longer does: world nouns and doors are tapped in
+  the world, the beat advance is a tap on the word band, and the Book's
+  lines are in the sheet.
+  *Two readings are declared rather than assumed.* The turn's running
+  totals live in vitals, because art. 57 requires them visible and vitals
+  is the numbers region. What you carry sits in the pouch after the dice
+  slots, because art. 68 requires a possession to be tappable and the
+  pouch is the possessions region.
+- **art. 68 — possessions could not be tapped.** Closed. Every die in the
+  pouch, every die on the table, every empty slot and every carried thing
+  answers with its declared truth (art. 54) — `src/content/says.ts`, made
+  of names from `prose.ts` and numbers from the engine. The world band
+  takes taps: `WorldMark` is a billboard in world units, `markRect`
+  projects it with the same projector the props are painted through, and
+  the shell lays the marks over the canvas, smallest last, at no less
+  than a thumb's width. No `inspect` button exists.
+- **art. 69 — dead tappables.** Closed. A die spent in a claim is not
+  disabled; it is tappable and answers with the line it was spent in.
+  Tapping to keep or select answers with the die. The card is a sheet
+  behind a glyph rather than an inert strip.
+- **art. 70 — acts changed no pixel.** Closed, and this was the section
+  everything else waited on. `SceneState` — what has been done here, what
+  has been opened, how the horror stands — is what content binds props to
+  and what the frame cache is keyed on. Rooms have contents to subtract
+  from: the key lies in the alcove and is gone when taken; the fight-door
+  stands open once entered.
+- **art. 71 — a bare tap walked you through a door.** Closed. Tapping a
+  door senses it and chooses it; going through it is Open, Fight or
+  Descend in the act strip. `chooseDoor` refuses outright if the room is
+  still holding something back (art. 3).
+- **art. 72 — keep-marks outlived the recast.** Closed at the engine and
+  not at the tray: `recast` clears every mark as the second casting
+  lands, so a tray that forgot the rule could not break it. The first
+  casting keeps its marks because nothing player-facing reads them and a
+  resume replays from them. The four states are a plain face, a cold tab
+  along the top, a full inversion, and a sunk gold ring — not four border
+  colours. Unused dice dim through the resolve beat.
+- **art. 73 — the intent was a note.** Closed. It is a chip in the
+  crown over the world band; tapping it says `INTENT_SAYS` in plain
+  words.
+- **art. 74 — the card was parked mid-screen.** Closed. A persistent
+  glyph at the end of vitals opens it in one tap, as a sheet over the
+  world, with a Close verb.
+- **art. 75 — a half-spent turn did not survive the lock screen.**
+  Closed. `FightSave` is written on every fight mutation. The dice are
+  not stored: each casting's lot is a pure function of seed, step, turn
+  number and casting number, so a resume replays the turn and gets the
+  same faces. The phase and the half-made selection are state like any
+  other. `test/fight.persist.test.ts` round-trips through the vault at
+  five points in a turn across thirty seeds.
+- **art. 76 — inside the budget.** Still inside it. The tap is the whole
+  vocabulary; nothing here proposes leaving it.
 
-### Where the shell now visibly breaks the thumb
-Listed, not fixed. This is the Look stream's work — tasks 24, 25, 26, 27,
-22 and 36 already cite these articles.
+Two rulings landed with the list, because the list could not be closed
+around them:
 
-- **art. 66 — controls narrate.** A door's button *is* its sensed line
-  ("Behind this one, something wet is scratching."), so the longest prose
-  in the tray is a control. `take the pale bone`, `the labyrinth keeps
-  you`, `the book of ends`, `re-roll the rest` and `down again` are none
-  of them plain imperative verbs of two words or fewer. Claim and disband
-  buttons are a name and a number (`full house 56`), not verbs.
-- **art. 67 — the tray is a menu.** It is cleared and rebuilt on every
-  paint, rows appearing and vanishing, so nothing sits in a fixed region
-  and buttons move under the thumb between paints. Vitals are a note at
-  the bottom in a room and at the top in a fight. The pouch is never
-  drawn: there are no slots, empty or full, and hand size cannot be seen.
-  The tray also carries what art. 67 says never appears there — world
-  nouns, doors, the beat advance, the Book of Ends and its lines.
-- **art. 68 — possessions cannot be tapped.** `run.carried` reaches the
-  player as a count in a note (`carrying 1`); there is no tappable for a
-  carried thing and none for a die in the pouch, so a possession's
-  declared truth (art. 54) is unreachable. `inspect` exists in the engine
-  and nothing calls it. The world band itself takes no taps at all — the
-  canvas has no handler, so a thing in the world is tapped by pressing
-  its name in the tray instead of the thing.
-- **art. 69 — dead tappables.** A die already spent in a claim is a
-  `disabled` button. Tapping a die to keep or select answers with
-  nothing. The card strip is inert.
-- **art. 70 — acts change no pixel.** Taking the key re-enters the room
-  and repaints the same cached frame: the scene is keyed by room id
-  alone, and the key was never on the floor to leave it. No opened door
-  stands open. The one act that does prove itself is the wounded horror,
-  whose frame is keyed by `horrorHealth`. The rooms themselves are three
-  box shapes and two palettes with no authored contents, which is why
-  every room looked the same and why art. 70 has nothing to subtract.
-- **art. 71 — a bare tap walks you through a door.** `takeDoor` commits
-  on the first press of the sensed line. Sensing and going are one tap.
-- **art. 72 — keep-marks outlive the recast.** `recast` preserves `kept`
-  on the dice that survived, and the tray keeps drawing `.kept` through
-  the claim phase, so the hand still shows which dice came from the first
-  casting after that has stopped being information. Idle, selected and
-  claimed are distinguished only by border colour, which the playtest
-  could not read. Unused dice never dim at resolve, there being no
-  resolve display.
-- **art. 73 — the intent is not tappable.** It is a note. `INTENT_SAYS`
-  is authored and spent only on the word band, so a declared effect
-  cannot be interrogated.
-- **art. 74 — the card is parked mid-screen.** `cardStrip` prints all
-  thirteen lines inline under the tray on every fight paint. There is no
-  glyph.
-- **art. 75 — a half-spent turn does not survive the lock screen.**
-  `fight`, `phase`, `selected` and `fightLot` are module-level and never
-  written; `persist` saves the ledgers and the beat only. Already named
-  as debt above ("Resume granularity is the room", `FightSave` typed and
-  unused) — under art. 75 it is a violation, not a deferral. The
-  half-read scene does survive.
-- **art. 76 — inside the budget.** The shell taps and does nothing else.
-  Nothing here proposes leaving it.
+**A fled fight pauses** (art. 63). The skeleton's discard was an
+acceptable shortcut while nothing could be carried out of a fight; it
+becomes an exploit the moment anything can, which is the next wave. Spent
+lines and wounds now persist in the run, re-entering the door resumes,
+and the card refills at exactly two moments — a fresh door and the death
+that burns the run. It is the same `FightSave` machinery as art. 75:
+running out and locking the screen differ only in where you are standing.
+
+**A run can never be walked into unwinnable** (art. 3). Art. 33 binds the
+generator and always held — the key is upstream of its lock — but nothing
+made the player *carry* it, and the engine has no back (art. 9). Content
+marks required items; while one lies unclaimed the room's door verbs
+refuse with one line that names nothing and points at nothing. Taking
+stays a deliberate act, and optional treasure may still be walked past
+and lost, which is art. 4 working. The proof searches every legal path
+over the carried-set as well as the room, for two hundred seeds, with a
+control run that strands every one of them the moment the law is off.
+
+### The full-house defect, still fixed
+**It was interactive, and it was fixed at the interaction layer.** The
+engine was never wrong: `shapesOf` names FULL HOUSE for every five-die
+selection of signature 3-2, and `test/thumb.claim.test.ts` proves that
+exhaustively — all 7776 five-die hands, and all 300 arrangements of
+AAABB through the claim path the shell calls. What failed was the
+sentence the shell never said. Claim offers match the *exact* selection
+(art. 72's DEFAULT), so a hand of six holding a full house offers FULL
+HOUSE on the exact five and nothing on all six — and the thumb that
+selects the whole hand is shown the ANY DICE floor, which art. 46 always
+keeps on offer.
+
+`fitsNothing(turn, dice, ladder)` in `src/lots/card.ts` is art. 72's
+other half, and the shell now says both halves at once: the offer's name
+and number in vitals, and `NOTICES['claim.exact']` beside it when the
+offer is only the floor. A selection makes at most one combo, so `Claim`
+is a single verb that takes the highest tier on the table rather than a
+row of names and numbers wearing the coat of controls.

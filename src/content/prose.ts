@@ -7,36 +7,43 @@
  * Engine code contains no prose. This is the only file that says anything
  * out loud.
  *
- * **Placeholder, this tranche.** The skeleton walks before the cover goes
- * on: what follows is functional second person, not the register. The
- * register pass is a later task, and the debt is written in DESIGN.md.
+ * One exception, and it is a law rather than a leak: `VERBS` are controls,
+ * and art. 66 exempts controls from the voice register and binds them to
+ * itself instead — a plain imperative verb, two words or fewer. They are
+ * linted against that rule and not against this file's.
+ *
+ * **Placeholder, this tranche.** The register pass is a later task, and the
+ * debt is written in DESIGN.md. What is *not* placeholder any more is that
+ * every room says its own name in its first candle: art. 34 hangs knowledge
+ * on room identity, and a room the player cannot name is a room they cannot
+ * learn.
  */
 
 /** The word band, one candle at a time (art. 29). */
 export const BEATS: Readonly<Record<string, readonly string[]>> = {
   'room.crossing': [
-    'You wake. The ceiling is close enough to touch.',
+    'The Crossing. You wake, and the ceiling is close enough to touch.',
     'Six bones lie in your open hand. One of them is paler than the rest.',
     'The corridor goes down. Behind you the stone is unbroken.',
   ],
   'room.passage.drip': [
-    'A long room. Water runs somewhere under the floor.',
-    'The far end narrows to a door.',
+    'The wet passage. Water runs in a cut down the middle of the floor.',
+    'Three seams in the ceiling let it in. The far end narrows to a door.',
   ],
   'room.trove.alcove': [
-    'An alcove, cut square into the wall.',
+    'The alcove, cut square into the right-hand wall of a low room.',
     'A key lies in the dust at the back of it.',
   ],
   'room.lair.gnawing': [
-    'A low room. The floor is bare where something drags across it.',
+    'The low room. A wide mark drags across the floor and turns at the corner.',
     'The door at the far end breathes.',
   ],
   'room.passage.ash': [
-    'A short room. Ash banks against both walls.',
-    'The stair down starts past the door.',
+    'The ash passage. Ash banks against both walls and pales the flagstones.',
+    'Nothing moves it. The stair down starts past the door.',
   ],
   'room.warden': [
-    'The room ends in a door of black iron.',
+    "The Warden's door. Black iron, three bands, no seam.",
     'There is one lock, and it is not small.',
   ],
 }
@@ -90,7 +97,8 @@ export const END_LINES: Readonly<Record<string, string>> = {
 
 /**
  * What each intent means, said once. art. 42 shows the number; this says
- * what the number will do to the plan (art. 65).
+ * what the number will do to the plan (art. 65). art. 73: the intent is
+ * tappable, and this is what it answers with.
  */
 export const INTENT_SAYS: Readonly<Record<string, string>> = {
   SWIPE: 'It swipes at you.',
@@ -103,16 +111,23 @@ export const INTENT_SAYS: Readonly<Record<string, string>> = {
 /** The lines the shell says at the seams of a run. */
 export const NOTICES: Readonly<Record<string, string>> = {
   'door.locked': 'The lock holds. Whatever opens it is not on you.',
+  // arts 3 and 9: a stop, not a hint. It names nothing and points at nothing.
+  'door.held': 'Something here is still yours to take.',
   'fight.won': 'The room goes quiet. The door gives.',
-  'fight.fled': 'You back out of the door. It is still in there.',
+  // art. 63: a fled fight pauses. Nothing about it refills.
+  'fight.fled': 'You back out of the door. It waits where you leave it.',
+  'fight.resumed': 'It is where you leave it, and it remembers the rest.',
   'run.dead': 'The floor comes up. The run ends here.',
   'run.finished': 'You go through, and the stair keeps going down.',
   'book.empty': 'Nothing is written here yet.',
   'book.title': 'The Book of Ends.',
+  'card.title': 'The card. Each line spends once, and refills at the next door.',
+  'pouch.empty': 'Nothing is in this slot yet.',
   // art. 72: claim offers match the exact selection, so a selection that
   // fits nothing says why. The shape must be exactly what is chosen — a
   // full house is the five, never the five and one more.
   'claim.exact': 'No combo uses exactly these dice.',
+  'claim.none': 'Nothing is chosen yet.',
 }
 
 /**
@@ -128,8 +143,7 @@ export const LABELS: Readonly<Record<string, string>> = {
   'room.lair.gnawing': 'the low room',
   'room.passage.ash': 'the ash passage',
   'room.warden': "the warden's door",
-  'act.take-key': 'take the key',
-  'item.warden-key': 'the iron key',
+  'key.warden': 'the iron key',
   'die.plain': 'a plain bone',
   'die.orphan': 'the orphan',
   'die.sisters': 'the sisters',
@@ -137,4 +151,53 @@ export const LABELS: Readonly<Record<string, string>> = {
   'talisman.ossuary': 'the ossuary',
   'talisman.zealot': 'the zealot',
   'wearable.rusted-plate': 'the rusted plate',
+  'rider.leech': 'the leech bite',
+}
+
+/**
+ * The short words the tray's readouts are made of (art. 57: everything
+ * visible). They are labels, not sentences: a number needs a word beside it
+ * and nothing more.
+ */
+export const READOUT: Readonly<Record<string, string>> = {
+  health: 'you',
+  armor: 'armor',
+  attack: 'attack',
+  incoming: 'incoming',
+  unused: 'unused',
+  showing: 'showing',
+  faces: 'faces',
+  spent: 'spent in',
+  corroded: 'corroded',
+  next: 'next',
+  ends: 'ends',
+  depth: 'depth',
+  seed: 'seed',
+}
+
+/**
+ * art. 66: controls are a different language from prose. A control is a
+ * plain imperative verb, two words or fewer; it never narrates, and the
+ * poetry is the response to the button rather than the button.
+ *
+ * These are exempt from rules/voice.md by that article and bound by it
+ * instead — `test/content.voice.test.ts` holds them to it.
+ */
+export const VERBS: Readonly<Record<string, string>> = {
+  'act.take-key': 'Take',
+  open: 'Open',
+  fight: 'Fight',
+  descend: 'Descend',
+  end: 'End run',
+  wake: 'Wake',
+  read: 'Read',
+  close: 'Close',
+  card: 'Card',
+  roll: 'Roll',
+  recast: 'Recast',
+  'keep-all': 'Keep all',
+  claim: 'Claim',
+  'take-back': 'Take back',
+  'end-turn': 'End turn',
+  run: 'Run',
 }

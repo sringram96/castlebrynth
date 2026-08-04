@@ -8,13 +8,23 @@ import {
   LADDER,
   PLAIN_POUCH,
   THE_GNAWING,
+  WARDEN,
   horrorAt,
 } from '../src/content/index.js'
 import { deal } from '../src/gen/index.js'
 import { lotFrom } from '../src/gen/index.js'
 import type { Fight } from '../src/lots/index.js'
 import { advanceFight, cast, casting, claim, claimable, decide, withTurn } from '../src/lots/index.js'
-import { advance, carryOut, openFightDoor, routeDeath, routeFlight, routeTurn } from '../src/hinge/index.js'
+import {
+  advance,
+  carryOut,
+  openFightDoor,
+  pausedAt,
+  routeDeath,
+  routeFlight,
+  routeTurn,
+  saveFight,
+} from '../src/hinge/index.js'
 import { firstPermanent, wake } from '../src/state/index.js'
 import { seedOf } from './helpers.js'
 
@@ -84,20 +94,26 @@ describe('hinge — art. 30 (no battle screen), arts 11 and 32 (death routes on)
     expect(routeTurn(fight, resolved)).toBe('room-continues')
   })
 
-  it('routes flight back into the room, discarding the fight (the ruling)', () => {
-    const { ledgers, door } = atTheLair()
+  it('routes flight back into the room, and pauses the fight there (art. 63)', () => {
+    const { ledgers, lair, door } = atTheLair()
     const { fight, resolved } = playTurn(
       openFightDoor(ledgers, { door, horror: THE_GNAWING }),
       23,
       'flee',
     )
     expect(routeTurn(fight, resolved)).toBe('fled')
-    expect(routeFlight(ledgers)).toEqual(ledgers)
 
-    // Re-entering starts it fresh: full health, virgin card.
-    const again = openFightDoor(routeFlight(ledgers), { door, horror: THE_GNAWING })
-    expect(again.horrorHealth).toBe(THE_GNAWING.health)
-    expect(Object.values(again.card).some(Boolean)).toBe(false)
+    // The ruling of 2026-08-04 is repealed: a fled fight pauses. What the
+    // run keeps is the fight as it stood, not the absence of one.
+    const paused = routeFlight(
+      ledgers,
+      saveFight(fight, lair.room, 'pre', [], true, false),
+    )
+    expect(paused.run!.fight).not.toBeNull()
+    expect(pausedAt(paused, lair.room)!.horrorHealth).toBe(fight.horrorHealth)
+    expect(pausedAt(paused, lair.room)!.engaged).toBe(false)
+    // And it belongs to its own door: another room has no fight waiting.
+    expect(pausedAt(paused, WARDEN)).toBeNull()
   })
 
   it('carries the wounds out of the fight and into the run (art. 30)', () => {

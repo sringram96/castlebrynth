@@ -11,17 +11,10 @@ import type { Prop, RoomShape, Scene, SurfaceShaders, View } from '../../room/in
 import { hash } from '../../room/index.js'
 import type { School } from '../palettes.js'
 import { MUTED, roomPalette } from '../palettes.js'
-import { AUTHORED_HEIGHT, GRID, RENDER } from '../render.js'
+import { AUTHORED_GRID, AUTHORED_HEIGHT, RENDER } from '../render.js'
 
 /** art. 14: exactly three authored numbers. Focal length is derived. */
 const SHAPE: RoomShape = { lens: 93, width: 11, ceiling: 7 }
-
-/**
- * The grid these sprites were drawn on. Every authored pixel below passes
- * through `g`, so turning the GRID dial scales the props with the box
- * instead of stranding them (art. 23).
- */
-const AUTHORED_GRID = GRID
 
 /** Masonry, in world units — the texture is world-space, so it diminishes honestly (art. 15). */
 const COURSE = 2.35

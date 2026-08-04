@@ -2,7 +2,16 @@ import { describe, expect, it } from 'vitest'
 
 import { HAND_SIZE, PLAIN_POUCH } from '../src/content/index.js'
 import { lotFrom } from '../src/gen/index.js'
-import { assembleHand, cast, casting, freshCard, keep, openTurn, recast } from '../src/lots/index.js'
+import {
+  assembleHand,
+  cast,
+  casting,
+  freshCard,
+  keep,
+  keptAtRecast,
+  openTurn,
+  recast,
+} from '../src/lots/index.js'
 import { handOf, seedOf, SWIPE } from './helpers.js'
 
 /**
@@ -35,16 +44,34 @@ describe('lots — art. 41 (two castings), art. 42 (intent first), arts 43–44,
     const hand = handOf()
     const first = cast(openTurn(hand, SWIPE, freshCard()), lot)
     const held = [casting(first)[0]!.die, casting(first)[2]!.die]
-    const after = recast(keep(first, held), lot)
+    const marked = keep(first, held)
+    // Before the recast, the marks are the plan and they are visible.
+    expect(casting(marked).filter((l) => l.kept)).toHaveLength(2)
 
+    const after = recast(marked, lot)
     for (const die of held) {
       const before = casting(first).find((l) => l.die === die)!
       const now = casting(after).find((l) => l.die === die)!
       expect(now.face).toEqual(before.face)
-      expect(now.kept).toBe(true)
     }
-    // Everything else came back off the table.
-    expect(casting(after).filter((l) => l.kept)).toHaveLength(2)
+  })
+
+  /**
+   * art. 72: keep-marks are mortal. The instant the second casting lands,
+   * every mark clears — after the recast the hand is statistically a fresh
+   * hand, so which dice survived the first casting has stopped being
+   * information and showing it is noise.
+   */
+  it('clears every keep-mark the instant the recast lands (art. 72)', () => {
+    const lot = lotFrom(seedOf(13))
+    const first = cast(openTurn(handOf(), SWIPE, freshCard()), lot)
+    const held = [casting(first)[0]!.die, casting(first)[2]!.die]
+    const after = recast(keep(first, held), lot)
+
+    expect(casting(after).filter((l) => l.kept)).toEqual([])
+    // The first casting keeps its marks, because a resume replays from them
+    // and nothing player-facing ever reads them (art. 75).
+    expect(keptAtRecast(after)).toEqual(held)
   })
 
   it('releases dice when a later keep names fewer of them (art. 41)', () => {

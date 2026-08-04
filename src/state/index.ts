@@ -6,9 +6,9 @@
  * survives; they never mix except through the rituals below; and killing
  * the process at any moment loses nothing.
  *
- * Resume granularity this tranche is the room. `FightSave` stays typed and
- * unused: killing the app mid-fight resumes at the room with the fight-door
- * unentered. The debt is written down in DESIGN.md.
+ * Resume granularity is the fingertip (art. 75). `FightSave` is written on
+ * every fight mutation, so killing the app after the intent, mid-keep or
+ * mid-claim restores exactly there, the half-made selection included.
  */
 
 import type {
@@ -55,9 +55,19 @@ export interface RunLedger {
   readonly armor: Armor
   readonly worn: readonly WearableId[]
   readonly carried: readonly ItemId[]
+  /**
+   * art. 70: doors already opened, as `from→to`. The world remembers in
+   * pixels, and a door is the one thing in a room an act can leave standing
+   * open — so which ones are open is run state, not a repaint.
+   */
+  readonly opened: readonly string[]
   /** art. 4: a window open when the app closes resolves as missed. */
   readonly window: OpenWindow | null
-  /** Set while a fight is in flight, so a resume lands mid-turn (art. 36). */
+  /**
+   * art. 75: a half-spent turn survives the lock screen. Set while a fight
+   * is in flight — including one you ran out on, which pauses rather than
+   * discards (art. 63) — and cleared only by winning or dying.
+   */
   readonly fight: FightSave | null
 }
 
@@ -134,18 +144,50 @@ export interface OpenWindow {
   readonly closesAtBeat: number
 }
 
+/**
+ * art. 75: interaction is state. A half-made selection, a half-spent turn
+ * and a fight you ran out on all survive the lock screen, so all of it is
+ * written down — and it is written down small.
+ *
+ * The dice as they lie are *not* in here. The lot a turn is thrown with is
+ * derived from the run's seed and the turn number (art. 36), so the casting
+ * is replayed rather than stored: the same seed, the same kept set, the same
+ * faces. What cannot be derived is what the thumb did, and that is here.
+ */
 export interface FightSave {
   readonly horror: string
+  /** Which room's door this fight stands at (art. 30: it never moves). */
+  readonly at: RoomId
   readonly horrorHealth: number
+  readonly yourHealth: number
   readonly turnNumber: number
-  /** art. 41: *keep* is mid-turn holding. "Brace" has left the vocabulary. */
+  /**
+   * art. 41: *keep* is mid-turn holding. "Brace" has left the vocabulary.
+   * This is the set as it stood when the recast landed, which is what the
+   * replay needs — the marks the player sees are cleared by art. 72.
+   */
   readonly kept: readonly DieId[]
   readonly castingsSpent: number
   /** art. 63: the card belongs to the fight, so a resume finds it as spent. */
   readonly card: Card
   /** art. 45: claims already made this turn, each holding its own dice. */
   readonly claims: readonly ClaimSave[]
+  /** Which half of the turn the thumb is in: before the cast, keeping, claiming. */
+  readonly phase: FightPhase
+  /** art. 75: a half-made selection is state like any other. */
+  readonly selected: readonly DieId[]
+  /** art. 28: the advance never undoes itself, so it is remembered as done. */
+  readonly advanced: boolean
+  /**
+   * art. 63: whether the player is still at the door. A paused fight is
+   * saved exactly like a live one — the difference is only where you are
+   * standing, and a boot has to land you back where you were (art. 75).
+   */
+  readonly engaged: boolean
 }
+
+/** Where the thumb is inside a turn (arts 41, 75). */
+export type FightPhase = 'pre' | 'keep' | 'claim'
 
 /** One claim, small enough to write down: a line and the dice inside it. */
 export interface ClaimSave {
@@ -172,6 +214,7 @@ export function wake(permanent: PermanentLedger, seed: Seed, depth = 1): Ledgers
     armor: armorFrom(permanent.wearables, permanent.body.armor),
     worn: permanent.wearables.map((wearable) => wearable.id),
     carried: [],
+    opened: [],
     window: null,
     fight: null,
   } as unknown as RunLedger
@@ -267,6 +310,21 @@ export function carrying(run: RunLedger, item: ItemId): RunLedger {
   return { ...run, carried: [...run.carried, item] }
 }
 
+/** art. 70: an opened door stands open, and stays open. */
+export function openedDoor(run: RunLedger, key: string): RunLedger {
+  if (run.opened.includes(key)) return run
+  return { ...run, opened: [...run.opened, key] }
+}
+
+/**
+ * art. 75: the fight as it stands, written into the run. art. 63: a fight
+ * you ran out on keeps its card and its wounds, so this is not cleared by
+ * flight — only by winning, and by the death that burns the whole run.
+ */
+export function fighting(run: RunLedger, fight: FightSave | null): RunLedger {
+  return { ...run, fight }
+}
+
 export function wounded(run: RunLedger, health: number): RunLedger {
   return { ...run, health }
 }
@@ -281,7 +339,12 @@ export interface Vault {
 
 /** One versioned key. A snapshot from another version is not read (art. 36). */
 export const VAULT_KEY = 'castlebrynth'
-export const VAULT_VERSION = 1
+/**
+ * Bumped when the run's shape changes: art. 75 put the fight, the doors it
+ * has opened and the thumb's half-made selection on the ledger, and a
+ * snapshot written before that cannot answer for them.
+ */
+export const VAULT_VERSION = 2
 
 /**
  * art. 36: every mutation persists; boot restores exactly. A snapshot is a

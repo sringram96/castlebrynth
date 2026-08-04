@@ -5,45 +5,145 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Castlebrynth</title>
     <style>
-      /* art. 25 (amended 2026-08-04): exact fill via sharp upscale, so the
-         box fills the world band instead of sitting in bars. `pixelated` is
-         what keeps a fractional scale sharp.
-         Nothing below is design: it is legibility, and the look is a later
-         task under arts 26–30. */
-      html, body { margin: 0; background: #000; color: #d8d0c0; height: 100dvh; overflow: hidden;
-        font-family: Georgia, serif; font-size: 15px; line-height: 1.4; }
-      #stage { display: flex; flex-direction: column; height: 100dvh; max-width: 460px; margin: 0 auto; }
-      /* art. 29: the word — borderless at the top, fades after a beat. */
-      #word { flex: 0 0 auto; min-height: 4.4em; padding: 8px 12px; transition: opacity .6s; }
+      /* art. 29: three bands — the word, the world, the tray.
+         art. 67: the tray is anatomy, not a menu. Its regions are declared
+         here, in fixed order, and the shell fills them rather than building
+         them: a region that is empty is still in its place, so nothing ever
+         moves under the thumb between paints.
+         The look proper is still a later task under arts 26–30. What is
+         below is the anatomy and the four dice states, which are law. */
+      :root {
+        --ink: #d8d0c0;
+        --dim: #8a8478;
+        --sunk: #14120f;
+        --raised: #221e19;
+        --line: #3a342c;
+        --gold: #d9b36a;
+        --blood: #a8331f;
+        --cold: #7fa8b8;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; background: #000; color: var(--ink); height: 100dvh;
+        overflow: hidden; font-family: Georgia, serif; font-size: 15px; line-height: 1.4;
+        -webkit-text-size-adjust: 100%; }
+      #stage { display: flex; flex-direction: column; height: 100dvh; max-width: 460px;
+        margin: 0 auto; }
+
+      /* art. 29: the word — borderless at the top, fades after a beat, tap
+         to recall. Tapping it is also how a candle is turned: the beat
+         advance is not a tray control (art. 67). */
+      #word { flex: 0 0 auto; min-height: 4.6em; padding: 10px 12px; transition: opacity .5s;
+        cursor: pointer; }
       #word.faded { opacity: .35; }
-      /* art. 29: the world — the frame. */
-      #world { flex: 1 1 auto; display: flex; align-items: center; justify-content: center;
-        min-height: 0; overflow: hidden; }
-      canvas { image-rendering: pixelated; }
-      /* art. 29: the tray — a box beneath, holding what the moment offers. */
-      #tray { flex: 0 0 auto; padding: 8px 12px 14px; border-top: 1px solid #2b2722;
-        max-height: 52dvh; overflow-y: auto; }
-      #tray .row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
-      #tray .note { color: #8a8478; font-size: .85em; }
-      button { font: inherit; background: #1e1b17; color: #d8d0c0; border: 1px solid #55504a;
-        padding: 9px 12px; min-height: 40px; cursor: pointer; }
+      #word .more { color: var(--dim); font-size: .8em; }
+
+      /* art. 29: the world — the frame. art. 68: and it takes taps. */
+      #world { position: relative; flex: 1 1 auto; display: flex; align-items: center;
+        justify-content: center; min-height: 0; overflow: hidden; }
+      canvas { image-rendering: pixelated; display: block; }
+      /* The marks sit exactly over the canvas, so a thing is tapped where it
+         stands rather than by its name in a list (art. 68). */
+      #marks { position: absolute; inset: 0; pointer-events: none; }
+      #marks button { position: absolute; background: none; border: 1px solid transparent;
+        padding: 0; margin: 0; pointer-events: auto; cursor: pointer; min-width: 40px;
+        min-height: 40px; border-radius: 2px; }
+      /* art. 6: everything ever clickable is always clickable — so a thing
+         that answers shows, faintly, that it will. */
+      #marks button.lit { border-color: rgba(217, 179, 106, .22); }
+      #marks button.door { border-color: rgba(217, 179, 106, .3); }
+      #marks button.door.chosen { border-color: rgba(217, 179, 106, .7); }
+
+      /* art. 57: the horror, its health and its next attack, at the top —
+         over the world, because that is where the horror is (art. 30). */
+      #crown { position: absolute; left: 0; right: 0; top: 0; padding: 6px 8px;
+        display: none; gap: 6px; align-items: center; font-size: .8em;
+        background: linear-gradient(#000000cc, #00000000); pointer-events: none; }
+      #crown.on { display: flex; }
+      #crown > * { pointer-events: auto; }
+      #crown .name { color: var(--ink); white-space: nowrap; }
+      #crown .bar { flex: 1 1 auto; height: 8px; border: 1px solid var(--line);
+        background: var(--sunk); }
+      #crown .bar i { display: block; height: 100%; background: var(--blood); }
+      #crown .intent { font: inherit; color: var(--ink); background: var(--raised);
+        border: 1px solid var(--gold); padding: 4px 8px; min-height: 32px; cursor: pointer;
+        white-space: nowrap; }
+
+      /* An overlay over the world: the card, the Book. Never parked
+         mid-screen — it is opened by one tap and closed by one (art. 74). */
+      #sheet { position: absolute; inset: 0; display: none; flex-direction: column;
+        background: #000000ee; padding: 10px 12px; overflow-y: auto; }
+      #sheet.on { display: flex; }
+      #sheet h1 { font-size: 1em; font-weight: normal; margin: 0 0 8px; color: var(--dim); }
+      #sheet .line { display: flex; justify-content: space-between; gap: 10px;
+        padding: 3px 0; border-bottom: 1px solid #1c1915; font-size: .9em; }
+      #sheet .line.spent { color: #5c574e; text-decoration: line-through; }
+      #sheet .line.sealed { color: var(--gold); }
+      #sheet .line.open { color: var(--ink); }
+
+      /* art. 67: the tray is anatomy. Four regions, always in these places,
+         always in this order, whatever the moment holds. */
+      #tray { flex: 0 0 auto; border-top: 1px solid var(--line); padding: 8px 10px 12px;
+        display: flex; flex-direction: column; gap: 8px; }
+      #vitals { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px;
+        min-height: 24px; font-size: .85em; color: var(--dim); }
+      #vitals b { font-weight: normal; color: var(--ink); }
+      #vitals .glyph { margin-left: auto; font: inherit; color: var(--ink);
+        background: var(--raised); border: 1px solid var(--line); width: 34px; height: 30px;
+        cursor: pointer; line-height: 1; }
+      #pouch { display: flex; flex-wrap: wrap; gap: 6px; min-height: 46px; align-items: center; }
+      #acts { display: flex; flex-wrap: wrap; gap: 6px; min-height: 42px; align-items: center; }
+
+      button { font: inherit; background: var(--raised); color: var(--ink);
+        border: 1px solid #55504a; padding: 9px 12px; min-height: 42px; cursor: pointer; }
       button:disabled { opacity: .35; cursor: default; }
-      button.on { border-color: #d9b36a; }
-      button.die { min-width: 46px; font-family: ui-monospace, monospace; }
-      button.die.kept { background: #2a3238; border-color: #7fa8b8; }
-      button.die.sel { border-color: #d9b36a; }
-      button.die.spent { opacity: .55; border-color: #a8331f; }
-      .card { font-family: ui-monospace, monospace; font-size: .7em; color: #8a8478; }
-      .card .spent { text-decoration: line-through; opacity: .5; }
-      .card .sealed { color: #d9b36a; }
+      #acts button { min-width: 76px; }
+
+      /* art. 72: idle, kept, selected and claimed are unmistakably distinct —
+         not four border colours, which the playtest could not read. The face
+         inverts when selected, wears a tab when kept, and is ringed and sunk
+         when claimed. Unused dice dim at resolve. */
+      .slot { width: 42px; height: 42px; padding: 0; position: relative; background: var(--sunk);
+        border: 1px solid var(--line); }
+      .slot.empty { border-style: dashed; opacity: .5; }
+      .slot .pips { position: absolute; inset: 5px; display: grid;
+        grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); }
+      .slot .pips span { display: flex; align-items: center; justify-content: center; }
+      .slot .pips i { display: block; width: 7px; height: 7px; border-radius: 50%;
+        background: var(--ink); }
+      .slot.die { background: #262119; }
+      /* A die still in the pouch has not been thrown: a bone, and no face. */
+      .slot.die.rest::after { content: ''; position: absolute; inset: 10px;
+        border: 1px solid #6b6154; }
+      .slot.kept { background: #2a3238; border-color: var(--cold); }
+      .slot.kept::after { content: ''; position: absolute; top: -1px; left: -1px; right: -1px;
+        height: 5px; background: var(--cold); }
+      .slot.sel { background: var(--ink); border-color: var(--gold); border-width: 2px; }
+      .slot.sel .pips i { background: #14120f; }
+      .slot.claimed { background: #14120f; border-color: var(--gold); opacity: .8; }
+      .slot.claimed::after { content: ''; position: absolute; inset: 3px;
+        border: 1px solid var(--gold); border-radius: 50%; }
+      .slot.claimed.sel::after { border-color: #14120f; }
+      .slot.unused { opacity: .4; }
+      .slot.carried { background: #2a2418; border-color: var(--gold); font-size: .7em;
+        color: var(--gold); }
     </style>
   </head>
   <body>
     <!-- art. 29: three bands — the word, the world, the tray. -->
     <div id="stage">
       <div id="word"></div>
-      <main id="world"><canvas id="view"></canvas></main>
-      <div id="tray"></div>
+      <main id="world">
+        <canvas id="view"></canvas>
+        <div id="marks"></div>
+        <div id="crown"></div>
+        <div id="sheet"></div>
+      </main>
+      <!-- art. 67: fixed regions, always in the same places. -->
+      <div id="tray">
+        <div id="vitals"></div>
+        <div id="pouch"></div>
+        <div id="acts"></div>
+      </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

@@ -15,6 +15,41 @@ export interface RoomShape {
   readonly ceiling: number
 }
 
+/**
+ * Where a thing stands, for the thumb: a billboard rectangle anchored at a
+ * world point, sized in world units. arts 19 and 68 together — a thing is
+ * painted at world coordinates, so the region that answers a tap on it is
+ * derived from the same coordinates rather than authored twice.
+ */
+export interface WorldMark {
+  readonly X: number
+  /** Height above the eye line; the floor is at −eye, as everywhere else. */
+  readonly Y: number
+  readonly z: number
+  /** In world units, so the mark diminishes with the thing (art. 19). */
+  readonly width: number
+  readonly height: number
+}
+
+/** A mark's rectangle in frame pixels, clipped to nothing outside the frame. */
+export interface MarkRect {
+  readonly x: number
+  readonly y: number
+  readonly width: number
+  readonly height: number
+}
+
+/**
+ * A world mark, projected. The anchor is the rectangle's bottom centre — a
+ * thing stands on the point it is placed at.
+ */
+export function markRect(view: View, mark: WorldMark): MarkRect {
+  const foot = view.project(mark.X, mark.Y, mark.z)
+  const half = (view.f * mark.width) / mark.z / 2
+  const tall = (view.f * mark.height) / mark.z
+  return { x: foot.x - half, y: foot.y - tall, width: half * 2, height: tall }
+}
+
 /** Screen position and 1/z scale of a world point (art. 19). */
 export interface Projected {
   readonly x: number
