@@ -1,0 +1,67 @@
+# The URL is the whole install (DESIGN.md), so shipping is publishing a
+# directory. Tests gate every push and every pull request; main also
+# deploys to GitHub Pages.
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # So a Pages deploy can be re-run by hand without an empty commit.
+  workflow_dispatch:
+
+# One deploy at a time, and never cancel one half-done.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: npm test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # tsc --noEmit under strict, then vite build. A type error is a
+      # failed build here, not a surprise at deploy time.
+      - run: npm run build
+      - run: npm test
+
+  deploy:
+    name: github pages
+    # Only main publishes. A pull request gets the tests and nothing else.
+    if: github.event_name != 'pull_request'
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/configure-pages@v5
+        with:
+          # Turn Pages on the first time this runs, so nobody has to go
+          # find the setting. Needs the pages:write above; harmless after.
+          enablement: true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - id: deployment
+        uses: actions/deploy-pages@v4
