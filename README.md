@@ -1,25 +1,15 @@
 # castlebrynth
 
-A mobile pixel-horror dungeon crawl — Layton-style rooms you read,
-Balatro-with-dice fights you throw, forward-only descent, permadeath
-that keeps your bones. Built by an autonomous agent factory.
+A mobile pixel-horror dungeon crawl — rooms you read, dice fights you
+throw, forward-only descent, permadeath that keeps your bones.
 
-**The model: the repo instructs; Asana directs.**
+Starting over. The repo is bare on purpose: no stack, no scaffolding,
+no process. Those get chosen again as they're needed, not inherited.
 
-- `CLAUDE.md` — entry point, read first
-- `AGENTS.md` — how work happens: ritual, roles, landing rules
-- `DESIGN.md` — the entire game (⚠ contains full spoilers below the
-  marked line)
-- `.llm/rules/` — earned guardrails per area (grown by PR, after
-  lessons)
-- `.claude/skills/` — earned procedures (empty by design, same law)
+- `DESIGN.md` — the whole game: frame, the two engines, fairness laws,
+  art direction, world (⚠ full spoilers below the marked line)
 
-All tasks, dependencies, and parallelism live on the Asana board —
-there are no task files in this repo.
-
-## quickstart
-
-    npm i
-    npm run law     # types + lint + tests; green before anything lands
+The previous build — engine, dice combat, DOM shell, content pipeline —
+is preserved in git history at `834a3c2` and on `origin/main`.
 
 Private repository. DESIGN.md spoils the whole story on purpose.
