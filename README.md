@@ -1,15 +1,26 @@
-# castlebrynth
+# Castlebrynth
 
-A mobile pixel-horror dungeon crawl — rooms you read, dice fights you
-throw, forward-only descent, permadeath that keeps your bones.
+A dark descent for one thumb. You wake beneath the castle with a pouch
+of bones and your brother's name. The labyrinth goes down. It does not
+go back up.
 
-Starting over. The repo is bare on purpose: no stack, no scaffolding,
-no process. Those get chosen again as they're needed, not inherited.
+Look at anything — looking is free and always answers. Acting costs.
+Doors close behind you like verdicts, and every run the labyrinth deals
+itself anew. When it kills you, you keep your dice, your Book of Ends,
+and everything you learned. Especially then.
 
-- `DESIGN.md` — the whole game: frame, the two engines, fairness laws,
-  art direction, world (⚠ full spoilers below the marked line)
+## Play
+`npm install && npm run dev`, then open the URL on a phone or a narrow
+window. Portrait. One thumb.
 
-The previous build — engine, dice combat, DOM shell, content pipeline —
-is preserved in git history at `834a3c2` and on `origin/main`.
+- **Tap** a word or a thing to look. Always safe.
+- **Act** when offered. Never safe.
+- **Choose a door.** Each is sensed in one line. There is no back.
+- In a fight: its intent shows first. **Cast** your bones, **freeze**
+  what you're keeping, cast once more — then **throw** a combo,
+  **brace** behind dice, or **flee**.
 
-Private repository. DESIGN.md spoils the whole story on purpose.
+Close it whenever. It resumes exactly there.
+
+For the fantasy, reference/GAME.md. For what's built and what's next,
+DESIGN.md.

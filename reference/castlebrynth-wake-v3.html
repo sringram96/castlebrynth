@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>castlebrynth — waking corridor v3 (lenses are FOV)</title>
+<style>
+  html,body{margin:0;background:#000;color:#cfc9bd;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    height:100dvh;display:flex;flex-direction:column;overflow:hidden;}
+  #top{display:flex;align-items:center;gap:6px;justify-content:center;flex-wrap:wrap;padding:8px 8px 2px;}
+  .tg{background:#101317;border:1px solid #2b3138;color:#cfc9bd;border-radius:7px;padding:7px 11px;font-size:12px;cursor:pointer;}
+  .tg.on{border-color:#6fae9d;color:#bfe6da;}
+  #narr{padding:3px 16px;font-family:Georgia,serif;font-style:italic;font-size:13.5px;color:#d8d2c4;text-align:center;}
+  #stage{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;touch-action:none;}
+  canvas{image-rendering:pixelated;image-rendering:crisp-edges;}
+  #bottom{padding:4px 10px calc(8px + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:3px;}
+  .srow{display:flex;align-items:center;gap:7px;font-size:11px;color:#8b8578;}
+  .srow input{width:110px;}
+  #legend{font-size:10.5px;color:#6f695e;line-height:1.4;max-width:56ch;text-align:center;}
+</style>
+</head>
+<body>
+  <div id="top">
+    <button class="tg" id="tGuides">guides off</button>
+    <button class="tg on" id="tPal">muted</button>
+  </div>
+  <div id="narr">you wake. the ceiling is close enough to touch.</div>
+  <div id="stage"><canvas id="view" width="240" height="260"></canvas></div>
+  <div id="bottom">
+    <div class="srow">lens° <input id="sF" type="range" min="52" max="120" value="93"/>
+      width <input id="sW" type="range" min="7" max="18" value="11"/>
+      ceiling <input id="sC" type="range" min="4" max="14" value="7"/></div>
+    <div id="legend">true one-point perspective: per-pixel first-hit mapping, world-space bricks (mortar thins with distance), 1/z prop scale · drag sideways = the camera actually moves</div>
+  </div>
+
+<script>
+"use strict";
+const W=240,H=260, CX=120;
+let FOV=93, HW=11, HC=7, HF=14;         // fov°, half-width, ceiling ht, eye ht
+let F=(240/2)/Math.tan(FOV*Math.PI/360); // law: lenses are FOV; F derives per frame
+let CY=118;                              // horizon (eye line) on screen
+let camX=0, guides=false, school="muted";
+const PAL={
+ muted:{ mortar:"#151310", bkA:["#241f19","#332b22","#42372b","#332b22"], bkHi:"#5d4e3d", bk3:"#544636",
+   grime:"#100e0b", moss:"#26331f", moss2:"#33452a", damp:"#1b2226",
+   flA:["#1e1a14","#2b251c","#2b251c","#38301f"], slA:["#1c1814","#262019","#1c1814","#120f0c"],
+   bone1:"#93825f", bone2:"#c4b189", bone3:"#e6d8b0",
+   acc0:"#123c39", acc1:"#20605a", acc2:"#46a094", acc3:"#9fe8dc",
+   edge:"#030404", iron:"#101216", coin:"#cfa94f" },
+ noir:{ mortar:"#131316", bkA:["#202226","#2b2e33","#383c42","#2b2e33"], bkHi:"#5e646d", bk3:"#494e56",
+   grime:"#0e0f11", moss:"#262a30", moss2:"#31363d", damp:"#1a1e23",
+   flA:["#191b1e","#25282c","#25282c","#32363c"], slA:["#1a1c20","#232529","#1a1c20","#101215"],
+   bone1:"#959aa3", bone2:"#c1c6ce", bone3:"#e4e8ee",
+   acc0:"#123c39", acc1:"#20605a", acc2:"#46a094", acc3:"#9fe8dc",
+   edge:"#030304", iron:"#121419", coin:"#a7adb6" }};
+let P=PAL.muted;
+const B4=[[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]];
+const dith=(x,y,t)=>B4[y&3][x&3]<t;
+const h2=(x,y)=>{let n=((x|0)*73856093)^((y|0)*19349663);n=(n^(n>>13))>>>0;return n%97;};
+const V=document.getElementById("view").getContext("2d");
+
+// projection: sx = CX + F*(X-camX)/z ; sy = CY - F*Y/z   (Y up, floor=-HF, ceiling=+HC)
+const proj=(X,Y,z)=>[CX+F*(X-camX)/z, CY-F*Y/z, F/z];
+let z0,zF,zTrav,zBones,zGrate;
+function dims(){ z0=F*HW/CX;                 // wall meets frame edge
+  zF=F*HW/24;                                // mouth half-width 24px
+  zGrate=z0*1.7; zTrav=z0*2.15; zBones=z0*1.32; }
+
+// world-space textures --------------------------------------------------
+const COURSE=2.35, BLEN=6.5, SLAT=7.5, FLAGL=9, FLAGW=7.5;
+function wallColor(side,z,hgt){            // hgt: 0 floor .. HF+HC ceiling
+  const course=Math.floor(hgt/COURSE), off=(course%2)*BLEN/2;
+  const u=z+off, b=Math.floor(u/BLEN), fu=u/BLEN-b, fv=hgt/COURSE-course;
+  if(fv<0.10||fu<0.075) return P.mortar;
+  const id=b*13+course*7+(side>0?101:0);
+  let c=P.bkA[h2(id,3)%4];
+  if(h2(b*5,course*3+id)<9) c=P.bk3;
+  if(h2(id,fv*9|0)<3) c=P.grime;
+  if(hgt<0.3*(HF+HC) && h2(id,b)<24) c=P.damp;
+  if(hgt<0.45*(HF+HC) && h2(id*3,course)<7) c=(h2(b,id)<40?P.moss:P.moss2);
+  if(h2(id,1)<7 && fv>0.5 && fu>0.8) c=P.grime;   // broken corner
+  return c;
+}
+function floorColor(z,X){
+  const fz=Math.floor(z/FLAGL), fx=Math.floor((X+40)/FLAGW)+(fz%2);
+  if((z/FLAGL-fz)<0.07||(((X+40)/FLAGW)%1)<0.08) return P.mortar;
+  let c=P.flA[h2(fz*7,fx*5)%4];
+  if(h2(fz,fx*11)<8)c=P.grime;
+  return c;
+}
+function ceilColor(z,X){
+  const s=Math.floor(z/SLAT);
+  if((z/SLAT-s)<0.1) return P.mortar;
+  let c=P.slA[h2(s*9,Math.floor(X/3))%4];
+  if(h2(s,X*2|0)<9)c=P.grime;
+  return c;
+}
+// ------------------------------------------------------------------------
+const surf=new Uint8Array(W*H), zbuf=new Float32Array(W*H);
+function cast(){
+  V.fillStyle="#000";V.fillRect(0,0,W,H);
+  const img=V.getImageData(0,0,W,H), d=img.data;
+  const put=(i,hex)=>{const n=parseInt(hex.slice(1),16);
+    d[i*4]=n>>16&255;d[i*4+1]=n>>8&255;d[i*4+2]=n&255;d[i*4+3]=255;};
+  for(let sy=0;sy<H;sy++)for(let sx=0;sx<W;sx++){
+    const i=sy*W+sx, dx=sx-CX, dy=CY-sy;   // dy>0 above horizon
+    // candidate first-hit depths (camera at X=camX)
+    const zR = dx>0.01 ? F*(HW-camX)/dx : 1e9;
+    const zL = dx<-0.01? F*(-HW-camX)/dx : 1e9;
+    const zC = dy>0.01 ? F*HC/dy : 1e9;
+    const zFl= dy<-0.01? F*HF/(-dy) : 1e9;
+    let z=1e9,s=0;
+    if(zL>0&&zL<z){z=zL;s=1;} if(zR>0&&zR<z){z=zR;s=2;}
+    if(zC>0&&zC<z){z=zC;s=3;} if(zFl>0&&zFl<z){z=zFl;s=4;}
+    if(z>=zF||s===0){ surf[i]=0; zbuf[i]=zF;
+      // the mouth: near-black with a dithered breath
+      const e=Math.max(0,1-Math.hypot(dx/26,(sy-CY)/34));
+      put(i, dith(sx,sy,e*4)?"#101215":"#020304"); continue; }
+    surf[i]=s; zbuf[i]=z;
+    let c;
+    if(s===1||s===2){ const Y=dy*z/F, hgt=Y+HF; c=wallColor(s===1?-1:1,z,hgt); }
+    else if(s===3){ const X=dx*z/F+camX; c=ceilColor(z,X); }
+    else { const X=dx*z/F+camX; c=floorColor(z,X); }
+    // distance fog, tied to z (dither toward black)
+    const fog=Math.max(0,(z/zF-0.45))*22;
+    if(dith(sx,sy,fog)) c="#000000"; else if(dith(sx+2,sy,fog*0.7)) c=P.grime;
+    put(i,c);
+  }
+  // contour pass: surface boundaries get the cut line (exact by construction)
+  for(let sy=0;sy<H-1;sy++)for(let sx=0;sx<W-1;sx++){
+    const i=sy*W+sx;
+    if(surf[i]!==surf[i+1]||surf[i]!==surf[i+W]){
+      const n=parseInt(P.edge.slice(1),16);
+      d[i*4]=n>>16&255;d[i*4+1]=n>>8&255;d[i*4+2]=n&255;
+      // lit rim just under ceiling boundary near the shaft
+      if(surf[i]===3&&surf[i+W]!==3&&Math.abs(sx-CX)<48){
+        const m=parseInt(P.bk3.slice(1),16),k=(i+W)*4;
+        d[k]=m>>16&255;d[k+1]=m>>8&255;d[k+2]=m&255;}
+    }}
+  V.putImageData(img,0,0);
+}
+// props (projected, painted over) ---------------------------------------
+const px=(c,x,y)=>{V.fillStyle=c;V.fillRect(x|0,y|0,1,1);};
+const rect=(c,x,y,w,h)=>{V.fillStyle=c;V.fillRect(x|0,y|0,Math.max(1,w|0),Math.max(1,h|0));};
+function shaftAndGrate(){
+  const [gx0,gy0]=proj(-3.4,HC,zGrate+3), [gx1]=proj(3.4,HC,zGrate+3);
+  const [hx0,hy1]=proj(-3.4,HC,zGrate), [hx1]=proj(3.4,HC,zGrate);
+  rect(P.iron,gx0,gy0-1,gx1-gx0,hy1-gy0+2);
+  for(let x=gx0+2;x<gx1-1;x+=4) rect("#000000",x,gy0,1.6,hy1-gy0);
+  rect(P.acc1,hx0,hy1,hx1-hx0,1);
+  const [fx0,fy]=proj(-3.4,-HF,zGrate), [fx1]=proj(3.4,-HF,zGrate+3);
+  const topY=gy0, botY=fy;
+  for(let y=topY;y<botY;y++){
+    const t=(y-topY)/(botY-topY);
+    const half=((hx1-hx0)/2)*(1+t*1.6), cx=(hx0+hx1)/2;
+    for(let x=cx-half;x<cx+half;x++){
+      const e=1-Math.abs(x-cx)/half;
+      if(dith(x,y,e*6.5*(1-t*0.45))) px(t<0.5?P.acc1:P.acc0,x,y);
+      if(dith(x+2,y,e*1.8)) px(P.acc2,x,y);
+    }}
+  // floor pool
+  const [px0,py0]=proj(-4.5,-HF,zGrate-0.5), [px1,py1]=proj(4.5,-HF,zGrate+4);
+  const pcx=(px0+px1)/2, pcy=(py0+py1)/2, rx=(px1-px0)/2, ry=Math.max(2,(py0-py1)/2);
+  for(let y=pcy-ry;y<pcy+ry;y++)for(let x=pcx-rx;x<pcx+rx;x++){
+    const dd=Math.hypot((x-pcx)/rx,(y-pcy)/ry);
+    if(dd<1&&dith(x,y,(1-dd)*11))px(P.acc1,x,y);
+    if(dd<1&&dith(x+1,y,(1-dd)*4))px(P.acc2,x,y);}
+  px(P.acc3,pcx-2,pcy);px(P.acc3,pcx+3,pcy+2);
+}
+function traveler(){
+  const zA=zTrav, zB=zTrav+7;                    // lying along right wall
+  const [ax,ay]=proj(HW-0.6,-HF,zA), [bx,by]=proj(HW-0.6,-HF,zB);
+  const [tx,ty]=proj(HW-0.6,-HF+2.1,zA+3);
+  const x0=Math.min(ax,bx), x1=Math.max(ax,bx);
+  for(let y=ay;y<ay+4;y++)for(let x=x0-3;x<x1+2;x++)if(dith(x,y,8))px(P.edge,x,y); // contact
+  rect("#1a1c20",x0,ty+3,x1-x0,ay-ty-3); rect("#22262b",x0+(x1-x0)*0.2,ty,(x1-x0)*0.55,4);
+  for(let y=ty;y<ay;y++)for(let x=x0;x<x1;x++)if(h2(x,y)<6)px("#2a2f35",x,y);
+  rect("#101215",x0+4,ty+5,(x1-x0)*0.6,1);
+  for(let x=x0-1;x<x1+1;x++)px(P.edge,x,ay);
+  for(let y=ty-1;y<ay;y++)px(P.edge,x1,y);
+  for(let x=x0+1;x<x1-4;x++)px(P.acc2,x,ty-1);
+  for(let y=ty;y<ay-2;y++)px(P.acc1,x0-1,y);
+  const s=F/zA/9;
+  rect(P.bone1,x0-7*s-4,ay-4,8*s+3,3); px(P.bone3,x0-7*s-3,ay-4);
+  px(P.coin,x0+5,ty+2); px(P.coin,x0+9,ty+2); px(P.bone3,x0+5,ty+1);
+}
+function bonesRow(){
+  const z=zBones, s=Math.max(6,F/z*0.62);
+  const xs=[-8.5,-5.7,-2.9,-0.1,2.7,6.3];
+  xs.forEach((Xw,k)=>{
+    const pale=k===5;
+    const [bx,byF]=proj(Xw,-HF,z);
+    const x=bx-s/2, y=byF-s;
+    for(let j=byF;j<byF+3;j++)for(let i=x-1;i<x+s+1;i++)if(dith(i,j,9))px(P.edge,i,j);
+    rect(pale?P.bone2:P.bone1,x,y,s,s);
+    rect(pale?P.bone3:P.bone2,x,y,s,1); rect(pale?P.bone3:P.bone2,x,y,1,s);
+    rect(P.edge,x,y+s,s+1,1); for(let j=y+1;j<y+s;j++)px(P.edge,x+s,j);
+    if(!pale){px("#141414",x+s*0.3,y+s*0.3);px("#141414",x+s*0.65,y+s*0.65);}
+    else px(P.acc2,x+s*0.7,y+s*0.2);
+    px(P.acc1,x+1,y-1);
+  });
+}
+function chain(){
+  const [cx0]=proj(-HW+1.2,HC,z0*1.15);
+  for(let y=0;y<58;y++){const x=cx0+Math.sin(y/9)*1.5;
+    px(P.iron,x,y); if(y%6<3)px("#1a1d22",x+1,y);}
+}
+function guideLayer(){
+  V.strokeStyle="rgba(159,232,220,0.85)"; V.fillStyle="rgba(159,232,220,0.85)";
+  V.fillRect(CX-2,CY-2,4,4);                      // the vanishing point
+  V.beginPath();
+  for(const [X,Y] of [[-HW,HC],[HW,HC],[-HW,-HF],[HW,-HF]]){
+    const [x1,y1]=proj(X,Y,z0), [x2,y2]=proj(X,Y,zF);
+    V.moveTo(x1,y1);V.lineTo(x2,y2);}
+  V.moveTo(0,CY);V.lineTo(W,CY);                  // horizon = eye line
+  V.stroke();
+  V.strokeStyle="rgba(159,232,220,0.4)";
+  for(let k=1;k<=10;k++){                          // harmonic depth ruler
+    const z=z0*Math.pow(zF/z0,k/10);
+    const [xa,ya]=proj(-HW,-HF,z),[xb,yb]=proj(HW,-HF,z);
+    V.beginPath();V.moveTo(xa,ya);V.lineTo(xb,yb);V.stroke();}
+}
+function frame(){ dims(); cast(); shaftAndGrate(); traveler(); bonesRow(); chain();
+  if(guides) guideLayer(); fit(); }
+function fit(){const st=document.getElementById("stage");
+  const s=Math.max(1,Math.floor(Math.min(st.clientWidth/W, st.clientHeight/H)));
+  const v=document.getElementById("view"); v.style.width=(W*s)+"px"; v.style.height=(H*s)+"px";}
+// controls
+document.getElementById("tGuides").onclick=e=>{guides=!guides;
+  e.target.classList.toggle("on");e.target.textContent="guides "+(guides?"on":"off");frame();};
+document.getElementById("tPal").onclick=e=>{school=school==="muted"?"noir":"muted";
+  P=PAL[school];e.target.textContent=school;frame();};
+document.getElementById("sF").oninput=e=>{FOV=+e.target.value;F=(240/2)/Math.tan(FOV*Math.PI/360);frame();};
+document.getElementById("sW").oninput=e=>{HW=+e.target.value;frame();};
+document.getElementById("sC").oninput=e=>{HC=+e.target.value;frame();};
+let drag=null;
+const stage=document.getElementById("stage");
+stage.addEventListener("pointerdown",e=>{drag={x:e.clientX,c:camX};});
+stage.addEventListener("pointermove",e=>{if(!drag)return;
+  camX=Math.max(-4,Math.min(4,drag.c+(e.clientX-drag.x)/60)); frame();});
+stage.addEventListener("pointerup",()=>{drag=null;camX=0;frame();});
+addEventListener("resize",fit);
+frame();
+</script>
+</body>
+</html>
