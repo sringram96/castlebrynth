@@ -338,9 +338,9 @@ let fadeTimer: number | undefined
 function say(): void {
   const said = notice ?? wordOf()
   wordBand.replaceChildren(document.createTextNode(said))
-  const reading = screen.kind === 'room' || screen.kind === 'waking'
+  const browsing = screen.kind === 'room' || screen.kind === 'waking'
   const left = bands.beats.length - 1 - (bands.word?.index ?? 0)
-  if (notice === null && reading && left > 0) {
+  if (notice === null && browsing && left > 0) {
     const more = document.createElement('span')
     more.className = 'more'
     // Not a word: a mark, so the candle that is still to come is visible
