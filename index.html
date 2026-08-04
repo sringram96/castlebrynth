@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Castlebrynth</title>
     <style>
-      /* art. 25: integer pixel scaling with letterboxing. The bars are black.
+      /* art. 25 (amended 2026-08-04): exact fill via sharp upscale, so the
+         box fills the world band instead of sitting in bars. `pixelated` is
+         what keeps a fractional scale sharp.
          Nothing below is design: it is legibility, and the look is a later
          task under arts 26–30. */
       html, body { margin: 0; background: #000; color: #d8d0c0; height: 100dvh; overflow: hidden;

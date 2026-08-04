@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest'
 
 import { atGrid, AUTHORED_HEIGHT, GRID, RENDER, WAKE } from '../src/content/index.js'
-import { far2near, focalLength, renderRoom, Surface, viewOf } from '../src/room/index.js'
+import {
+  far2near,
+  fillScale,
+  focalLength,
+  integerScale,
+  renderRoom,
+  Surface,
+  viewOf,
+} from '../src/room/index.js'
 
 describe('room — art. 17 (a room renders identical every visit), arts 14, 22–23 (the dial)', () => {
   it('renders the same room byte-identical twice (art. 17)', () => {
@@ -43,6 +51,50 @@ describe('room — art. 17 (a room renders identical every visit), arts 14, 22�
   it('declares its props, and says plainly when they are not far to near (art. 19)', () => {
     const view = viewOf(WAKE.shape, RENDER)
     expect(far2near(WAKE.props(view))).toBe(false)
+  })
+
+  /**
+   * art. 25, as amended by the ruling of 2026-08-04: exact fill via sharp
+   * upscale. The letterboxed reading is what this replaces, and the number
+   * that forced the revisit was a phone — a 390×675 world band held the box
+   * at 240×415, about 60% of each dimension.
+   */
+  it('fills the band instead of sitting in bars (art. 25 as amended)', () => {
+    // The frame the shell would compute for a 390×675 world band: its height
+    // derives from the device (art. 24), so its aspect is the band's.
+    const height = Math.round((GRID * 675) / 390)
+    const frame = { width: GRID, height, pixels: new Uint8ClampedArray() }
+
+    const scale = fillScale(frame, 390, 675)
+    expect(frame.width * scale).toBeCloseTo(390, 5)
+    // Filling one dimension all but fills the other: a sliver, not a bar.
+    expect(frame.height * scale).toBeGreaterThan(675 * 0.99)
+    expect(frame.height * scale).toBeLessThanOrEqual(675)
+
+    // The superseded reading is what left 40% of the band black.
+    expect(integerScale(frame, 390, 675)).toBe(1)
+    expect(frame.width * integerScale(frame, 390, 675)).toBe(240)
+  })
+
+  it('never scales a frame out of its box, at any band shape (art. 25)', () => {
+    for (const [w, h] of [
+      [390, 675],
+      [1280, 400],
+      [320, 900],
+      [240, 415],
+      [100, 100],
+    ] as const) {
+      const height = Math.max(120, Math.round((GRID * h) / w))
+      const frame = { width: GRID, height, pixels: new Uint8ClampedArray() }
+      const scale = fillScale(frame, w, h)
+      expect(frame.width * scale).toBeLessThanOrEqual(w + 1e-9)
+      expect(frame.height * scale).toBeLessThanOrEqual(h + 1e-9)
+      expect(scale).toBeGreaterThan(0)
+      // And one of the two dimensions is actually filled, or it is not a fill.
+      const filled =
+        Math.abs(frame.width * scale - w) < 1e-6 || Math.abs(frame.height * scale - h) < 1e-6
+      expect(filled).toBe(true)
+    }
   })
 
   it('derives focal length from lens, and only from lens (art. 14)', () => {

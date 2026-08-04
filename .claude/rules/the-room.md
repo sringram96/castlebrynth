@@ -35,8 +35,14 @@ Hero-density bar: `reference/crawling-one-authored-pixel-example.png`.
 24. SETTLED — Frame height derives from the device; the box extends itself.
     Anything tappable or necessary lives inside a guaranteed safe frame;
     overflow is atmosphere only.
-25. DEFAULT — Integer pixel scaling with letterboxing. (Alternative: exact
-    fill via sharp upscale. Revisit if the bars offend.)
+25. DEFAULT (amended by ruling of 2026-08-04) — Exact fill via sharp
+    upscale. The frame's height already derives from the device (art. 24),
+    so the box fills the world band and the scale is fractional;
+    nearest-neighbour keeps it sharp. Game pixels may differ by a device
+    pixel at the seams, which is the price of having no bars. (Superseded:
+    integer scaling with letterboxing. The bars offended on a phone, where
+    the box held about 60% of each dimension — the revisit the original
+    article invited.)
 
 ## The look
 26. SETTLED — Two tiers. Ordinary rooms: the computed box plus sprites,

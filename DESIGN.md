@@ -184,6 +184,16 @@ Named, not hidden. Each of these is a task, not an accident.
   talisman rather than assumed.
 
 ### Answered since the last cut
+**Art. 25 is amended** (2026-08-04): exact fill via sharp upscale replaces
+integer scaling with letterboxing. The article invited exactly this
+revisit — *"revisit if the bars offend"* — and on a phone they offended:
+a 390x675 world band held the box at 240x415, about 60% of each
+dimension, with black around it. The frame's height already derives from
+the device (art. 24), so a fractional scale fills the band and
+nearest-coloured neighbours keep it sharp. Measured at 100% fill on four
+phone sizes. The cost is declared in the article: at a fractional scale
+neighbouring game pixels can land a device pixel apart at the seams.
+
 The open questions the scaffolding raised are ruled on and applied: the
 "arts 41–66" citation was an off-by-one and now reads 41–65; base armor is
 0 and the demo's blocked 3 was the Rusted Plate; the Sisters' ghost is
