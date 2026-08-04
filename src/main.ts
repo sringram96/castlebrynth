@@ -57,7 +57,7 @@ import {
 import type { Ledgers, Seed } from './state/index.js'
 import { browserVault, collect, finish, firstPermanent, load, save, wake } from './state/index.js'
 import type { Framebuffer, Prop, Scene } from './room/index.js'
-import { integerScale, present, renderRoom } from './room/index.js'
+import { fillScale, present, renderRoom } from './room/index.js'
 
 // ── The bands ──────────────────────────────────────────────────────────
 
@@ -155,7 +155,9 @@ function paintRoom(scene: Scene, extra: readonly Prop[], key: string): void {
     painted.set(stamp, frame)
   }
   present(frame, canvas)
-  const scale = integerScale(frame, worldBand.clientWidth, worldBand.clientHeight)
+  // art. 25 (amended): exact fill via sharp upscale. The frame's height came
+  // from this band's aspect, so filling one dimension all but fills both.
+  const scale = fillScale(frame, worldBand.clientWidth, worldBand.clientHeight)
   canvas.style.width = `${frame.width * scale}px`
   canvas.style.height = `${frame.height * scale}px`
 }

@@ -76,8 +76,8 @@ function brushOf(view: View, target: Framebuffer, depth: Float32Array): Brush {
 }
 
 /**
- * Blit a rendered frame to a canvas at integer scale with letterboxing
- * (art. 25). The only place the renderer meets a device pixel.
+ * Blit a rendered frame to a canvas. The only place the renderer meets a
+ * device pixel (art. 25).
  */
 export function present(frame: Framebuffer, canvas: HTMLCanvasElement): void {
   const ctx = canvas.getContext('2d')
@@ -89,11 +89,36 @@ export function present(frame: Framebuffer, canvas: HTMLCanvasElement): void {
   ctx.putImageData(image, 0, 0)
 }
 
-/** The integer scale that fits a frame inside a box, never below 1 (art. 25). */
+/**
+ * art. 25 (amended by the ruling of 2026-08-04): exact fill via sharp
+ * upscale. The scale is whatever fits the box, fraction and all — the frame
+ * already derives its height from the device (art. 24), so filling one
+ * dimension very nearly fills the other, and what is left is a sliver
+ * rather than a bar.
+ *
+ * Nearest-neighbour (`image-rendering: pixelated`) is what keeps it sharp.
+ * A fractional scale means neighbouring game pixels can land one device
+ * pixel apart at the seams; that unevenness is the declared price of the
+ * ruling, and on a phone's pixel density it is under the eye.
+ */
+export function fillScale(frame: Framebuffer, boxWidth: number, boxHeight: number): number {
+  if (frame.width <= 0 || frame.height <= 0) return 1
+  const fits = Math.min(boxWidth / frame.width, boxHeight / frame.height)
+  // A box with no room in it still has to be given a number.
+  return fits > 0 ? fits : 1
+}
+
+/**
+ * The largest whole-number scale that fits, never below 1 — the superseded
+ * reading of art. 25. Kept because the 480 dial (art. 23) and any future
+ * context that wants true square pixels will ask for it, and because a
+ * ruling that can be pointed at is easier to revisit than one that was
+ * deleted.
+ */
 export function integerScale(
   frame: Framebuffer,
   boxWidth: number,
   boxHeight: number,
 ): number {
-  return Math.max(1, Math.floor(Math.min(boxWidth / frame.width, boxHeight / frame.height)))
+  return Math.max(1, Math.floor(fillScale(frame, boxWidth, boxHeight)))
 }
