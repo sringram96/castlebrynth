@@ -21,7 +21,8 @@ Never: filler, grind, a punished tap, one optimal play.
 
 ### design — "is it ours?"
 Owns theme, story, voice, and the look.
-Law: rules/voice.md, rules/the-room.md (arts 13–30).
+Law: rules/voice.md, rules/the-room.md (arts 13–30), rules/the-thumb.md
+(arts 66–76).
 Test: `reference/castlebrynth-wake-v3.html` and the hero-density image.
 Never: explanation, comfort, early spoilers, out-of-register art.
 
@@ -33,10 +34,12 @@ Test: kill the process anywhere; restart; nothing is lost.
 Never: unresumable state, a hardcoded pixel, content logic in the engine.
 
 ## The law
-`.claude/rules/` holds 62 numbered articles, cited in tasks as "art. N":
+`.claude/rules/` holds 76 numbered articles, cited in tasks as "art. N":
 - **the-world.md** — time, touch, structure, the chain, room grammar
 - **the-room.md** — parallax law, scale, the look, the screen
 - **the-lots.md** — the dice: turn, duel, the card, collection, armor
+- **the-thumb.md** — the interaction model: registers, the tray,
+  look-then-take, dice states, the interaction budget
 - **voice.md** — every player-facing string
 
 Statuses: SETTLED binds. STANDING is inherited from GAME.md, unamended.

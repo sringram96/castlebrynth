@@ -47,6 +47,7 @@ import {
   cursedValue,
   decide,
   disband,
+  fitsNothing,
   harm,
   keep,
   recast,
@@ -476,7 +477,13 @@ function fightTray(): void {
         ),
       ),
     )
-    if (lines.length === 0) trayBand.append(note('nothing that selection can take'))
+    // art. 72: a selection that fits nothing says why. ANY DICE is the floor
+    // and always on offer (art. 46), so "no lines at all" almost never
+    // happens — the thumb that selects all six of a hand holding a full
+    // house is offered the floor and, without this, told nothing.
+    if (fitsNothing(now.turn, selected, LADDER)) {
+      trayBand.append(note(NOTICES['claim.exact'] ?? ''))
+    }
   }
 
   trayBand.append(row(...fightButtons()))

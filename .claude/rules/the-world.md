@@ -2,7 +2,8 @@
 Articles keep their ledger numbers; cite as "art. N". Statuses: SETTLED
 binds every task. STANDING is inherited from GAME.md, unamended. DEFAULT
 binds until deliberately revisited. PARKED is not law — build nothing
-that assumes it.
+that assumes it. How the game is touched — the interaction model — lives
+in the-thumb.md (arts 66–76).
 
 ## Time & the clock
 1. SETTLED — The rules are discrete: no decision is ever lost to slowness.

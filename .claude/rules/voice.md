@@ -1,5 +1,7 @@
 # The voice
 Binding for every player-facing string. Content review is voice review.
+Controls are exempt from this file's register and are governed by art. 66
+in the-thumb.md.
 
 - Second person, present tense.
 - No "you feel." Name what is there; let the player do the feeling.

@@ -26,7 +26,8 @@
  * selection could take (arts 63–64); `claim(turn, dice, line, ladder,
  * goods)` takes one; `disband(turn, line)` gives it back; `unused(turn)`
  * is what fit nothing (art. 45). `attack(turn, goods)` is the whole turn's
- * harm.
+ * harm. `fitsNothing(turn, dice, ladder)` is art. 72's other half: whether
+ * a selection owes the thumb an explanation instead of an offer.
  *
  * **The end of the turn** — `decide(turn, 'end-turn' | 'flee', armor,
  * goods)` yields a `Resolution`; `advanceFight(fight, resolution)` applies
@@ -107,6 +108,7 @@ export {
   claimedDice,
   claims,
   disband,
+  fitsNothing,
   freshCard,
   refill,
   sealed,

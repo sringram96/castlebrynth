@@ -3,6 +3,8 @@ Articles keep their ledger numbers; cite as "art. N". Statuses as in
 the-world.md. Reference implementation:
 `reference/castlebrynth-wake-v3.html` — it wins ties about intent.
 Hero-density bar: `reference/crawling-one-authored-pixel-example.png`.
+What the three bands *are* is here; how they are touched is the
+interaction model, in the-thumb.md (arts 66–76).
 
 ## The room (the parallax law)
 13. SETTLED — The camera is a person: fixed eye height, fixed horizon, one
