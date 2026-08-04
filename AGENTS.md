@@ -9,7 +9,7 @@ questions. Every agent file lives in `.claude/agents/`.
 ### arithmetic — "is it fair?"
 Owns the numbers: dice math, the ladder, the card, armor, power budgets,
 generator winnability, declared odds.
-Law: rules/the-lots.md (arts 41–66), the-world.md (art. 33).
+Law: rules/the-lots.md (arts 41–65), the-world.md (art. 33).
 Test: `reference/castlebrynth-lots-demo.html` (playable spec; fixture re-authoring on the board).
 Never: hidden math, an unpaid power, a silently changed probability.
 
