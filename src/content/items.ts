@@ -1,4 +1,5 @@
-import type { Talisman, TalismanId, Wearable, WearableId } from '../lots/index.js'
+import type { Rider, RiderId, Talisman, TalismanId, Wearable, WearableId } from '../lots/index.js'
+import { LEECH_RIDER } from './dice.js'
 
 /**
  * The goods: talismans and wearables, as typed data (arts 49, 53, 47).
@@ -22,6 +23,7 @@ const wearable = (s: string): WearableId => s as WearableId
 export const THE_OSSUARY: Talisman = {
   id: talisman('talisman.ossuary'),
   species: 'value',
+  value: { of: 6, times: 2 },
 }
 
 /**
@@ -31,6 +33,17 @@ export const THE_OSSUARY: Talisman = {
 export const THE_ZEALOT: Talisman = {
   id: talisman('talisman.zealot'),
   species: 'shape',
+  shape: { everyDie: true, times: 2 },
+}
+
+/**
+ * art. 51: the Leech's rider, declared. It fires only when the marked face
+ * is spent in a claim; kept or unused, the six does nothing. The die is in
+ * `dice.ts`; what the rider *does* is a number, so it is here.
+ */
+export const LEECH: Rider = {
+  id: LEECH_RIDER as RiderId,
+  onUse: { kind: 'heal', amount: 2 },
 }
 
 /**

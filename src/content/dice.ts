@@ -16,6 +16,9 @@ function plainBone(n: number): Die {
   return { id: id(`bone.${n}`), body: 6, faces: plainFaces }
 }
 
+/** art. 54: the bone every other die is audited against. */
+export const PLAIN_BONE: Die = plainBone(0)
+
 /** art. 60: v1 ships a pouch of six plain bones, hand size six. */
 export const PLAIN_POUCH: Pouch = {
   dice: [plainBone(1), plainBone(2), plainBone(3), plainBone(4), plainBone(5), plainBone(6)],
