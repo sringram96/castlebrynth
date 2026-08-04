@@ -100,13 +100,13 @@ Orphan, the demo's goods (the Sisters, the Leech, the Ossuary, the
 Zealot, the Rusted Plate), the expanded ladder, the Crawling One's
 intents, the first prose.
 
-**Acceptance tests** — 6 files, 19 tests, 11 failing:
+**Acceptance tests** — 6 files, 21 tests, 13 failing:
 | area | what it enforces | state |
 | --- | --- | --- |
 | `state` | kill and restore mid-turn; nothing lost (arts 11, 36) | failing |
 | `gen` | 1000 seeds, every arrangement winnable (arts 32, 33, 36, 38) | failing |
 | `lots` | the reference fight turn for turn (fixture re-authoring on the board) | failing |
-| `lots` | no hand of six or more can whiff (arts 46, 48, 50) | failing |
+| `lots` | every hand has a line to claim; an empty card has none (arts 46, 48, 63, 64) | failing |
 | `room` | the same room renders byte-identical twice (arts 13–18, 22–23) | passing |
 | `content` | every player-facing string passes the voice lint | failing |
 
@@ -139,8 +139,17 @@ wins ties about behaviour until the encounter fixture is re-authored.
 Tests: `test/lots.crawling-one.test.ts` is gone — renamed to
 `test/lots.fight.test.ts` and gutted to one failing placeholder naming
 the amended articles, because every assertion in it tested turn two's
-BRACE. That is 4 tests replaced by 1; the suite is 19 tests, 11 failing.
-No other test was touched.
+BRACE. That is 4 tests replaced by 1.
+
+`test/lots.whiff.test.ts` is gone too, re-authored as
+`test/lots.floor.test.ts`: its subject was the repealed whiff clause,
+and what replaces it is the ANY DICE floor. It still sweeps all 46656
+hands of six, but now asks that every one leaves a line to claim (art.
+46), that 1-2-3-4-5-6 is named the straight and not a run of six (art.
+48), that a composite offers one line and not the lines inside it (art.
+64), that a spent line is not offered twice, and that an empty card
+leaves nothing to claim (art. 63). It fails against the stubs, as it
+should. The suite is 21 tests, 13 failing. No other test was touched.
 
 Types, stubs only: `src/lots` loses the brace-rider socket (art. 51) and
 BRACE from the decision type (now `end-turn` / `flee`), and gains the
@@ -161,11 +170,10 @@ What the amended rules still do not cover, and what the code left open:
 - Base armor has no number. Art. 55 ships the start bare, and the demo's
   blocked 3 comes from the Rusted Plate, so `BASE_ARMOR` is the straw 0
   — a bare player blocks nothing. Arithmetic's call, not a stub's.
-- `test/lots.whiff.test.ts` stays failing and untouched as instructed,
-  but it no longer compiles: it imports `bestCombo`, which the amendment
-  deletes, and builds `Landed` with `frozen`. Under art. 46 as amended
-  its subject is gone — ANY DICE ×1 means no hand can whiff, trivially —
-  so it needs re-authoring rather than an implementation.
+- Art. 46 no longer says anything about a hand of six. Pigeonhole is
+  still true of the dice, but it is the card, not the values, that can
+  leave a turn with nothing to claim — so `lots.floor.test.ts` asks
+  about the floor and the card, and the old guarantee is unstated law.
 - The card's refill boundary is "between fights" (art. 63); nothing says
   what a fled fight leaves behind, or whether an unfinished fight
   resumed from a `FightSave` keeps its spent lines. The save assumes it
