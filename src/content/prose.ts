@@ -109,6 +109,10 @@ export const NOTICES: Readonly<Record<string, string>> = {
   'run.finished': 'You go through, and the stair keeps going down.',
   'book.empty': 'Nothing is written here yet.',
   'book.title': 'The Book of Ends.',
+  // art. 72: claim offers match the exact selection, so a selection that
+  // fits nothing says why. The shape must be exactly what is chosen — a
+  // full house is the five, never the five and one more.
+  'claim.exact': 'No combo uses exactly these dice.',
 }
 
 /**

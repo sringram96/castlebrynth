@@ -89,6 +89,23 @@ export function claimable(turn: Turn, dice: readonly DieId[], ladder: Ladder): r
 }
 
 /**
+ * art. 72 (DEFAULT): claim offers match the exact selection, and a selection
+ * that fits nothing says why. This is the "says why" half's predicate — true
+ * when there are dice on the table and no combo is on offer for them.
+ *
+ * ANY DICE is the deliberate floor (art. 46), not a combo, so a selection
+ * down to the floor still fits nothing. That distinction is the whole point:
+ * a hand of six holding a full house offers ANY DICE on all six and FULL
+ * HOUSE only on the exact five, and without this the thumb is told nothing
+ * at all — the first playtest read that silence as a full house it could
+ * not claim.
+ */
+export function fitsNothing(turn: Turn, dice: readonly DieId[], ladder: Ladder): boolean {
+  if (selection(turn, dice).length === 0) return false
+  return claimable(turn, dice, ladder).every((line) => line === 'any-dice')
+}
+
+/**
  * art. 63: claiming spends the line for the rest of the fight. art. 45: the
  * dice go with it, and cannot be spent in a second claim this turn.
  */

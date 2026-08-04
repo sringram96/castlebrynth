@@ -201,3 +201,97 @@ taxed by a curse and fires only on the exact two-die pair claim; talismans
 stack value-then-ladder-then-shape, with each shape trigger reading the
 turn independently; and combo, item and room names are in `everyString()`
 under a `label` category that skips second person.
+
+### The thumb is law (arts 66–76)
+The skeleton was played by a human, and the playtest found one bug and
+seven interaction failures. The failures were not the skeleton's: the law
+said what the screen *is* (arts 29–30) and what touching *means* (arts
+5–8), and never said how the game is operated. The vacuum was filled with
+guesses. `.claude/rules/the-thumb.md` is ratified and binds like any
+other rule file — the two registers (66), the tray as anatomy (67), look-
+then-take (68–71), the dice under the thumb (72–73), the card behind a
+glyph and interaction as state (74–75), and the interaction budget (76).
+The law index, the design agent, and the pointers in voice.md,
+the-world.md and the-room.md are wired to it. **No UI was built here.**
+
+**The full-house defect was interactive, and it is fixed at the
+interaction layer.** The engine was never wrong: `shapesOf` names
+FULL HOUSE for every five-die selection of signature 3-2, and
+`test/thumb.claim.test.ts` now proves that exhaustively — all 7776
+five-die hands, and all 300 arrangements of AAABB through the claim path
+the shell calls. What failed was the sentence the shell never said. Claim
+offers match the *exact* selection (art. 72's DEFAULT), so a hand of six
+holding a full house offers FULL HOUSE on the exact five and nothing on
+all six — and the thumb that selects the whole hand is shown the ANY DICE
+floor, which art. 46 always keeps on offer. The shell's one guard,
+`if (lines.length === 0)`, was therefore unreachable: `claimable` is never
+empty while the floor stands. The player saw a full house on the table, an
+offer that was not it, and no reason. Reproduced through the shell's own
+call sequence at seed 6 — `4-1-4-2-4-1`, three fours and two ones and a
+two that belongs to nothing.
+
+The fix is the missing explanation and nothing else. `fitsNothing(turn,
+dice, ladder)` in `src/lots/card.ts` is art. 72's other half: a selection
+is owed a reason when dice are on the table and no *combo* is on offer —
+the floor is the floor (art. 46), not a combo, so a selection down to it
+still fits nothing. The line itself is content, `NOTICES['claim.exact']`,
+which also takes the last prose literal out of the shell. Nothing was
+restyled.
+
+### Where the shell now visibly breaks the thumb
+Listed, not fixed. This is the Look stream's work — tasks 24, 25, 26, 27,
+22 and 36 already cite these articles.
+
+- **art. 66 — controls narrate.** A door's button *is* its sensed line
+  ("Behind this one, something wet is scratching."), so the longest prose
+  in the tray is a control. `take the pale bone`, `the labyrinth keeps
+  you`, `the book of ends`, `re-roll the rest` and `down again` are none
+  of them plain imperative verbs of two words or fewer. Claim and disband
+  buttons are a name and a number (`full house 56`), not verbs.
+- **art. 67 — the tray is a menu.** It is cleared and rebuilt on every
+  paint, rows appearing and vanishing, so nothing sits in a fixed region
+  and buttons move under the thumb between paints. Vitals are a note at
+  the bottom in a room and at the top in a fight. The pouch is never
+  drawn: there are no slots, empty or full, and hand size cannot be seen.
+  The tray also carries what art. 67 says never appears there — world
+  nouns, doors, the beat advance, the Book of Ends and its lines.
+- **art. 68 — possessions cannot be tapped.** `run.carried` reaches the
+  player as a count in a note (`carrying 1`); there is no tappable for a
+  carried thing and none for a die in the pouch, so a possession's
+  declared truth (art. 54) is unreachable. `inspect` exists in the engine
+  and nothing calls it. The world band itself takes no taps at all — the
+  canvas has no handler, so a thing in the world is tapped by pressing
+  its name in the tray instead of the thing.
+- **art. 69 — dead tappables.** A die already spent in a claim is a
+  `disabled` button. Tapping a die to keep or select answers with
+  nothing. The card strip is inert.
+- **art. 70 — acts change no pixel.** Taking the key re-enters the room
+  and repaints the same cached frame: the scene is keyed by room id
+  alone, and the key was never on the floor to leave it. No opened door
+  stands open. The one act that does prove itself is the wounded horror,
+  whose frame is keyed by `horrorHealth`. The rooms themselves are three
+  box shapes and two palettes with no authored contents, which is why
+  every room looked the same and why art. 70 has nothing to subtract.
+- **art. 71 — a bare tap walks you through a door.** `takeDoor` commits
+  on the first press of the sensed line. Sensing and going are one tap.
+- **art. 72 — keep-marks outlive the recast.** `recast` preserves `kept`
+  on the dice that survived, and the tray keeps drawing `.kept` through
+  the claim phase, so the hand still shows which dice came from the first
+  casting after that has stopped being information. Idle, selected and
+  claimed are distinguished only by border colour, which the playtest
+  could not read. Unused dice never dim at resolve, there being no
+  resolve display.
+- **art. 73 — the intent is not tappable.** It is a note. `INTENT_SAYS`
+  is authored and spent only on the word band, so a declared effect
+  cannot be interrogated.
+- **art. 74 — the card is parked mid-screen.** `cardStrip` prints all
+  thirteen lines inline under the tray on every fight paint. There is no
+  glyph.
+- **art. 75 — a half-spent turn does not survive the lock screen.**
+  `fight`, `phase`, `selected` and `fightLot` are module-level and never
+  written; `persist` saves the ledgers and the beat only. Already named
+  as debt above ("Resume granularity is the room", `FightSave` typed and
+  unused) — under art. 75 it is a violation, not a deferral. The
+  half-read scene does survive.
+- **art. 76 — inside the budget.** The shell taps and does nothing else.
+  Nothing here proposes leaving it.
