@@ -60,3 +60,6 @@ export const RUSTED_PLATE: Wearable = {
  * start implies; the demo's blocked 3 comes from the plate, not the body.
  */
 export const BASE_ARMOR = 0
+
+/** Every rider the labyrinth can fire, for the hand's company (art. 51). */
+export const ALL_RIDERS: readonly Rider[] = [LEECH]

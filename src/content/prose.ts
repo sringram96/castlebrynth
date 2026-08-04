@@ -85,6 +85,7 @@ export const DOOR_SENSES: Readonly<Record<string, string>> = {
 export const END_LINES: Readonly<Record<string, string>> = {
   'end.gnawing': 'The Gnawing opens you and goes back to its corner.',
   'end.warden': 'The Warden stands aside. The stair keeps going down.',
+  'end.kept': 'The door does not open, and the corridor behind you is stone.',
 }
 
 /**
