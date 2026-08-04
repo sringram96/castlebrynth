@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { HAND_SIZE, PLAIN_POUCH } from '../src/content/index.js'
+import { BARE_BODY, HAND_SIZE, PLAIN_POUCH } from '../src/content/index.js'
 import type { Seed, Vault } from '../src/state/index.js'
 import { firstPermanent, load, save, snapshot, wake } from '../src/state/index.js'
 
@@ -23,7 +23,7 @@ describe('state — art. 36 (every mutation persists, boot restores exactly), ar
     const { vault, kill } = killableVault()
     const seed = 20260804 as unknown as Seed
 
-    const permanent = firstPermanent(PLAIN_POUCH, HAND_SIZE)
+    const permanent = firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY)
     const ledgers = wake(permanent, seed)
     save(ledgers, vault)
 
@@ -33,7 +33,7 @@ describe('state — art. 36 (every mutation persists, boot restores exactly), ar
   })
 
   it('keeps the run and the permanent apart, except through the rituals (art. 11)', () => {
-    const permanent = firstPermanent(PLAIN_POUCH, HAND_SIZE)
+    const permanent = firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY)
     const ledgers = wake(permanent, 1 as unknown as Seed)
 
     // The run burns; the permanent survives. Nothing crosses but by ritual.

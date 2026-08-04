@@ -5,16 +5,44 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Castlebrynth</title>
     <style>
-      /* art. 25: integer pixel scaling with letterboxing. The bars are black. */
-      html, body { margin: 0; background: #000; height: 100dvh; overflow: hidden; }
-      #world { display: flex; align-items: center; justify-content: center; height: 100dvh; }
+      /* art. 25: integer pixel scaling with letterboxing. The bars are black.
+         Nothing below is design: it is legibility, and the look is a later
+         task under arts 26–30. */
+      html, body { margin: 0; background: #000; color: #d8d0c0; height: 100dvh; overflow: hidden;
+        font-family: Georgia, serif; font-size: 15px; line-height: 1.4; }
+      #stage { display: flex; flex-direction: column; height: 100dvh; max-width: 460px; margin: 0 auto; }
+      /* art. 29: the word — borderless at the top, fades after a beat. */
+      #word { flex: 0 0 auto; min-height: 4.4em; padding: 8px 12px; transition: opacity .6s; }
+      #word.faded { opacity: .35; }
+      /* art. 29: the world — the frame. */
+      #world { flex: 1 1 auto; display: flex; align-items: center; justify-content: center;
+        min-height: 0; overflow: hidden; }
       canvas { image-rendering: pixelated; }
+      /* art. 29: the tray — a box beneath, holding what the moment offers. */
+      #tray { flex: 0 0 auto; padding: 8px 12px 14px; border-top: 1px solid #2b2722;
+        max-height: 52dvh; overflow-y: auto; }
+      #tray .row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+      #tray .note { color: #8a8478; font-size: .85em; }
+      button { font: inherit; background: #1e1b17; color: #d8d0c0; border: 1px solid #55504a;
+        padding: 9px 12px; min-height: 40px; cursor: pointer; }
+      button:disabled { opacity: .35; cursor: default; }
+      button.on { border-color: #d9b36a; }
+      button.die { min-width: 46px; font-family: ui-monospace, monospace; }
+      button.die.kept { background: #2a3238; border-color: #7fa8b8; }
+      button.die.sel { border-color: #d9b36a; }
+      button.die.spent { opacity: .55; border-color: #a8331f; }
+      .card { font-family: ui-monospace, monospace; font-size: .7em; color: #8a8478; }
+      .card .spent { text-decoration: line-through; opacity: .5; }
+      .card .sealed { color: #d9b36a; }
     </style>
   </head>
   <body>
-    <!-- art. 29: three bands — the word, the world, the tray. Only the
-         world exists yet; the other two are stubs in src/descent. -->
-    <main id="world"><canvas id="view"></canvas></main>
+    <!-- art. 29: three bands — the word, the world, the tray. -->
+    <div id="stage">
+      <div id="word"></div>
+      <main id="world"><canvas id="view"></canvas></main>
+      <div id="tray"></div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

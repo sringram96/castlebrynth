@@ -47,7 +47,13 @@ const Z_CHAIN = 1.15
 /** The chain runs down this fraction of the frame. */
 const CHAIN_DROP = 58 / AUTHORED_HEIGHT
 
-function masonry(school: School, shape: RoomShape, eye: number): SurfaceShaders {
+/**
+ * The world-space masonry of the whole depth. Exported because the
+ * skeleton's ordinary rooms are the same stone in a different light
+ * (`plain.ts`), and art. 15 wants the texture in world space wherever it is
+ * laid.
+ */
+export function masonry(school: School, shape: RoomShape, eye: number): SurfaceShaders {
   const tall = eye + shape.ceiling
   return {
     wall(side, z, height) {
