@@ -271,6 +271,12 @@ export const NOTICES: Readonly<Record<string, string>> = {
   'fight.resumed': 'It is where you leave it, and it remembers the rest.',
   'run.dead': 'The floor comes up. The run ends here.',
   'run.finished': 'You go through, and the stair keeps going down.',
+  // art. 60: an ending with a choice waiting behind it says so, because the
+  // next screen is a question rather than the labyrinth. It states what is
+  // true of the pouch and stops there — the Choose verb is what instructs.
+  'run.dead.choose': 'The floor comes up. The run ends here. What is on you now is more than your hand holds.',
+  'run.finished.choose':
+    'You go through, and the stair keeps going down. What is on you now is more than your hand holds.',
   'book.empty': 'Nothing is written here yet.',
   'book.title': 'The Book of Ends.',
   'card.title': 'The card. Each line spends once, and refills at the next door.',
@@ -398,6 +404,9 @@ export const VERBS: Readonly<Record<string, string>> = {
   descend: 'Descend',
   end: 'End run',
   wake: 'Wake',
+  // art. 60: the verb an ending offers when the pouch has outgrown the hand.
+  // It names what the press does — it opens the question, it does not descend.
+  choose: 'Choose',
   read: 'Read',
   close: 'Close',
   card: 'Card',

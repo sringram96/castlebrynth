@@ -149,6 +149,15 @@ pouch is shut during a fight**: there is nothing to do in there, and a
 tab that only ever says "not now" is worse than a tab that is not
 offered.
 
+The ending announces it. A death with a choice waiting behind it says so
+in the word band — *"What is on you now is more than your hand holds"* —
+and the verb on the strip is **Choose** rather than Descend, because the
+press opens a question rather than the labyrinth and no press should lie
+about where it takes you (art. 71). An ending with nothing to decide is
+untouched: the plain line, and Descend. The prose still never instructs
+(art. 66) — it states what is true of the pouch, and the verb is the
+only thing that says what to press.
+
 The choosing screen is a screen and not a panel, because it is a
 decision of its own. It has no tabs — there is nowhere else to be until
 it is answered — and it spends no new vocabulary: the dice are tapped

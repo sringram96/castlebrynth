@@ -454,10 +454,16 @@ wordBand.onclick = () => {
 
 function wordOf(): string {
   switch (screen.kind) {
+    // art. 60: an ending that has a question behind it says so. The line is
+    // the same ending plus what is true of the pouch — never an instruction
+    // (art. 66); the verb on the strip is the thing that tells you to press.
     case 'dead':
-      return NOTICES['run.dead'] ?? ''
+      return (mustChoose(ledgers.permanent) ? NOTICES['run.dead.choose'] : NOTICES['run.dead']) ?? ''
     case 'finished':
-      return NOTICES['run.finished'] ?? ''
+      return (
+        (mustChoose(ledgers.permanent) ? NOTICES['run.finished.choose'] : NOTICES['run.finished']) ??
+        ''
+      )
     case 'choosing':
       return NOTICES['choose.which'] ?? ''
     case 'fight':
@@ -1001,14 +1007,17 @@ function acts(): void {
       // they are rendered there (`theFightPanel`). What ACTS holds during a
       // fight is what ACTS is for — the things you do that are not the duel.
       return actsInAFight()
+    // art. 60: the verb names what the press actually does. With a choice
+    // waiting it opens the question rather than the labyrinth, so it says
+    // Choose — art. 71's rule that no press lies about where it takes you.
     case 'dead':
       return actStrip.append(
-        verb('descend', beginDescent),
+        verb(mustChoose(ledgers.permanent) ? 'choose' : 'descend', beginDescent),
         verb('read', () => { sheet = 'book'; paint() }),
       )
     case 'finished':
       return actStrip.append(
-        verb('wake', beginDescent),
+        verb(mustChoose(ledgers.permanent) ? 'choose' : 'wake', beginDescent),
         verb('read', () => { sheet = 'book'; paint() }),
       )
     case 'choosing':
