@@ -90,7 +90,6 @@ import {
   claimedDice,
   cursedValue,
   decide,
-  disband,
   fitsNothing,
   freshCard,
   harm,
@@ -1368,46 +1367,38 @@ function fightActs(): void {
         },
         castingsLeft(now.turn) === 0,
       ),
-      verb('keep-all', () => {
-        phase = 'claim'
-        selected = []
-        persist()
-        paint()
-      }),
     )
     return
   }
 
+  // art. 41 (amended by the attack ruling of 2026-08-05): the claim phase is
+  // one press. The selection *is* the attack, so there is nothing to lock in
+  // before ending the turn and nothing to take back — a tap on a chosen die
+  // un-chooses it, which is the whole of undo (art. 72's staged selection).
+  //
+  // A turn therefore claims once. Measured against the Gnawing, claiming the
+  // leftovers as well moves the win rate by about a point in either
+  // direction — inside the noise — because the second claim scrapes a pair
+  // off a hand whose turn is already decided. It cost three presses to buy
+  // nothing.
   const line = bestLine()
-  const takingBack = now.turn.claims.some((made) =>
-    made.dice.some((one) => selected.includes(one.die)),
+  if (line === null) {
+    // arts 46, 63: a turn without a combo is a turn of armor and patience,
+    // and an empty card leaves only armor and flight. The way out of a turn
+    // is never conditional on having something to hit with.
+    fightPanel.append(verb('end-turn', endTurn))
+    return
+  }
+  fightPanel.append(
+    verb('attack', () => {
+      fight = withTurn(now, claim(now.turn, selected, line, LADDER, goods()))
+      notice = null
+      // The claim is on the ledger before the beat runs, so a phone locked
+      // mid-resolve wakes with the attack made rather than unmade (art. 75).
+      persist()
+      endTurn()
+    }),
   )
-  if (line !== null) {
-    fightPanel.append(
-      verb('claim', () => {
-        fight = withTurn(now, claim(now.turn, selected, line, LADDER, goods()))
-        selected = []
-        notice = null
-        persist()
-        paint()
-      }),
-    )
-  }
-  if (takingBack) {
-    fightPanel.append(
-      verb('take-back', () => {
-        let turn = now.turn
-        for (const made of now.turn.claims) {
-          if (made.dice.some((one) => selected.includes(one.die))) turn = disband(turn, made.line)
-        }
-        fight = withTurn(now, turn)
-        selected = []
-        persist()
-        paint()
-      }),
-    )
-  }
-  fightPanel.append(verb('end-turn', endTurn))
 }
 
 /**

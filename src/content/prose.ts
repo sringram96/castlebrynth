@@ -408,10 +408,13 @@ export const VERBS: Readonly<Record<string, string>> = {
   close: 'Close',
   card: 'Card',
   roll: 'Roll',
-  recast: 'Recast',
-  'keep-all': 'Keep all',
-  claim: 'Claim',
-  'take-back': 'Take back',
+  // art. 41 (amended 2026-08-05): the turn is three presses — Roll, Reroll,
+  // Attack. "Recast" was the law's word for the second casting and made the
+  // thumb learn a synonym for a thing every dice game already has a word
+  // for; "Claim" named the mechanism (a line off the card) where the player
+  // is doing the only thing anybody comes to a fight to do.
+  recast: 'Reroll',
+  attack: 'Attack',
   // art. 66: two words or fewer, and it never narrates.
   swap: 'Swap',
   'end-turn': 'End turn',

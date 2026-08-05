@@ -36,9 +36,10 @@ all state client-side.
 - **Blind chains, reseeded every death, provably winnable.** (arts 31–33)
 - **Knowledge attaches to things, not places** — it survives the reseed.
   (arts 10, 34)
-- **The poker duel, carded** — intent first, keep-and-recast, then
-  multi-combo claims scored sum × tier, each line once per fight;
-  defense is armor from items, not dice. (arts 41–48, 63–66)
+- **The poker duel, carded** — intent first, then three presses: Roll,
+  Reroll, Attack. The selection is the attack, scored sum × tier, each
+  line once per fight; defense is armor from items, not dice.
+  (arts 41–48, 63–66)
 - **Dice are the loot, and the loot belonged to somebody** — shape,
   riders, bonds, talismans, wearables; every power declared and budgeted;
   every good carrying one sentence of origin that explains its rules, or
@@ -178,9 +179,8 @@ dice of a turn are drawn in FIGHT and nowhere else; ACTS keeps the room's
 summoned verbs, which is where spells and consumables will sit.
 
 **FIGHT holds only the duel, so Run moved out of it.** The fight's strip
-is three different sets of verbs across a turn — Roll, then Recast and
-Keep all, then Claim and Take back and End turn — and Run was riding
-along at the end of each, shifting position every time the phase turned.
+is a different verb at each step of a turn, and Run was riding along at
+the end of each, shifting position every time the phase turned.
 Running is not a move in the duel anyway: it is the one thing you can
 still do about the door you are standing at, which is a room act. So it
 sits in ACTS, in one place, for the whole fight, and it is the first
@@ -194,6 +194,44 @@ acts tab, then Run — where it used to be one. Art. 41 says FLEE is always
 timed (art. 1), so the tap buys a strip that holds still. If flight ever
 wants to be instant again, the fix is a fixed slot on the rail rather
 than a verb back in the shifting strip.
+
+## The turn is three presses (art. 41, amended)
+
+Roll, Reroll, Attack. That is the whole loop now, and the two verbs that
+left are the point of it.
+
+**Keep all is gone.** Holding every die and pressing Reroll throws
+nothing, which is the same sentence said in the vocabulary the phase
+already has. One button per step, and the dice are the other half of the
+interface.
+
+**Claim and Take back are gone, folded into Attack.** The selection *is*
+the attack: one press claims what the selection makes and ends the turn
+behind it. Nothing is committed until that press, so there is nothing to
+take back — a tap on a chosen die un-chooses it, and that is the whole of
+undo. When the selection claims nothing the button says End turn instead,
+because arts 46 and 63 both require a turn to be endable with nothing to
+hit with.
+
+**A turn therefore claims once, and it was measured before it was
+ruled.** Against the Gnawing, over 1200 fights per policy:
+
+| hand | several claims | one claim |
+|---|---|---|
+| bare five | win 0.286 over 3.9 turns | win 0.299 over 3.9 turns |
+| six (a bone found) | win 0.818 over 3.4 turns | win 0.804 over 3.5 turns |
+
+Inside the noise both ways. The second claim scrapes a leftover pair off
+a hand whose turn is already decided — it was three presses buying
+nothing. Art. 45's several-combos clause is spent, though the engine keeps
+taking more than one claim per turn, so a good that grants a second attack
+still has its socket.
+
+Art. 64's central decision survives with a new price. A composite against
+two simple lines is still the card's live question; the two simple lines
+are now two *turns*, and you pay for the second one with a turn of the
+horror's intent landing on you. That is a better version of the decision
+than the one where both fit in the same press.
 
 **The vault carried all of it.** `VAULT_VERSION` went 3 → 4 → 5 in one
 wave, and both rungs are the *good* kind: nothing about the arrangement
@@ -868,8 +906,8 @@ that a later playtest can argue with the reading rather than guess it.
 
 - **art. 66 — controls narrated.** Closed. Controls come from `VERBS` in
   content and are plain imperative verbs of two words or fewer: Take,
-  Open, Fight, Descend, Roll, Recast, Keep all, Claim, Take back, End
-  turn, Run, Read, Close, Wake, End run. A door's sensed line is what
+  Open, Fight, Descend, Roll, Reroll, Attack, End turn, Run, Read,
+  Close, Wake, Choose, End run. A door's sensed line is what
   tapping the door answers with, never what a button says.
   `test/content.voice.test.ts` holds every verb to the article — two
   words, a capital, no punctuation, no article and no second person —
