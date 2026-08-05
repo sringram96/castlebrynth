@@ -8,6 +8,7 @@
  */
 
 import type { Prop, RoomShape, Scene, SurfaceShaders, View } from '../../room/index.js'
+import type { Feature } from './features.js'
 import { hash } from '../../room/index.js'
 import type { School } from '../palettes.js'
 import { DEEP, MUTED, lookOf, shadingOf } from '../palettes.js'
@@ -100,7 +101,21 @@ function deepen<T extends Record<string, number | readonly number[]>>(
  * Every shader answers a position on its surface's ramp, unlit and
  * unfogged. The cast adds the light and the distance and dithers once.
  */
-export function masonry(school: School, shape: RoomShape, eye: number): SurfaceShaders {
+export function masonry(
+  school: School,
+  shape: RoomShape,
+  eye: number,
+  /**
+   * art. 99, tier two: architecture on the wall planes, flush with them and
+   * shaded by this same cast. A feature answers after the grammar has, so it
+   * can cut into the stone, stand proud of it, or replace it outright.
+   */
+  features: {
+    readonly left?: Feature
+    readonly right?: Feature
+    readonly back?: Feature
+  } = {},
+): SurfaceShaders {
   const tall = eye + shape.ceiling
   const base = shadingOf(school).base
   return {
@@ -122,7 +137,11 @@ export function masonry(school: School, shape: RoomShape, eye: number): SurfaceS
       }
       // a broken corner, once in a while
       if (hash(id, 1) < 7 && fv > 0.5 && fu > 0.8) step -= STONE.defect
-      return step
+      // art. 99: and then the architecture, at world coordinates on this
+      // plane. It answers last so it can cut through the grammar, and it
+      // answers a step like everything else so the light finds it honestly.
+      const cut = (side < 0 ? features.left : features.right)?.(z, height, step)
+      return cut ?? step
     },
     floor(z, x) {
       const fz = Math.floor(z / FLAG_LENGTH)
@@ -167,7 +186,8 @@ export function masonry(school: School, shape: RoomShape, eye: number): SurfaceS
         step -= hash(b, id) < 40 ? STONE.moss : STONE.moss2
       }
       if (hash(id, 1) < 7 && fv > 0.5 && fu > 0.8) step -= STONE.defect
-      return step
+      const cut = features.back?.(x, height, step)
+      return cut ?? step
     },
   }
 }

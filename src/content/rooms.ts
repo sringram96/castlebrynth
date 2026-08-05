@@ -76,6 +76,16 @@ import {
   VERDIGRIS,
   WET,
 } from './palettes.js'
+import type { Feature } from './plates/features.js'
+import {
+  blindArcade,
+  brickedUp,
+  crack,
+  layered,
+  niche,
+  pilasters,
+  stringCourse,
+} from './plates/features.js'
 import { plainScene } from './plates/plain.js'
 import {
   alcove,
@@ -390,6 +400,12 @@ interface Authored {
   readonly plate?: Scene
   /** art. 102: what lies on this room's floor, as a height and not a heap. */
   readonly buried?: (school: School, shape: RoomShape) => Mass
+  /** art. 99: the architecture on this room's walls, if it has any yet. */
+  readonly built?: {
+    readonly left?: Feature
+    readonly right?: Feature
+    readonly back?: Feature
+  }
   /** How often teeth stand at the far end unasked. A lair is always a lair. */
   readonly teeth?: number
   /**
@@ -554,6 +570,14 @@ const AUTHORED: readonly Authored[] = [
     type: 'omen',
     school: THRONE_STONE,
     kind: 'great',
+    // art. 99: a blind arcade down both walls and a course above it. The
+    // arcade wears no architrave, so nothing in it can be mistaken for a way
+    // out — art. 97 is what makes the two readable side by side.
+    built: {
+      left: layered(stringCourse(14.5), blindArcade(11, 6.4, 1, 12.5)),
+      right: layered(stringCourse(14.5), blindArcade(11, 6.4, 1, 12.5, 5.5)),
+      back: stringCourse(14.5),
+    },
     dressing: (school) => [
       thing(school, THRONE, { X: 0, Y: FLOOR, z: 44, width: 11, height: 15 }, 'the throne', 60),
       thing(school, BRAZIER, { X: -9, Y: FLOOR, z: 30, width: 4.6, height: 6 }, 'the brazier', 46, FIRE),
@@ -571,6 +595,7 @@ const AUTHORED: readonly Authored[] = [
     type: 'passage',
     school: SILT,
     kind: 'vault',
+    built: { left: crack(11, 12, 1, 29), right: stringCourse(11, 0.7) },
     dressing: (school) => [
       runnel(school),
       thing(school, CAPS, { X: -5.4, Y: FLOOR, z: 16, width: 4.2, height: 2.6 }, 'the caps'),
@@ -603,6 +628,11 @@ const AUTHORED: readonly Authored[] = [
     type: 'lair',
     school: CHALK,
     kind: 'chamber',
+    // art. 99: niches down one wall, and every one of them is empty.
+    built: {
+      left: layered(niche(14, 6, 11, 3.4), niche(23, 6, 11, 3.4), niche(32, 6, 11, 3.4)),
+      right: pilasters(9, 1.8, 3),
+    },
     dressing: (school) => [
       thing(school, CAGE, { X: -8.8, Y: FLOOR, z: 27, width: 4.6, height: 5.2 }, 'the cage'),
       thing(school, CHOIR, { X: 8.6, Y: FLOOR, z: 24, width: 7.5, height: 9.5 }, 'the choir', 50),
@@ -636,6 +666,12 @@ const AUTHORED: readonly Authored[] = [
     type: 'puzzle',
     school: VERDIGRIS,
     kind: 'hall',
+    // art. 99: a way out that somebody closed, and the wrong masonry inside
+    // the frame is what says so — without a word of prose.
+    built: {
+      right: layered(brickedUp(24, 9, 17.5), stringCourse(19, 0.8)),
+      left: layered(crack(18, 20, 3, 41), pilasters(11, 2, 4)),
+    },
     dressing: (school) => [
       thing(school, WATCHER, { X: -9.5, Y: FLOOR, z: 26, width: 8.5, height: 11.5 }, 'the watcher', 52),
       thing(school, SKULL, { X: 6.5, Y: FLOOR, z: 15, width: 1.8, height: 2 }, 'the skull'),
@@ -662,6 +698,9 @@ const AUTHORED: readonly Authored[] = [
     type: 'trove',
     school: OCHRE,
     kind: 'hall',
+    // art. 99: a way out that somebody closed. It says what happened here
+    // without a word of prose, which is the whole argument for the tier.
+    built: { left: crack(16, 19, 2), right: stringCourse(17.5, 0.8) },
     // art. 102: one form, and the rays hit it. Not eight dune sprites,
     // which would read as eight small piles because that is what they are.
     buried: (school, shape) => {
@@ -783,6 +822,7 @@ function contentOf(one: Authored): RoomContent {
             shape,
             () => one.dressing(one.school, state),
             one.buried?.(one.school, shape),
+            one.built ?? {},
           )
       // art. 97: every door the room offers is a threshold, and every
       // threshold is drawn. This is the room's, not the dressing's — the

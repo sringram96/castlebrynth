@@ -202,6 +202,61 @@ timed (art. 1), so the tap buys a strip that holds still. If flight ever
 wants to be instant again, the fix is a fixed slot on the rail rather
 than a verb back in the shifting strip.
 
+## Masses and features, built (arts 99, 102–103)
+
+The two tiers the look wave named and did not build.
+
+**A mass is a heightfield the rays hit.** The floor is a plane plus a
+height, and every downward ray marches against that surface until it drops
+below it. So the sand occludes the doors, meets the walls where the walls
+are, takes the same light and the same air, and gets the derived contour for
+free — none of which is available to a crest painted in screen space, which
+would have run flat across the frame, agreed in size with nothing, and been
+unable to hide what stands behind it.
+
+art. 103 in full: the surface normal is measured off the *same* height
+function the rays are marched against, so the light can never disagree with
+the silhouette. The dune's shape is sand's real shape — a long windward
+haul, a short slip face, banked hard against both walls — and it carries the
+wind's ripples as **geometry** rather than as texture, because a flat mass
+shades flat and a mass that shades flat is a stain. Sand takes its own ramp
+and sits low on it, so the slope has room to lift a windward face and room
+to drop a slip face into shadow.
+
+The **buried hall** is the room that has one. It starts eleven units out, so
+the floor underfoot is still floor and the room reads as being taken rather
+than as already gone.
+
+**Features are architecture on the wall plane**, flush with it, answering
+the same question the masonry answers — where on this surface's ramp does
+this point sit. So they take the room's light and the room's air without
+being told to, and they recede because the wall does. Seven ship:
+`stringCourse`, `pilasters`, `blindArcade`, `niche`, `crack`, `brickedUp`,
+and `layered` to put several on one wall.
+
+Four rooms are built now. The **throne hall** has a blind arcade down both
+walls under a string course — and the reason its arches cannot be mistaken
+for ways out is art. 97: an arcade wears no architrave, and nothing that is
+not a way out may. The **watcher** has a bricked-up doorway, which is the
+argument for the whole tier in one feature: a frame with the wrong masonry
+inside it, saying something happened here without a word of prose. The
+**choir** has three empty niches and a run of pilasters; the **sewer** has a
+crack and a course.
+
+`brickedUp` is the one feature that *replaces* the grammar rather than
+offsetting it — smaller stones on their own courses, out of step with
+everything around them. A fill that shares the wall's courses is a patch
+nobody notices.
+
+### Still open
+
+- **The junction** (art. 96) — wide, full-height side apertures. Law, not
+  built; every room with doors is a chamber or the open.
+- **The original fourteen** still use hand-written prop painters rather than
+  authored index grids, so only the newer rooms get the derived rim.
+- **The phone pass.** `blendAbove` is still a guess at a fifth, verified on
+  nothing but a desktop panel.
+
 ## The look wave (arts 17, 94–96, 100, 113–115)
 
 The playtest verdict was that every room is a hallway, the doors read as
@@ -277,13 +332,8 @@ the box without anybody noticing.
 Named plainly rather than quietly skipped, because the wave document asked
 for them:
 
-- **Masses** (art. 102) — the floor as a plane plus a height, with the cast
-  marching downward rays against it. Not started. The sand the document asks
-  for needs it, and painting a crest in screen space is exactly what the
-  article refuses, so nothing was faked in its place.
-- **Features** (art. 99) — string courses, pilasters, niches, blind arcades,
-  the bricked-up doorway. Not started. This is still the tier the game lacks
-  entirely, and it is why the throne hall has no arcade behind its throne.
+- **Masses** (art. 102) and **features** (art. 99) — not started in that
+  wave; **both built in the one after it**, see above.
 - **The junction** (art. 96) — wide, full-height side apertures. The shape
   is law and is not built; every room with doors is a chamber or the open.
 - **Re-authoring the original fourteen.** They took the new shading, the new
