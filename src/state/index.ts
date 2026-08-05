@@ -123,6 +123,43 @@ export type Panel = 'acts' | 'pouch' | 'fight'
 export const HOME: Panel = 'acts'
 
 /**
+ * art. 91: the things that move focus. Every one of them is an event the
+ * game *declares* has happened — never a state the shell inspected and drew
+ * a conclusion from.
+ */
+export type FocusEvent =
+  | 'fight-opened'
+  | 'fight-resumed'
+  | 'fight-won'
+  | 'fight-fled'
+  | 'died'
+  | 'finished'
+
+/**
+ * art. 91: where each of those events puts the thumb.
+ *
+ * It is a table rather than a branch per call site on purpose. "Transitions
+ * are declared events, never inferences" is the whole article, and a table
+ * is the only shape of that claim you can read in one go and test in one
+ * go — six lines that say all the focus this game has.
+ */
+export function panelAfter(event: FocusEvent): Panel {
+  switch (event) {
+    // The fight is in its panel, so the thumb goes where the fight is.
+    case 'fight-opened':
+    case 'fight-resumed':
+      return 'fight'
+    // FIGHT stops existing when the fight does. Leaving it focused would be
+    // a tab pointing at nothing.
+    case 'fight-won':
+    case 'fight-fled':
+    case 'died':
+    case 'finished':
+      return HOME
+  }
+}
+
+/**
  * art. 11: the permanent survives — dice, signature, keepsakes, knowledge,
  * the Book of Ends. art. 10: knowledge is a key and lives here.
  */

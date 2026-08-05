@@ -7,7 +7,7 @@ novel a candle at a time; the labyrinth is a blind chain of hand-authored
 rooms, procedurally rearranged every run; fights are poker-dice duels
 against horrors whose intents are always shown; death burns the run and
 keeps the knowledge. `reference/GAME.md` is the fantasy. The binding law is in
-`.claude/rules/` — 89 numbered articles; tasks cite them as "art. N".
+`.claude/rules/` — 92 numbered articles; tasks cite them as "art. N".
 
 ## Components
 - **src/state** — the two ledgers (run / permanent) behind named rituals;
@@ -87,8 +87,57 @@ is a playable loop in a portrait browser: wake → open one of one to three
 blind doors → the room behind it is dealt on the spot → keep choosing → a
 region locks and the depth announces where you have arrived → the rest of
 the depth deals from that region and its encounters wake → the Warden's
-door, refused without the key and terse with it. `npm test` is green: 29
-files, 258 tests.
+door, refused without the key and terse with it. `npm test` is green: 31
+files, 279 tests.
+
+**And the tray became a rail and panels.** The playtest found two
+immersion breaks, and the tray stand-up of 2026-08-05 ruled on both. The
+dice sat on screen during exploration as if a fight were always
+happening; and you could take a thing you had never looked at, so a
+room's contents were a list before they were a place.
+
+- **Art. 67 amended.** The tray is a **persistent rail** — vitals and the
+  tabs — and a **panel area** beneath it. ACTS is home, where the room is
+  played from; POUCH is art. 60's swap surface; FIGHT exists only while a
+  fight does. The fixed regions are not repealed, only relocated: what
+  changed is that the tray stopped showing all of them at once. **Outside
+  a fight, no die is drawn anywhere but in POUCH.**
+- **Art. 68 strengthened — the summons.** An act about a thing does not
+  exist until the thing has been tapped. Tap the alcove, the word band
+  answers — that answer *is* the inspection — and only then does Take
+  appear. The summons persists for the instance (arts 70, 82) and two
+  copies of one room summon independently. No inspect buttons and no
+  tooltips: a tooltip with an inspect button is what art. 68 abolished.
+  Doors were already this shape (art. 71) and are untouched.
+- **Art. 90 — tabs are taps.** A tab bar spends nothing from art. 76's
+  budget. A tab is a *label*, not a control, so art. 66 does not govern
+  it and art. 90 does; the tab words live in their own `TABS` record
+  rather than in `VERBS`, because putting nouns under art. 66's lint
+  would have meant quietly widening that article. **The slide is a named
+  option** — weighed at the same stand-up, not admitted, still eligible,
+  and nothing here forecloses it.
+- **Art. 91 — panel focus is state.** It rides the run ledger and the
+  vault. Transitions are a *table* (`panelAfter`) rather than a branch at
+  each call site, because "declared events, never inferences" is only
+  checkable if you can read every transition in one go. Booting is
+  deliberately not a transition: a player who locked the phone on the
+  pouch comes back to the pouch, fight or no fight.
+- **Art. 92 — the map is a socket.** A disabled tab is legal; pixels
+  behind it are not (arts 31, 85). `Panel` has no `map` member, so
+  nothing can focus it even by accident.
+
+The FIGHT panel is its own animal without breaking art. 30 — the world
+band is still the room with the horror advanced. What changes mode is the
+tray: darker ground, ruled off, lit along its top edge, with art. 57's
+running totals and the card's glyph pinned in its header and the hand
+under them.
+
+**The vault carried all of it.** `VAULT_VERSION` went 3 → 4 → 5 in one
+wave, and both rungs are the *good* kind: nothing about the arrangement
+moved, so they fill the new field and leave the run standing where it
+was. That is a second shape of migration (`fillingTheRun`) beside the
+run-dropping one, and the difference between them is now explicit. A
+tray change may not cost anybody a descent.
 
 **And the dice belonged to somebody.** The collection has been a socket
 with nothing in it for four waves. The **travelers wave** fills it, and

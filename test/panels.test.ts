@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { BARE_BODY, HAND_SIZE, PLAIN_POUCH, TABS, lintVoice } from '../src/content/index.js'
-import type { Panel, Seed, Vault } from '../src/state/index.js'
+import type { FocusEvent, Panel, Seed, Vault } from '../src/state/index.js'
 import {
   HOME,
   MIGRATIONS,
@@ -11,6 +11,7 @@ import {
   focused,
   load,
   memoryVault,
+  panelAfter,
   save,
   wake,
 } from '../src/state/index.js'
@@ -93,6 +94,54 @@ describe('art. 91 — the vault carries the new field forward', () => {
   it('keeps the ladder gapless up to the current version', () => {
     expect(VAULT_VERSION).toBe(5)
     expect(MIGRATIONS.map((one) => one.from).sort((a, b) => a - b)).toEqual([1, 2, 3, 4])
+  })
+})
+
+describe('art. 91 — the transitions are a table, not a habit', () => {
+  /**
+   * The article's whole claim is that focus never moves by inference. A
+   * table is the only shape of that you can read in one go — so it is read
+   * in one go here, and every event the game has is in it.
+   */
+  it('puts the thumb in the fight when a fight starts, and only then', () => {
+    expect(panelAfter('fight-opened')).toBe('fight')
+    expect(panelAfter('fight-resumed')).toBe('fight')
+  })
+
+  it('puts it home on every way a fight can end', () => {
+    for (const event of ['fight-won', 'fight-fled', 'died', 'finished'] as const) {
+      expect(panelAfter(event), event).toBe(HOME)
+    }
+  })
+
+  it('sends every declared event somewhere — none of them is a hole', () => {
+    const events: readonly FocusEvent[] = [
+      'fight-opened',
+      'fight-resumed',
+      'fight-won',
+      'fight-fled',
+      'died',
+      'finished',
+    ]
+    const panels: readonly Panel[] = ['acts', 'pouch', 'fight']
+    for (const event of events) expect(panels, event).toContain(panelAfter(event))
+    // FIGHT is only ever reached by a fight beginning: nothing else in the
+    // table lands there, so a tab that does not exist cannot be focused.
+    const toFight = events.filter((event) => panelAfter(event) === 'fight')
+    expect(toFight).toEqual(['fight-opened', 'fight-resumed'])
+  })
+
+  /** Nothing in the table sends the thumb to POUCH: only a tap does. */
+  it('never moves the thumb to the pouch on its own', () => {
+    const events: readonly FocusEvent[] = [
+      'fight-opened',
+      'fight-resumed',
+      'fight-won',
+      'fight-fled',
+      'died',
+      'finished',
+    ]
+    expect(events.some((event) => panelAfter(event) === 'pouch')).toBe(false)
   })
 })
 

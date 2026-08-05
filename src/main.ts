@@ -106,6 +106,7 @@ import type { FightPhase, InstanceId, ItemId, Ledgers, Panel, Seed } from './sta
 import {
   HOME,
   browserVault,
+  panelAfter,
   finish,
   focused,
   firstPermanent,
@@ -242,10 +243,11 @@ function boot(): void {
   const gate = doors(bands).find((door) => door.fight !== undefined)
   if (held !== null && held.engaged && gate !== undefined) {
     resume(held.at)
-    if (fight !== null) {
-      screen = { kind: 'fight', door: gate }
-      focus('fight')
-    }
+    // art. 91: booting is not a transition. Focus is state, and the state
+    // says where the thumb was — a player who locked the phone on the pouch
+    // comes back to the pouch, fight or no fight. `panelNow` clamps the one
+    // case that could go stale (a save on FIGHT with no fight left).
+    if (fight !== null) screen = { kind: 'fight', door: gate }
   }
   persist()
   paint()
@@ -1113,6 +1115,7 @@ function finishTheDepth(): void {
   chosen = doors(bands)[0] ?? null
   greet()
   screen = { kind: 'finished' }
+  focus(panelAfter('finished'))
   notice = null
   persist()
   paint()
@@ -1137,7 +1140,7 @@ function openTheFight(door: Door): void {
     screen = { kind: 'fight', door }
     // art. 63: a paused fight resumed is a fight entered, and focuses the
     // same way it did the first time.
-    focus('fight')
+    focus(panelAfter('fight-resumed'))
     ledgers = openDoor(ledgers, door)
     notice = NOTICES['fight.resumed'] ?? ''
     persist()
@@ -1148,9 +1151,10 @@ function openTheFight(door: Door): void {
   phase = 'pre'
   selected = []
   screen = { kind: 'fight', door }
-  // art. 67: entering a fight focuses FIGHT. A declared transition, not an
-  // inference — the panel is where the fight is, so the thumb goes there.
-  focus('fight')
+  // art. 91: a declared transition, read off the table rather than decided
+  // here — the shell states what happened and the law says where that puts
+  // the thumb.
+  focus(panelAfter('fight-opened'))
   // art. 70: opening a door is an act, and the room it stands in shows it.
   ledgers = openDoor(ledgers, door)
   notice = null
@@ -1341,9 +1345,7 @@ function wonTheFight(): void {
   ledgers = carryOut(ledgers, now)
   fight = null
   screen = { kind: 'room' }
-  // art. 67: a fight ending puts the thumb back home. FIGHT stops existing,
-  // so leaving it focused would be a tab pointing at nothing.
-  focus(HOME)
+  focus(panelAfter('fight-won'))
   // Winning opens the door, and the door commits the next room (art. 35).
   walk(here.door, NOTICES['fight.won'] ?? null)
 }
@@ -1367,7 +1369,7 @@ function runFromTheFight(): void {
   screen = { kind: 'room' }
   // art. 63: running leaves the fight where it is and leaves its panel with
   // it. Re-entering the door force-focuses FIGHT again (`openTheFight`).
-  focus(HOME)
+  focus(panelAfter('fight-fled'))
   bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
   chosen = doors(bands)[0] ?? null
   notice = NOTICES['fight.fled'] ?? ''
@@ -1387,7 +1389,7 @@ function died(cause: string = endLineOf(fight?.horror.id ?? '')): void {
   fight = null
   refused = false
   screen = { kind: 'dead' }
-  focus(HOME)
+  focus(panelAfter('died'))
   notice = null
   persist()
   paint()
