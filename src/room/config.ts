@@ -38,6 +38,15 @@ export interface RenderConfig {
   }
   /** Rim-light reach either side of the vanishing point, fraction of grid. */
   readonly rim: number
+  /**
+   * art. 95: where the hybrid dither hands over. Below this fraction of a
+   * ramp a pixel dithers between adjacent steps; above it, it blends.
+   *
+   * This is the one number in the configuration that cannot be settled on a
+   * desktop panel — banding in the darks is what it is about, and a desktop
+   * panel does not show it. Settle it on a phone.
+   */
+  readonly blendAbove: number
 }
 
 /** The frame in game pixels, with the vanishing point on it (art. 13). */

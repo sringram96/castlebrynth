@@ -35,7 +35,7 @@ Test: kill the process anywhere; restart; nothing is lost.
 Never: unresumable state, a hardcoded pixel, content logic in the engine.
 
 ## The law
-`.claude/rules/` holds 112 numbered articles, cited in tasks as "art. N".
+`.claude/rules/` holds 115 numbered articles, cited in tasks as "art. N".
 Two are spent: art. 12 is repealed (there are no classes, ever) and
 art. 47's BRACE is repealed. The rest:
 - **the-world.md** — time, touch, structure, the chain, room grammar, the
@@ -52,7 +52,12 @@ art. 47's BRACE is repealed. The rest:
   per room and things that keep their distance (104–105); motion as a
   spent capital — loops, one-shots, the blink, one clock, one cached base
   frame (106–110); an answer that names the thing (111); and a third of
-  the frame dark (112)
+  the frame dark (112) — as amended the same day by the look wave, which
+  lifts the gradient ban inside a ramp (17), deepens the ramp to sixty-four
+  hue-shifted steps (94), blends the lights and dithers only the darks (95),
+  adds the open shape (96), gives things a text alphabet (100), and makes a
+  light a station and a colour whose region is known by it, with the rim
+  derived and nothing hand-shaded (113–115)
 - **the-lots.md** — the dice: turn, duel, the card, collection, armor, and
   the travelers (arts 86–88): the start is five bones, every other die
   belonged to somebody, and an item's origin explains its rules in one

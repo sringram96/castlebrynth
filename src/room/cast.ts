@@ -1,8 +1,8 @@
-import { ign } from './dither.js'
+import { hash, ign } from './dither.js'
 import type { Framebuffer } from './framebuffer.js'
 import { colorOf, framebuffer, pokeRGB } from './framebuffer.js'
 import { mixPacked, packRamp } from './ramp.js'
-import type { Look, SurfaceShaders } from './scene.js'
+import type { Look, Station, SurfaceShaders } from './scene.js'
 import { Surface } from './scene.js'
 import type { View } from './view.js'
 
@@ -44,20 +44,115 @@ export function castBox(view: View, look: Look, surfaces: SurfaceShaders): Cast 
 
   const breathX = config.grid * config.breath.x
   const breathY = config.grid * config.breath.y
+  const atStation = stationAt(view, light.station)
+  const open = shape.open === true
 
   const wallRamp = packRamp(look.ramps.wall)
   const floorRamp = packRamp(look.ramps.floor)
   const ceilRamp = packRamp(look.ramps.ceiling)
+  const skyRamp = packRamp(look.ramps.sky ?? look.ramps.ceiling)
   const lightTint = colorOf(light.tint)
   const airTint = colorOf(air.tint)
   const hollow = colorOf(palette.hollow)
   const breathTone = colorOf(palette.breath)
+  const starTone = colorOf(palette.rim)
+
+  /**
+   * The tail every surface shares: the light's lift from its station, the
+   * air's drop, the hybrid dither, and the two tints. One statement of it,
+   * because the open room's ground is the same floor as any other floor.
+   */
+  const resolve = (
+    i: number,
+    sx: number,
+    sy: number,
+    z: number,
+    atX: number,
+    atY: number,
+    step0: number,
+    ramp: Int32Array,
+  ): void => {
+    // art. 113: the lift falls off from where the light *stands*, not from
+    // the camera. This is the lever that inverts a room — lit from below,
+    // the ceiling becomes the darkest surface in the frame.
+    const lit =
+      light.reach > 0
+        ? Math.max(
+            0,
+            1 - Math.hypot(atX - atStation.X, atY - atStation.Y, z - atStation.z) / light.reach,
+          )
+        : 0
+    let step = step0 + lit * lit * light.lift
+
+    // art. 17: distance is a drop down the same ramp, never a second
+    // pattern laid over the first and never alpha.
+    const fog = Math.max(0, z / zMouth - config.fog.start) * config.fog.gain * air.rate
+    step -= fog
+
+    // art. 95, the hybrid: one treatment, chosen by where on the ramp the
+    // scalar landed. Across the upper ramp a pixel blends between the two
+    // adjacent steps; in the darkest fifth it dithers between them instead,
+    // because banding is a fact about dark values on a real panel and
+    // nothing is bought by paying the dither's cost above it.
+    const top = ramp.length - 1
+    const p = Math.min(top, Math.max(0, step))
+    const lo = Math.floor(p)
+    const hi = Math.min(top, lo + 1)
+    let c =
+      p < top * config.blendAbove
+        ? ramp[ign(sx, sy) < p - lo ? hi : lo]!
+        : mixPacked(ramp[lo]!, ramp[hi]!, p - lo)
+
+    // Tint after quantisation, in proportion to lit-ness (art. 113).
+    if (lit > TINT_FLOOR && light.tintAmt > 0) c = mixPacked(c, lightTint, light.tintAmt * lit * lit)
+    if (fog > config.fog.tintAt) {
+      c = mixPacked(
+        c,
+        airTint,
+        Math.min(config.fog.tintCap, (fog - config.fog.tintAt) * config.fog.tintRate),
+      )
+    }
+    pokeRGB(target, i, c)
+  }
 
   for (let sy = 0; sy < H; sy++) {
     for (let sx = 0; sx < W; sx++) {
       const i = sy * W + sx
       const dx = sx - CX
       const dy = CY - sy // above the horizon is positive
+
+      // art. 96: an open room has no walls and no ceiling, so the ray hits
+      // the ground or it hits the sky and there is nothing else to ask.
+      if (open) {
+        const zG = dy < -0.01 ? (f * eye) / -dy : FAR
+        if (zG >= zMouth) {
+          // Far enough along the ground that the air has taken it, or above
+          // the horizon entirely: the sky, and the field scattered in it.
+          surface[i] = dy < -0.01 ? Surface.Mouth : Surface.Sky
+          depth[i] = zMouth
+          if (dy < -0.01) {
+            pokeRGB(target, i, hollow)
+            continue
+          }
+          // art. 101: the stars are a field — no outline, no footprint,
+          // nothing to identify — so they are scattered, deterministically,
+          // which is the one thing scatter is actually for.
+          const up = dy / f
+          const step = surfaces.sky?.(up, dx / f) ?? 0
+          const top = skyRamp.length - 1
+          const p = Math.min(top, Math.max(0, step))
+          const lo = Math.floor(p)
+          const hi = Math.min(top, lo + 1)
+          const sky = mixPacked(skyRamp[lo]!, skyRamp[hi]!, p - lo)
+          pokeRGB(target, i, hash(sx * 7, sy * 13) < 2 && up > 0.06 ? starTone : sky)
+          continue
+        }
+        surface[i] = Surface.Floor
+        depth[i] = zG
+        const gx = (dx * zG) / f
+        resolve(i, sx, sy, zG, gx, (dy * zG) / f, surfaces.floor(zG, gx), floorRamp)
+        continue
+      }
 
       // First-hit depth against each of the four planes.
       const zR = dx > 0.01 ? (f * shape.width) / dx : FAR
@@ -103,55 +198,62 @@ export function castBox(view: View, look: Look, surfaces: SurfaceShaders): Cast 
       surface[i] = s
       depth[i] = z
 
+      // Where this pixel actually is in the room, which the station needs.
+      const atX = (dx * z) / f
+      const atY = (dy * z) / f
+
       let step: number
       let ramp: Int32Array
       if (s === Surface.WallLeft || s === Surface.WallRight) {
-        const height = (dy * z) / f + eye
-        step = surfaces.wall(s === Surface.WallLeft ? -1 : 1, z, height)
+        step = surfaces.wall(s === Surface.WallLeft ? -1 : 1, z, atY + eye)
         ramp = wallRamp
       } else if (s === Surface.Back) {
         // The far wall takes the wall's own ramp: it is the same stone, seen
         // end-on rather than along (art. 93 — one school, four surfaces).
-        step = surfaces.back((dx * z) / f, (dy * z) / f + eye)
+        step = surfaces.back(atX, atY + eye)
         ramp = wallRamp
       } else if (s === Surface.Ceiling) {
-        step = surfaces.ceiling(z, (dx * z) / f)
+        step = surfaces.ceiling(z, atX)
         ramp = ceilRamp
       } else {
-        step = surfaces.floor(z, (dx * z) / f)
+        step = surfaces.floor(z, atX)
         ramp = floorRamp
       }
 
-      // The light lifts along the ramp, falling off with distance from where
-      // it stands — which, this wave, is where you stand.
-      const lit = light.reach > 0 ? Math.max(0, 1 - z / light.reach) : 0
-      step += lit * lit * light.lift
-
-      // art. 17: distance is dither, not a gradient and never alpha. It is
-      // now a drop down the same ramp rather than a second pattern laid over
-      // the first.
-      const fog = Math.max(0, z / zMouth - config.fog.start) * config.fog.gain * air.rate
-      step -= fog
-
-      // The one dither: between the two adjacent steps this pixel falls
-      // between, against scattered noise rather than a lattice.
-      const top = ramp.length - 1
-      const p = Math.min(top, Math.max(0, step))
-      const lo = Math.floor(p)
-      let c = ramp[ign(sx, sy) < p - lo ? Math.min(top, lo + 1) : lo]!
-
-      // Tint sparingly, and only after quantisation (art. 21: the light is
-      // authorial; the ramp is what does the work).
-      if (lit > TINT_FLOOR && light.tintAmt > 0) c = mixPacked(c, lightTint, light.tintAmt * lit * lit)
-      if (fog > config.fog.tintAt) {
-        c = mixPacked(c, airTint, Math.min(config.fog.tintCap, (fog - config.fog.tintAt) * config.fog.tintRate))
-      }
-      pokeRGB(target, i, c)
+      resolve(i, sx, sy, z, atX, atY, step, ramp)
     }
   }
 
   inkContours(target, surface, frame, palette, config.grid * config.rim)
   return { target, surface, depth }
+}
+
+/**
+ * art. 113: a station is a *place*, so it resolves to a world point and the
+ * lift is Euclidean distance from it. Coordinates are the projector's: the
+ * eye at the origin, the floor at −eye, the ceiling at +ceiling.
+ *
+ * The two ends of the room a station can sit at are its far end — the wall
+ * if it has one, the cutoff if it does not — and a little way in front of
+ * the camera, so a light "with you" still falls off along the corridor
+ * exactly as it did before there were stations at all.
+ */
+function stationAt(view: View, station: Station): { X: number; Y: number; z: number } {
+  const { shape, eye, zMouth, zBack } = view
+  const end = Math.min(zBack, zMouth)
+  switch (station) {
+    case 'above':
+      return { X: 0, Y: shape.ceiling, z: end * 0.42 }
+    case 'below':
+      return { X: 0, Y: -eye, z: end * 0.42 }
+    case 'ahead':
+      return { X: 0, Y: 0, z: end }
+    case 'none':
+      return { X: 0, Y: 0, z: -1e9 }
+    case 'with':
+    default:
+      return { X: 0, Y: 0, z: 0 }
+  }
 }
 
 /**

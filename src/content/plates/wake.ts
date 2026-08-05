@@ -10,7 +10,7 @@
 import type { Prop, RoomShape, Scene, SurfaceShaders, View } from '../../room/index.js'
 import { hash } from '../../room/index.js'
 import type { School } from '../palettes.js'
-import { MUTED, lookOf, shadingOf } from '../palettes.js'
+import { DEEP, MUTED, lookOf, shadingOf } from '../palettes.js'
 import { AUTHORED_GRID, AUTHORED_HEIGHT, RENDER } from '../render.js'
 
 /** art. 14: exactly three authored numbers. Focal length is derived. */
@@ -49,7 +49,7 @@ const CHAIN_DROP = 58 / AUTHORED_HEIGHT
  * Shared by the whole depth, exactly as the masonry itself is. What makes
  * one room not another is its ramp, not its grammar (art. 21).
  */
-const STONE = {
+const STONE = deepen({
   /** How far a seam cuts below the stone either side of it. */
   seam: 2.9,
   /**
@@ -74,7 +74,22 @@ const STONE = {
   flagTone: [-1.15, 0, 0, 0.9],
   /** The slats ran dark, light, dark, darkest — the base is the dark one. */
   slatTone: [0, 0.95, 0, -1.5],
-} as const
+})
+
+/**
+ * art. 94: the grammar above is authored in the ten steps the first ramp
+ * had. The ramp is sixty-four now, so every offset is carried up by the
+ * same factor and the masonry reads exactly as it was drawn.
+ */
+function deepen<T extends Record<string, number | readonly number[]>>(
+  grammar: T,
+): { readonly [K in keyof T]: T[K] extends readonly number[] ? readonly number[] : number } {
+  const out: Record<string, number | readonly number[]> = {}
+  for (const [key, value] of Object.entries(grammar)) {
+    out[key] = typeof value === 'number' ? value * DEEP : value.map((n) => n * DEEP)
+  }
+  return out as never
+}
 
 /**
  * The world-space masonry of the whole depth. Exported because the
@@ -125,6 +140,11 @@ export function masonry(school: School, shape: RoomShape, eye: number): SurfaceS
       let step = base.ceiling + STONE.slatTone[hash(s * 9, Math.floor(x / 3)) % 4]!
       if (hash(s, (x * 2) | 0) < 9) step -= STONE.defect
       return step
+    },
+    // art. 96: the sky of an open room. Darkest overhead and opening a
+    // little toward the horizon, which is where the light that is left goes.
+    sky(up) {
+      return Math.max(0, 1 - Math.min(1, up * 2.4)) * 9 * DEEP * 0.42
     },
     // art. 96: the far wall is the same masonry, coursed the same way and
     // laid across the end instead of along the sides. It runs on `x` where a

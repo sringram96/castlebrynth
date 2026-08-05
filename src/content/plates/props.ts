@@ -16,10 +16,10 @@
  * and improved over time. The hero plates are a later phase.
  */
 
-import type { Brush, Prop, View, WorldMark } from '../../room/index.js'
-import { mix } from '../../room/index.js'
+import type { Brush, Drawn, Prop, View, WorldMark } from '../../room/index.js'
+import { mix, standing } from '../../room/index.js'
 import type { School } from '../palettes.js'
-import { lookOf } from '../palettes.js'
+import { alongSteps, lookOf } from '../palettes.js'
 import { AUTHORED_GRID } from '../render.js'
 
 /** An authored pixel, on whatever grid the dial is set to (art. 23). */
@@ -791,10 +791,13 @@ export function threshold(school: School, mark: WorldMark, state: ThresholdState
       const wall = look.ramps.wall
       // art. 97: the room's own darkness, which is the bottom of the wall's
       // ramp with the air's tint in it — never one shared black hole.
-      const inside = mix(wall[0] ?? school.hollow, look.air.tint, 0.45)
+      // Fractions of the ramp rather than indices into it: art. 94 made the
+      // ramp sixty-four steps deep, and the bottom of a ramp is where it
+      // starts, not where its first three entries happen to be.
+      const inside = mix(alongSteps(wall, 0), look.air.tint, 0.45)
       const reveal = [
-        mix(wall[1] ?? school.hollow, look.air.tint, 0.3),
-        mix(wall[2] ?? school.grime, look.air.tint, 0.22),
+        mix(alongSteps(wall, 0.08), look.air.tint, 0.3),
+        mix(alongSteps(wall, 0.16), look.air.tint, 0.22),
       ] as const
 
       // Taller than wide, always — whatever the mark asked for.
@@ -812,8 +815,8 @@ export function threshold(school: School, mark: WorldMark, state: ThresholdState
       // it has to read in every school. Its stone comes off the light end of
       // the room's own wall ramp rather than off a named tone, so a frame is
       // proud in the drowned and the burnt alike (arts 94, 100).
-      const face = wall[wall.length - 3] ?? school.brickAlt
-      const turn = wall[wall.length - 5] ?? school.grime
+      const face = alongSteps(wall, 0.78)
+      const turn = alongSteps(wall, 0.58)
       for (let y = arch.y0; y < arch.y1; y++) {
         for (let x = arch.x0; x < arch.x1; x++) {
           if (x > near.x0 && x < near.x1 && y > near.y0) continue
@@ -1020,4 +1023,43 @@ export function leftMark(school: School, mark: WorldMark): Prop {
       b.px(school.edge, at.x + s * 2 - g(1), at.y + s - g(1))
     },
   }
+}
+
+// ── Standing an authored thing (arts 100, 115) ─────────────────────────
+
+/**
+ * A drawn thing, standing in a room. Everything it needs beyond the drawing
+ * comes off the school: the ramp it takes its colours from, the ink of its
+ * contour, and — through the station — which side of it the light found.
+ *
+ * This is the seam art. 100 asks for. Content says *what* and *where*; the
+ * renderer decides every colour, so a drawing cannot fall out of palette and
+ * one drawing is one object in fourteen keys.
+ */
+export function thing(
+  school: School,
+  art: Drawn,
+  mark: WorldMark,
+  name: string,
+  readableTo = 46,
+  /**
+   * What this thing's `*` cells burn as. A light that carries is the one
+   * thing in a drawing the room does not get to colour, because it is not
+   * taking the room's light — it is making it (art. 100).
+   */
+  glow?: string,
+): Prop | null {
+  const look = lookOf(school)
+  return standing(
+    {
+      name,
+      at: mark,
+      art,
+      ramp: look.ramps.wall,
+      edge: school.edge,
+      readableTo,
+      glow: glow ?? look.light.tint,
+    },
+    look.light.station,
+  )
 }

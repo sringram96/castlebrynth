@@ -31,8 +31,14 @@ export const RENDER: RenderConfig = {
   breath: { x: 26 / GRID, y: 34 / GRID },
   // The distance drop, in ramp steps: nothing until the far half of the
   // room, then down the ramp toward the mouth's own darkness.
-  fog: { start: 0.3, gain: 9, tintAt: 3.2, tintRate: 0.16, tintCap: 0.6 },
+  // art. 94: `gain` and `tintAt` are in ramp steps, so both are scaled
+  // with the ramp's new depth.
+  fog: { start: 0.3, gain: 9 * 6.4, tintAt: 3.2 * 6.4, tintRate: 0.16 / 6.4, tintCap: 0.6 },
   rim: 48 / GRID,
+  // art. 95: the darkest fifth dithers, everything above it blends. Settled
+  // at a fifth from the demos; the phone pass may move it and this is the
+  // one place it moves.
+  blendAbove: 0.2,
 }
 
 /** The same room on the 480 dial. art. 23: a re-render, never a rewrite. */

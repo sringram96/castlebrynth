@@ -91,8 +91,11 @@ in the-thumb.md (arts 66–76, 90–92).
     consequence-free and leaves the Savior nothing to be.
 
 ## The drift (ratified 2026-08-04)
-77. SETTLED — Regions and the drift. A depth holds regions (how many is
-    content) plus a neutral pool. Every dealt door carries a hidden
+77. SETTLED (extended by the look wave) — Regions and the drift. A depth
+    holds regions (how many is content) plus a neutral pool. A region is
+    not only a pool of rooms: it carries a **light station** and a **mix of
+    shapes**, and under arts 96 and 114 those are what make it recognisable
+    at a glance, before a word of prose. Every dealt door carries a hidden
     region tag; every choice tallies. Rooms deal from pools weighted by
     the tally — the labyrinth leans as the player leans. Twenty
     questions, not a fork in a road: no single door means much, and the
