@@ -108,6 +108,9 @@ import {
   load,
   meet,
   save,
+  sparesOf,
+  swapInPouch,
+  tookIntoRun,
   wake,
 } from './state/index.js'
 import type { Framebuffer, RenderedRoom, WorldMark } from './room/index.js'
@@ -159,6 +162,13 @@ let refused = false
 let sheet: 'card' | 'book' | null = null
 /** Which door the thumb has sensed. Sensing and going are two acts (art. 71). */
 let chosen: Door | null = null
+/**
+ * arts 60, 72: the half-made swap. The hand is a chosen six, and choosing is
+ * staged exactly the way a claim is — tap what leaves, tap what takes its
+ * place, then press the verb. Nothing commits until the verb (art. 68).
+ */
+let leaving: DieId | null = null
+let taking: DieId | null = null
 
 /** art. 75: mirrored into the run on every mutation, never only here. */
 let fight: Fight | null = null
@@ -209,6 +219,11 @@ function boot(): void {
     ledgers = found
   }
   screen = { kind: 'room' }
+  // art. 60: the hand is the first `handSize` of the pouch, and that has to
+  // be true on the way *in* as well as after every act — a boot is the one
+  // moment the two could have drifted apart (a bone collected while a fight
+  // was paused, and the app closed before the fight ended).
+  ledgers = { ...ledgers, run: tookIntoRun(ledgers.run!, ledgers.permanent) }
   chain = deal(ledgers.run!.seed, ledgers.run!.depth, CATALOG, GRAMMAR, ledgers.run!.history)
   bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
   chosen = doors(bands)[0] ?? null
@@ -670,9 +685,35 @@ function pouch(): void {
   for (let n = run.hand.dice.length; n < ledgers.permanent.handSize; n++) {
     pouchRegion.append(emptySlot())
   }
+  // art. 60: and the spares — dice you own that are not in the hand. They are
+  // in the pouch region because that is what the region is (art. 67: the
+  // pouch as visible slots), and they are drawn apart from the hand because
+  // the whole decision is which side of that line a die is on.
+  if (screen.kind !== 'fight') {
+    for (const die of sparesOf(ledgers.permanent)) pouchRegion.append(spareSlot(die))
+  }
   // art. 68: a possession's answer is its declared truth, and what you carry
   // is a possession. It sits in the same region and answers the same way.
   for (const item of run.carried) pouchRegion.append(carriedSlot(item))
+}
+
+/**
+ * art. 60: a die you own and are not carrying. Tapping it answers with its
+ * declared truth like any possession (art. 68) and stages it as the one that
+ * would come in — the swap's other half is a die in the hand.
+ */
+function spareSlot(die: Die): HTMLButtonElement {
+  const el = slot(`spare${taking === die.id ? ' sel' : ''}`)
+  el.append(pips(die.faces[0]?.value ?? 1))
+  el.setAttribute('aria-label', saysDie(die))
+  el.onclick = () => {
+    settle()
+    notice = saysDie(die)
+    taking = taking === die.id ? null : die.id
+    persist()
+    paint()
+  }
+  return el
 }
 
 function slot(className: string): HTMLButtonElement {
@@ -709,7 +750,8 @@ function pips(value: number): HTMLSpanElement {
  * inverts entirely; claimed is sunk and ringed. Unused dims at resolve.
  */
 function dieSlot(die: Die, landed: Landed | null, claimed: boolean): HTMLButtonElement {
-  const isSelected = landed !== null && selected.includes(landed.die)
+  const isSelected =
+    landed !== null ? selected.includes(landed.die) : leaving === die.id
   const kept = landed !== null && landed.kept && phase === 'keep'
   const idle =
     resolving !== null && landed !== null && !claimed
@@ -729,6 +771,12 @@ function dieSlot(die: Die, landed: Landed | null, claimed: boolean): HTMLButtonE
     const spentIn = claimed ? claimIn(landed!.die) : undefined
     notice = saysDie(die, landed?.face, spentIn ?? undefined)
     if (landed !== null) tapDie(landed.die)
+    // art. 60: outside a fight the hand is a thing you arrange, so a tap on a
+    // die in it also stages that die as the one a swap would give up.
+    else if (sparesOf(ledgers.permanent).length > 0) {
+      leaving = leaving === die.id ? null : die.id
+      persist()
+    }
     paint()
   }
   return el
@@ -813,9 +861,43 @@ function roomActs(): void {
     actStrip.append(verb('end', () => died('end.kept')))
   }
 
+  // arts 60, 86: the hand is a chosen six. While anything is spare there is
+  // a swap to be made, and it is a plain verb pressed after a staged
+  // selection — the same shape the claim phase already taught the thumb.
+  if (sparesOf(ledgers.permanent).length > 0) {
+    actStrip.append(verb('swap', doSwap))
+  }
+
   if (bands.room === CROSSING) {
     actStrip.append(verb('read', () => { sheet = 'book'; paint() }))
   }
+}
+
+/**
+ * art. 68: an act commits, and this one exchanges a die in the hand for one
+ * out of it. art. 69: it never goes quiet — a half-made selection is told
+ * what it is still missing, and a fight waiting behind a door is told why
+ * the hand will not move (art. 63).
+ */
+function doSwap(): void {
+  const run = ledgers.run!
+  if (run.fight !== null) {
+    notice = NOTICES['swap.locked'] ?? ''
+    return paint()
+  }
+  if (leaving === null || taking === null) {
+    notice = NOTICES['swap.none'] ?? ''
+    return paint()
+  }
+  // art. 11: the pouch is the permanent's, so the exchange is a ritual; the
+  // run's hand is then re-read off the pouch it just reordered (art. 60).
+  const permanent = swapInPouch(ledgers.permanent, taking, leaving)
+  ledgers = { permanent, run: tookIntoRun(run, permanent) }
+  leaving = null
+  taking = null
+  notice = NOTICES['swap.done'] ?? ''
+  persist()
+  paint()
 }
 
 function doAct(one: Act): void {
@@ -859,6 +941,8 @@ function commitDoor(door: Door): void {
 
 function walk(door: Door, said: string | null = null): void {
   refused = false
+  leaving = null
+  taking = null
   // art. 79: the room behind this door does not exist until now. Walking
   // deals it, which is why the walk hands back both the run and the chain.
   const walked = chooseDoor(ledgers, chain, ROOM_BOOK, door, DEALER)

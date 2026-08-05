@@ -109,6 +109,22 @@ fixture lands (tracked on the board).
     hand size of six (art. 55): the hand is what the pouch can fill, and
     what it cannot fill shows as an empty slot.
 
+    **Amended by ruling of 2026-08-05 (the swap).** The hand is a
+    *chosen* set, not the first thing that fills it. The pouch is
+    ordered and the hand is its first `handSize`; everything past that
+    is a **spare** — owned, kept between runs, not in play. A good found
+    with the hand already full does not pile up waiting for a waking
+    that will never look at it: it asks which die it replaces, and the
+    exchange is a straight swap of positions. Nothing is destroyed and
+    nothing is sold — the pouch is the collection, and a swap only ever
+    moves things inside it. Because the order *is* the hand, the six you
+    chose are still the six you wake with; the run burns and the
+    arrangement does not (art. 11). Choosing may be done whenever the
+    hand is yours to arrange, and never while a fight is in flight or
+    paused behind a door — art. 75 replays a fight off the hand it was
+    opened with, and re-arming between backing out and going back in
+    would launder a card (art. 63).
+
 ## The travelers (ratified 2026-08-05)
 86. SETTLED (ruled) — The travelers. Every die beyond the bare five
     belonged to someone who came down here before you and did not come

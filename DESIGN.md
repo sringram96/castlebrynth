@@ -87,8 +87,8 @@ is a playable loop in a portrait browser: wake → open one of one to three
 blind doors → the room behind it is dealt on the spot → keep choosing → a
 region locks and the depth announces where you have arrived → the rest of
 the depth deals from that region and its encounters wake → the Warden's
-door, refused without the key and terse with it. `npm test` is green: 28
-files, 249 tests.
+door, refused without the key and terse with it. `npm test` is green: 29
+files, 258 tests.
 
 **And the dice belonged to somebody.** The collection has been a socket
 with nothing in it for four waves. The **travelers wave** fills it, and
@@ -101,7 +101,9 @@ something true about the place. So the ruling of 2026-08-05:
   you have found, and nothing may be built that assumes otherwise.
 - **The start is five bare dice** against a hand size of six (art. 55), so
   the tray shows one empty slot from the first waking. The hole in your
-  hand is the invitation.
+  hand is the invitation — and once it is filled, **six is the standard
+  and every further find is a swap**, never an addition (art. 60, amended
+  the same day).
 - **Every die past those five belonged to someone who came down here and
   did not come back** (art. 86). Each rare individual leaves exactly one
   unique die, and a die's shape is how its owner died: the distribution is
@@ -192,9 +194,38 @@ you left leaves its shape in the dust.
 **A found thing is worth something now.** A die fills the empty slot the
 moment it is taken rather than at the next waking, a wearable arms you
 from the next blow, and a talisman is in the next fight because the fight
-reads the permanent at the door. Past a full hand art. 60 stands
-unchanged: the pouch grows, and which six go down with you is settled at
-the next waking. Choosing that is a later wave.
+reads the permanent at the door.
+
+**And past a full hand, a find is a swap** (art. 60, amended by the
+ruling of 2026-08-05). The first version of this wave let a find *fill*
+the hole and then had every find after it pile up in a pouch no waking
+ever looked at again — the collection grew and the build did not, which
+is the opposite of what art. 86 claims. The fix: the pouch is ordered,
+the hand is its first `handSize`, and everything past that is a
+**spare** — owned, kept between runs, not in play. Taking a die with the
+hand full asks which one it replaces, and the exchange is a straight swap
+of positions. Nothing is destroyed and nothing is sold; the pouch is the
+collection and a swap only moves things inside it. Because the order *is*
+the hand, the six you chose are still the six you wake with, for free.
+
+Under the thumb it is staged the way a claim already is (arts 68, 72):
+tap the die that leaves, tap the spare that takes its place, press
+**Swap**. No new interaction type enters the game (art. 76) — the tray's
+dice were already tappable and selection was already a staged concept.
+The hand does not move while a fight is in flight or paused behind a
+door: art. 75 replays a fight off the hand it was opened with, and
+re-arming between backing out and going back in would launder a card
+(art. 63). A good found in that state lands the moment the fight ends.
+
+**It does not move the survival curve, and that is the honest finding.**
+Six runs, 1200 players, coin-flip doors, taking every good: without the
+swap 0.226 / 0.390 / 0.493 / 0.570 / 0.617 / 0.652; with a crude
+biggest-numbers chooser swapping, 0.221 / 0.393 / 0.493 / 0.558 / 0.621 /
+0.647. Identical inside the noise — because the cost faces price the
+bigger dice correctly, so a greedy "take the higher sum" swap buys
+nothing. The swap is not a power increase; it is the difference between a
+collection and a pile, and its value is a decision a simulator cannot
+make.
 
 **And the depth heals — half as lethal, not solved.** A bare player now
 finishes depth one about a third of the time rather than a fifth; the
@@ -407,6 +438,7 @@ ordinary rooms are art. 26's first tier and not its second, and phase
 | `descent.required` | the key unbound from rooms, placed once and before its lock across 7000 runs of adversarial policies; no legal walk reaches the lock keyless — with the control that proves the law is doing the work (arts 3, 4, 9, 80) |
 | `travelers` | three travelers on both of art. 83's axes, each die shaped like its death, every face 1–6, the catalog priced against the plain bone with the Orphan as the die that fails it, cost faces firing only when spent and never eaten by armor, an origin sentence per good linted as prose, the signature named by the first bone and the slot filled the moment it is taken (arts 50–51, 54–56, 60, 86–87) |
 | `goods` | the Sisters, the cord and the plate placed through the registry, the halves banded apart across 400 runs, no good dealt twice, a seeded run that meets a traveler and walks out with three goods, builds that differ run to run; and the fork — both goods in one socket, the terms said first and once, two verbs the thumb can tell apart, taking one closing the other irrevocably and showing the loss in the scene (arts 52–53, 70, 83, 89) |
+| `swap` | the hand as a chosen six: five bones and one free slot, the first find filling it and asking nothing, the second going spare, the exchange both ways round and reversible, the pouch whole across it, a chosen hand carried through a death by the order alone, and the hand refusing to move while a fight is paused (arts 55, 60, 63, 86) |
 | `walkthrough` | the wave's acceptance walk end to end: five dice and an empty slot, a traveler met, their die taken and signed and slotted, a tap that answers with the distribution *and* the origin, a fork that closes what you leave, and a death that keeps both the die and the meeting — through the vault (arts 11, 32, 54–56, 84, 86–87, 89) |
 | `vault` | a v1 snapshot with two Book lines loading clean at version 3; the ladder with no gap in it; a current snapshot untouched; and quarantine rather than destruction for unreadable bytes, an unknown version, a newer build's snapshot, and a step that refuses (art. 11) |
 | `content.voice` | every player-facing string, in its category — origins included; every control against art. 66 |
@@ -483,12 +515,18 @@ Named, not hidden. Each of these is a task, not an accident.
   player will find and either love or call a bug. No article covers the
   order; art. 61's "never kills outright" is about ambush QTEs, not about
   a price you chose to pay.
-- **New: a full hand cannot be chosen, only grown.** A found die fills
-  the empty slot while there is one; past that the pouch grows and the
-  hand is whatever the first six of it are. Art. 60 says composition is
-  the build, so the moment a player holds seven dice they are owed a say
-  in which six descend — and they do not have one. Nothing breaks until
-  a run finds two goods, which it now can.
+- **~~A full hand cannot be chosen, only grown.~~** Closed by the swap
+  ruling. The hand is a chosen six: spares show in the tray, a tap stages
+  each half of the exchange, and `Swap` commits it. What is *not* closed
+  is the shape of the choice — there is one chooser (the tray) and it
+  offers no help at all: no sorting, no comparison, no "this is what you
+  would give up" beyond the two declared truths a tap answers with. At
+  eight goods that is fine. At thirty it is a spreadsheet.
+- **New: the spare row has no ceiling.** Every good you ever find stays
+  in the pouch forever and every one of them draws a slot in the tray.
+  Six runs of finds is already a row that wraps. Art. 67 says the pouch
+  is visible slots and does not say how many, so this is a design
+  question about the tray rather than a bug — but it arrives fast.
 - **New: the forks are rare and nobody chose how rare.** A fork forms
   only when both of its goods are still free to be dealt, so how often a
   player meets one falls out of `FLOOR_CHANCE`, the weights, and where

@@ -124,6 +124,13 @@
         border: 1px solid var(--gold); border-radius: 50%; }
       .slot.claimed.sel::after { border-color: #14120f; }
       .slot.unused { opacity: .4; }
+      /* art. 60: a spare is yours and not in your hand. It reads as a die
+         that has been set down — same body, no lit face, and set apart from
+         the hand by a rule down the left of it. */
+      .slot.spare { background: #1b1813; border-color: #3a332a; opacity: .72;
+        margin-left: 10px; box-shadow: inset 3px 0 0 -1px var(--gold); }
+      .slot.spare .pips i { background: #6d6252; }
+      .slot.spare.sel { opacity: 1; }
       .slot.carried { background: #2a2418; border-color: var(--gold); font-size: .7em;
         color: var(--gold); }
     </style>
