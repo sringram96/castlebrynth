@@ -1,4 +1,5 @@
 import type { Framebuffer } from './framebuffer.js'
+import type { Mass } from './mass.js'
 import type { Ramp } from './ramp.js'
 import type { Projected, RoomShape, View } from './view.js'
 
@@ -125,6 +126,8 @@ export const Surface = {
   Back: 5,
   /** art. 96: what an open room has instead of a ceiling. */
   Sky: 6,
+  /** art. 102: the substance lying on the floor, which the rays hit. */
+  Mass: 7,
 } as const
 export type SurfaceId = (typeof Surface)[keyof typeof Surface]
 
@@ -160,6 +163,14 @@ export interface Prop {
 export interface Scene {
   readonly id: string
   readonly shape: RoomShape
+  /**
+   * art. 102: a substance lying in the room, as a height on the floor. The
+   * cast marches every downward ray against it, so it occludes correctly,
+   * meets the walls where the walls are, and takes the same light and the
+   * same air as everything else — none of which is available to a crest
+   * painted in screen space.
+   */
+  readonly mass?: Mass
   readonly look: Look
   readonly surfaces: SurfaceShaders
   /** Props need the derived view to place themselves in world depth. */

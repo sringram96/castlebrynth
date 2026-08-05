@@ -485,6 +485,25 @@ const HEAT = { wall: 0.1, floor: 0.13, ceiling: 0.07 } as const
  */
 export const DEEP = STEPS.wall / 10
 
+/**
+ * art. 102: the sand a room is buried in, as a ramp of its own. A mass is
+ * its own material and never the floor's — sand under flagstones is sand,
+ * and taking the floor's ramp would have made it a stain on the floor
+ * rather than a thing lying on it.
+ */
+export function sandOf(school: School): { ramp: readonly string[]; base: number } {
+  const spec = specOf(
+    [school.grime, school.mortar, school.brickAlt, school.bone[0], school.bone[1]],
+    STEPS.floor,
+    1.7,
+    TURN.floor,
+    HEAT.floor,
+  )
+  // Low on its own ramp, so the slope has room to lift a windward face and
+  // room to drop a slip face into its own shadow (art. 103).
+  return { ramp: ramp(spec), base: stepOf(spec, school.brickAlt) }
+}
+
 /** A tone a fraction of the way along a ramp, rather than at an index. */
 export function alongSteps(ramp: readonly string[], t: number): string {
   const top = ramp.length - 1

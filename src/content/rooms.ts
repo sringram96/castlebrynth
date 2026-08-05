@@ -41,7 +41,8 @@ import type {
 } from '../gen/index.js'
 import type { Horror } from '../lots/index.js'
 import type { RoomId } from '../state/index.js'
-import type { Prop, RoomShape, Scene, WorldMark } from '../room/index.js'
+import type { Mass, Prop, RoomShape, Scene, WorldMark } from '../room/index.js'
+import { dune } from '../room/index.js'
 import {
   BURNT,
   DROWNED,
@@ -58,6 +59,7 @@ import {
 import { horrorById } from './horrors.js'
 import type { School } from './palettes.js'
 import {
+  sandOf,
   ASH,
   BRINE,
   CHALK,
@@ -386,6 +388,8 @@ interface Authored {
   readonly acts?: readonly Act[]
   /** The reference plate, for the one room that has one. */
   readonly plate?: Scene
+  /** art. 102: what lies on this room's floor, as a height and not a heap. */
+  readonly buried?: (school: School, shape: RoomShape) => Mass
   /** How often teeth stand at the far end unasked. A lair is always a lair. */
   readonly teeth?: number
   /**
@@ -654,6 +658,42 @@ const AUTHORED: readonly Authored[] = [
     teeth: LAIR_CHANCE,
   },
   {
+    id: 'room.trove.buried',
+    type: 'trove',
+    school: OCHRE,
+    kind: 'hall',
+    // art. 102: one form, and the rays hit it. Not eight dune sprites,
+    // which would read as eight small piles because that is what they are.
+    buried: (school, shape) => {
+      const sand = sandOf(school)
+      return dune(sand.ramp, sand.base, {
+        // It comes in from the far end, so the floor you are standing on is
+        // still floor and the room is visibly being taken rather than gone.
+        from: 11,
+        crest: 30,
+        high: 5.4,
+        // art. 103: banked against the walls, which is most of what makes a
+        // room look buried rather than decorated.
+        banked: 8,
+        halfWidth: shape.width,
+        until: 44,
+        relief: 9,
+        ripple: 0.3,
+      })
+    },
+    dressing: (school) => [
+      // art. 103: anything standing in a mass stands at the mass's height.
+      thing(school, SKULL, { X: -6.5, Y: FLOOR + 2.4, z: 19, width: 1.9, height: 2.1 }, 'the skull'),
+      thing(school, BOTTLE, { X: 5.2, Y: FLOOR + 1.9, z: 16, width: 1.5, height: 2.1 }, 'the bottle'),
+      thing(school, HANGED, { X: 9, Y: FLOOR + 11, z: 24, width: 5, height: 10 }, 'the hanged'),
+    ].filter((one): one is NonNullable<typeof one> => one !== null),
+    tappables: [
+      ['buried.sand', { X: 0, Y: FLOOR + 1.5, z: 14, width: 12, height: 3 }],
+      ['buried.skull', { X: -6.5, Y: FLOOR + 2.4, z: 19, width: 1.9, height: 2.1 }],
+    ],
+    floor: 0.55,
+  },
+  {
     id: 'room.warden',
     type: 'warden',
     school: IRON,
@@ -737,7 +777,13 @@ function contentOf(one: Authored): RoomContent {
       // because its doors are holes and a hole needs a wall (arts 96, 97).
       const base = one.plate
         ? { ...one.plate, shape }
-        : plainScene(one.id, one.school, shape, () => one.dressing(one.school, state))
+        : plainScene(
+            one.id,
+            one.school,
+            shape,
+            () => one.dressing(one.school, state),
+            one.buried?.(one.school, shape),
+          )
       // art. 97: every door the room offers is a threshold, and every
       // threshold is drawn. This is the room's, not the dressing's — the
       // grammar never varies between rooms, so no room gets to author it.
@@ -833,6 +879,7 @@ export const DEPTH_ONE: DepthPlan = {
     room('room.open.barrow'),
     room('room.trove.hoard'),
     room('room.puzzle.watcher'),
+    room('room.trove.buried'),
     // art. 40: neutral, not regional, so the drift can lean a run anywhere
     // it likes and the run still gets its breath (arts 77–78).
     room('room.sanctum.font'),

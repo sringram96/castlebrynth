@@ -22,6 +22,8 @@ export type { Frame, RenderConfig } from './config.js'
 export { focalLength, frameOf } from './config.js'
 export { dither, hash, ign } from './dither.js'
 export type { CellKind, Drawn } from './drawn.js'
+export type { Mass } from './mass.js'
+export { dune, marchMass, slopeAt } from './mass.js'
 export { Cell, drawn, lightFrom } from './drawn.js'
 export type { Standing } from './place.js'
 export { standing } from './place.js'
@@ -60,7 +62,7 @@ export interface RenderedRoom {
  */
 export function renderRoom(scene: Scene, config: RenderConfig): RenderedRoom {
   const view = viewOf(scene.shape, config)
-  const cast = castBox(view, scene.look, scene.surfaces)
+  const cast = castBox(view, scene.look, scene.surfaces, scene.mass)
   const brush = brushOf(view, cast.target, cast.depth)
   // art. 19: painted near over far. The plate declares that order — see
   // `far2near`, which says whether a plate keeps its promise — because the
