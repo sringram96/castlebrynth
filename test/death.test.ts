@@ -60,7 +60,12 @@ describe('death — art. 32 (every death reseeds), art. 11 (the permanent surviv
     for (let n = 0; n < 12; n++) {
       const node = hereIn(here.chain)!
       const bands = enterRoom(here.ledgers, here.chain, ROOM_BOOK, node.instance)
-      const acts = bands.tray.flatMap((offer) => (offer.kind === 'act' ? [offer.act] : []))
+      // What burns at death is what the run *carries*, so this walks to a
+      // thing that is picked up. art. 40's mercies are acts too and give
+      // nothing to the hand — the breath is health, and health burns anyway.
+      const acts = bands.tray
+        .flatMap((offer) => (offer.kind === 'act' ? [offer.act] : []))
+        .filter((one) => one.gives.length > 0)
       if (acts.length > 0) {
         here = { ...here, ledgers: act(here.ledgers, acts[0]!) }
         taking = acts

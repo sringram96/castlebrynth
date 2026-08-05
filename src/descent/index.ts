@@ -23,7 +23,14 @@ import type { Chain, ChainNode, Dealer, Door, Fill } from '../gen/index.js'
 import { deal, nodeAt } from '../gen/index.js'
 import type { RegionId } from '../gen/index.js'
 import type { WorldMark } from '../room/index.js'
-import type { InstanceId, ItemId, Ledgers, RoomId, RunLedger } from '../state/index.js'
+import type {
+  EncounterId,
+  InstanceId,
+  ItemId,
+  Ledgers,
+  RoomId,
+  RunLedger,
+} from '../state/index.js'
 import {
   atBeat,
   carrying,
@@ -31,7 +38,11 @@ import {
   didHere,
   movedTo,
   openedDoor,
+  // `remember` is taken here by the candle you are on; the ritual this
+  // aliases is art. 84's, and it is about an encounter and not a beat.
+  remember as markMemory,
   tookDoor,
+  wounded,
 } from '../state/index.js'
 
 /**
@@ -95,6 +106,22 @@ export interface Act {
    * and lost (art. 4).
    */
   readonly required: boolean
+  /**
+   * art. 40 (ruled): what share of what is missing this act gives back. The
+   * Sanctum's breath is half; the Savior's mercy is all of it. The number is
+   * tuning and lives in content — the engine only knows that a share of
+   * missing health is what a mercy restores, and that the rounding goes the
+   * player's way.
+   *
+   * Absent on every act that is not a mercy, which is nearly all of them.
+   */
+  readonly heals?: number
+  /**
+   * art. 84: the encounter this act belongs to, when doing it is a thing
+   * that encounter should remember. The meeting itself is written down by
+   * standing in the room (`meet`); this is the mark left by the deed.
+   */
+  readonly remembers?: EncounterId
 }
 
 /**
@@ -280,17 +307,55 @@ export function beatIndex(bands: Bands): number {
   return Math.max(0, bands.word?.index ?? 0)
 }
 
+/**
+ * art. 40 (ruled): a share of what is missing, rounded in the player's
+ * favour, and never a point past the maximum. A body with nothing open gets
+ * nothing back — there is no such thing as overhealing here.
+ *
+ * The share is content's number. This is the arithmetic it is spent through,
+ * and it is the same arithmetic for both tiers.
+ */
+export function breathOf(health: number, healthMax: number, share: number): number {
+  const missing = Math.max(0, healthMax - health)
+  if (missing === 0 || share <= 0) return 0
+  return Math.min(missing, Math.ceil(missing * share))
+}
+
+/** What this act would give back to the run as it stands. Zero for most acts. */
+export function breathFor(ledgers: Ledgers, chosen: Act): number {
+  const run = ledgers.run
+  if (run === null || chosen.heals === undefined) return 0
+  return breathOf(run.health, run.healthMax, chosen.heals)
+}
+
 /** Acting is not tapping: it has gates and consequences (art. 7). */
 export function act(ledgers: Ledgers, chosen: Act): Ledgers {
   const run = ledgers.run
   if (run === null) return ledgers
   if (!chosen.needs.every((item) => run.carried.includes(item))) return ledgers
+  // art. 82: once per instance is the engine's law and not the tray's. The
+  // tray already stops offering a done act, but a deed that only the tray
+  // enforced would be an act that could be spent twice from anywhere else.
+  if (done(run, run.at.instance, chosen)) return ledgers
+  const breath = breathFor(ledgers, chosen)
+  // A mercy that would restore nothing is not spent. Pressing a verb the
+  // tray offered must never cost the player the thing the verb was for, and
+  // a body already whole is the one case where it could (art. 5's spirit,
+  // at the act strip).
+  if (chosen.heals !== undefined && breath === 0) return ledgers
   // art. 82: the deed is written against this instance, and the items it
   // gives are written against the run — one is about here, the other is
   // about you.
   let moved = didHere(run, run.at.instance, chosen.id)
   for (const item of chosen.gives) moved = carrying(moved, item)
-  return { ...ledgers, run: moved }
+  // art. 40: the breath is the run's, so it burns with the run (art. 11).
+  if (breath > 0) moved = wounded(moved, Math.min(run.healthMax, run.health + breath))
+  // art. 84: and the mark it leaves is not, so it crosses by the ritual.
+  const permanent =
+    chosen.remembers === undefined
+      ? ledgers.permanent
+      : markMemory(ledgers.permanent, chosen.remembers, chosen.id)
+  return { run: moved, permanent }
 }
 
 /** art. 31: the road ahead is only ever the doors in front of you. */

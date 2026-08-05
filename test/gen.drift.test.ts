@@ -188,11 +188,15 @@ describe('the drift — art. 38 (the rhythm obligations, distributionally)', () 
     const seen = typeShares(sweep((seed) => coinFlip(seed)))
     // The bread of the depth, by a clear margin over anything with teeth.
     expect(seen.get('passage') ?? 0).toBeGreaterThan(seen.get('lair') ?? 0)
-    // A tendency of zero is a type this depth never deals, whatever a pool
+    // A tendency of zero is a type the *draw* never deals, whatever a pool
     // or a pressure would otherwise say.
-    for (const type of ['sanctum', 'merchant', 'savior'] as const) {
+    for (const type of ['merchant', 'savior'] as const) {
       expect(seen.get(type) ?? 0, type).toBe(0)
     }
+    // The Sanctum is the exception that shows the rule: its tendency is zero
+    // too, so every one dealt was dealt by art. 40's promise and by nothing
+    // else — exactly one per run, out of seven middle rooms.
+    expect(seen.get('sanctum') ?? 0).toBeCloseTo(1 / (DEPTH_ONE.length - 2), 10)
   })
 
   it('moves the distribution when the tendencies move, which is what art. 39 claims', () => {

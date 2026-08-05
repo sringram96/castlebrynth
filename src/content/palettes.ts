@@ -322,6 +322,30 @@ export const SLATE: School = {
   breath: '#0a0c0f',
 }
 
+/**
+ * The font. The neutral pool's mercy (art. 40): copper gone green, and the
+ * only school in the depth whose accent is *lit* rather than reflected — the
+ * one room in a depth that is not trying to kill you should look like it.
+ */
+export const VERDIGRIS: School = {
+  mortar: '#111613',
+  brick: ['#1b2620', '#24322a', '#2d3f35', '#24322a'],
+  brickAlt: '#41584a',
+  grime: '#0d1210',
+  moss: '#1f3527',
+  moss2: '#2b4834',
+  damp: '#132a24',
+  flag: ['#161e1a', '#1e2822', '#1e2822', '#273329'],
+  slat: ['#161d19', '#1e2621', '#161d19', '#0f1412'],
+  bone: ['#93a396', '#bdcdbf', '#e2efe2'],
+  accent: ['#1f4a34', '#2f7a55', '#4fbd88', '#a8f0cb'],
+  edge: '#020403',
+  iron: '#101613',
+  coin: '#6fc79a',
+  hollow: '#010302',
+  breath: '#0b1210',
+}
+
 /** The six colours the box itself needs, drawn out of a school. */
 export function roomPalette(school: School): RoomPalette {
   return {

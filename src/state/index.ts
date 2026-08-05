@@ -327,6 +327,37 @@ export function hasMet(permanent: PermanentLedger, who: EncounterId): boolean {
 }
 
 /**
+ * art. 84: and what it remembers of you. The encounter burns with the run
+ * and respawns with the reseed; the mark it keeps does not.
+ *
+ * A mark is a key and never a sentence — nothing player-facing passes
+ * through here. This is the socket the merchant will use when the economy
+ * lands, and the Savior is the first thing to write into it.
+ */
+export function remember(
+  permanent: PermanentLedger,
+  about: EncounterId,
+  mark: string,
+): PermanentLedger {
+  const held = permanent.memories.find((one) => one.about === about)
+  if (held === undefined) {
+    return { ...permanent, memories: [...permanent.memories, { about, marks: [mark] }] }
+  }
+  if (held.marks.includes(mark)) return permanent
+  return {
+    ...permanent,
+    memories: permanent.memories.map((one) =>
+      one.about === about ? { ...one, marks: [...one.marks, mark] } : one,
+    ),
+  }
+}
+
+/** art. 84: what one encounter holds about the player, ever. */
+export function remembers(permanent: PermanentLedger, about: EncounterId): readonly string[] {
+  return permanent.memories.find((one) => one.about === about)?.marks ?? []
+}
+
+/**
  * A die, a keepsake, or a wearable crosses from the run to the permanent —
  * the collection survives death (arts 11, 49). Not to be confused with the
  * turn's *keep*, which only holds dice between castings (art. 41).

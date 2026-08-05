@@ -30,6 +30,11 @@ export const BEATS: Readonly<Record<string, readonly string[]>> = {
     'The wet passage. Water runs in a cut down the middle of the floor.',
     'Three seams in the ceiling let it in. The far end narrows to a door.',
   ],
+  // art. 83: the room says the room. What stands in it says itself.
+  'room.sanctum.font': [
+    'The font. Three shallow steps go down to a floor under a hand of water.',
+    'Nothing drips. Whatever fills this comes up rather than down.',
+  ],
   'room.trove.alcove': [
     'The alcove, cut square into the right-hand wall of a low room.',
     'The dust at the back of it lies deep enough to hold a print.',
@@ -93,12 +98,15 @@ export const NOUNS: Readonly<Record<string, string>> = {
   'den.drag': 'the drag mark',
   'bonefield.bone': 'the bone',
   'tally.marks': 'the scratches',
+  'font.step': 'the step',
   'warden.lock': 'the lock',
   'warden.door': 'the black door',
   // art. 83: what stands in a socket names itself, wherever it stands.
   'gnawing.shape': 'the wet shape',
   'marrow.shape': 'the tall shape',
   'key.iron': 'the iron key',
+  'basin.water': 'the basin',
+  'mender.figure': 'the mender',
   'door.ahead': 'the door',
 }
 
@@ -119,23 +127,29 @@ export const LOOKS: Readonly<Record<string, string>> = {
   'den.drag': 'A wide smear in the dust, from the door to the corner and back.',
   'bonefield.bone': 'Long bones, none of them a pair, none of them yours yet.',
   'tally.marks': 'Someone counts something here. The counting continues.',
+  'font.step': 'Worn through in the middle. A great many knees, and no boots.',
   'warden.lock': 'One keyhole, cut for three teeth.',
   'warden.door': 'Black iron. The stone around it is scored where it swings.',
   'gnawing.shape': 'It keeps to the far end. When you stop, the scratching stops.',
   'marrow.shape': 'It stands a head above the door beside it, and it does not lean.',
   'key.iron': 'Iron, long as your palm, cut with three teeth.',
+  'basin.water': 'Copper, full to the lip, and still. It costs nothing.',
+  'mender.figure': 'It sits with its hands open. Nothing about it moves but the breath.',
   'door.ahead': 'Shut. Nothing comes under it, and nothing goes through it but you.',
 }
 
 /**
  * art. 83: what stands in a socket says its own words. A room never says
- * them — that rule is what lets thirteen rooms hold thirty rooms' worth of
+ * them — that rule is what lets fourteen rooms hold thirty rooms' worth of
  * moments, and breaking it here would break it everywhere.
  */
 export const SOCKET_BEATS: Readonly<Record<string, readonly string[]>> = {
   'enc.gnawing': ['Something wet scratches at the far end, and stops when you stop.'],
   'enc.marrow': ['A tall shape waits in the dark ahead. It does not narrow as you near it.'],
   'enc.iron-key': ['An iron key lies where the floor is worn, cut with three teeth.'],
+  // art. 40: the place, and the being. Neither asks for anything.
+  'enc.basin': ['A copper basin stands full at the foot of the steps. Nothing guards it.'],
+  'enc.mender': ['Someone sits against the wall with their hands open, and waits.'],
 }
 
 /**
@@ -179,6 +193,10 @@ export const NOTICES: Readonly<Record<string, string>> = {
   'door.blind': 'Shut, and giving nothing away. The road is what you pick.',
   // arts 3 and 9: a stop, not a hint. It names nothing and points at nothing.
   'door.held': 'Something here is still yours to take.',
+  // art. 40: what the breath answers with. The poetry is the response to the
+  // button, never the button (art. 66).
+  'mercy.breath': 'The cold of it goes through you, and some of what is open closes.',
+  'mercy.whole': 'Nothing on you is open. What is offered here keeps.',
   'fight.won': 'The room goes quiet. The door gives.',
   // art. 63: a fled fight pauses. Nothing about it refills.
   'fight.fled': 'You back out of the door. It waits where you leave it.',
@@ -216,6 +234,7 @@ export const LABELS: Readonly<Record<string, string>> = {
   'room.lair.den': 'the den',
   'room.passage.bonefield': 'the bonefield',
   'room.puzzle.tally': 'the tally',
+  'room.sanctum.font': 'the font',
   'room.warden': "the warden's door",
   'region.drowned': 'the drowned',
   'region.burnt': 'the burnt',
@@ -262,6 +281,10 @@ export const READOUT: Readonly<Record<string, string>> = {
  */
 export const VERBS: Readonly<Record<string, string>> = {
   'act.take-key': 'Take',
+  // art. 40's two mercies, as plain as the article is. Not "Rest", not
+  // "Receive the mercy" — the verb is what the thumb does.
+  'act.drink': 'Drink',
+  'act.kneel': 'Kneel',
   open: 'Open',
   fight: 'Fight',
   descend: 'Descend',

@@ -2,12 +2,15 @@ import { describe, expect, it } from 'vitest'
 
 import {
   ARRIVALS,
+  BASIN,
   BURNT,
   CATALOG,
   DROWNED,
+  FONT,
   GNAWING,
   IRON_KEY,
   MARROW,
+  MENDER,
   OSSUARY,
   ROOMS,
   ROOM_BOOK,
@@ -52,7 +55,7 @@ describe('art. 83 — binding and scope', () => {
     for (const one of CATALOG.encounters) {
       expect(['bound', 'floating'], one.id as string).toContain(one.binding)
       expect(['repeats', 'unique', 'remembers'], one.id as string).toContain(one.scope)
-      expect(['horror', 'boon'], one.id as string).toContain(one.kind)
+      expect(['horror', 'boon', 'mercy'], one.id as string).toContain(one.kind)
       // A bound encounter names the room it is bound to; a floating one does
       // not name one, because naming one would be binding it.
       if (one.binding === 'bound') expect(one.at).toBeDefined()
@@ -75,8 +78,22 @@ describe('art. 83 — binding and scope', () => {
       binding: 'floating',
       scope: 'unique',
     })
-    // The merchant's row is typed and unfilled: nothing remembers yet.
-    expect(CATALOG.encounters.filter((one) => one.scope === 'remembers')).toEqual([])
+    // art. 40 filled the last two rows of the straw table. The basin is
+    // bound — it is what the font *is*, and it is there every time the font
+    // is — and the Mender floats, is rare, and remembers, which is the row
+    // the merchant was holding open.
+    expect(encounterOf(CATALOG, BASIN)).toMatchObject({
+      kind: 'mercy',
+      binding: 'bound',
+      at: FONT,
+    })
+    expect(encounterOf(CATALOG, MENDER)).toMatchObject({
+      kind: 'mercy',
+      binding: 'floating',
+      scope: 'remembers',
+      region: null,
+    })
+    expect(CATALOG.encounters.filter((one) => one.scope === 'remembers')).toHaveLength(1)
   })
 
   it('declares sockets on every room, and lets no room speak for them', () => {
@@ -159,8 +176,9 @@ describe('art. 84 — the labyrinth remembers you', () => {
 
   it('starts a first waking having met nobody, and remembering nothing', () => {
     const played = playRun(1, coinFlip(1), true)
+    // A walk that never spends a mercy leaves nothing to remember: the mark
+    // is written by the deed, not by the meeting (arts 40, 84).
     expect(played.ledgers.permanent.memories).toEqual([])
-    // The memory socket is typed and empty until the economy fills it.
     expect(Array.isArray(played.ledgers.permanent.met)).toBe(true)
   })
 

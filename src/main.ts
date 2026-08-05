@@ -46,6 +46,7 @@ import {
 import type { Act, Bands, Tappable } from './descent/index.js'
 import {
   act,
+  breathFor,
   canOpen,
   chooseDoor,
   doors,
@@ -820,11 +821,16 @@ function roomActs(): void {
 }
 
 function doAct(one: Act): void {
+  // art. 40: a mercy pressed by a whole body restores nothing and is not
+  // spent. The act strip does not go quiet about it (art. 69) — the word
+  // band says which of the two happened.
+  const mercy = one.heals === undefined ? null : breathFor(ledgers, one)
   ledgers = act(ledgers, one)
   bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
   // art. 70: prose confirms, pixels prove — the answer is the room without
   // the thing in it, which the scene state has already stopped drawing.
-  notice = null
+  notice =
+    mercy === null ? null : (NOTICES[mercy > 0 ? 'mercy.breath' : 'mercy.whole'] ?? null)
   persist()
   paint()
 }

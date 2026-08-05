@@ -57,8 +57,9 @@ the board, not here. The first wave of phase 1 makes that loop legible
 rather than adding to it: the thumb's laws, in the shell.
 
 ## Phases (backlog prose, not promises)
-1. **The living depth** — the economy (knucklebones, Merchant, Sanctum,
-   Savior), QTE windows under arts 2/61/62, rider/bond/talisman content,
+1. **The living depth** — the economy (knucklebones, the Merchant; the
+   Sanctum and the Savior are built and take no price),
+   QTE windows under arts 2/61/62, rider/bond/talisman content,
    more horrors, the Warden as a fight, rich Puzzle locks, sanity as the
    second bar.
 2. **The look** — hero plates at the reference image's density, CINE
@@ -80,7 +81,7 @@ browser: wake → open one of one to three blind doors → the room behind
 it is dealt on the spot → keep choosing → a region locks and the depth
 announces where you have arrived → the rest of the depth deals from that
 region and its encounters wake → the Warden's door, refused without the
-key and terse with it. `npm test` is green: 23 files, 173 tests.
+key and terse with it. `npm test` is green: 24 files, 193 tests.
 
 The dealer was dumb. It dealt a single path, so art. 31's two-to-three
 doors did not exist and blind play had nothing to choose between; that
@@ -101,6 +102,17 @@ of the lock it opens (art. 80). And a room now has a **template** and an
 **instance** (art. 82): rooms repeat within a run, knowledge keys on
 what you recognise, and scene state keys on where you stand.
 
+**And the depth now heals.** Art. 40 named a Sanctum and a Savior and left
+what each restores to the economy; the economy is still parked, and healing
+never needed it — only numbers. The ruling of 2026-08-05 sets them: **the
+Sanctum restores half of missing health, the Savior all of it, and neither
+charges anything.** Both are built. The Sanctum is a *place* — the font, a
+room in the neutral pool with a basin bound to it, promised to every run at
+step 2 or 3 whatever the drift does. The Savior is a *being* — the Mender,
+which floats into any ordinary room's mercy socket, is unique per run, and
+remembers you. That fills the last two rows of art. 83's straw table and
+writes the first mark into art. 84's memory socket.
+
 What is still deliberately unfinished: the prose is functional
 placeholder rather than the register — more of it than before — the
 ordinary rooms are art. 26's first tier and not its second, and phase
@@ -120,8 +132,11 @@ ordinary rooms are art. 26's first tier and not its second, and phase
   gained `met` and a typed, empty `memories`: unique encounters respawn
   with the reseed, but meetings are knowledge, and the labyrinth
   remembers you (art. 84). A sixth ritual, `meet`, is the only way a
-  meeting crosses. `VAULT_VERSION` is 3. (arts 11, 36, 47, 56, 60, 82,
-  84)
+  meeting crosses. A seventh, `remember`, writes a mark into `memories` —
+  the socket is no longer empty, because art. 40's Savior is the first
+  thing with something to remember about you. `VAULT_VERSION` is 3; the
+  ledger's shape did not change, so a snapshot from before this wave still
+  loads. (arts 11, 36, 40, 47, 56, 60, 82, 84)
 - **src/gen** — the drift, behind the three signatures the shell always
   knew: `deal`, `isWinnable`, `explainWinnability`. `deal` now takes the
   run's choice history and returns the history graph replayed — every
@@ -133,7 +148,11 @@ ordinary rooms are art. 26's first tier and not its second, and phase
   under pressures — depth tendencies, the fight band, the guarantees, the
   adjacency bans, the no-clump penalty — none of which solve anything.
   They lean, and whether they held is asked of a thousand runs.
-  (arts 31–39, 77–83)
+  One thing in the dealer does not lean: a `MercyPlan` is a room type the
+  depth *owes* inside a band of steps, dealt out of the neutral pool with
+  the chance rising to certainty at the band's last step. It is art. 80's
+  just-in-time key in the shape of a room, and it is why every run holds a
+  Sanctum however the drift is steered (arts 31–40, 77–83).
 - **src/lots** — the whole duel. The turn (intent first, cast, keep, one
   recast); the shapes and the ladder; the card at once-per-fight; armor as
   a stat with corrode, seal and curse as declared intent data; riders,
@@ -152,7 +171,13 @@ ordinary rooms are art. 26's first tier and not its second, and phase
   socket composition, where a room's own words are laid end to end with
   the words each socket brought with it. `chooseDoor` hands back the run
   *and* the chain, because under art. 79 committing a door is what deals
-  the room behind it. (arts 3, 5–9, 29, 70, 79, 82–83)
+  the room behind it. Art. 40's mercies land here too, as `breathOf`: an
+  act may declare a *share of what is missing* it gives back, and the
+  engine spends it rounded the player's way and never past the maximum.
+  Once-per-instance is now the engine's law rather than the tray's — a
+  deed already written refuses a second pressing — and a mercy that would
+  restore nothing is not spent at all, so pressing a verb on a whole body
+  never costs you the verb. (arts 3, 5–9, 29, 40, 70, 79, 82–83)
 - **src/hinge** — the fight-door, the staged advance as a prop painted
   into the same box, the four exits, death routing, and the two laws
   about a fight's place in a *run*: `saveFight`/`restoreFight` (art. 75)
@@ -165,15 +190,19 @@ ordinary rooms are art. 26's first tier and not its second, and phase
   region that answers a tap on a thing is derived from the same world
   coordinates the thing is painted at (arts 19, 68), and `overpaint`, so
   a motion can be laid over a cast box without casting it again.
-- **src/content** — thirteen hand-authored rooms, each with its own
-  school and its own signature prop: two fixed anchors, two in the
+- **src/content** — fourteen hand-authored rooms, each with its own
+  school and its own signature prop: two fixed anchors, three in the
   neutral pool, and three each in the drowned, the burnt and the
-  ossuary. Every room declares the same two sockets — a far one that
-  takes teeth, a floor one that takes what can be picked up — and no
-  room's prose or pixels assume what fills either. Three encounters ship
+  ossuary. Every room declares the same three sockets — a far one that
+  takes teeth, a floor one that takes what can be picked up, and a mercy
+  one that takes what is offered rather than taken — and no room's prose
+  or pixels assume what fills any of them. Five encounters ship
   against art. 83's two axes: the Gnawing floats and repeats freely; the
   Marrow floats, is unique per run, and wakes only when the ossuary
-  locks; the iron key floats and is placed by the dealer alone. The
+  locks; the iron key floats and is placed by the dealer alone; the basin
+  is **bound** to the font, which is what makes the Sanctum a place; and
+  the Mender floats, is rare, is unique per run, and **remembers**, which
+  is what makes the Savior a being. The
   Gnawing at the demo's numbers, the demo's five goods, the ladder, the
   reference fight's kit, and every player-facing string. The voice lint runs in two categories — prose owes the whole
   rule, a name owes it minus second person and present tense — and the
@@ -200,6 +229,7 @@ ordinary rooms are art. 26's first tier and not its second, and phase
 | `gen` | the dealer run by run: lazy dealing, one-to-three doors, the instance, the prefix property, winnability by construction (arts 31, 33, 36, 79–82) |
 | `gen.drift` | 1000 runs per policy: every run locks and announces, a committed policy locks its own region, a coin flip still arrives, the fight band, the bans, the repeats, the tendencies (arts 31, 36–39, 77–78, 82) |
 | `encounters` | binding and scope on every encounter, the room that never speaks for its sockets, unique-per-run, the region that wakes one, and the meeting that survives death and a reload (arts 78, 83–84) |
+| `mercy` | the two tiers: half of missing rounded the player's way over every health-and-maximum pair, all of it for the Savior, no overheal and nothing for a whole body; once per instance and still offered by the next instance; the Sanctum in every run of every policy over 7000 runs, inside its band and before the lock — with the control that deals none the moment the promise is switched off; the Mender rare, unique per run, met and remembered through death and reload (arts 40, 70, 77–78, 82–84) |
 | `state` | kill the process, restore exactly; the ledgers never mix (arts 11, 36) |
 | `descent` | candles, taps, doors, forward only, the candle written down (arts 5–9, 29, 36) |
 | `hinge` | the fight-door, the four exits, wounds carried out (art. 30) |
@@ -245,20 +275,41 @@ Named, not hidden. Each of these is a task, not an accident.
   Its chance is zero everywhere. The only thing that goes into it is the
   key art. 80 puts there. Art. 4's fleeting optional treasure has the
   socket it needs and no content to put in it — that waits on the
-  economy, as does art. 83's `remembers` scope, which ships typed and
-  unfilled because the merchant it exists for does.
+  economy. The *mercy* socket beside it is not in that position any more:
+  the Savior fills it of the dealer's own accord at `SAVIOR_CHANCE`, and
+  art. 83's `remembers` scope, which used to ship typed and unfilled, now
+  has exactly one thing in it. The merchant will be the second.
 - **New: the neutral pool holds no lair.** A consequence rather than a
   decision: it caps how far a tendency change can move the mix, because a
   run's pre-lock rooms may come from a pool the change cannot reach.
   Whether the neutral pool should mirror the regions' shape or stay
   deliberately quiet is a content question nobody has ruled on.
-- **New: a whole depth is very hard to survive.** The drift deals about
-  two and a half fights a run and nothing heals between them, so an
-  honest bare-pouch playthrough usually ends before the lock. That is not
-  the drift's doing — arts 40 and 55 park the Sanctum, the Savior and the
-  economy, which are the three things that would answer it — but the
-  drift is what made it visible, because a depth is now long enough to
-  die halfway down.
+- **~~A whole depth is very hard to survive.~~** Reduced, not closed, by
+  this wave. Art. 40 is ruled and both its tiers are built, so a depth is
+  no longer a one-way ratchet down: **every** run holds one Sanctum, at
+  step 2 or 3, restoring half of what is missing for free; and about a
+  fifth of runs also hold the Savior, restoring all of it. Against the
+  drift's ~2.5 fights a run that is roughly one fight's worth of body
+  handed back, guaranteed, plus a rarer full reset. A careful bare-pouch
+  run now reaches the Warden's door alive rather than usually not. What
+  it is **not** is a solved economy: the breath lands early, so a run
+  that takes its fights late still spends the back half of the depth with
+  whatever it has left, and there is nothing to carry, buy or drink
+  between the font and the door. The Loot stream is the other half of
+  that answer and this wave was not asked to be it.
+- **New: three mercy knobs, and one of them is fenced by another law.**
+  All three live in content. `SANCTUM_BREATH` (0.5) and `SAVIOR_MERCY`
+  (1) are the two shares in `src/content/encounters.ts`; `SAVIOR_CHANCE`
+  (0.04 per ordinary room's mercy socket, ≈ a fifth of runs) is the
+  Savior's whole rarity; and `DEPTH_ONE.mercies` is the Sanctum's
+  guarantee — one entry, `{type: 'sanctum', band: [2, 3]}`. The band's
+  upper end is not taste: the font is in the *neutral* pool so that no
+  lean of the drift can steer a run away from it, and art. 78 hands every
+  room from `lockAt` down to the locked region — so a neutral room can
+  only be dealt at steps 1–3, and the guarantee sits at the back of that
+  window. Wanting the breath later in the depth means moving `lockAt`,
+  which is a drift question, or putting a Sanctum in every region's pool,
+  which is a different ruling. Neither was this task's to make.
 - **Still no design pass.** The shell is now legible, which is law; it is
   not styled, which is not. arts 26–30's second tier is unspent: the
   ordinary rooms are the computed box plus basic sprites, there are no
