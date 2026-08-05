@@ -85,6 +85,15 @@ export function advanceFight(fight: Fight, resolution: Resolution): Fight {
     yourHealth = Math.min(fight.yourHealthMax, yourHealth + resolution.healed)
     events.push({ kind: 'healed', amount: resolution.healed })
   }
+  // art. 86: the cost faces are charged on the riders' beat, because that is
+  // what they are — riders (art. 51). The claims have already landed, so a
+  // die whose price kills you still kills the horror first: the demo's order
+  // says a killing blow is not also a killing blow taken, and a cost face is
+  // not a special case of that.
+  if (resolution.hurt > 0) {
+    yourHealth -= resolution.hurt
+    events.push({ kind: 'cost', amount: resolution.hurt })
+  }
 
   if (horrorHealth <= 0) {
     events.push({ kind: 'ended', outcome: 'won' })

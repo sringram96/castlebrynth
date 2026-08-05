@@ -47,8 +47,28 @@ export {
   LEECH_RIDER,
   HAND_SIZE,
 } from './dice.js'
+export {
+  BLEED_RIDER,
+  PUSH_RIDER,
+  THE_BLEED,
+  THE_CAREFUL,
+  THE_PUSH,
+  THE_PUSHER,
+  THE_RUNNER,
+  TRAVELER_DICE,
+  TRAVELER_RIDERS,
+} from './travelers.js'
 export { LADDER, STRAIGHT, ANY_DICE, PAIRISH } from './ladder.js'
-export { THE_OSSUARY, THE_ZEALOT, RUSTED_PLATE, LEECH, ALL_RIDERS, BASE_ARMOR } from './items.js'
+export {
+  ALL_RIDERS,
+  BASE_ARMOR,
+  CATALOG_GOODS,
+  LEECH,
+  RUSTED_PLATE,
+  THE_CORD,
+  THE_OSSUARY,
+  THE_ZEALOT,
+} from './items.js'
 export { YOUR_HEALTH_AT_WAKING, BARE_BODY } from './body.js'
 export { DEMO_HAND, DEMO_GOODS, DEMO_ARMOR, DEMO_HEALTH } from './reference.js'
 export {
@@ -69,25 +89,42 @@ export {
 export {
   BASIN,
   BURNT,
+  CAREFUL,
+  CORD,
   DROWNED,
   ENCOUNTERS,
+  FLOOR_CHANCE,
   FONT,
   GNAWING,
   IRON_KEY,
+  LEAVES_A_GOOD,
+  LEECH_BONE,
   MARROW,
   MENDER,
   OSSUARY,
+  PLATE,
+  PUSHER,
+  RARITY,
+  RUNNER,
   SANCTUM_BREATH,
   SAVIOR_CHANCE,
   SAVIOR_MERCY,
+  SISTER_ELDER,
+  SISTER_YOUNGER,
   encounterProp,
   encounterWords,
+  fillProps,
+  fillWords,
+  leftBy,
+  lostId,
+  takeActId,
 } from './encounters.js'
 export {
   ARRIVALS,
   BEATS,
   NOUNS,
   LOOKS,
+  ORIGINS,
   SOCKET_BEATS,
   END_LINES,
   INTENT_SAYS,
@@ -100,8 +137,10 @@ export {
   dieLabel,
   intentChip,
   itemLabel,
+  originOf,
   saysClaim,
   saysDie,
+  saysGood,
   saysIntent,
   saysItem,
 } from './says.js'
@@ -138,6 +177,7 @@ import {
   LOOKS,
   NOTICES,
   NOUNS,
+  ORIGINS,
   READOUT,
   SOCKET_BEATS,
 } from './prose.js'
@@ -168,6 +208,10 @@ export function everyString(): readonly Utterance[] {
       // art. 78: the arrival is one candle like any other.
       ...Object.values(ARRIVALS).flat(),
       ...Object.values(LOOKS),
+      // art. 87: an origin is prose that reaches the player, so it is judged
+      // as prose. If a sentence cannot pass the lint the item does not ship,
+      // which is the article's acceptance test enforced rather than quoted.
+      ...Object.values(ORIGINS),
       ...Object.values(END_LINES),
       ...Object.values(INTENT_SAYS),
       ...Object.values(NOTICES),

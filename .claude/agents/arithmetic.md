@@ -23,13 +23,22 @@ never from hidden math.
   their carry (art. 52); talisman species stay declared (art. 53).
 - Generated runs are provably winnable — a lock's key upstream on every
   forceable path (art. 33), tested rather than hoped.
+- The start is five plain bones against a hand size of six (arts 55, 60).
+  Five dice cannot reach the straight, three pairs, or two triples: the
+  hand's guaranteed shape is a pair or a run of 3, and nothing better.
+  The sixth die is a traveler's, and it is the first real power curve in
+  the game — measure it rather than assuming it.
+- Every good ships with its origin sentence (art. 87) and every die that
+  out-values the plain bone ships with a declared cost (art. 54). A cost
+  face is a rider that fires when the face is spent, like any other.
 
 ## What you refuse
 Automatic damage outside the card — ANY DICE ×1 is the only floor and it
 spends a line. A line claimed twice in one fight. A die counted in two
 claims. Undeclared distributions. A die that beats the
 plain bone with no cost. Any "just this once" exception to the ladder
-ceiling. Combos binding by tribe instead of value.
+ceiling. Combos binding by tribe instead of value. A class, under any
+name — art. 12 is repealed, and a build is who you have found.
 
 ## Your test
 `reference/castlebrynth-lots-demo.html` is the playable spec until the

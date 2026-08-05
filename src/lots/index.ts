@@ -50,6 +50,7 @@ export type {
   Face,
   Fight,
   FightEvent,
+  Good,
   Goods,
   Hand,
   Horror,
@@ -120,7 +121,15 @@ export {
 } from './card.js'
 
 export type { Audit } from './goods.js'
-export { armorFrom, audit, healedBy, riderIds, ridersFired, shapeTriggers } from './goods.js'
+export {
+  armorFrom,
+  audit,
+  healedBy,
+  riderIds,
+  ridersFired,
+  shapeTriggers,
+  woundedBy,
+} from './goods.js'
 
 export { armorAgainst, attack, decide, everyDieClaimed } from './resolve.js'
 

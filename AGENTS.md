@@ -34,12 +34,18 @@ Test: kill the process anywhere; restart; nothing is lost.
 Never: unresumable state, a hardcoded pixel, content logic in the engine.
 
 ## The law
-`.claude/rules/` holds 85 numbered articles, cited in tasks as "art. N":
-- **the-world.md** — time, touch, structure, the chain, room grammar, and
-  the drift (arts 77–85): regions, the forced lock, lazy dealing,
-  just-in-time keys, template and instance, binding and scope
+`.claude/rules/` holds 89 numbered articles, cited in tasks as "art. N".
+Two are spent: art. 12 is repealed (there are no classes, ever) and
+art. 47's BRACE is repealed. The rest:
+- **the-world.md** — time, touch, structure, the chain, room grammar, the
+  drift (arts 77–85): regions, the forced lock, lazy dealing,
+  just-in-time keys, template and instance, binding and scope — and the
+  fork (art. 89): a floor socket where taking one good forfeits the other
 - **the-room.md** — parallax law, scale, the look, the screen
-- **the-lots.md** — the dice: turn, duel, the card, collection, armor
+- **the-lots.md** — the dice: turn, duel, the card, collection, armor, and
+  the travelers (arts 86–88): the start is five bones, every other die
+  belonged to somebody, and an item's origin explains its rules in one
+  sentence or the item does not ship
 - **the-thumb.md** — the interaction model: registers, the tray,
   look-then-take, dice states, the interaction budget
 - **voice.md** — every player-facing string

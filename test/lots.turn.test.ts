@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
-import { HAND_SIZE, PLAIN_POUCH } from '../src/content/index.js'
+import { HAND_SIZE, PLAIN_POUCH, THE_PUSHER } from '../src/content/index.js'
 import { lotFrom } from '../src/gen/index.js'
+import type { Pouch } from '../src/lots/index.js'
 import {
   assembleHand,
   cast,
@@ -94,10 +95,29 @@ describe('lots — art. 41 (two castings), art. 42 (intent first), arts 43–44,
   })
 
   it('assembles the hand from the pouch, at whatever size the body is (art. 60)', () => {
-    expect(assembleHand(PLAIN_POUCH, HAND_SIZE).dice).toHaveLength(HAND_SIZE)
     expect(assembleHand(PLAIN_POUCH, 3).dice).toHaveLength(3)
     // A body grown past the pouch takes what the pouch has, and no ghosts.
     expect(assembleHand(PLAIN_POUCH, 99).dice).toHaveLength(PLAIN_POUCH.dice.length)
+  })
+
+  /**
+   * arts 55, 60 (amended 2026-08-05): the start is five bones against a hand
+   * size of six, so the first waking assembles a hand of five and the sixth
+   * slot stands empty. The gap is the law, not an accident of the pouch —
+   * these two numbers may never be derived from each other.
+   */
+  it('leaves the sixth slot empty at a first waking (arts 55, 60)', () => {
+    expect(PLAIN_POUCH.dice).toHaveLength(5)
+    expect(HAND_SIZE).toBe(6)
+    expect(assembleHand(PLAIN_POUCH, HAND_SIZE).dice).toHaveLength(5)
+    expect(HAND_SIZE - assembleHand(PLAIN_POUCH, HAND_SIZE).dice.length).toBe(1)
+  })
+
+  /** art. 86: and one traveler's bone is what closes it. */
+  it('fills the sixth slot with the first die collected (arts 56, 86)', () => {
+    const found: Pouch = { dice: [...PLAIN_POUCH.dice, THE_PUSHER] }
+    expect(assembleHand(found, HAND_SIZE).dice).toHaveLength(HAND_SIZE)
+    expect(assembleHand(found, HAND_SIZE).dice.at(-1)).toBe(THE_PUSHER)
   })
 
   it('throws only values the die declares (art. 50)', () => {

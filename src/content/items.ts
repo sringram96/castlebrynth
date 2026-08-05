@@ -1,5 +1,6 @@
-import type { Rider, RiderId, Talisman, TalismanId, Wearable, WearableId } from '../lots/index.js'
-import { LEECH_RIDER } from './dice.js'
+import type { Good, Rider, RiderId, Talisman, TalismanId, Wearable, WearableId } from '../lots/index.js'
+import { LEECH_RIDER, THE_LEECH, THE_SISTERS } from './dice.js'
+import { TRAVELER_DICE, TRAVELER_RIDERS } from './travelers.js'
 
 /**
  * The goods: talismans and wearables, as typed data (arts 49, 53, 47).
@@ -37,6 +38,23 @@ export const THE_ZEALOT: Talisman = {
 }
 
 /**
+ * art. 53, ladder species: a claimed line scores a tier higher, and the
+ * lines it reads are the ones that go in order. A run of 3 scores ×3, a run
+ * of 4 ×4, a run of 5 ×5.
+ *
+ * art. 87: the luck someone brought. It is a knotted cord, and its owner
+ * counted the way down with it — so what it lifts is the shape that has to
+ * be in order, and nothing else. The straight is deliberately not in the
+ * list: it is already the top of the ladder, and a hand of five cannot make
+ * one anyway (art. 55).
+ */
+export const THE_CORD: Talisman = {
+  id: talisman('talisman.cord'),
+  species: 'ladder',
+  ladder: { tiers: 1, lines: ['run-3', 'run-4', 'run-5'] },
+}
+
+/**
  * art. 51: the Leech's rider, declared. It fires only when the marked face
  * is spent in a claim; kept or unused, the six does nothing. The die is in
  * `dice.ts`; what the rider *does* is a number, so it is here.
@@ -62,4 +80,22 @@ export const RUSTED_PLATE: Wearable = {
 export const BASE_ARMOR = 0
 
 /** Every rider the labyrinth can fire, for the hand's company (art. 51). */
-export const ALL_RIDERS: readonly Rider[] = [LEECH]
+export const ALL_RIDERS: readonly Rider[] = [LEECH, ...TRAVELER_RIDERS]
+
+/**
+ * arts 54, 87: every good that ships, in one list, so the audit is a list
+ * nothing can quietly fall off. A die that reaches a player and is not in
+ * here is a die no test ever priced — and that, not the die, is the bug.
+ *
+ * THE_ORPHAN is deliberately absent. It is over budget with no cost face and
+ * no owner, so art. 87 refuses it: it survives as the fixture that proves
+ * the audit bites, and it is placed nowhere in the labyrinth.
+ */
+export const CATALOG_GOODS: readonly Good[] = [
+  ...TRAVELER_DICE,
+  THE_SISTERS[0],
+  THE_SISTERS[1],
+  THE_LEECH,
+  THE_CORD,
+  RUSTED_PLATE,
+]

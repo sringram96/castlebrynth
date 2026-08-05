@@ -1,0 +1,208 @@
+import { describe, expect, it } from 'vitest'
+
+import { BARE_BODY, HAND_SIZE, PLAIN_POUCH } from '../src/content/index.js'
+import type { Vault } from '../src/state/index.js'
+import {
+  MIGRATIONS,
+  QUARANTINE_KEY,
+  VAULT_KEY,
+  VAULT_VERSION,
+  firstPermanent,
+  load,
+  quarantined,
+  save,
+  wake,
+} from '../src/state/index.js'
+
+/**
+ * The vault ladder (card 32, art. 11).
+ *
+ * The debt this closes: `load` used to answer a snapshot from another
+ * version with `return null`, and the next `save` overwrote it. One schema
+ * change would have eaten every Book of Ends in existence — the one thing
+ * art. 11 promises survives everything.
+ *
+ * What replaces it: a chain of version-to-version migrations run in order,
+ * and a quarantine for anything the chain cannot walk. Nothing is destroyed.
+ */
+
+/** A vault whose bytes can be read back out, and killed between boots. */
+function killable(seeded: Readonly<Record<string, string>> = {}): {
+  vault: Vault
+  bytes: () => Readonly<Record<string, string>>
+} {
+  const written = new Map<string, string>(Object.entries(seeded))
+  return {
+    vault: {
+      read: (key) => written.get(key) ?? null,
+      write: (key, value) => void written.set(key, value),
+    },
+    bytes: () => Object.fromEntries(written),
+  }
+}
+
+/**
+ * A v1 snapshot, as the build that wrote v1 wrote it: a permanent with no
+ * wearables, no body, no hand size, no meetings — and a run with none of
+ * art. 75's or the drift's fields on it.
+ *
+ * Two lines in its Book of Ends. Those two lines are the whole test.
+ */
+const V1 = JSON.stringify({
+  version: 1,
+  ledgers: {
+    run: {
+      seed: 41,
+      depth: 1,
+      health: 12,
+      healthMax: 26,
+      at: { room: 'room.crossing', step: 0, beat: 1 },
+      carried: ['key.warden'],
+    },
+    permanent: {
+      pouch: { dice: [{ id: 'bone.1', body: 6, faces: [{ value: 1 }] }] },
+      signature: 'bone.1',
+      keepsakes: [{ id: 'talisman.ossuary', species: 'value', value: { of: 6, times: 2 } }],
+      known: [{ id: 'clue.tally', about: 'room.puzzle.tally' }],
+      bookOfEnds: [
+        { seed: 7, depth: 1, cause: 'end.gnawing' },
+        { seed: 9, depth: 1, cause: 'end.marrow' },
+      ],
+    },
+  },
+})
+
+describe('the vault ladder — art. 11 (the Book survives everything)', () => {
+  it('runs a real migration: a v1 snapshot loads clean at the current version', () => {
+    const { vault } = killable({ [VAULT_KEY]: V1 })
+    const restored = load(vault)
+
+    expect(restored).not.toBeNull()
+    // The line the ladder exists for, word for word.
+    expect(restored!.permanent.bookOfEnds).toEqual([
+      { seed: 7, depth: 1, cause: 'end.gnawing' },
+      { seed: 9, depth: 1, cause: 'end.marrow' },
+    ])
+    // And the rest of the collection with it (art. 11).
+    expect(restored!.permanent.pouch.dice).toHaveLength(1)
+    expect(restored!.permanent.signature).toBe('bone.1')
+    expect(restored!.permanent.keepsakes).toHaveLength(1)
+    expect(restored!.permanent.known).toHaveLength(1)
+  })
+
+  it('fills the fields the older schemas never had, rather than leaving holes', () => {
+    const { vault } = killable({ [VAULT_KEY]: V1 })
+    const permanent = load(vault)!.permanent
+    // art. 49's wearables axis, arts 47/60's body stats, art. 84's meetings.
+    expect(permanent.wearables).toEqual([])
+    expect(permanent.met).toEqual([])
+    expect(permanent.memories).toEqual([])
+    expect(permanent.handSize).toBeGreaterThan(0)
+    expect(permanent.body.health).toBeGreaterThan(0)
+  })
+
+  /**
+   * art. 36: a run is a position in an arrangement derived from a seed and a
+   * choice history the old schemas never wrote down. It cannot be replayed,
+   * so the ladder drops it and keeps what art. 11 actually promises.
+   */
+  it('drops the unreplayable run and keeps the permanent (arts 11, 36)', () => {
+    const { vault } = killable({ [VAULT_KEY]: V1 })
+    const restored = load(vault)!
+    expect(restored.run).toBeNull()
+    expect(restored.permanent.bookOfEnds).toHaveLength(2)
+    // And the permanent it kept still wakes a run, which is the point.
+    const woken = wake(restored.permanent, 3 as never)
+    expect(woken.run).not.toBeNull()
+    expect(woken.permanent.bookOfEnds).toHaveLength(2)
+  })
+
+  it('walks every rung of the ladder, with no gap between them', () => {
+    const rungs = MIGRATIONS.map((one) => one.from).sort((a, b) => a - b)
+    expect(rungs).toEqual(
+      Array.from({ length: VAULT_VERSION - 1 }, (_, i) => i + 1),
+    )
+    // And each one really changes the version it is walking.
+    expect(new Set(rungs).size).toBe(rungs.length)
+  })
+
+  it('leaves a current snapshot exactly as it found it', () => {
+    const { vault } = killable()
+    const ledgers = wake(firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY), 5 as never)
+    save(ledgers, vault)
+    const restored = load(vault)
+    expect(restored!.permanent).toEqual(ledgers.permanent)
+    expect(restored!.run!.seed).toBe(ledgers.run!.seed)
+    // Nothing was set aside: there was nothing wrong with it.
+    expect(quarantined(vault)).toBeNull()
+  })
+})
+
+describe('the vault ladder — quarantine, not destruction', () => {
+  it('sets aside bytes that are not a snapshot at all, and keeps them', () => {
+    const { vault } = killable({ [VAULT_KEY]: 'not json {{{' })
+    expect(load(vault)).toBeNull()
+    expect(quarantined(vault)).toBe('not json {{{')
+  })
+
+  it('sets aside a snapshot from a build newer than this one', () => {
+    const ahead = JSON.stringify({ version: VAULT_VERSION + 1, ledgers: { run: null, permanent: {} } })
+    const { vault } = killable({ [VAULT_KEY]: ahead })
+    expect(load(vault)).toBeNull()
+    // Not rewritten, not downgraded, not lost. The newer build still has it.
+    expect(quarantined(vault)).toBe(ahead)
+  })
+
+  it('sets aside a snapshot with no version, and one with a version it cannot use', () => {
+    for (const bad of [{ ledgers: {} }, { version: 0, ledgers: {} }, { version: 'three' }]) {
+      const written = JSON.stringify(bad)
+      const { vault } = killable({ [VAULT_KEY]: written })
+      expect(load(vault), written).toBeNull()
+      expect(quarantined(vault), written).toBe(written)
+    }
+  })
+
+  /**
+   * The failure mode worth naming: a step that cannot find the permanent it
+   * is meant to carry forward must refuse rather than invent an empty one.
+   * A blank Book of Ends written over a real one is the old wipe in a new
+   * coat, and it would be silent.
+   */
+  it('refuses rather than inventing a blank permanent, and keeps the bytes', () => {
+    for (const broken of [
+      JSON.stringify({ version: 1, ledgers: 'nonsense' }),
+      JSON.stringify({ version: 1, ledgers: { run: null } }),
+      JSON.stringify({ version: 2, ledgers: { permanent: 7 } }),
+      // A current-version snapshot with nothing readable in it, which never
+      // reaches the ladder at all.
+      JSON.stringify({ version: VAULT_VERSION, ledgers: { run: null, permanent: null } }),
+    ]) {
+      const { vault } = killable({ [VAULT_KEY]: broken })
+      expect(load(vault), broken).toBeNull()
+      expect(quarantined(vault), broken).toBe(broken)
+    }
+  })
+
+  it('never destroys the original — the fresh save goes to a different key', () => {
+    const { vault, bytes } = killable({ [VAULT_KEY]: V1 })
+    // A boot that quarantines, then a fresh waking written over the top.
+    const broken = JSON.stringify({ version: 99, ledgers: {} })
+    vault.write(VAULT_KEY, broken)
+    expect(load(vault)).toBeNull()
+    save(wake(firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY), 5 as never), vault)
+
+    expect(bytes()[QUARANTINE_KEY]).toBe(broken)
+    expect(bytes()[VAULT_KEY]).not.toBe(broken)
+    // A second casualty does not overwrite the first: the interesting bytes
+    // are the oldest ones, not the newest.
+    vault.write(VAULT_KEY, 'garbage')
+    expect(load(vault)).toBeNull()
+    expect(bytes()[QUARANTINE_KEY]).toBe(broken)
+  })
+
+  it('reads nothing at all as nothing at all, and quarantines nothing', () => {
+    const { vault, bytes } = killable()
+    expect(load(vault)).toBeNull()
+    expect(bytes()[QUARANTINE_KEY]).toBeUndefined()
+  })
+})

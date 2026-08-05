@@ -23,7 +23,9 @@
 export const BEATS: Readonly<Record<string, readonly string[]>> = {
   'room.crossing': [
     'The Crossing. You wake, and the ceiling is close enough to touch.',
-    'Six bones lie in your open hand. One of them is paler than the rest.',
+    // arts 55–56: five bones against a hand that holds six. The hole is the
+    // whole of the invitation, and the room does not explain it.
+    'Five bones lie in your open hand. Your hand holds six.',
     'The corridor goes down. Behind you the stone is unbroken.',
   ],
   'room.passage.drip': [
@@ -108,12 +110,23 @@ export const NOUNS: Readonly<Record<string, string>> = {
   'basin.water': 'the basin',
   'mender.figure': 'the mender',
   'door.ahead': 'the door',
+  // art. 86: the three who came down here first. A traveler is tapped as a
+  // body, because that is what is on the floor; the bone is what you take.
+  'traveler.pusher.thing': 'the open hand',
+  'traveler.careful.thing': 'the folded cloak',
+  'traveler.runner.thing': 'the boot',
+  // arts 49, 87: the goods, as they lie. Concrete and singular (voice).
+  'sister.elder.thing': 'the older bone',
+  'sister.younger.thing': 'the younger bone',
+  'leech.thing': 'the dark bone',
+  'cord.thing': 'the knotted cord',
+  'plate.thing': 'the rusted plate',
 }
 
 /** What looking answers. Looking is free and always answers (art. 6). */
 export const LOOKS: Readonly<Record<string, string>> = {
   'crossing.grate': 'Light comes down through iron you cannot reach.',
-  'crossing.bones': 'Six bones, worn smooth. The pale one fits your thumb.',
+  'crossing.bones': 'Five bones, worn smooth. Nothing is written on any of them.',
   'crossing.traveler': 'A traveler lies along the wall. The cloak has gone stiff.',
   'crossing.chain': 'A chain comes out of the dark above and stops short of the floor.',
   'drip.water': 'The water goes under the wall and keeps going.',
@@ -136,6 +149,44 @@ export const LOOKS: Readonly<Record<string, string>> = {
   'basin.water': 'Copper, full to the lip, and still. It costs nothing.',
   'mender.figure': 'It sits with its hands open. Nothing about it moves but the breath.',
   'door.ahead': 'Shut. Nothing comes under it, and nothing goes through it but you.',
+  // art. 86: a traveler answers as a body. The bone is what the act takes;
+  // this is what the thumb finds when it asks.
+  'traveler.pusher.thing': 'The hand is out and shut on one bone. There is nothing else on the body.',
+  'traveler.careful.thing': 'The cloak is folded under the head. Nothing else down here is tidy.',
+  'traveler.runner.thing': 'One boot points back the way you come from. The other is gone.',
+  // arts 49, 87: the goods, as they lie.
+  'sister.elder.thing': 'A bone with a notch cut in it. The notch is half a mark.',
+  'sister.younger.thing': 'A bone with a notch cut in it, and the notch is cut twice.',
+  'leech.thing': 'One face of it is stained darker than the others. The stain is not dust.',
+  'cord.thing': 'Knotted at every hand’s width. The knots run out before the cord does.',
+  'plate.thing': 'Iron, rusted through in two places, and neither of them over the heart.',
+}
+
+/**
+ * art. 87, the item law: an item's origin explains its rules, in one
+ * sentence, for every good that ships. It is prose and it owes
+ * rules/voice.md like any beat — which is what stops it becoming flavour
+ * text with the numbers repeated underneath.
+ *
+ * The dead are spoken of in the present tense and without a third person to
+ * hide behind, because that is what the voice allows and because it is truer
+ * anyway: down here they have not finished happening.
+ */
+export const ORIGINS: Readonly<Record<string, string>> = {
+  'bone.pusher': 'The one who throws high, and again, and again, until the throw that lands low.',
+  'bone.careful': 'The one who never throws high and never throws low, and dies here regardless.',
+  'bone.runner':
+    'The one who keeps the strong throw for the last room, and opens something reaching for it.',
+  'bone.sister.elder':
+    'Two who go down together, and are worth anything only when they land together.',
+  'bone.sister.younger':
+    'Two who go down together, and are worth anything only when they land together.',
+  'bone.leech':
+    'The habit of taking a little back off whatever you hit, which does not keep you alive.',
+  'talisman.cord':
+    'The cord of one who counts the way down in order, and what you claim in order scores a tier higher.',
+  'wearable.rusted-plate':
+    'Iron somebody wears down here, rusted through in two places, and still good for three.',
 }
 
 /**
@@ -150,6 +201,23 @@ export const SOCKET_BEATS: Readonly<Record<string, readonly string[]>> = {
   // art. 40: the place, and the being. Neither asks for anything.
   'enc.basin': ['A copper basin stands full at the foot of the steps. Nothing guards it.'],
   'enc.mender': ['Someone sits against the wall with their hands open, and waits.'],
+  // art. 86: the dead say their own candle, the way everything in a socket
+  // does. The room never mentions them.
+  'enc.traveler.pusher': ['Someone lies against the wall with a hand out. There is a bone in it.'],
+  'enc.traveler.careful': ['Someone lies folded on the floor, arranged, with a bone by the knee.'],
+  'enc.traveler.runner': ['Someone lies half across the doorway, pointed the wrong way.'],
+  'enc.sister.elder': ['A notched bone lies in the dust where a hand puts it down.'],
+  'enc.sister.younger': ['A notched bone lies here on its own, and the notch is cut twice.'],
+  'enc.leech': ['A bone lies apart from the grit, and one face of it is stained.'],
+  'enc.cord': ['A knotted cord lies coiled where a hand lets go of it.'],
+  'enc.plate': ['A plate of rusted iron lies flat on the stone. The straps are cut.'],
+  /**
+   * art. 89: the terms of a fork, said plainly and said first — before
+   * either verb is on the strip, and once (the labyrinth never explains
+   * itself twice). It names nothing: what the two things are is the thumb's
+   * to find out (art. 68).
+   */
+  fork: ['Two things lie here. What you take closes what you leave.'],
 }
 
 /**
@@ -244,10 +312,18 @@ export const LABELS: Readonly<Record<string, string>> = {
   'die.orphan': 'the orphan',
   'die.sisters': 'the sisters',
   'die.leech': 'the leech',
+  // art. 86: a traveler's die is named for the death, not for the owner.
+  // Nobody down here has a name yet, and that is the point of them.
+  'die.pusher': 'the last push',
+  'die.careful': 'the careful bone',
+  'die.runner': 'the last room',
   'talisman.ossuary': 'the ossuary',
   'talisman.zealot': 'the zealot',
+  'talisman.cord': 'the counting cord',
   'wearable.rusted-plate': 'the rusted plate',
   'rider.leech': 'the leech bite',
+  'rider.push': 'the push',
+  'rider.bleed': 'the bleed',
 }
 
 /**
@@ -261,6 +337,8 @@ export const READOUT: Readonly<Record<string, string>> = {
   attack: 'attack',
   incoming: 'incoming',
   unused: 'unused',
+  // art. 86: what the cost faces on your own dice will charge this turn.
+  cost: 'cost',
   showing: 'showing',
   faces: 'faces',
   spent: 'spent in',
@@ -285,6 +363,17 @@ export const VERBS: Readonly<Record<string, string>> = {
   // "Receive the mercy" — the verb is what the thumb does.
   'act.drink': 'Drink',
   'act.kneel': 'Kneel',
+  // arts 66, 86: taking a dead traveler's bone is one plain verb. Two words
+  // where a fork needs the thumb to tell two verbs apart (art. 89), and one
+  // everywhere else.
+  'act.take.traveler.pusher': 'Take bone',
+  'act.take.traveler.careful': 'Take bone',
+  'act.take.traveler.runner': 'Take bone',
+  'act.take.sister.elder': 'Take bone',
+  'act.take.sister.younger': 'Take bone',
+  'act.take.leech': 'Take leech',
+  'act.take.cord': 'Take cord',
+  'act.take.plate': 'Take plate',
   open: 'Open',
   fight: 'Fight',
   descend: 'Descend',

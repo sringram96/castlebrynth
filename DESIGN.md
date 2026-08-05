@@ -7,7 +7,7 @@ novel a candle at a time; the labyrinth is a blind chain of hand-authored
 rooms, procedurally rearranged every run; fights are poker-dice duels
 against horrors whose intents are always shown; death burns the run and
 keeps the knowledge. `reference/GAME.md` is the fantasy. The binding law is in
-`.claude/rules/` — 76 numbered articles; tasks cite them as "art. N".
+`.claude/rules/` — 89 numbered articles; tasks cite them as "art. N".
 
 ## Components
 - **src/state** — the two ledgers (run / permanent) behind named rituals;
@@ -39,8 +39,12 @@ all state client-side.
 - **The poker duel, carded** — intent first, keep-and-recast, then
   multi-combo claims scored sum × tier, each line once per fight;
   defense is armor from items, not dice. (arts 41–48, 63–66)
-- **Dice are the loot** — shape, riders, bonds, talismans; every power
-  declared and budgeted. v1 ships the sockets empty. (arts 49–56, 60)
+- **Dice are the loot, and the loot belonged to somebody** — shape,
+  riders, bonds, talismans, wearables; every power declared and budgeted;
+  every good carrying one sentence of origin that explains its rules, or
+  it does not ship. You start with five bare bones against a hand of six,
+  and every die that closes that gap came off someone who came down here
+  and did not come back. (arts 49–56, 60, 86–88)
 - **No battle screen** — a fight is the room with the thing come close.
   (art. 30)
 - **Content is data; prose is the sound design** — the voice rule binds
@@ -70,18 +74,60 @@ rather than adding to it: the thumb's laws, in the shell.
 Order of 1 vs 2 is a live argument; nothing in 0 forecloses either.
 
 ## Non-goals (phase 0)
-No economy, no QTE windows, no riders/bonds/talismans in play, no hero
-plates, no sanity bar, no classes, no audio, no lean, no native wrap, no
-accounts, exactly one horror.
+No economy, no QTE windows, no hero plates, no sanity bar, no audio, no
+lean, no native wrap, no accounts, exactly one horror. Classes are not a
+non-goal any more — art. 12 is repealed, so they are not coming at all.
+Riders, bonds, talismans and wearables *are* in play as of the travelers
+wave; what is still absent is anything to spend on them.
 
 
 ## Status
-**The labyrinth leans.** `npm run dev` is a playable loop in a portrait
-browser: wake → open one of one to three blind doors → the room behind
-it is dealt on the spot → keep choosing → a region locks and the depth
-announces where you have arrived → the rest of the depth deals from that
-region and its encounters wake → the Warden's door, refused without the
-key and terse with it. `npm test` is green: 24 files, 194 tests.
+**The labyrinth leans, and the collection has people in it.** `npm run dev`
+is a playable loop in a portrait browser: wake → open one of one to three
+blind doors → the room behind it is dealt on the spot → keep choosing → a
+region locks and the depth announces where you have arrived → the rest of
+the depth deals from that region and its encounters wake → the Warden's
+door, refused without the key and terse with it. `npm test` is green: 28
+files, 249 tests.
+
+**And the dice belonged to somebody.** The collection has been a socket
+with nothing in it for four waves. The **travelers wave** fills it, and
+changes what loot *is* on the way past. An item that is a stat block with
+a name on it is more mechanics, and players can tell; what makes a found
+thing mean something is that it came from somewhere and tells you
+something true about the place. So the ruling of 2026-08-05:
+
+- **Art. 12 is repealed.** There are no classes, ever. Your build is who
+  you have found, and nothing may be built that assumes otherwise.
+- **The start is five bare dice** against a hand size of six (art. 55), so
+  the tray shows one empty slot from the first waking. The hole in your
+  hand is the invitation.
+- **Every die past those five belonged to someone who came down here and
+  did not come back** (art. 86). Each rare individual leaves exactly one
+  unique die, and a die's shape is how its owner died: the distribution is
+  how they played, the cost face is the mistake that killed them.
+- **An item's origin explains its rules, in one sentence** (art. 87), for
+  every good that ships. A rider is a habit somebody carried into a fight;
+  a bond is two people who went down together; a talisman is the luck
+  someone brought; a wearable is what they wore. If the sentence cannot be
+  written the item does not ship — and the sentence is prose, so it is
+  linted as prose.
+- **A good may be pure knowledge** — a name, a mark, no stat (art. 88).
+  Nothing ships on that axis yet; the socket is named.
+- **A floor socket may offer a fork** (art. 89): two goods, where taking
+  one forfeits the other, stated plainly before the take and final after.
+
+The Crossing's waking ritual went with the law that needed it. There is no
+pale bone to pick out of your own hand any more — waking is the room, and
+your first die is a dead traveler's, which is also your signature
+(art. 56).
+
+**And the vault stopped being one schema change from a disaster.** `load`
+answered a snapshot from another version with `return null`, and the next
+`save` wrote over it, so the next time the ledger's shape moved it would
+have taken every Book of Ends with it — the one thing art. 11 promises
+survives everything. There is a migration ladder now, and a quarantine for
+anything it cannot walk. Nothing is destroyed. That debt is closed.
 
 The dealer was dumb. It dealt a single path, so art. 31's two-to-three
 doors did not exist and blind play had nothing to choose between; that
@@ -101,6 +147,54 @@ are unbound from rooms, and the dealer places the key in the path ahead
 of the lock it opens (art. 80). And a room now has a **template** and an
 **instance** (art. 82): rooms repeat within a run, knowledge keys on
 what you recognise, and scene state keys on where you stand.
+
+### The travelers, and every good that ships
+
+Three travelers, each an encounter through art. 83's registry — floating,
+rare, unique per run, met-flagged per art. 84 — each leaving exactly one
+die through the `meet` and `collect` rituals. Their dice, and the rest of
+the catalog, with the sentence each one ships under (art. 87):
+
+| good | what it is | origin |
+| --- | --- | --- |
+| **the last push** | die {1,5,5,6,6,6}, cost 3 on the 1 | *The one who throws high, and again, and again, until the throw that lands low.* |
+| **the careful bone** | die {2,3,3,4,4,5}, no cost | *The one who never throws high and never throws low, and dies here regardless.* |
+| **the last room** | die {2,3,4,5,6,6}, cost 2 on each 6 | *The one who keeps the strong throw for the last room, and opens something reaching for it.* |
+| **the sisters** (two halves) | plain faces, bonded (art. 52) | *Two who go down together, and are worth anything only when they land together.* |
+| **the leech** | die with a healing rider on its 6 | *The habit of taking a little back off whatever you hit, which does not keep you alive.* |
+| **the counting cord** | talisman, ladder species: runs score a tier higher | *The cord of one who counts the way down in order, and what you claim in order scores a tier higher.* |
+| **the rusted plate** | wearable, armor 3 | *Iron somebody wears down here, rusted through in two places, and still good for three.* |
+
+A **cost face** is a rider in the ordinary art. 51 sense: it fires only
+when its face is *spent in a claim*, so carrying one is free and reaching
+for it is not. Armor does not eat it — it did not come from the horror.
+That is what makes a cost face a decision rather than a tax, and it is why
+the pusher's price sits on the throw that fails and the runner's sits on
+the throw that works.
+
+**The Orphan does not ship.** It is over the plain bone's budget with no
+cost face and nobody it came off, so art. 87 refuses it. It survives as
+the die the audit is pointed at — `paid: false` — because an audit no die
+ever fails is an audit nobody can trust.
+
+**The Sisters' halves are banded apart**, the elder to the first half of
+the depth and the younger to the second. Finding one half then means the
+other is somewhere below you, which is a goal the labyrinth gave you
+rather than a quest handed to you.
+
+**Two forks ship** (art. 89): the elder Sister against the plate — build
+against body — and the leech against the careful bone — sustain against
+consistency. Taking one writes two deeds: the other's act, which closes
+the offer, and its loss, which is what the floor remembers. The room says
+the terms in one candle before either verb reaches the strip, and the good
+you left leaves its shape in the dust.
+
+**A found thing is worth something now.** A die fills the empty slot the
+moment it is taken rather than at the next waking, a wearable arms you
+from the next blow, and a talisman is in the next fight because the fight
+reads the permanent at the door. Past a full hand art. 60 stands
+unchanged: the pouch grows, and which six go down with you is settled at
+the next waking. Choosing that is a later wave.
 
 **And the depth heals — half as lethal, not solved.** A bare player now
 finishes depth one about a third of the time rather than a fifth; the
@@ -195,9 +289,15 @@ ordinary rooms are art. 26's first tier and not its second, and phase
   remembers you (art. 84). A sixth ritual, `meet`, is the only way a
   meeting crosses. A seventh, `remember`, writes a mark into `memories` —
   the socket is no longer empty, because art. 40's Savior is the first
-  thing with something to remember about you. `VAULT_VERSION` is 3; the
-  ledger's shape did not change, so a snapshot from before this wave still
-  loads. (arts 11, 36, 40, 47, 56, 60, 82, 84)
+  thing with something to remember about you. An eighth, `tookIntoRun`,
+  is what a good just collected does to the run already in flight: the
+  die fills the slot art. 55 left open, the wearable arms you from the
+  next blow. And **`load` is a migration ladder** rather than a version
+  check — `MIGRATIONS` walks a snapshot from whatever version it says it
+  is up to `VAULT_VERSION`, keeping the permanent and dropping the run
+  (which art. 36 makes unreplayable across schemas), and anything it
+  cannot walk is copied to `castlebrynth.quarantine` and left alone.
+  (arts 11, 36, 40, 47, 55–56, 60, 82, 84, 86)
 - **src/gen** — the drift, behind the three signatures the shell always
   knew: `deal`, `isWinnable`, `explainWinnability`. `deal` now takes the
   run's choice history and returns the history graph replayed — every
@@ -289,9 +389,9 @@ ordinary rooms are art. 26's first tier and not its second, and phase
 | `lots.armor` | corrode for one turn, the floor of nothing, resolution order (arts 46–47) |
 | `lots.items` | riders, the Sisters' ghost, the Ossuary, the Zealot, the audit (arts 49–56) |
 | `lots.loop` | the three endings, the hand whole, the card refilled at the door (arts 44, 63) |
-| `lots.floor` | all 46656 hands of six leave a line to claim (arts 46, 48, 63, 64) |
+| `lots.floor` | all 7776 hands of five leave a line to claim, and a shape above the floor: a pair or a run of 3, tight at ×2; the three lines a hand of five can never reach (arts 46, 48, 55, 63, 64) |
 | `lots.invariants` | a die never twice, a line never twice, damage floors, the recast odds |
-| `lots.fairness` | a bare player beats the Gnawing more often than not, and not always (art. 33) |
+| `lots.fairness` | a bare five-die player beats the Gnawing rarely and not never; a found bone moves that past a coin flip, and moves it further than the Rusted Plate does (arts 33, 55, 86) |
 | `lots.fight` | `reference/the-gnawing-fight.md`, turn for turn |
 | `gen` | the dealer run by run: lazy dealing, one-to-three doors, the instance, the prefix property, winnability by construction (arts 31, 33, 36, 79–82) |
 | `gen.drift` | 1000 runs per policy: every run locks and announces, a committed policy locks its own region, a coin flip still arrives, the fight band, the bans, the repeats, the tendencies (arts 31, 36–39, 77–78, 82) |
@@ -305,7 +405,11 @@ ordinary rooms are art. 26's first tier and not its second, and phase
 | `room.scene` | a look and a prop per room, ramps that only ever dither between adjacent steps, distinct pixels, the name in the first candle, the taken key gone, the opened door open (arts 17, 19, 21, 34, 70) |
 | `fight.persist` | the round trip at every point in a turn over 30 seeds, and the card that flight can never refresh (arts 63, 75) |
 | `descent.required` | the key unbound from rooms, placed once and before its lock across 7000 runs of adversarial policies; no legal walk reaches the lock keyless — with the control that proves the law is doing the work (arts 3, 4, 9, 80) |
-| `content.voice` | every player-facing string, in its category; every control against art. 66 |
+| `travelers` | three travelers on both of art. 83's axes, each die shaped like its death, every face 1–6, the catalog priced against the plain bone with the Orphan as the die that fails it, cost faces firing only when spent and never eaten by armor, an origin sentence per good linted as prose, the signature named by the first bone and the slot filled the moment it is taken (arts 50–51, 54–56, 60, 86–87) |
+| `goods` | the Sisters, the cord and the plate placed through the registry, the halves banded apart across 400 runs, no good dealt twice, a seeded run that meets a traveler and walks out with three goods, builds that differ run to run; and the fork — both goods in one socket, the terms said first and once, two verbs the thumb can tell apart, taking one closing the other irrevocably and showing the loss in the scene (arts 52–53, 70, 83, 89) |
+| `walkthrough` | the wave's acceptance walk end to end: five dice and an empty slot, a traveler met, their die taken and signed and slotted, a tap that answers with the distribution *and* the origin, a fork that closes what you leave, and a death that keeps both the die and the meeting — through the vault (arts 11, 32, 54–56, 84, 86–87, 89) |
+| `vault` | a v1 snapshot with two Book lines loading clean at version 3; the ladder with no gap in it; a current snapshot untouched; and quarantine rather than destruction for unreadable bytes, an unknown version, a newer build's snapshot, and a step that refuses (art. 11) |
+| `content.voice` | every player-facing string, in its category — origins included; every control against art. 66 |
 
 ### Debt
 Named, not hidden. Each of these is a task, not an accident.
@@ -338,14 +442,59 @@ Named, not hidden. Each of these is a task, not an accident.
   tendencies are per depth by construction, and the tests show that
   moving them moves the distribution. But "shallow leans quiet, deep
   leans toward teeth" is a claim about *two* depths, and there is one.
-- **New: the boon socket is never filled of the dealer's own accord.**
-  Its chance is zero everywhere. The only thing that goes into it is the
-  key art. 80 puts there. Art. 4's fleeting optional treasure has the
-  socket it needs and no content to put in it — that waits on the
-  economy. The *mercy* socket beside it is not in that position any more:
-  the Savior fills it of the dealer's own accord at `SAVIOR_CHANCE`, and
-  art. 83's `remembers` scope, which used to ship typed and unfilled, now
-  has exactly one thing in it. The merchant will be the second.
+- **~~The boon socket is never filled of the dealer's own accord.~~**
+  Closed by the travelers wave. The floor socket fills at `FLOOR_CHANCE`
+  (0.34) with whichever good the weights draw, and eight goods are on
+  offer against art. 80's key, which still fills it first because a lock
+  is owed and a bone never is. What is still open on that socket is
+  art. 4's *fleeting* treasure: a good on the floor waits as long as you
+  do, and nothing yet opens a window and closes it. That wants the
+  economy, or a ruling that a window is a socket's business.
+- **New: rarity is one number per encounter, and it is doing two jobs.**
+  `RARITY` bands the goods against each other — common for a traveler,
+  uncommon for the plate and the cord, rare for a Sister — and
+  `FLOOR_CHANCE` decides whether the socket fills at all. Between them a
+  run averages one or two finds. But `weight` is a *relative* number, so
+  as goods are added every existing good gets rarer without anyone
+  choosing that; and once a good is placed it is out of the pool for the
+  run, so the last good in a long run is far likelier than the first.
+  Neither is wrong yet at eight goods. Both will be at thirty, and the
+  fix is a ruling about what rarity means, not a number.
+- **~~A schema change eats every Book of Ends.~~** Closed. `load` used to
+  answer an unknown version with `return null`, and the next `save` wrote
+  over the bytes it had just refused — so the next time the ledger's
+  shape moved, every Book in existence went with it. There is a ladder
+  now (`MIGRATIONS`, 1→2→3), the run is dropped because art. 36 makes an
+  old one unreplayable, the permanent is carried forward, and anything
+  the ladder cannot walk — bad bytes, an unknown version, a snapshot from
+  a *newer* build, a step that refuses — is copied to
+  `castlebrynth.quarantine` and left alone. Only the first casualty is
+  kept, so a later boot cannot overwrite the interesting bytes.
+- **New: the ladder has no reader for what it quarantines.** Nothing in
+  the game shows a quarantined snapshot, offers to retry it against a
+  later build, or tells the player it exists. That is deliberate for now
+  — the point was to stop destroying it — but "we kept your Book
+  somewhere you cannot see" is only half a promise kept.
+- **New: a cost face can kill you on a turn you won.** A `wound` rider
+  fires with the claims, which is where art. 51 puts riders, and the
+  demo's order returns `won` before your health is checked — so a killing
+  blow is not also a killing blow taken, cost face included. That is
+  consistent and it is generous, and it is also the kind of thing a
+  player will find and either love or call a bug. No article covers the
+  order; art. 61's "never kills outright" is about ambush QTEs, not about
+  a price you chose to pay.
+- **New: a full hand cannot be chosen, only grown.** A found die fills
+  the empty slot while there is one; past that the pouch grows and the
+  hand is whatever the first six of it are. Art. 60 says composition is
+  the build, so the moment a player holds seven dice they are owed a say
+  in which six descend — and they do not have one. Nothing breaks until
+  a run finds two goods, which it now can.
+- **New: the forks are rare and nobody chose how rare.** A fork forms
+  only when both of its goods are still free to be dealt, so how often a
+  player meets one falls out of `FLOOR_CHANCE`, the weights, and where
+  the road went. Art. 89 says a fork is the cheapest lever for making a
+  room a decision; a lever whose frequency is an accident of three other
+  numbers is not being pulled on purpose.
 - **New: the neutral pool holds no lair.** A consequence rather than a
   decision: it caps how far a tendency change can move the mix, because a
   run's pre-lock rooms may come from a pool the change cannot reach.
@@ -369,6 +518,46 @@ Named, not hidden. Each of these is a task, not an accident.
   | first door | 0.195 | 0.246 | 0.355 |
   | last door | 0.191 | 0.239 | 0.357 |
   | coin flip | 0.199 | 0.245 | 0.359 |
+
+  **Then the travelers wave took a die away, and the numbers moved
+  again.** The same model, the same 2000 seeds, the same three policies,
+  now against a bare hand of five (arts 55, 60):
+
+  | | before the mercies | after the mercies | five dice, walking past every good | five dice, taking every good |
+  | --- | --- | --- | --- | --- |
+  | first door | 0.195 | 0.355 | 0.090 | 0.247 |
+  | last door | 0.191 | 0.357 | 0.086 | 0.243 |
+  | coin flip | 0.199 | 0.359 | 0.085 | 0.236 |
+
+  Say that plainly too: **removing one die cut survival by about three
+  quarters**, and the goods put back about two thirds of what it cost. A
+  single fight tells the same story — a bare player's win rate against
+  the Gnawing falls from ~0.78 to ~0.28, and one found bone takes it back
+  over 0.5, which is more than the Rusted Plate does. Three lines of the
+  ladder (the straight, three pairs, two triples) leave a bare hand's
+  reach entirely, and only a sixth die opens them again.
+
+  **That is the progression, not a regression.** The point of a five-die
+  start is that the sixth is somebody's, so the number to look at is not
+  one run but the chain of them. The same model, 1500 players, six runs
+  each, coin-flip doors, keeping whatever it finds:
+
+  | run | mean hand | finished depth one |
+  | --- | --- | --- |
+  | 1 | 5.00 | 0.216 |
+  | 2 | 5.47 | 0.371 |
+  | 3 | 5.73 | 0.456 |
+  | 4 | 5.87 | 0.547 |
+  | 5 | 5.93 | 0.575 |
+  | 6 | 5.96 | 0.605 |
+
+  Before this wave that column was 0.357 on run one and 0.357 forever.
+  Now the first waking is expected to die, the third run matches what
+  every run used to be, and the sixth is comfortably ahead of it. Death
+  became the progression system in the arithmetic and not only in the
+  pitch — which is what the wave was for, and is also the thing to watch:
+  if run one reads as unfair rather than as the beginning, the number to
+  turn is the Gnawing's, not the hand's.
 
   So: **survival roughly doubles, and a depth is still lost more often
   than it is won.** Say it plainly — this did not make depth one
@@ -464,20 +653,30 @@ Named, not hidden. Each of these is a task, not an accident.
   *required* flag can ever be earned rather than authored — the flag is
   content's word today, and the test checks it against the chain's own
   demands rather than trusting it.
-- **The whiff guarantee is unstated law.** Art. 46 no longer says anything
-  about a hand of six. Pigeonhole is still true of the dice, but it is the
-  card and not the values that can leave a turn with nothing to claim, so
-  `lots.floor.test.ts` asks about the floor and the card instead.
+- **The whiff guarantee is unstated law, and the hand it was about is a
+  die smaller.** Art. 46 says nothing about a hand of any size. Pigeonhole
+  is still true of the dice and `lots.floor.test.ts` states what it is now
+  true *of*: five dice always leave a pair or a run of 3, tight at ×2
+  (witness 1-1-2-3-5), where six always left a pair or the straight. It is
+  still the card and not the values that can leave a turn with nothing to
+  claim. What is genuinely new and unwritten in the law: **three lines of
+  the ladder cannot be claimed by a bare hand at all** — the straight,
+  three pairs, two triples — so a first-run player sees three lines on the
+  card that are not for them yet. That reads as a promise if it is
+  deliberate and as a bug if it is not, and no article says which.
 - **Art. 19's paint order.** Unchanged and still open: the reference lays
   the traveler over a light shaft standing nearer than it, `far2near`
   reports the plate as out of order, and the law does not say whether a
   light is a sprite or atmosphere.
 - **The Warden is a door, not a being.** Art. 37 names the Warden's door as
   the anchor that ends a depth; nothing says what the Warden is.
-- **Ladder modifiers are read as one multiplier per tier.** Art. 53 names
-  the species and says "a tier higher" without saying what a tier is worth.
-  No content ships one, and the engine's reading is declared on the
-  talisman rather than assumed.
+- **Ladder modifiers are read as one multiplier per tier, and now one
+  ships.** Art. 53 names the species and says "a tier higher" without
+  saying what a tier is worth. The counting cord is the first content to
+  exercise it: `+1` to the multiplier on the three run lines, declared on
+  the talisman rather than assumed. That makes the engine's reading
+  load-bearing rather than hypothetical, and the article still does not
+  say it is right.
 
 ### Answered since the last cut
 **Art. 25 is amended** (2026-08-04): exact fill via sharp upscale replaces

@@ -22,6 +22,7 @@
 import type { Chain, ChainNode, Dealer, Door, Fill } from '../gen/index.js'
 import { deal, nodeAt } from '../gen/index.js'
 import type { RegionId } from '../gen/index.js'
+import type { Good } from '../lots/index.js'
 import type { WorldMark } from '../room/index.js'
 import type {
   EncounterId,
@@ -34,6 +35,7 @@ import type {
 import {
   atBeat,
   carrying,
+  collect,
   deedKey,
   didHere,
   movedTo,
@@ -42,6 +44,7 @@ import {
   // aliases is art. 84's, and it is about an encounter and not a beat.
   remember as markMemory,
   tookDoor,
+  tookIntoRun,
   wounded,
 } from '../state/index.js'
 
@@ -122,6 +125,26 @@ export interface Act {
    * standing in the room (`meet`); this is the mark left by the deed.
    */
   readonly remembers?: EncounterId
+  /**
+   * arts 49, 86: what doing this puts on the *permanent* ledger — a dead
+   * traveler's die, a talisman, a wearable. `gives` is the run's pocket and
+   * burns with the run; this is the collection and does not (art. 11), so it
+   * crosses by the `collect` ritual and by nothing else.
+   *
+   * art. 56: collecting is also how a signature is named, and the ritual
+   * does that on its own — nothing here has to know it is the first.
+   */
+  readonly takes?: readonly Good[]
+  /**
+   * art. 89: the acts this one closes. A fork is two goods in one socket,
+   * and taking one forfeits the other — so the deed that takes writes the
+   * deed that lost, in the same instance and on the same beat.
+   *
+   * It is act ids and not encounters because the forfeiture is a *deed*: it
+   * is what the room has to stop offering and stop painting, and both of
+   * those read the deeds (arts 70, 82).
+   */
+  readonly forfeits?: readonly string[]
 }
 
 /**
@@ -211,9 +234,13 @@ export function sceneStateOf(ledgers: Ledgers, book: RoomBook, node: ChainNode):
   return {
     room: node.room,
     instance: node.instance,
-    done: actsIn(book, node)
-      .filter((one) => done(run, node.instance, one))
-      .map((one) => one.id),
+    // art. 70: every deed done here, and not only the ones that are still
+    // acts on the strip. art. 89's forfeiture is a deed with no verb behind
+    // it — it is what the room lost rather than what you pressed — and a
+    // scene that could only see verbs could not paint it.
+    done: (run?.did ?? [])
+      .filter((key) => key.startsWith(`${node.instance}|`))
+      .map((key) => key.slice((node.instance as string).length + 1)),
     opened: (run?.opened ?? []).filter((key) => key.startsWith(`${node.instance}→`)),
     horror: run?.fight?.horrorHealth ?? null,
     fills: node.fills,
@@ -233,7 +260,9 @@ export function sceneKey(state: SceneState): string {
     state.done.join('+'),
     state.opened.join('+'),
     state.horror ?? '-',
-    state.fills.map((fill) => `${fill.socket}=${fill.encounter}`).join('+'),
+    state.fills
+      .map((fill) => `${fill.socket}=${fill.encounter}${fill.orElse === undefined ? '' : `/${fill.orElse}`}`)
+      .join('+'),
   ].join('|')
 }
 
@@ -347,14 +376,25 @@ export function act(ledgers: Ledgers, chosen: Act): Ledgers {
   // gives are written against the run — one is about here, the other is
   // about you.
   let moved = didHere(run, run.at.instance, chosen.id)
+  // art. 89: and what this act closes is written down in the same breath, so
+  // the forfeited good is gone from the tray and gone from the paint before
+  // anything can offer it again.
+  for (const lost of chosen.forfeits ?? []) moved = didHere(moved, run.at.instance, lost)
   for (const item of chosen.gives) moved = carrying(moved, item)
   // art. 40: the breath is the run's, so it burns with the run (art. 11).
   if (breath > 0) moved = wounded(moved, Math.min(run.healthMax, run.health + breath))
   // art. 84: and the mark it leaves is not, so it crosses by the ritual.
-  const permanent =
+  let permanent =
     chosen.remembers === undefined
       ? ledgers.permanent
       : markMemory(ledgers.permanent, chosen.remembers, chosen.id)
+  // arts 11, 86: the collection survives death, so a good crosses the ledgers
+  // by the named ritual rather than by an assignment.
+  for (const good of chosen.takes ?? []) permanent = collect(permanent, good)
+  // arts 47, 55–56: and a found thing is worth something now. The bone goes
+  // into the slot art. 55 left open, and a plate found here blocks from the
+  // next blow rather than from the next waking.
+  if (permanent !== ledgers.permanent) moved = tookIntoRun(moved, permanent)
   return { run: moved, permanent }
 }
 

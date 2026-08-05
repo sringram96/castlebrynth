@@ -393,6 +393,50 @@ function isWearable(taken: Talisman | Wearable): taken is Wearable {
   return 'armor' in taken
 }
 
+/**
+ * What a good just collected does to the run already in flight (arts 47,
+ * 55–56, 60, 86).
+ *
+ * A found thing has to be worth something *now*. art. 55 leaves the sixth
+ * slot empty from the first waking and calls it the invitation; an
+ * invitation you cannot accept until you die is not one, and a plate that
+ * blocks nothing until the next descent is not armor. So:
+ *
+ * - **the hand**, while it is short of the body's hand size: a newly
+ *   collected die fills it, appended, so the dice already on the table keep
+ *   their identities — which is what art. 75's replay depends on. Past that
+ *   the hand is full and art. 60 stands unchanged: the pouch grows, and
+ *   which six go down with you is settled at the next waking.
+ * - **the armor** (art. 47): a wearable not yet worn is worn, and its value
+ *   is *added* rather than the stat being re-derived. The stat is the worn
+ *   wearables "then moved by mercies, wounds, and curses" — recomputing it
+ *   would quietly undo whatever had moved it.
+ *
+ * Talismans need nothing here: they are read off the permanent at the door
+ * (art. 53), so a keepsake found in this room is in the next fight already.
+ */
+export function tookIntoRun(run: RunLedger, permanent: PermanentLedger): RunLedger {
+  const dice = [...run.hand.dice]
+  const held = new Set<string>(dice.map((die) => die.id as string))
+  for (const die of permanent.pouch.dice) {
+    if (dice.length >= permanent.handSize) break
+    if (held.has(die.id as string)) continue
+    dice.push(die)
+    held.add(die.id as string)
+  }
+
+  const worn = [...run.worn]
+  let armor = run.armor
+  for (const wearable of permanent.wearables) {
+    if (worn.includes(wearable.id)) continue
+    worn.push(wearable.id)
+    armor += wearable.armor
+  }
+
+  if (dice.length === run.hand.dice.length && worn.length === run.worn.length) return run
+  return { ...run, hand: { dice }, worn, armor }
+}
+
 /** art. 32: every death reseeds. The run burns; one line is written. */
 export function die(ledgers: Ledgers, cause: string): PermanentLedger {
   return withEnding(ledgers, cause)
@@ -490,15 +534,116 @@ export interface Vault {
   write(key: string, value: string): void
 }
 
-/** One versioned key. A snapshot from another version is not read (art. 36). */
+/** One versioned key. */
 export const VAULT_KEY = 'castlebrynth'
+
+/**
+ * Where a snapshot goes that could not be read at all.
+ *
+ * art. 11 promises that the Book of Ends survives everything, and the old
+ * `load` broke that promise the moment a schema changed: it refused, and the
+ * next write wiped what it had refused. Nothing is destroyed here. A
+ * snapshot the ladder below cannot walk forward is copied to this key and
+ * left alone, so a reader written later can still go and get it.
+ */
+export const QUARANTINE_KEY = 'castlebrynth.quarantine'
+
 /**
  * Bumped when the run's shape changes: art. 75 put the fight, the doors it
  * has opened and the thumb's half-made selection on the ledger, and the
  * drift put the history graph, the instance and the deeds beside them. A
- * snapshot written before either cannot answer for them.
+ * snapshot written before either cannot answer for them — so it is migrated
+ * forward by the ladder below, never refused.
  */
 export const VAULT_VERSION = 3
+
+// ── The migration ladder ───────────────────────────────────────────────
+
+/**
+ * One step of the ladder: a snapshot at `from`, rewritten so that it is a
+ * snapshot at `from + 1`.
+ *
+ * A migration is handed the raw parsed object and hands back a raw parsed
+ * object. It is deliberately not typed against `Snapshot`: the whole point
+ * of it is that its input has a *different* shape from the one the rest of
+ * this module knows, and a migration that could be type-checked against
+ * today's types would be a migration that had already stopped working.
+ */
+export interface Migration {
+  readonly from: number
+  readonly up: (snapshot: Record<string, unknown>) => Record<string, unknown>
+}
+
+/** A raw object at some version, or nothing. */
+type Raw = Record<string, unknown>
+
+const asRaw = (value: unknown): Raw | null =>
+  typeof value === 'object' && value !== null && !Array.isArray(value) ? (value as Raw) : null
+
+/**
+ * arts 11, 36: what every ladder step owes.
+ *
+ * The **permanent survives, the run does not.** A run is a position in an
+ * arrangement, and under art. 36 the arrangement is derived from a seed and
+ * a choice history that older schemas did not record — so an old run cannot
+ * be replayed, and pretending otherwise would put the player somewhere the
+ * dealer never dealt. Dropping it costs a run; keeping the permanent keeps
+ * the dice, the knowledge and the Book, which is what art. 11 actually
+ * promises. The boot then wakes a fresh run from the permanent it kept.
+ */
+function keepingOnlyThePermanent(snapshot: Raw, fill: (permanent: Raw) => Raw): Raw {
+  const ledgers = asRaw(snapshot.ledgers)
+  const permanent = ledgers === null ? null : asRaw(ledgers.permanent)
+  // A step that cannot find the thing it is meant to carry forward refuses.
+  // Inventing an empty permanent here would be the old wipe wearing a new
+  // coat — a blank Book of Ends written over a real one, quietly.
+  if (permanent === null) throw new Error('no permanent ledger to migrate')
+  return { ...snapshot, ledgers: { run: null, permanent: fill({ ...permanent }) } }
+}
+
+/**
+ * The ladder, in order. Each step names the version it reads; `load` walks
+ * from whatever it finds up to `VAULT_VERSION`, and a gap in the chain is a
+ * snapshot that gets quarantined rather than guessed at.
+ */
+export const MIGRATIONS: readonly Migration[] = [
+  /**
+   * 1 → 2. The thumb's ruling (art. 75) put the fight, the doors a room has
+   * opened and the half-made selection on the ledger. A v1 permanent
+   * predates the wearables axis (art. 49) and the two body stats (arts 47,
+   * 60), so those are filled with what the bare body is.
+   */
+  {
+    from: 1,
+    up: (snapshot) =>
+      keepingOnlyThePermanent(snapshot, (permanent) => ({
+        pouch: permanent.pouch ?? { dice: [] },
+        signature: permanent.signature ?? null,
+        keepsakes: permanent.keepsakes ?? [],
+        wearables: permanent.wearables ?? [],
+        known: permanent.known ?? [],
+        // art. 11: this is the line the whole ladder exists for.
+        bookOfEnds: permanent.bookOfEnds ?? [],
+        handSize: permanent.handSize ?? 6,
+        body: permanent.body ?? { health: 26, armor: 0 },
+      })),
+  },
+  /**
+   * 2 → 3. The drift (arts 77–85) put the history graph, the instance, the
+   * deeds and — on the permanent — art. 84's meetings and memories. A v2
+   * permanent has met nobody it can prove, so it starts them empty: a
+   * meeting it cannot name is not a meeting it can keep.
+   */
+  {
+    from: 2,
+    up: (snapshot) =>
+      keepingOnlyThePermanent(snapshot, (permanent) => ({
+        ...permanent,
+        met: permanent.met ?? [],
+        memories: permanent.memories ?? [],
+      })),
+  },
+]
 
 /**
  * art. 36: every mutation persists; boot restores exactly. A snapshot is a
@@ -520,22 +665,87 @@ export function save(ledgers: Ledgers, vault: Vault): void {
 /**
  * Boot. A window that was open at close resolves as missed (art. 4); nothing
  * else about the moment may change.
+ *
+ * art. 11, the debt this closes: an older snapshot is walked up the ladder
+ * rather than refused. Refuse-and-wipe was one schema change away from
+ * eating every Book of Ends, which is the one thing the game promises
+ * survives everything.
+ *
+ * Three things can go wrong, and none of them destroys anything:
+ *
+ * - **unreadable bytes** — quarantined, and `null` returned;
+ * - **a version this build has no ladder to** (a gap below, or a snapshot
+ *   from a *newer* build) — quarantined, and `null` returned;
+ * - **a migration that throws** — quarantined, and `null` returned.
+ *
+ * `null` means the shell wakes fresh. It does not mean the old bytes are
+ * gone: the next `save` writes `VAULT_KEY`, and the quarantine is a
+ * different key.
  */
 export function load(vault: Vault): Ledgers | null {
   const written = vault.read(VAULT_KEY)
   if (written === null) return null
-  let parsed: Snapshot
-  try {
-    parsed = JSON.parse(written) as Snapshot
-  } catch {
+
+  const quarantine = (): null => {
+    // Only the first casualty is kept. A later boot would otherwise
+    // overwrite the interesting bytes with the fresh ones it just wrote.
+    if (vault.read(QUARANTINE_KEY) === null) vault.write(QUARANTINE_KEY, written)
     return null
   }
-  if (parsed === null || typeof parsed !== 'object') return null
-  if (parsed.version !== VAULT_VERSION) return null
-  const { run, permanent } = parsed.ledgers
-  if (permanent === undefined || permanent === null) return null
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(written)
+  } catch {
+    return quarantine()
+  }
+  const raw = asRaw(parsed)
+  if (raw === null) return quarantine()
+
+  const migrated = climb(raw)
+  if (migrated === null) return quarantine()
+
+  const ledgers = asRaw(migrated.ledgers)
+  const permanent = ledgers === null ? null : asRaw(ledgers.permanent)
+  if (permanent === null) return quarantine()
+  const run = ledgers === null ? null : asRaw(ledgers.run)
   // art. 4: a window open when the app closed resolves as missed.
-  return { run: run === null ? null : ({ ...run, window: null } as RunLedger), permanent }
+  return {
+    run: run === null ? null : ({ ...run, window: null } as unknown as RunLedger),
+    permanent: permanent as unknown as PermanentLedger,
+  }
+}
+
+/**
+ * A snapshot, walked from whatever version it says it is up to this one.
+ * `null` when there is no path — which is a snapshot to keep, not one to
+ * throw away.
+ */
+function climb(raw: Raw): Raw | null {
+  const at = raw.version
+  if (typeof at !== 'number' || !Number.isInteger(at) || at < 1) return null
+  // A snapshot from a newer build. This one cannot read it and must not
+  // rewrite it: the newer build is still installed somewhere.
+  if (at > VAULT_VERSION) return null
+
+  let walking = raw
+  for (let version = at; version < VAULT_VERSION; version++) {
+    const step = MIGRATIONS.find((one) => one.from === version)
+    if (step === undefined) return null
+    try {
+      const next = asRaw(step.up(walking))
+      if (next === null) return null
+      walking = { ...next, version: version + 1 }
+    } catch {
+      return null
+    }
+  }
+  return walking
+}
+
+/** What was set aside because it could not be read, if anything. */
+export function quarantined(vault: Vault): string | null {
+  return vault.read(QUARANTINE_KEY)
 }
 
 /** The vault a browser has. The URL is the whole install. */

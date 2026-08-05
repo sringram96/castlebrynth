@@ -9,7 +9,7 @@
 
 import { harm } from './combos.js'
 import { claimedDice } from './card.js'
-import { healedBy, ridersFired, shapeTriggers } from './goods.js'
+import { healedBy, ridersFired, shapeTriggers, woundedBy } from './goods.js'
 import { casting } from './turn.js'
 import type { Armor, Decision, Goods, Intent, Resolution, Turn } from './types.js'
 
@@ -64,13 +64,19 @@ export function decide(
       harmDealt: 0,
       harmTaken: 0,
       healed: 0,
+      hurt: 0,
       blocked: 0,
       linesSpent,
       fled: true,
     }
   }
   const harmDealt = attack(turn, goods)
-  const healed = healedBy(ridersFired(turn.claims, goods.riders))
+  const fired = ridersFired(turn.claims, goods.riders)
+  const healed = healedBy(fired)
+  // art. 86: a cost face is charged where the riders fire, not where the
+  // intent lands. Armor does not touch it — armor is what the horror has to
+  // get through, and this did not come from the horror (art. 47).
+  const hurt = woundedBy(fired)
   const standing = armorAgainst(turn.intent, armor)
   const blocked = Math.min(standing, turn.intent.amount)
   return {
@@ -79,6 +85,7 @@ export function decide(
     // art. 46 and the demo alike: damage has a floor of nothing.
     harmTaken: Math.max(0, turn.intent.amount - standing),
     healed,
+    hurt,
     blocked,
     linesSpent,
     fled: false,
