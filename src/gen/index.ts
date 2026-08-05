@@ -14,7 +14,7 @@
 
 import type { RoomId, RunHistory, Seed } from '../state/index.js'
 import { instanceOf } from '../state/index.js'
-import { FRESH_DRIFT, NEUTRAL, locked, poolRooms, pools, pull, tallied } from './drift.js'
+import { FRESH_DRIFT, locked, poolRooms, pools, pull, tallied } from './drift.js'
 import type { Lot } from './lot.js'
 import { SALT, lotAt, pick, pickAt, pickSome } from './lot.js'
 import type {
@@ -79,11 +79,6 @@ export interface Dealer {
 
 export function dealerOf(catalog: Catalog, grammar: Grammar): Dealer {
   return { catalog, grammar }
-}
-
-/** art. 36: a door taken is a choice written down, and the run is its choices. */
-export function taking(history: RunHistory, door: Door): RunHistory {
-  return { taken: [...history.taken, door.at] }
 }
 
 /**
@@ -442,26 +437,7 @@ export function meetings(node: ChainNode | null): readonly EncounterId[] {
   return node?.fills.map((fill) => fill.encounter) ?? []
 }
 
-/** art. 30: which horror stands in this room, by identity, if any. */
-export function horrorIn(node: ChainNode | null, catalog: Catalog): string | null {
-  for (const fill of node?.fills ?? []) {
-    const one = catalog.encounters.find((held) => held.id === fill.encounter)
-    if (one?.kind === 'horror' && one.horror !== undefined) return one.horror
-  }
-  return null
-}
-
 /** The encounter an id names, for content and the shell to read (art. 83). */
 export function encounterOf(catalog: Catalog, id: EncounterId): Encounter | null {
   return catalog.encounters.find((one) => one.id === id) ?? null
-}
-
-/** art. 77: which region a run has committed to, if it has committed yet. */
-export function arrivedAt(chain: Chain): RegionId | null {
-  return chain.drift.locked
-}
-
-/** What the pattern of doors has said, region by region (art. 77). */
-export function leaning(chain: Chain): Readonly<Record<string, number>> {
-  return { [NEUTRAL]: 0, ...chain.drift.tally }
 }

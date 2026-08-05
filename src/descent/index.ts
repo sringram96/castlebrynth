@@ -108,9 +108,6 @@ export interface SocketWords {
   readonly acts: readonly Act[]
 }
 
-/** A socket that content has nothing to say for. Silence is still a bug. */
-export const SAYS_NOTHING: SocketWords = { beats: [], tappables: [], acts: [] }
-
 /**
  * What a room says. Content implements it; the engine never reads a string
  * it did not receive through this port.
