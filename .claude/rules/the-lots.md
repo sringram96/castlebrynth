@@ -11,8 +11,25 @@ fixture lands (tracked on the board).
 ## The turn
 41. SETTLED (amended) — Yahtzee turns survive at the core: a first
     casting, keep any dice, one second casting of the rest. Then the
-    claim phase: assemble combos from the hand and end the turn. FLEE is
-    always offered. The THROW / BRACE / FLEE decision trio is repealed —
+    claim phase: assemble combos from the hand and end the turn.
+
+    **Amended by the attack ruling of 2026-08-05: the turn is three
+    presses.** Roll, then Reroll, then Attack. Holding is tapping the
+    dice you want to keep; Reroll throws everything you did not hold,
+    and holding all of them is how the second casting is declined —
+    there is no separate Keep all. After the reroll the selection *is*
+    the attack: one press claims what the selection makes and ends the
+    turn behind it. A turn therefore claims once. There is no Take
+    back, because nothing is committed until the press — a tap on a
+    chosen die un-chooses it, and that is the whole of undo.
+
+    When the selection claims nothing the press is End turn instead,
+    because arts 46 and 63 both require a turn to be endable with
+    nothing to hit with. FLEE is
+    always offered — from the ACTS panel, which is where art. 67 (as
+    amended 2026-08-05) puts it: leaving is a thing you do about the
+    door, not a move in the duel. The THROW / BRACE / FLEE decision trio
+    is repealed —
     attacking is claiming, and defense is armor (art. 47). Vocabulary:
     *keep* (or *freeze*) is mid-turn holding; "brace" leaves the game's
     vocabulary.
@@ -26,10 +43,19 @@ fixture lands (tracked on the board).
     nothing; only effects may take a die.
 
 ## The duel
-45. SETTLED (amended) — The poker duel. Dice are numbered; a claimed
-    combo scores sum × tier. A turn may claim several combos; each die
-    is spent in at most one claim; dice that fit nothing go unused and
-    do nothing. Dice are the offense and only the offense.
+45. SETTLED (amended twice) — The poker duel. Dice are numbered; a
+    claimed combo scores sum × tier; each die is spent in at most one
+    claim; dice that fit nothing go unused and do nothing. Dice are the
+    offense and only the offense.
+
+    **The several-combos clause is spent (ruled 2026-08-05).** A turn
+    claims once, under art. 41 as amended. The engine still takes more
+    than one claim per turn — a good that grants a second attack has
+    its socket — but nothing ships that presses it. Measured against
+    the Gnawing, claiming the leftovers as well moved the win rate by
+    about a point in either direction, inside the noise: the second
+    claim scrapes a pair off a hand whose turn is already decided. It
+    was three presses buying nothing.
 46. SETTLED (amended) — Combos only: dice harm only through claimed
     combos. The whiff clause is repealed — a turn without combos is a
     turn of armor and patience, not a punishment. The ANY DICE line
@@ -50,9 +76,14 @@ fixture lands (tracked on the board).
     fight; the card refills between fights. An empty card leaves only
     armor and flight: the card is the fight's fuse, made of your own
     spending.
-64. SETTLED — A composite is a single claim: a full house spends one
-    line, not a triple and a pair. Choosing between one composite line
-    and two simple lines is the card's central decision.
+64. SETTLED (amended 2026-08-05) — A composite is a single claim: a
+    full house spends one line, not a triple and a pair. Choosing
+    between one composite line and two simple lines is the card's
+    central decision — and under art. 41 as amended the two simple
+    lines are two *turns*, not two presses of one. The decision
+    survives and its price changed: a composite is tempo, two simples
+    are card economy, and you pay for the second one with a turn of the
+    horror's intent landing on you.
 65. SETTLED — Intents may attack the plan, not just the body: sealing
     lines, cursing values, corroding armor — each declared on the
     intent like any number (extends art. 58).

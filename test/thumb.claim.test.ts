@@ -78,8 +78,14 @@ function thumb(opened: Fight, lot: Lot) {
       phase = 'claim'
       selected = []
     },
-    /** "keep all" — the second casting declined, not spent. */
-    keepAll() {
+    /**
+     * The second casting declined. art. 41 (amended): there is no Keep all
+     * button any more — holding every die and pressing Reroll throws nothing,
+     * which is the same thing said in the vocabulary the phase already has.
+     */
+    holdAll() {
+      for (const landed of casting(now.turn)) this.tap(landed.die)
+      now = withTurn(now, recast(now.turn, lot))
       phase = 'claim'
       selected = []
     },
@@ -109,12 +115,22 @@ function thumb(opened: Fight, lot: Lot) {
       if (phase !== 'claim' || selected.length === 0) return null
       return fitsNothing(now.turn, selected, LADDER) ? (NOTICES['claim.exact'] ?? '') : null
     },
-    /** Pressing one of the claim buttons. */
-    take(line: Line) {
+    /**
+     * "attack" — one press (art. 41, amended 2026-08-05). The selection is
+     * the attack: the claim goes on the ledger and the turn ends behind it,
+     * so the two halves the thumb used to press separately are returned
+     * together here.
+     */
+    attack(line: Line) {
       now = withTurn(now, claim(now.turn, selected, line, LADDER, GOODS))
+      const claimed = now.turn
+      const resolution = decide(claimed, 'end-turn', now.armor, GOODS)
+      now = advanceFight(now, resolution)
+      phase = 'pre'
       selected = []
+      return { claimed, resolution }
     },
-    /** "end turn" */
+    /** "end turn" — the press when the selection claims nothing (art. 46). */
     endTurn() {
       const resolution = decide(now.turn, 'end-turn', now.armor, GOODS)
       now = advanceFight(now, resolution)
@@ -163,7 +179,7 @@ describe('the thumb — art. 72 (the exact selection, and why it fits nothing)',
     expect(play.values()).toEqual([4, 1, 4, 2, 4, 2])
 
     // Keeping is planning (art. 42), and this hand is already what it wants.
-    play.keepAll()
+    play.holdAll()
     expect(play.phase).toBe('claim')
 
     // The exact five: three fours and two twos, leaving the one behind.
@@ -175,17 +191,17 @@ describe('the thumb — art. 72 (the exact selection, and why it fits nothing)',
     expect(play.offers()).toContain('full-house')
     expect(play.says()).toBeNull()
 
-    play.take('full-house')
+    // One press: the claim and the end of the turn (art. 41, amended).
+    const before = play.fight.horrorHealth
+    const { claimed, resolution } = play.attack('full-house')
 
-    const made = play.fight.turn.claims[0]!
+    const made = claimed.claims[0]!
     expect(made.line).toBe('full-house')
     expect(made.sum).toBe(4 * 3 + 2 * 2)
     expect(harm(made)).toBe(16 * LADDER['full-house'].multiplier)
 
     // The card burns the line, and the horror wears the harm (arts 45, 63).
-    expect(play.fight.turn.card['full-house']).toBe(true)
-    const before = play.fight.horrorHealth
-    const resolution = play.endTurn()
+    expect(claimed.card['full-house']).toBe(true)
     expect(resolution.harmDealt).toBe(16 * LADDER['full-house'].multiplier)
     expect(play.fight.horrorHealth).toBe(before - resolution.harmDealt)
   })
@@ -193,7 +209,7 @@ describe('the thumb — art. 72 (the exact selection, and why it fits nothing)',
   it('says why when the selection holds a full house without being one', () => {
     const play = thumb(atTheFightDoor(), lotFrom(seedOf(FULL_HOUSE_SEED)))
     play.roll()
-    play.keepAll()
+    play.holdAll()
 
     // The whole hand: a full house is in there, but the selection is not one.
     for (const landed of play.laid()) play.tap(landed.die)
@@ -214,7 +230,7 @@ describe('the thumb — art. 72 (the exact selection, and why it fits nothing)',
   it('never says why while a combo is on offer', () => {
     const play = thumb(atTheFightDoor(), lotFrom(seedOf(FULL_HOUSE_SEED)))
     play.roll()
-    play.keepAll()
+    play.holdAll()
     const fours = play.laid().filter((landed) => landed.face.value === 4)
     for (const landed of fours) play.tap(landed.die)
     expect(play.offers()).toContain('triple')

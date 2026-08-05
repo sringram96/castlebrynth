@@ -290,9 +290,6 @@ export const NOTICES: Readonly<Record<string, string>> = {
   'choose.which': 'More bones than your hand holds. The rest stay up here.',
   'choose.full': 'Your hand is full. Put one back to take another.',
   'choose.short': 'Your hand is not full yet.',
-  // art. 69: the acts panel during a fight. It says what it holds rather
-  // than going blank, and it never instructs (art. 66's other half).
-  'acts.infight': 'Nothing here but the room, and the room is waiting.',
   // art. 72: claim offers match the exact selection, so a selection that
   // fits nothing says why. The shape must be exactly what is chosen — a
   // full house is the five, never the five and one more.
@@ -411,10 +408,13 @@ export const VERBS: Readonly<Record<string, string>> = {
   close: 'Close',
   card: 'Card',
   roll: 'Roll',
-  recast: 'Recast',
-  'keep-all': 'Keep all',
-  claim: 'Claim',
-  'take-back': 'Take back',
+  // art. 41 (amended 2026-08-05): the turn is three presses — Roll, Reroll,
+  // Attack. "Recast" was the law's word for the second casting and made the
+  // thumb learn a synonym for a thing every dice game already has a word
+  // for; "Claim" named the mechanism (a line off the card) where the player
+  // is doing the only thing anybody comes to a fight to do.
+  recast: 'Reroll',
+  attack: 'Attack',
   // art. 66: two words or fewer, and it never narrates.
   swap: 'Swap',
   'end-turn': 'End turn',
