@@ -132,6 +132,32 @@ tray: darker ground, ruled off, lit along its top edge, with art. 57's
 running totals and the card's glyph pinned in its header and the hand
 under them.
 
+**The pouch is informative, and the hand is chosen at the waking.** The
+first cut let you swap dice from the POUCH panel at any time, which put a
+hand-change inside a descent and made the panel a working surface with a
+guard on it. Art. 60 already said the hand is assembled *for the
+descent*, so the choosing moved to where a descent begins: after an
+ending, when the pouch has outgrown the hand, the run opens on a screen
+that asks which dice come down. A die found mid-descent goes into the
+pouch and stays there.
+
+That makes three things true by construction rather than by a guard. The
+hand never moves inside a descent, so a fight can never be re-armed
+(arts 63, 75). POUCH is a thing you *read* — every die answers with its
+declared truth and commits nothing — so it needs no verb. And **the
+pouch is shut during a fight**: there is nothing to do in there, and a
+tab that only ever says "not now" is worse than a tab that is not
+offered.
+
+The choosing screen is a screen and not a panel, because it is a
+decision of its own. It has no tabs — there is nowhere else to be until
+it is answered — and it spends no new vocabulary: the dice are tapped
+the way every die is tapped, the picks are staged the way a claim is
+(art. 72), and one plain verb commits. It also gives the spare row the
+room the POUCH panel could not: **the "spare row has no ceiling" debt is
+closed**, because the place that has to show everything you own is now a
+screen rather than a strip in the tray.
+
 **And FIGHT is not a tab.** The first cut of this shipped with a real
 bug: the duel's verbs were rendered into ACTS, so a fight force-focused a
 panel you then had to *leave* in order to roll. Fixing that made the
@@ -582,11 +608,12 @@ Named, not hidden. Each of these is a task, not an accident.
   offers no help at all: no sorting, no comparison, no "this is what you
   would give up" beyond the two declared truths a tap answers with. At
   eight goods that is fine. At thirty it is a spreadsheet.
-- **New: the spare row has no ceiling.** Every good you ever find stays
-  in the pouch forever and every one of them draws a slot in the tray.
-  Six runs of finds is already a row that wraps. Art. 67 says the pouch
-  is visible slots and does not say how many, so this is a design
-  question about the tray rather than a bug — but it arrives fast.
+- **~~The spare row has no ceiling.~~** Closed by moving the choice to
+  its own screen. The place that has to show everything you own is no
+  longer a strip in the tray, and the POUCH panel is informative rather
+  than a working surface. What is still true is that a pouch of thirty
+  is thirty slots to read on the choosing screen — but a screen can
+  scroll, sort and group, and a tray strip could not.
 - **New: the forks are rare and nobody chose how rare.** A fork forms
   only when both of its goods are still free to be dealt, so how often a
   player meets one falls out of `FLOOR_CHANCE`, the weights, and where

@@ -530,34 +530,50 @@ export function sparesOf(permanent: PermanentLedger): readonly Die[] {
 }
 
 /**
- * arts 60, 86 (ruled 2026-08-05): the hand is a **chosen** six, and choosing
- * is a swap.
+ * arts 60, 86 (ruled 2026-08-05, amended): the hand is a **chosen** set, and
+ * it is chosen **at the waking**.
  *
- * A found die past a full hand does not simply pile up in the pouch waiting
- * for a waking that will never look at it — it asks which die it replaces,
- * and it is a straight exchange: the one you take goes into the hand's
- * order, the one you give up becomes a spare. Nothing is destroyed and
- * nothing is sold; the pouch is the collection (art. 60) and this only ever
- * moves things inside it.
+ * A die found mid-descent goes into the pouch and stays there. The pouch is
+ * the collection and grows for ever; the hand is what you go down with, and
+ * art. 60 has always said it is assembled *for the descent*. So the choosing
+ * happens where a descent begins — after an ending, when the pouch has
+ * outgrown the hand — and never in the middle of one.
  *
- * It is done by exchanging positions rather than by keeping a second list,
+ * The choice is expressed by reordering rather than by a second list,
  * because the pouch's order *is* the hand (`handFrom`). One statement of
- * what you are carrying, and nothing that can disagree with it.
+ * what you are carrying, and nothing that can disagree with it. The chosen
+ * dice come to the front in the order they were chosen; everything else
+ * keeps its relative order behind them, so the pouch stays a stable thing to
+ * read down.
+ *
+ * Anything not in the pouch is ignored, and a choice that names fewer than
+ * the hand holds is honoured as far as it goes — the rest of the hand fills
+ * from the spares behind it, exactly as a first waking does.
  */
-export function swapInPouch(
+export function chooseHand(
   permanent: PermanentLedger,
-  taking: DieId,
-  leaving: DieId,
+  chosen: readonly DieId[],
 ): PermanentLedger {
-  if (taking === leaving) return permanent
-  const dice = [...permanent.pouch.dice]
-  const to = dice.findIndex((die) => die.id === taking)
-  const from = dice.findIndex((die) => die.id === leaving)
-  if (to < 0 || from < 0) return permanent
-  const held = dice[to]!
-  dice[to] = dice[from]!
-  dice[from] = held
-  return { ...permanent, pouch: { dice } }
+  const owned = new Map(permanent.pouch.dice.map((die) => [die.id as string, die] as const))
+  const taken: Die[] = []
+  const seen = new Set<string>()
+  for (const id of chosen) {
+    const die = owned.get(id as string)
+    if (die === undefined || seen.has(id as string)) continue
+    taken.push(die)
+    seen.add(id as string)
+  }
+  const rest = permanent.pouch.dice.filter((die) => !seen.has(die.id as string))
+  return { ...permanent, pouch: { dice: [...taken, ...rest] } }
+}
+
+/**
+ * art. 60: whether this waking owes the player a choice — the pouch holds
+ * more than the hand can carry, so which of them descend is a decision and
+ * not an accident of order.
+ */
+export function mustChoose(permanent: PermanentLedger): boolean {
+  return permanent.pouch.dice.length > permanent.handSize
 }
 
 /** art. 32: every death reseeds. The run burns; one line is written. */

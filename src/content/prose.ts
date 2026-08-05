@@ -277,6 +277,13 @@ export const NOTICES: Readonly<Record<string, string>> = {
   'pouch.empty': 'Nothing is in this slot yet.',
   // art. 69: the pouch panel says what is true of it rather than going quiet.
   'pouch.whole': 'Everything you own is in your hand.',
+  // art. 67: the pouch is a thing you read, not a thing you press.
+  'pouch.spares': 'What is past the line is yours, and is not going down with you.',
+  // art. 60: the choosing screen. It states the situation and never
+  // instructs — the verb on the strip is the only thing that says what to do.
+  'choose.which': 'More bones than your hand holds. The rest stay up here.',
+  'choose.full': 'Your hand is full. Put one back to take another.',
+  'choose.short': 'Your hand is not full yet.',
   // art. 69: the acts panel during a fight. It says what it holds rather
   // than going blank, and it never instructs (art. 66's other half).
   'acts.infight': 'Nothing here but the room, and the room is waiting.',
