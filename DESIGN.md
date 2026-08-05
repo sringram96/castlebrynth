@@ -7,7 +7,7 @@ novel a candle at a time; the labyrinth is a blind chain of hand-authored
 rooms, procedurally rearranged every run; fights are poker-dice duels
 against horrors whose intents are always shown; death burns the run and
 keeps the knowledge. `reference/GAME.md` is the fantasy. The binding law is in
-`.claude/rules/` — 112 numbered articles; tasks cite them as "art. N".
+`.claude/rules/` — 115 numbered articles; tasks cite them as "art. N".
 
 ## Components
 - **src/state** — the two ledgers (run / permanent) behind named rituals;
@@ -16,7 +16,7 @@ keeps the knowledge. `reference/GAME.md` is the fantasy. The binding law is in
   proves winnability. (arts 31–39)
 - **src/room** — the computed-box renderer on the GRID dial; one ramp per
   surface and one dither between adjacent steps; the world marks a thumb
-  answers through. (arts 13–25, 68, 93–112)
+  answers through. (arts 13–25, 68, 93–115)
 - **src/descent** — plays a room: candles, taps, acts, doors, and what has
   happened in the room. (arts 3, 5–9, 29, 70)
 - **src/lots** — the dice engine: turn, ladder, the card, armor, riders. (arts 41–65)
@@ -52,7 +52,9 @@ all state client-side.
   cast** — a school of surfaces, light and air; a shape above its
   proportions; a door that is a hole and never furniture; objects as ramp
   indices, fields as scatter, masses as height on the floor; one hero, and
-  stillness spent a loop at a time. (arts 93–112)
+  stillness spent a loop at a time; a deep hue-shifted ramp that blends in
+  the lights and dithers in the darks, and a light that is a station and a
+  colour. (arts 93–115)
 - **Content is data; prose is the sound design** — the voice rule binds
   every player-facing string, and art. 66 binds the controls instead.
   (rules/voice.md, the-thumb.md)

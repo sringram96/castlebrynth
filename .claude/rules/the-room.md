@@ -29,8 +29,21 @@ in it.
     wall, the far end is the mouth: past the cutoff, structural near-black
     with a dithered breath. A chamber ends in a wall standing inside the
     fog instead (art. 96), and that wall is a surface like any other.
-17. SETTLED — No alpha, no gradients: atmosphere is ordered dither;
-    variation is deterministic hash; a room renders identical every visit.
+17. SETTLED (amended by the look wave, 2026-08-05) — **No alpha
+    compositing.** No translucent layer, no soft mask, nothing whose colour
+    depends on what happens to be behind it: a pixel's colour is a pure
+    function of where it is, so a room renders identical every visit and
+    variation stays a deterministic hash.
+
+    The blanket ban on *gradients* is lifted, and only within a surface's
+    own ramp: a pixel may take an interpolated colour between two adjacent
+    steps of the ramp it is already on (art. 94). The original ban was
+    right about the thing it was aimed at — blending destroyed the material
+    read at four device pixels to a game pixel — but it aimed too wide. The
+    fix is not to forbid blending, it is to keep the **dither in the
+    darks**, where banding is what actually shows (art. 95 as amended).
+    Nothing here weakens determinism, and the golden plate is relocked at
+    each such wave rather than loosened into a tolerance.
 18. SETTLED — Outlines are derived: the contour pass inks exactly where
     surfaces meet. (Extended to sprites by art. 100 and to masses by
     art. 102 — derived there too, never drawn.)
@@ -95,6 +108,14 @@ three demos are not in `reference/` — until they land, this file is the
 only statement of what they proved, and it wins ties by default rather
 than by precedence.
 
+**Amended the same day by the look wave**, drafted from two further
+demos — high-fidelity shading and the re-authored rooms — after a
+playtest whose verdict was that every room was a hallway, the doors read
+as chests, and nothing could be identified. The renderer was not broken;
+it was under-specified. The look wave amends arts 17, 94, 95, 96 and 100
+and adds arts 113–115, and its load-bearing change is art. 17: the ban
+on gradients was aimed at the right failure and cut too wide.
+
 Arts 13–28 say the box cannot lie. These say what may stand in it. Where
 one of them names a number — step counts, percentages, a fraction of the
 frame — the number is tuning and lives in the render configuration or in
@@ -114,36 +135,61 @@ content; the shape of the rule is law.
     region. A room is a box, a school, a shape, and its things.
 
 ### Shading — the ramp (shipped, PR #36)
-94. SETTLED — One ramp per surface, and everything is a step offset. A ramp
-    is a dark end, a light end, a step count, and a bend that weights more
-    steps toward the dark; nine or ten steps, because below seven the
-    banding shows as flat belts and above about fourteen it stops reading
-    as pixel art. A pixel resolves to a single scalar — a position on its
-    own surface's ramp — before any colour is chosen. The stone's
-    variation, the seam (a *groove*, so it stays a groove when the light
-    moves across it), the defect drop, the inclusion lift, the gradient,
-    the light's lift, the air's drop: all of them move that one number.
-95. SETTLED — One dither, at the end, between the two adjacent steps the
-    scalar falls between, thresholded against interleaved gradient noise
-    rather than Bayer — deterministic, so art. 17's identical re-render
-    holds, and scattered, so a half-lit surface reads as a surface instead
-    of a screen door. Tint sparingly, and after quantisation: the ramp
-    does the work.
+94. SETTLED (amended by the look wave) — One ramp per surface, and
+    everything is a step offset. A pixel resolves to a single scalar — a
+    position on its own surface's ramp — before any colour is chosen. The
+    stone's variation, the seam (a *groove*, so it stays a groove when the
+    light moves across it), the defect drop, the inclusion lift, the
+    gradient, the light's lift, the air's drop: all of them move that one
+    number. That much is unamended and is the whole architecture.
+
+    **The ramp is deep, and it turns.** It is generated through three
+    stops in HSL — a cool desaturated dark, a warm mid, a hot saturated
+    light — at sixty-four steps rather than ten. **Shadows go cool and
+    lights go warm**, which is most of the visible gain in the demos and
+    costs nothing anywhere else. The old nine-or-ten was a consequence of
+    quantising hard at every step; once the upper ramp blends (art. 95),
+    step count stops being a legibility bar and starts being headroom.
+    Sixty-four and the three stops are tuning; that a ramp shifts hue
+    across its length is not.
+95. SETTLED (amended by the look wave) — **The hybrid dither.** One
+    treatment, at the end, chosen by where on the ramp the scalar landed:
+    across the upper four fifths a pixel **blends** between the two
+    adjacent steps it falls between; in the darkest fifth it **dithers**
+    between them instead, against interleaved gradient noise rather than
+    Bayer — deterministic, so art. 17's identical re-render holds, and
+    scattered, so a half-lit surface reads as a surface instead of a screen
+    door.
+
+    The split is the whole point. Banding is a fact about dark values on a
+    real panel, not about images in general, so the game pays the dither's
+    cost exactly where it buys something and takes the smooth read
+    everywhere else. **The threshold is tuning and must be settled on a
+    phone**, because a desktop panel cannot show the thing being decided.
+    Tint sparingly, and after quantisation: the ramp does the work.
 
 ### Shape and the threshold
-96. SETTLED — Shape sits above proportion. The three dials change a room's
-    proportions; they do not change what kind of space it is, and a depth
-    built from proportions alone is one room at different sizes. A room
-    declares one of three shapes. The **tube** has no far wall: the mouth
-    is the way on, and it is something you pass through rather than stand
-    in. The **chamber** has a far wall inside the fog — the room *ends*,
-    which is what makes it a place — and its exits are apertures in its
-    walls. The **junction** is a chamber whose side apertures are wide and
+96. SETTLED (amended by the look wave: a fourth shape) — Shape sits above
+    proportion. The three dials change a room's proportions; they do not
+    change what kind of space it is, and a depth built from proportions
+    alone is one room at different sizes. A room declares one of four
+    shapes. The **tube** has no far wall: the mouth is the way on, and it
+    is something you pass through rather than stand in. The **chamber**
+    has a far wall inside the fog — the room *ends*, which is what makes
+    it a place — and its exits are apertures in its walls. The
+    **junction** is a chamber whose side apertures are wide and
     full-height: the labyrinth's lefts and rights, where a door is a
-    direction you turn rather than an item you pick. All three are the
-    same first-hit cast with one more plane (art. 15 unchanged). Shape
-    multiplies against proportion: a grand chamber and a cramped chamber
-    are different rooms, and so are a long tube and a stub.
+    direction you turn rather than an item you pick. The **open** has
+    neither walls nor ceiling: a ray hits the ground or it hits the sky,
+    and the sky is a ramp with a scattered field in it (art. 101). All
+    four are the same first-hit cast with planes added or taken away
+    (art. 15 unchanged). Shape multiplies against proportion: a grand
+    chamber and a cramped chamber are different rooms, and so are a long
+    tube and a stub.
+
+    **A depth of one shape is a depth of one room.** The mix is content
+    and belongs to the region: what makes the drowned not the burnt is
+    partly which shapes it deals.
 97. SETTLED — A door is a hole, not a thing. A filled dark rectangle
     standing on the floor *is* a chest, and the playtest was right to read
     it as one. Thresholds obey a grammar that never varies between rooms:
@@ -182,19 +228,27 @@ content; the shape of the rule is law.
     masses, arts 100–103.
 
 ### Things: objects, fields, masses
-100. SETTLED — An authored thing is a bitmap of ramp indices, never of
-     colours. Procedural scatter has no silhouette, and silhouette is most
-     of legibility at this scale: anything meant to be recognised is drawn
-     once, by hand, as a small grid of indices into the room's ramp, and
-     the school colours it at paint time. Three consequences, and each is
-     load-bearing: a sprite cannot fall out of palette; one drawing
-     appears in the drowned and the burnt as one object in two keys; and
-     readable size is a property of the drawing, so content declares the
-     distance past which a thing is not placed rather than letting the
-     projection shrink it into noise. **A sprite carries its own
-     contour** — a one-pixel outline derived from its silhouette, art. 18
-     applied to a thing instead of a surface. It is what stops two objects
-     from melting into one another.
+100. SETTLED (amended by the look wave: the alphabet) — An authored thing
+     is a bitmap of ramp indices, never of colours. Procedural scatter has
+     no silhouette, and silhouette is most of legibility at this scale:
+     anything meant to be recognised is drawn once, by hand, as a small
+     grid of indices into the room's ramp, and the school colours it at
+     paint time. Three consequences, and each is load-bearing: a sprite
+     cannot fall out of palette; one drawing appears in the drowned and the
+     burnt as one object in two keys; and readable size is a property of
+     the drawing, so content declares the distance past which a thing is
+     not placed rather than letting the projection shrink it into noise.
+     **A sprite carries its own contour** — a one-pixel outline derived
+     from its silhouette, art. 18 applied to a thing instead of a surface.
+     It is what stops two objects from melting into one another.
+
+     Things are authored **as text**, on a small alphabet: a digit is a
+     step on the room's ramp, `.` and space are nothing, `*` is **a light
+     that carries** — a thing that emits rather than takes the room's
+     light — and `+` is **metal**, which answers the light differently
+     from stone. The alphabet is law because it is what lets one drawing
+     mean the same thing in every school; which characters stand for what
+     is tuning.
 101. SETTLED — Fields are scattered, and scatter is for nothing else.
      Scatter was misused, not wrong: it is for what has no silhouette to
      get wrong — a field that fills a volume rather than an object that
@@ -297,8 +351,41 @@ content; the shape of the rule is law.
      register however well lit. The fraction is tuning; that a room hoards
      its light is not.
 
+### The light, and the rim (the look wave, 2026-08-05)
+113. SETTLED — A light is a **station**, a reach, and a **colour**. The
+     station is a place in the room and not a direction: above, below,
+     ahead, with you, or none — so the lift falls off from somewhere,
+     which is the lever that inverts a room. Lit from below, the ceiling
+     becomes the darkest surface in the frame and the room stops being the
+     last room in a different colour. The colour is applied **after
+     quantisation**, in proportion to how lit the pixel is, so light warms
+     what it reaches and leaves the rest to the ramp (art. 21 unchanged:
+     there is no global light rule and there should never be one).
+114. SETTLED — **A region is known by its light.** At sixty-four steps a
+     palette stops carrying identity on its own: strong light pulls
+     distinct schools toward each other, so two regions with different
+     stone and the same station read as the same place. Regional identity
+     therefore rides the light's station and tint at least as much as the
+     palette, and a region that cannot name its station has not been
+     designed. The drowned is lit from below through water; the burnt from
+     its embers; the ossuary close and with you; the neutral pool is
+     quiet. Which station belongs to which region is content; that a
+     region *has* one is not.
+115. SETTLED — **The rim is derived, and nothing is hand-shaded.** A
+     thing's authored indices say what it is made of; they never say which
+     side of it the light found. Each shape's distance-to-outside is
+     computed once, the edge normal is that field's gradient, and how hot
+     an edge burns is that normal against the direction of the room's
+     light (art. 113). So one drawing lights itself correctly in a room
+     lit from below and in a room lit from ahead, and a hand-painted
+     highlight — which can only ever be right in one room — is a bug.
+     This is art. 18's derived-outline principle carried from a thing's
+     silhouette to its surface.
+
 ### What this amendment does not touch
-No alpha and no gradients — brightness is dither density (art. 17). A
+No alpha compositing — a pixel's colour never depends on what is behind
+it, and the blending art. 17 now allows stays inside one ramp (art. 17 as
+amended by the look wave). A
 room renders identically every visit; motion runs on its own clock and
 never changes what a pixel means (arts 17, 109–110). The box stays
 honest: light changes what colour a surface takes, never where a surface

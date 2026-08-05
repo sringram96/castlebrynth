@@ -19,12 +19,18 @@ leaks.
   rewrite.
 - Focal length derived from lens, never authored (art. 14). Props at
   world coordinates, 1/z, z-buffer respected (art. 19). Outlines from the
-  contour pass (art. 18), for sprites and masses too (arts 100, 102).
+  contour pass (art. 18), for sprites and masses too (arts 100, 102), and
+  the rim light derived from a shape's own distance field rather than
+  hand-painted (art. 115).
 - A room's proportions stay three numbers; a shape that ends in a far wall
   authors that wall's depth and nothing else (arts 14, 96). A mass is a
   height on the floor that the cast marches against, never a crest painted
   in screen space (art. 102) — geometry, so occlusion and perspective come
   free instead of being faked.
+- No alpha compositing: a pixel's colour never depends on what is behind
+  it (art. 17 as amended). Blending is allowed, and only between two
+  adjacent steps of one ramp — and only above the dark fifth, which keeps
+  its dither because that is where banding shows (arts 94–95).
 - Motion is overlay repaint on a cached base frame, never a recast; where
   the whole room breathes it is cast twice and the frames alternate
   (art. 110). One world clock, phase offset per instance by hash, so a
