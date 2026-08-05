@@ -34,8 +34,10 @@ Test: kill the process anywhere; restart; nothing is lost.
 Never: unresumable state, a hardcoded pixel, content logic in the engine.
 
 ## The law
-`.claude/rules/` holds 76 numbered articles, cited in tasks as "art. N":
-- **the-world.md** — time, touch, structure, the chain, room grammar
+`.claude/rules/` holds 85 numbered articles, cited in tasks as "art. N":
+- **the-world.md** — time, touch, structure, the chain, room grammar, and
+  the drift (arts 77–85): regions, the forced lock, lazy dealing,
+  just-in-time keys, template and instance, binding and scope
 - **the-room.md** — parallax law, scale, the look, the screen
 - **the-lots.md** — the dice: turn, duel, the card, collection, armor
 - **the-thumb.md** — the interaction model: registers, the tray,
