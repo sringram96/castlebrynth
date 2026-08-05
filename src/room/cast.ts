@@ -1,7 +1,8 @@
-import { dither } from './dither.js'
+import { ign } from './dither.js'
 import type { Framebuffer } from './framebuffer.js'
-import { colorOf, framebuffer, poke } from './framebuffer.js'
-import type { RoomPalette, SurfaceShaders } from './scene.js'
+import { colorOf, framebuffer, pokeRGB } from './framebuffer.js'
+import { mixPacked, packRamp } from './ramp.js'
+import type { Look, SurfaceShaders } from './scene.js'
 import { Surface } from './scene.js'
 import type { View } from './view.js'
 
@@ -16,24 +17,41 @@ export interface Cast {
 
 const FAR = 1e9
 
+/** How dense the mouth's breath is at its centre, as a dither threshold. */
+const BREATH = 0.25
+
+/** Below this much light, the light's tint says nothing worth saying. */
+const TINT_FLOOR = 0.15
+
 /**
  * art. 15: the box is computed, not painted. Every pixel asks which of the
  * four planes it hits first, at what depth, and the scene's shaders answer
  * in world space — so diminution is honest and cannot be faked.
+ *
+ * What a shader answers is a position on the surface's ramp, not a colour.
+ * The cast adds the light's lift and the air's drop to that scalar and then
+ * dithers once, between the two adjacent steps it falls between. One dither
+ * per pixel, never four; never between two colours far enough apart to read
+ * as dots (art. 17, better served).
  */
-export function castBox(
-  view: View,
-  palette: RoomPalette,
-  surfaces: SurfaceShaders,
-): Cast {
+export function castBox(view: View, look: Look, surfaces: SurfaceShaders): Cast {
   const { frame, shape, f, eye, zMouth, config } = view
   const { width: W, height: H, cx: CX, cy: CY } = frame
+  const { palette, light, air } = look
   const target = framebuffer(W, H)
   const surface = new Uint8Array(W * H)
   const depth = new Float32Array(W * H)
 
   const breathX = config.grid * config.breath.x
   const breathY = config.grid * config.breath.y
+
+  const wallRamp = packRamp(look.ramps.wall)
+  const floorRamp = packRamp(look.ramps.floor)
+  const ceilRamp = packRamp(look.ramps.ceiling)
+  const lightTint = colorOf(light.tint)
+  const airTint = colorOf(air.tint)
+  const hollow = colorOf(palette.hollow)
+  const breathTone = colorOf(palette.breath)
 
   for (let sy = 0; sy < H; sy++) {
     for (let sx = 0; sx < W; sx++) {
@@ -71,28 +89,52 @@ export function castBox(
         surface[i] = Surface.Mouth
         depth[i] = zMouth
         const e = Math.max(0, 1 - Math.hypot(dx / breathX, (sy - CY) / breathY))
-        poke(target, i, dither(sx, sy, e * 4) ? palette.breath : palette.hollow)
+        pokeRGB(target, i, ign(sx, sy) < e * BREATH ? breathTone : hollow)
         continue
       }
 
       surface[i] = s
       depth[i] = z
 
-      let c: string
+      let step: number
+      let ramp: Int32Array
       if (s === Surface.WallLeft || s === Surface.WallRight) {
         const height = (dy * z) / f + eye
-        c = surfaces.wall(s === Surface.WallLeft ? -1 : 1, z, height)
+        step = surfaces.wall(s === Surface.WallLeft ? -1 : 1, z, height)
+        ramp = wallRamp
       } else if (s === Surface.Ceiling) {
-        c = surfaces.ceiling(z, (dx * z) / f)
+        step = surfaces.ceiling(z, (dx * z) / f)
+        ramp = ceilRamp
       } else {
-        c = surfaces.floor(z, (dx * z) / f)
+        step = surfaces.floor(z, (dx * z) / f)
+        ramp = floorRamp
       }
 
-      // art. 17: distance is dither, not a gradient and never alpha.
-      const fog = Math.max(0, z / zMouth - config.fog.start) * config.fog.gain
-      if (dither(sx, sy, fog)) c = palette.dark
-      else if (dither(sx + 2, sy, fog * config.fog.second)) c = palette.haze
-      poke(target, i, c)
+      // The light lifts along the ramp, falling off with distance from where
+      // it stands — which, this wave, is where you stand.
+      const lit = light.reach > 0 ? Math.max(0, 1 - z / light.reach) : 0
+      step += lit * lit * light.lift
+
+      // art. 17: distance is dither, not a gradient and never alpha. It is
+      // now a drop down the same ramp rather than a second pattern laid over
+      // the first.
+      const fog = Math.max(0, z / zMouth - config.fog.start) * config.fog.gain * air.rate
+      step -= fog
+
+      // The one dither: between the two adjacent steps this pixel falls
+      // between, against scattered noise rather than a lattice.
+      const top = ramp.length - 1
+      const p = Math.min(top, Math.max(0, step))
+      const lo = Math.floor(p)
+      let c = ramp[ign(sx, sy) < p - lo ? Math.min(top, lo + 1) : lo]!
+
+      // Tint sparingly, and only after quantisation (art. 21: the light is
+      // authorial; the ramp is what does the work).
+      if (lit > TINT_FLOOR && light.tintAmt > 0) c = mixPacked(c, lightTint, light.tintAmt * lit * lit)
+      if (fog > config.fog.tintAt) {
+        c = mixPacked(c, airTint, Math.min(config.fog.tintCap, (fog - config.fog.tintAt) * config.fog.tintRate))
+      }
+      pokeRGB(target, i, c)
     }
   }
 
@@ -108,7 +150,7 @@ function inkContours(
   target: Framebuffer,
   surface: Uint8Array,
   frame: { width: number; height: number; cx: number },
-  palette: RoomPalette,
+  palette: { edge: string; rim: string },
   rimReach: number,
 ): void {
   const { width: W, height: H, cx: CX } = frame

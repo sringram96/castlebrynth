@@ -63,9 +63,37 @@ function fnv(bytes: Uint8ClampedArray): string {
 }
 
 describe('rooms — art. 21 (palette is authorial), art. 19 (props stand somewhere)', () => {
-  it('gives every room its own palette, so no two rooms light the same', () => {
-    const palettes = ROOMS.map((held) => JSON.stringify(held.scene(bare(held.id)).palette))
-    expect(new Set(palettes).size).toBe(ROOMS.length)
+  it('gives every room its own look, so no two rooms light the same', () => {
+    // Under the ramp wave a room's colour is its ramps as much as its four
+    // box tones, so the whole look is what has to differ.
+    const looks = ROOMS.map((held) => JSON.stringify(held.scene(bare(held.id)).look))
+    expect(new Set(looks).size).toBe(ROOMS.length)
+  })
+
+  it('dithers a surface only between two adjacent steps of its own ramp', () => {
+    // The bug the ramp wave fixed, as a property: a wall pixel can only ever
+    // take a wall-ramp colour, and the ramp's own neighbours are close
+    // enough together that no dot reads as a dot.
+    for (const held of ROOMS) {
+      const { wall, floor, ceiling } = held.scene(bare(held.id)).look.ramps
+      for (const one of [wall, floor, ceiling]) {
+        expect(one.length, held.id as string).toBeGreaterThanOrEqual(7)
+        expect(one.length, held.id as string).toBeLessThanOrEqual(14)
+        for (let i = 1; i < one.length; i++) {
+          const gap = Math.max(
+            ...[16, 8, 0].map((shift) =>
+              Math.abs(
+                ((parseInt(one[i]!.slice(1), 16) >> shift) & 255) -
+                  ((parseInt(one[i - 1]!.slice(1), 16) >> shift) & 255),
+              ),
+            ),
+          )
+          // Adjacent steps within a quarter of the byte range: a dithered
+          // pair the eye blends instead of counting.
+          expect(gap, `${held.id as string} step ${i}`).toBeLessThanOrEqual(64)
+        }
+      }
+    }
   })
 
   it('stands at least one prop in every room, at world coordinates (art. 19)', () => {

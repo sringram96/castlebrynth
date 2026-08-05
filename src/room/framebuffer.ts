@@ -32,7 +32,14 @@ export function colorOf(hex: string): number {
 
 /** Write one pixel by framebuffer index. */
 export function poke(fb: Framebuffer, i: number, hex: string): void {
-  const n = colorOf(hex)
+  pokeRGB(fb, i, colorOf(hex))
+}
+
+/**
+ * The same, from a packed 24-bit colour — what the cast loop writes, since
+ * a ramp step is a number long before it is ever a string.
+ */
+export function pokeRGB(fb: Framebuffer, i: number, n: number): void {
   const d = fb.pixels
   d[i * 4] = (n >> 16) & 255
   d[i * 4 + 1] = (n >> 8) & 255

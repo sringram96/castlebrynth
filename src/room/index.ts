@@ -20,10 +20,23 @@ import { viewOf } from './view.js'
 
 export type { Frame, RenderConfig } from './config.js'
 export { focalLength, frameOf } from './config.js'
-export { dither, hash } from './dither.js'
+export { dither, hash, ign } from './dither.js'
 export type { Framebuffer } from './framebuffer.js'
 export { framebuffer } from './framebuffer.js'
-export type { Brush, Prop, RoomPalette, Scene, SurfaceShaders, SurfaceId } from './scene.js'
+export type { Ramp, RampSpec } from './ramp.js'
+export { alongRamp, darkest, extend, lightest, mix, ramp, stepOf } from './ramp.js'
+export type {
+  Air,
+  Brush,
+  Light,
+  Look,
+  Prop,
+  RoomPalette,
+  Scene,
+  SurfaceRamps,
+  SurfaceShaders,
+  SurfaceId,
+} from './scene.js'
 export { Surface } from './scene.js'
 export type { MarkRect, Projected, RoomShape, View, WorldMark } from './view.js'
 export { markRect, viewOf } from './view.js'
@@ -42,7 +55,7 @@ export interface RenderedRoom {
  */
 export function renderRoom(scene: Scene, config: RenderConfig): RenderedRoom {
   const view = viewOf(scene.shape, config)
-  const cast = castBox(view, scene.palette, scene.surfaces)
+  const cast = castBox(view, scene.look, scene.surfaces)
   const brush = brushOf(view, cast.target, cast.depth)
   // art. 19: painted near over far. The plate declares that order — see
   // `far2near`, which says whether a plate keeps its promise — because the

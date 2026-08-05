@@ -19,11 +19,19 @@ describe('room — art. 17 (a room renders identical every visit), arts 14, 22�
   })
 
   /**
-   * Visual parity with `reference/castlebrynth-wake-v3.html` at GRID 240 is
-   * the bar, so it is a number and not an opinion. The constant is the
-   * FNV-1a of the reference canvas's own RGBA bytes, read out of a browser
-   * with guides off and the muted school — the file's defaults. Regenerate
-   * it only when the reference itself changes.
+   * The plate, byte for byte, so "identical every visit" is a number and not
+   * an opinion — and so nothing changes the box by accident.
+   *
+   * The constant used to be `castlebrynth-wake-v3.html`'s own canvas bytes,
+   * because parity with that reference was the bar. The ramp wave replaced
+   * the shading pipeline underneath it: one ramp per surface, one dither
+   * between adjacent steps, against the noise in
+   * `reference/castlebrynth-ramp-shading.html`, which is the shading bar
+   * now. v3 still wins ties about the *box* — its geometry, its contours,
+   * its mouth, all of which this still lands on — but it no longer decides
+   * what colour a surface takes, so its bytes are no longer the number.
+   *
+   * Regenerate only when the renderer is deliberately changed.
    */
   it('lands byte-identical on the reference plate at GRID 240 (arts 13–18)', () => {
     const room = renderRoom(WAKE, RENDER)
@@ -32,7 +40,7 @@ describe('room — art. 17 (a room renders identical every visit), arts 14, 22�
       h ^= byte
       h = Math.imul(h, 16777619) >>> 0
     }
-    expect(h.toString(16)).toBe('12300133')
+    expect(h.toString(16)).toBe('c344dfd9')
   })
 
   it('is opaque everywhere — no alpha, no gradients (art. 17)', () => {
@@ -115,7 +123,12 @@ describe('room — art. 17 (a room renders identical every visit), arts 14, 22�
     // Nothing past the cutoff but the near-black, its breath, and the two
     // marks the contour pass derives there (art. 18).
     const allowed = new Set(
-      [WAKE.palette.hollow, WAKE.palette.breath, WAKE.palette.edge, WAKE.palette.rim].map(
+      [
+        WAKE.look.palette.hollow,
+        WAKE.look.palette.breath,
+        WAKE.look.palette.edge,
+        WAKE.look.palette.rim,
+      ].map(
         (hex) => hex.slice(1),
       ),
     )

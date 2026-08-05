@@ -23,11 +23,18 @@ export interface RenderConfig {
   readonly mouth: number
   /** The mouth's dithered breath, as fractions of the grid (art. 16). */
   readonly breath: { readonly x: number; readonly y: number }
-  /** Distance dither: where it starts, how hard it bites, the second step. */
+  /**
+   * Distance, as a drop down the ramp: where it starts as a fraction of the
+   * cutoff, how many steps it takes at the cutoff, and — past `tintAt`
+   * steps — how fast and how far the colour is nudged toward the air's own
+   * (art. 16, so the far end resolves into the same darkness the mouth is).
+   */
   readonly fog: {
     readonly start: number
     readonly gain: number
-    readonly second: number
+    readonly tintAt: number
+    readonly tintRate: number
+    readonly tintCap: number
   }
   /** Rim-light reach either side of the vanishing point, fraction of grid. */
   readonly rim: number

@@ -1,4 +1,5 @@
-import type { RoomPalette } from '../room/index.js'
+import type { Air, Light, Look, RampSpec, RoomPalette } from '../room/index.js'
+import { darkest, extend, lightest, ramp, stepOf } from '../room/index.js'
 
 /**
  * art. 21: light and palette are authorial, chosen per scene. There is no
@@ -346,14 +347,137 @@ export const VERDIGRIS: School = {
   breath: '#0b1210',
 }
 
-/** The six colours the box itself needs, drawn out of a school. */
+/** The four colours the box needs that are not on a ramp. */
 export function roomPalette(school: School): RoomPalette {
   return {
     edge: school.edge,
     rim: school.brickAlt,
-    dark: '#000000',
-    haze: school.grime,
     hollow: school.hollow,
     breath: school.breath,
   }
+}
+
+// ── The ramps ──────────────────────────────────────────────────────────
+//
+// One ramp per surface, and every authored thing about a pixel — variation,
+// seams, grime, damp, moss, light, distance — is an offset along it rather
+// than a colour of its own. The offsets are the masonry's, and live with the
+// masonry in `plates/wake.ts`; what lives here is the colour: where each
+// ramp starts, where it ends, how many steps, and how they bend.
+//
+// The conversion of the fourteen schools is mechanical. A ramp's dark end is
+// the darkest tone the school already declares for that surface and its
+// light end is the lightest, carried a little further along the same line
+// for the light to lift into — so no room can fall out of key with itself.
+// The base is where that surface's own commonest stone already sits on that
+// ramp, so a room starts from exactly where it stood before the ramps
+// arrived, and the offsets move it from there.
+//
+// What did not convert: `moss`, `moss2` and `damp` are hue departures rather
+// than value ones — a green patch on a warm wall, a blue one on a cold
+// floor — so a single ramp can only spend them as drops. Every other tone in
+// every school lands within a few bytes of its ramp's line. See DESIGN.md.
+
+/**
+ * How many steps each surface gets. Fewer than seven and the bands show;
+ * more than about fourteen and it stops reading as pixel art. The ceiling
+ * gets fewer because it holds the least light and the least eye.
+ */
+const STEPS = { wall: 10, floor: 10, ceiling: 8 } as const
+
+/**
+ * The bend, weighting steps toward the dark end — where this game lives.
+ * Above 1 is dark-weighted; the floor takes the most because it holds the
+ * widest span of light in the frame, from underfoot to the mouth.
+ */
+const BEND = { wall: 1.5, floor: 1.6, ceiling: 1.35 } as const
+
+/**
+ * Headroom. A ramp's light end sits past the lightest tone the school
+ * declares for that surface, carried that much further along the ramp's own
+ * line. Without it a surface's ordinary stone sits at the top of its own
+ * ramp and the light has nowhere to lift it, which is what flattened the
+ * ceilings on the first pass. Along the line rather than toward a pale
+ * neutral, because that is the one direction that cannot take a school out
+ * of key with itself — the wet room stays wet, the kiln stays hot.
+ */
+const HEADROOM = 0.45
+
+/**
+ * The light, as a lift along the ramp. One station — the light that stands
+ * where you do — because the light stations are a later wave. This is the
+ * light the rooms already had, expressed.
+ */
+const LIGHT = { reach: 22, lift: 1.9, tintAmt: 0.1 } as const
+
+/** Everything a school says about how its stone takes light and distance. */
+export interface Shading {
+  readonly wall: RampSpec
+  readonly floor: RampSpec
+  readonly ceiling: RampSpec
+  /** Where each surface's own stone sits on its ramp, unlit, in steps. */
+  readonly base: { readonly wall: number; readonly floor: number; readonly ceiling: number }
+  readonly light: Light
+  readonly air: Air
+}
+
+function specOf(tones: readonly string[], steps: number, bend: number): RampSpec {
+  const dark = darkest(tones)
+  return { dark, light: extend(dark, lightest(tones), HEADROOM), steps, bend }
+}
+
+const shadings = new Map<School, Shading>()
+
+/** A school's ramps and where its stone sits on them. Derived once. */
+export function shadingOf(school: School): Shading {
+  const held = shadings.get(school)
+  if (held !== undefined) return held
+  // The wall's tones: its mortar, its four bricks, its pale cell, its grime,
+  // its damp and its moss. All of them, so the ends bracket every one.
+  const wall = specOf(
+    [school.grime, school.mortar, ...school.brick, school.brickAlt, school.damp, school.moss],
+    STEPS.wall,
+    BEND.wall,
+  )
+  const floor = specOf([school.grime, school.mortar, ...school.flag], STEPS.floor, BEND.floor)
+  const ceiling = specOf([school.grime, ...school.slat], STEPS.ceiling, BEND.ceiling)
+  const made: Shading = {
+    wall,
+    floor,
+    ceiling,
+    base: {
+      // The commonest stone on each surface — the tone the old shaders
+      // reached for in half of all cells, so a room starts from exactly
+      // where it stood before the ramps arrived.
+      wall: stepOf(wall, school.brick[1]),
+      floor: stepOf(floor, school.flag[1]),
+      ceiling: stepOf(ceiling, school.slat[0]),
+    },
+    light: { reach: LIGHT.reach, lift: LIGHT.lift, tint: school.bone[0], tintAmt: LIGHT.tintAmt },
+    // art. 16: the far end resolves into the same darkness the mouth is.
+    air: { tint: school.hollow, rate: 1 },
+  }
+  shadings.set(school, made)
+  return made
+}
+
+const looks = new Map<School, Look>()
+
+/** Everything authorial about how a room is lit and coloured (art. 21). */
+export function lookOf(school: School): Look {
+  const held = looks.get(school)
+  if (held !== undefined) return held
+  const shading = shadingOf(school)
+  const made: Look = {
+    palette: roomPalette(school),
+    ramps: {
+      wall: ramp(shading.wall),
+      floor: ramp(shading.floor),
+      ceiling: ramp(shading.ceiling),
+    },
+    light: shading.light,
+    air: shading.air,
+  }
+  looks.set(school, made)
+  return made
 }
