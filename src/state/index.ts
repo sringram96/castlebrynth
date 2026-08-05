@@ -394,21 +394,28 @@ function isWearable(taken: Talisman | Wearable): taken is Wearable {
 }
 
 /**
- * arts 55–56, 60: a die found with room left in the hand joins the hand at
- * once.
+ * What a good just collected does to the run already in flight (arts 47,
+ * 55–56, 60, 86).
  *
- * art. 55 leaves the sixth slot empty from the first waking and calls it the
- * invitation; an invitation you cannot accept until you die is not one. So
- * the rule is *room, not reshuffle*: while the hand is short of the body's
- * hand size, a newly collected die fills it, and it fills it by being
- * appended — the dice already on the table keep their identities, which is
- * what art. 75's replay depends on.
+ * A found thing has to be worth something *now*. art. 55 leaves the sixth
+ * slot empty from the first waking and calls it the invitation; an
+ * invitation you cannot accept until you die is not one, and a plate that
+ * blocks nothing until the next descent is not armor. So:
  *
- * Past that the hand is full and art. 60 stands unchanged: the pouch grows,
- * and which six go down with you is settled at the next waking. Composition
- * is the build, and choosing it is not this wave's business.
+ * - **the hand**, while it is short of the body's hand size: a newly
+ *   collected die fills it, appended, so the dice already on the table keep
+ *   their identities — which is what art. 75's replay depends on. Past that
+ *   the hand is full and art. 60 stands unchanged: the pouch grows, and
+ *   which six go down with you is settled at the next waking.
+ * - **the armor** (art. 47): a wearable not yet worn is worn, and its value
+ *   is *added* rather than the stat being re-derived. The stat is the worn
+ *   wearables "then moved by mercies, wounds, and curses" — recomputing it
+ *   would quietly undo whatever had moved it.
+ *
+ * Talismans need nothing here: they are read off the permanent at the door
+ * (art. 53), so a keepsake found in this room is in the next fight already.
  */
-export function tookIntoHand(run: RunLedger, permanent: PermanentLedger): RunLedger {
+export function tookIntoRun(run: RunLedger, permanent: PermanentLedger): RunLedger {
   const dice = [...run.hand.dice]
   const held = new Set<string>(dice.map((die) => die.id as string))
   for (const die of permanent.pouch.dice) {
@@ -417,7 +424,17 @@ export function tookIntoHand(run: RunLedger, permanent: PermanentLedger): RunLed
     dice.push(die)
     held.add(die.id as string)
   }
-  return dice.length === run.hand.dice.length ? run : { ...run, hand: { dice } }
+
+  const worn = [...run.worn]
+  let armor = run.armor
+  for (const wearable of permanent.wearables) {
+    if (worn.includes(wearable.id)) continue
+    worn.push(wearable.id)
+    armor += wearable.armor
+  }
+
+  if (dice.length === run.hand.dice.length && worn.length === run.worn.length) return run
+  return { ...run, hand: { dice }, worn, armor }
 }
 
 /** art. 32: every death reseeds. The run burns; one line is written. */

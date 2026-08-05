@@ -44,7 +44,7 @@ import {
   // aliases is art. 84's, and it is about an encounter and not a beat.
   remember as markMemory,
   tookDoor,
-  tookIntoHand,
+  tookIntoRun,
   wounded,
 } from '../state/index.js'
 
@@ -391,10 +391,10 @@ export function act(ledgers: Ledgers, chosen: Act): Ledgers {
   // arts 11, 86: the collection survives death, so a good crosses the ledgers
   // by the named ritual rather than by an assignment.
   for (const good of chosen.takes ?? []) permanent = collect(permanent, good)
-  // arts 55–56: and if the hand still has the slot art. 55 left open, the
-  // bone goes into it now rather than at the next waking. The hole is the
-  // invitation; this is the invitation being accepted.
-  if (permanent !== ledgers.permanent) moved = tookIntoHand(moved, permanent)
+  // arts 47, 55–56: and a found thing is worth something now. The bone goes
+  // into the slot art. 55 left open, and a plate found here blocks from the
+  // next blow rather than from the next waking.
+  if (permanent !== ledgers.permanent) moved = tookIntoRun(moved, permanent)
   return { run: moved, permanent }
 }
 

@@ -30,7 +30,7 @@ import { actsIn } from '../src/descent/index.js'
 import { encounterOf } from '../src/gen/index.js'
 import type { Die, Goods, Rider } from '../src/lots/index.js'
 import { audit, claim, decide, ridersFired, woundedBy } from '../src/lots/index.js'
-import { collect, firstPermanent, tookIntoHand, wake } from '../src/state/index.js'
+import { collect, firstPermanent, tookIntoRun, wake } from '../src/state/index.js'
 import { everyDie, turnOf } from './helpers.js'
 
 /**
@@ -221,7 +221,7 @@ describe('arts 56, 86 — the first die you collect is a dead traveler’s', () 
     const bare = wake(firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY), 1 as never)
     expect(bare.run!.hand.dice).toHaveLength(5)
 
-    const first = tookIntoHand(bare.run!, collect(bare.permanent, THE_PUSHER))
+    const first = tookIntoRun(bare.run!, collect(bare.permanent, THE_PUSHER))
     expect(first.hand.dice).toHaveLength(6)
     expect(first.hand.dice.at(-1)).toBe(THE_PUSHER)
     // The five you woke with keep their places, so a fight in flight can
@@ -231,7 +231,7 @@ describe('arts 56, 86 — the first die you collect is a dead traveler’s', () 
     // A second bone has nowhere to go: the pouch takes it, the hand does not.
     const full = collect(collect(bare.permanent, THE_PUSHER), THE_RUNNER)
     expect(full.pouch.dice).toHaveLength(7)
-    expect(tookIntoHand(first, full).hand.dice).toHaveLength(HAND_SIZE)
+    expect(tookIntoRun(first, full).hand.dice).toHaveLength(HAND_SIZE)
   })
 
   it('never lets a bone hold a door — a traveler is optional treasure (art. 4)', () => {
