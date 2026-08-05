@@ -131,6 +131,7 @@ export {
   NOTICES,
   LABELS,
   READOUT,
+  TABS,
   VERBS,
 } from './prose.js'
 export {
@@ -179,6 +180,7 @@ import {
   NOUNS,
   ORIGINS,
   READOUT,
+  TABS,
   SOCKET_BEATS,
 } from './prose.js'
 import type { Utterance } from './voice.js'
@@ -220,6 +222,9 @@ export function everyString(): readonly Utterance[] {
       ...Object.values(NOUNS),
       ...Object.values(LABELS),
       ...Object.values(READOUT),
+      // art. 90: a tab names a place. It is a label, and the lint judges it
+      // as one — not as a control, which is what art. 66 governs.
+      ...Object.values(TABS),
       ...Object.values(LADDER).map((tier) => tier.name),
       ...GNAWING_SCRIPT.map((intent) => intent.verb),
       ...MARROW_SCRIPT.map((intent) => intent.verb),

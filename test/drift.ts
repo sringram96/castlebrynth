@@ -18,11 +18,11 @@ import {
   PLAIN_POUCH,
   ROOM_BOOK,
 } from '../src/content/index.js'
-import { act, actsIn, chooseDoor, mayLeave } from '../src/descent/index.js'
+import { act, actsIn, chooseDoor, mayLeave, tappablesIn } from '../src/descent/index.js'
 import type { Catalog, Chain, ChainNode, Door, Grammar, RegionId } from '../src/gen/index.js'
 import { NO_HISTORY, deal, dealerOf, hereIn, lotFrom, meetings } from '../src/gen/index.js'
 import type { Ledgers, RunHistory, Seed } from '../src/state/index.js'
-import { firstPermanent, meet, movedTo, tookDoor, wake } from '../src/state/index.js'
+import { firstPermanent, lookedAt, meet, movedTo, tookDoor, wake } from '../src/state/index.js'
 
 export const DEALER = dealerOf(CATALOG, GRAMMAR)
 export const seedOf = (n: number): Seed => n as unknown as Seed
@@ -142,6 +142,21 @@ export function greet(ledgers: Ledgers, chain: Chain): Ledgers {
   return permanent === ledgers.permanent ? ledgers : { ...ledgers, permanent }
 }
 
+/**
+ * art. 68 (strengthened): a thumb looks before it takes, and an act about a
+ * thing does not exist until the thing has been tapped. Every walk in these
+ * tests therefore looks at everything in the room first — which is what a
+ * player does, and what the shell records on each tap.
+ */
+export function lookAround(ledgers: Ledgers, node: ChainNode): Ledgers {
+  let run = ledgers.run
+  if (run === null) return ledgers
+  for (const target of tappablesIn(ROOM_BOOK, node)) {
+    run = lookedAt(run, node.instance, target.id)
+  }
+  return { ...ledgers, run }
+}
+
 /** What a room offers that the run has not taken yet. */
 export function takeable(ledgers: Ledgers, node: ChainNode) {
   return actsIn(ROOM_BOOK, node).filter(
@@ -167,6 +182,7 @@ export function playRun(
   for (;;) {
     const node = hereIn(chain)
     if (node === null) break
+    ledgers = lookAround(ledgers, node)
     if (greedy) for (const one of takeable(ledgers, node)) ledgers = act(ledgers, one)
     if (obeyTheLaw && !mayLeave(ledgers, ROOM_BOOK, node)) break
     const gate = node.doors[Math.min(Math.max(0, policy(node.doors, chain)), node.doors.length - 1)]
@@ -208,6 +224,7 @@ export function atAFight(seed: number, policy: Policy = alwaysLeft): AtAFight {
     if (node === null) throw new Error(`seed ${seed} dealt no room`)
     const gate = node.doors.find((door) => door.fight !== undefined)
     if (gate !== undefined) return { ledgers, chain, node, door: gate }
+    ledgers = lookAround(ledgers, node)
     for (const one of takeable(ledgers, node)) ledgers = act(ledgers, one)
     const door = node.doors[Math.min(Math.max(0, policy(node.doors, chain)), node.doors.length - 1)]
     if (door === undefined || door.ends === true) {

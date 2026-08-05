@@ -23,8 +23,7 @@ import {
   opened,
   playRun,
   runOf,
-  takeable,
-} from './drift.js'
+  takeable, lookAround } from './drift.js'
 import { BURNT, DROWNED, OSSUARY } from '../src/content/index.js'
 
 /**
@@ -148,11 +147,16 @@ describe('art. 3 — a run can never be walked into unwinnable', () => {
       here = { ledgers: walked.ledgers, chain: walked.chain }
     }
     const node = hereIn(here.chain)!
+    // art. 3 holds the door whether or not you have looked yet — the refusal
+    // is about what the room still owes the run, not about what the tray is
+    // currently offering. That is the point of the belt and the suspender.
     expect(heldBack(here.ledgers, ROOM_BOOK, node).map((one) => one.id)).toEqual([
       'act.take-key',
     ])
     expect(mayLeave(here.ledgers, ROOM_BOOK, node)).toBe(false)
 
+    // art. 68: and the verb that satisfies it arrives by looking.
+    here = { ...here, ledgers: lookAround(here.ledgers, node) }
     const bands = enterRoom(here.ledgers, here.chain, ROOM_BOOK, node.instance)
     const taking = bands.tray.flatMap((offer) => (offer.kind === 'act' ? [offer.act] : []))
     expect(taking.map((one) => one.id)).toEqual(['act.take-key'])

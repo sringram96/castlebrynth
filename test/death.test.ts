@@ -26,7 +26,9 @@ import {
   snapshot,
   wake,
 } from '../src/state/index.js'
-import { DEALER, seedOf } from './drift.js'
+import {
+  DEALER,
+  lookAround, seedOf } from './drift.js'
 
 /**
  * Death is the progression system (arts 11, 32). The run burns, one line
@@ -59,6 +61,9 @@ describe('death — art. 32 (every death reseeds), art. 11 (the permanent surviv
     let taking: readonly { readonly id: string }[] = []
     for (let n = 0; n < 12; n++) {
       const node = hereIn(here.chain)!
+      // art. 68: a thumb looks at what is in the room, and looking is what
+      // summons the verb that takes it.
+      here = { ...here, ledgers: lookAround(here.ledgers, node) }
       const bands = enterRoom(here.ledgers, here.chain, ROOM_BOOK, node.instance)
       // What burns at death is what the run *carries*, so this walks to a
       // thing that is picked up. art. 40's mercies are acts too and give
