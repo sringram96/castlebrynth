@@ -53,6 +53,7 @@ import {
   doors,
   enterRoom,
   look,
+  looking,
   mayLeave,
   nextBeat,
   openDoor,
@@ -365,7 +366,13 @@ function markFor(target: Tappable): HTMLButtonElement {
   el.setAttribute('aria-label', target.noun)
   el.onclick = () => {
     settle()
+    // art. 68: the tap is the inspection — the word band is the whole of it,
+    // and there is no button behind it. And looking summons: the verb about
+    // this thing appears in ACTS once it has been looked at.
     notice = look(ROOM_BOOK, bands, target).text
+    ledgers = looking(ledgers, target)
+    bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
+    persist()
     paint()
   }
   return el

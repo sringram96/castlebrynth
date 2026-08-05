@@ -33,7 +33,25 @@ skeleton playtest.
     that was always happening.
 
 ## Look, then take
-68. SETTLED (ruled) — A tap investigates; an act commits. Tapping
+68. SETTLED (ruled; strengthened 2026-08-05) — A tap investigates; an act
+    commits. **And an act about a thing does not exist until the thing
+    has been tapped.** Looking is what summons the verb: tap the alcove,
+    the word band answers — that answer *is* the inspection, and it is
+    the only one there is — and only then does Take appear. Nothing can
+    be taken that has never been looked at.
+
+    The summons persists for the instance (arts 70, 82): leave and come
+    back and the verb is still there, and two copies of one room summon
+    independently. An act about no particular thing is about the room,
+    and a room is a thing you are standing in — it is offered on
+    arrival.
+
+    Doors were already this shape (art. 71) and are unchanged; the rest
+    of the game now follows them. **No inspect buttons and no
+    tooltips** — a tooltip with an inspect button in it is exactly what
+    the original article abolished. The remainder of art. 68 stands:
+
+    Tapping
     anything — a possession, a thing in the world, a door, the
     horror's intent — is free, always answers, and never commits.
     Every commitment (take, equip, open, drink, fight, run) is a

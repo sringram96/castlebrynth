@@ -317,6 +317,8 @@ function takeAct(who: EncounterId, forfeits?: EncounterId): Act {
     // holds a door — a bone left lying is a bone missed for this run.
     required: false,
     takes: LEFT_BY[who as string] ?? [],
+    // art. 68: nothing is taken off a body you have not looked at.
+    about: tapId(who),
   }
   // Two deeds, and both of them matter: the act id closes the tray's offer,
   // and the lost id is what the floor remembers (arts 70, 89).
@@ -338,6 +340,11 @@ const TAKE_THE_KEY: Act = {
   needs: [],
   gives: [WARDEN_KEY_ITEM],
   required: true,
+  // art. 68: and it is summoned by looking at the key, like anything else.
+  // The door still refuses while it lies here (art. 3), so a player who has
+  // not looked is stopped and pointed back at the room rather than walked
+  // past it — which is the loop this article exists to make.
+  about: 'key.iron',
 }
 
 /**
@@ -355,6 +362,7 @@ const DRINK: Act = {
   gives: [],
   required: false,
   heals: SANCTUM_BREATH,
+  about: 'basin.water',
 }
 
 /**
@@ -372,6 +380,7 @@ const KNEEL: Act = {
   required: false,
   heals: SAVIOR_MERCY,
   remembers: MENDER,
+  about: 'mender.figure',
 }
 
 const tappable = (id: string, at: WorldMark): Tappable => ({ id, noun: NOUNS[id] ?? id, at })

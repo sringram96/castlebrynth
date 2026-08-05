@@ -91,8 +91,8 @@ describe('art. 91 — the vault carries the new field forward', () => {
   })
 
   it('keeps the ladder gapless up to the current version', () => {
-    expect(VAULT_VERSION).toBe(4)
-    expect(MIGRATIONS.map((one) => one.from).sort((a, b) => a - b)).toEqual([1, 2, 3])
+    expect(VAULT_VERSION).toBe(5)
+    expect(MIGRATIONS.map((one) => one.from).sort((a, b) => a - b)).toEqual([1, 2, 3, 4])
   })
 })
 

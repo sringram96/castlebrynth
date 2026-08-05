@@ -38,10 +38,12 @@ import {
   collect,
   deedKey,
   didHere,
+  hasLooked,
   movedTo,
   openedDoor,
   // `remember` is taken here by the candle you are on; the ritual this
   // aliases is art. 84's, and it is about an encounter and not a beat.
+  lookedAt,
   remember as markMemory,
   tookDoor,
   tookIntoRun,
@@ -145,6 +147,18 @@ export interface Act {
    * those read the deeds (arts 70, 82).
    */
   readonly forfeits?: readonly string[]
+  /**
+   * art. 68 (strengthened): the thing in the world this act is about.
+   *
+   * **An act about a thing does not exist until the thing has been tapped.**
+   * The tap is the inspection — there is no other one, and there are no
+   * inspect buttons and no tooltips — and the verb is what looking summons.
+   * A player can no longer take a thing they have never looked at.
+   *
+   * An act with no `about` is about the room rather than about a thing in
+   * it, and is offered on arrival like any other.
+   */
+  readonly about?: string
 }
 
 /**
@@ -289,6 +303,10 @@ export function enterRoom(
   const on = run !== null && run.at.instance === at ? run.at.beat : 0
   const tray: Offer[] = [
     ...actsIn(book, node)
+      // art. 68: looking is what summons a verb. Until the thing has been
+      // tapped, the act about it is not in the tray at all — not greyed, not
+      // refusing, not there.
+      .filter((one) => summoned(run, at, one))
       .filter((one) => !done(run, at, one))
       .map((one) => ({ kind: 'act' as const, act: one })),
     ...node.doors.map((door) => ({ kind: 'door' as const, door })),
@@ -301,6 +319,14 @@ export function enterRoom(
     tray,
     tappables: tappablesIn(book, node),
   }
+}
+
+/**
+ * art. 68: whether looking has summoned this act yet, here. An act about
+ * nothing is about the room, and a room is a thing you are standing in.
+ */
+export function summoned(run: RunLedger | null, instance: InstanceId, one: Act): boolean {
+  return one.about === undefined || hasLooked(run, instance, one.about)
 }
 
 /** art. 82: done *here*. Two alcoves each hold their own key. */
@@ -318,6 +344,20 @@ function beatAt(beats: readonly string[], index: number): Beat | null {
 /** art. 5: tapping never harms; looking is free and always answers (art. 6). */
 export function look(book: RoomBook, bands: Bands, target: Tappable): Beat {
   return { text: book.look(bands.room, target.id), index: -1, last: true }
+}
+
+/**
+ * art. 68 (strengthened): and looking is written down, because the verb it
+ * summons has to still be there when you come back (arts 70, 82).
+ *
+ * It is separate from `look` on purpose: `look` answers, this remembers, and
+ * a caller that only wants the answer — a test, a re-read — does not have to
+ * pretend to be a thumb.
+ */
+export function looking(ledgers: Ledgers, target: Tappable): Ledgers {
+  const run = ledgers.run
+  if (run === null) return ledgers
+  return { ...ledgers, run: lookedAt(run, run.at.instance, target.id) }
 }
 
 /** art. 29: tap to recall the word. Presentation fades, knowledge doesn't. */

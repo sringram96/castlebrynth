@@ -97,6 +97,18 @@ export interface RunLedger {
    * an inference about what the shell thinks you probably want.
    */
   readonly panel: Panel
+  /**
+   * art. 68 (strengthened): the things this run has looked at, as
+   * `instance|thing`.
+   *
+   * An act about a thing does not exist until the thing has been tapped, so
+   * this is what summons the verb. It is keyed on the instance like the deeds
+   * (art. 82) — two copies of one room are two rooms, and looking in one is
+   * not looking in the other — and it persists for the instance: leave and
+   * come back, the verb is still there, because the world remembers
+   * (art. 70).
+   */
+  readonly looked: readonly string[]
 }
 
 /**
@@ -322,6 +334,7 @@ export function wake(permanent: PermanentLedger, seed: Seed, depth = 1): Ledgers
     window: null,
     fight: null,
     panel: HOME,
+    looked: [],
   } as unknown as RunLedger
   return { run, permanent }
 }
@@ -566,6 +579,22 @@ export function didHere(run: RunLedger, instance: InstanceId, act: string): RunL
   return { ...run, did: [...run.did, key] }
 }
 
+/**
+ * art. 68 (strengthened): looking at a thing, written down. Looking is free
+ * and never commits (art. 5), so this is the one mutation a tap may make —
+ * it does not change the world, it changes what the world will offer.
+ */
+export function lookedAt(run: RunLedger, instance: InstanceId, thing: string): RunLedger {
+  const key = deedKey(instance, thing)
+  if (run.looked.includes(key)) return run
+  return { ...run, looked: [...run.looked, key] }
+}
+
+/** art. 68: whether this thing has been looked at, here (art. 82). */
+export function hasLooked(run: RunLedger | null, instance: InstanceId, thing: string): boolean {
+  return run !== null && run.looked.includes(deedKey(instance, thing))
+}
+
 /** How a deed is written down, so a room can read back what it has lost. */
 export function deedKey(instance: InstanceId, act: string): string {
   return `${instance}|${act}`
@@ -641,9 +670,10 @@ export const QUARANTINE_KEY = 'castlebrynth.quarantine'
  * forward by the ladder below, never refused.
  *
  * 4 is the panels wave: art. 67's tray became a rail and a panel area, and
- * art. 75 makes which panel the thumb is on state like any other.
+ * art. 75 makes which panel the thumb is on state like any other. 5 is the
+ * summons (art. 68): what a run has looked at decides what it may do.
  */
-export const VAULT_VERSION = 4
+export const VAULT_VERSION = 5
 
 // ── The migration ladder ───────────────────────────────────────────────
 
@@ -762,6 +792,16 @@ export const MIGRATIONS: readonly Migration[] = [
   {
     from: 3,
     up: (snapshot) => fillingTheRun(snapshot, (run) => ({ ...run, panel: run.panel ?? HOME })),
+  },
+  /**
+   * 4 → 5. The summons (art. 68). A run from before it has looked at
+   * nothing, which is the honest answer — it never recorded looking — and it
+   * costs the player only the taps to look again. The run itself is
+   * untouched, so nobody loses a descent to it.
+   */
+  {
+    from: 4,
+    up: (snapshot) => fillingTheRun(snapshot, (run) => ({ ...run, looked: run.looked ?? [] })),
   },
 ]
 

@@ -18,7 +18,9 @@ import { hereIn } from '../src/gen/index.js'
 import { markRect, renderRoom, viewOf } from '../src/room/index.js'
 import type { RoomId } from '../src/state/index.js'
 import { instanceOf } from '../src/state/index.js'
-import { DEALER, opened } from './drift.js'
+import {
+  DEALER,
+  lookAround, opened } from './drift.js'
 
 /**
  * Rooms you can tell apart, and a world that remembers (arts 19, 21, 34,
@@ -148,7 +150,11 @@ describe('the world remembers — art. 70 (prose confirms, pixels prove)', () =>
     let { ledgers, chain } = opened(7)
     for (let n = 0; n < 12; n++) {
       const node = hereIn(chain)!
-      if (node.fills.some((fill) => fill.encounter === IRON_KEY)) return { ledgers, chain, node }
+      // art. 68: a thumb looks before it takes, so the walk that gets here
+      // taps everything on the way — which is what summons the verbs.
+      if (node.fills.some((fill) => fill.encounter === IRON_KEY)) {
+        return { ledgers: lookAround(ledgers, node), chain, node }
+      }
       const walked = chooseDoor(ledgers, chain, ROOM_BOOK, node.doors[0]!, DEALER)
       ledgers = walked.ledgers
       chain = walked.chain

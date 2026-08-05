@@ -13,7 +13,9 @@ import {
   remember,
 } from '../src/descent/index.js'
 import { hereIn } from '../src/gen/index.js'
-import { DEALER, alwaysLeft, opened, takeable } from './drift.js'
+import {
+  DEALER,
+  lookAround, alwaysLeft, opened, takeable } from './drift.js'
 
 /**
  * A room plays — arts 5–9 and 29. Beats one candle at a time, taps free and
@@ -30,7 +32,9 @@ function atTheKey(seed = 3) {
   for (let n = 0; n < 12; n++) {
     const node = hereIn(here.chain)!
     if (node.fills.some((fill) => fill.encounter === IRON_KEY)) {
-      return { ledgers: here.ledgers, chain: here.chain, node }
+      // art. 68: a thumb looks before it takes, and looking is what puts the
+      // verb on the strip. The walk that gets here taps what is in the room.
+      return { ledgers: lookAround(here.ledgers, node), chain: here.chain, node }
     }
     const walked = chooseDoor(here.ledgers, here.chain, ROOM_BOOK, node.doors[0]!, DEALER)
     here = { ledgers: walked.ledgers, chain: walked.chain, at: walked.chain.nodes.at(-1)!.instance }

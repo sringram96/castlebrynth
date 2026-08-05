@@ -38,7 +38,7 @@ import {
   save,
   wake,
 } from '../src/state/index.js'
-import { DEALER } from './drift.js'
+import { DEALER, lookAround } from './drift.js'
 
 /**
  * The wave's acceptance walk, end to end and deterministic.
@@ -108,6 +108,9 @@ function walkUntil(
   for (;;) {
     const node = hereIn(chain)
     if (node === null) return null
+    // art. 68: the walk taps everything in the room, the way a thumb does,
+    // so the verbs a look summons are on the strip when it stops.
+    ledgers = lookAround(ledgers, node)
     if (stop(node, ledgers)) return { ledgers, chain, node }
     // art. 3: take what the room requires before its doors will commit.
     for (const one of actsIn(ROOM_BOOK, node)) {

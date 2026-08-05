@@ -45,8 +45,7 @@ import {
   runOf,
   runWith,
   seedOf,
-  takeable,
-} from './drift.js'
+  takeable, lookAround } from './drift.js'
 import { BURNT, DROWNED, OSSUARY } from '../src/content/index.js'
 
 /**
@@ -103,7 +102,8 @@ function walkTo(
   for (let n = 0; n < DEPTH_ONE.length + 2; n++) {
     const node = hereIn(chain)
     if (node === null) return null
-    if (wanted(node)) return { ledgers, chain, node }
+    // art. 68: looking is what summons a verb, and a thumb looks.
+    if (wanted(node)) return { ledgers: lookAround(ledgers, node), chain, node }
     // art. 3: only what the room *requires* is taken, so nothing else is
     // spent on the way to the thing under test.
     for (const one of takeable(ledgers, node).filter((held) => held.required)) {
@@ -258,6 +258,9 @@ describe('art. 82 — once per instance, and only per instance', () => {
     const here = chain.nodes[0]!
     let { ledgers } = opened(1)
     ledgers = { ...ledgers, run: movedTo(wounded(ledgers.run!, 6), { room: here.room, instance: here.instance, step: here.step, beat: 0 }) }
+    // art. 68: the basin is a thing, and a thing is looked at before it is
+    // drunk from. The tap is what puts Drink on the strip.
+    ledgers = lookAround(ledgers, here)
 
     const before = enterRoom(ledgers, chain, ROOM_BOOK, here.instance)
     expect(before.tray.flatMap((o) => (o.kind === 'act' ? [o.act.id] : []))).toContain('act.drink')
@@ -278,6 +281,9 @@ describe('art. 82 — once per instance, and only per instance', () => {
     const second = chain.nodes[1]!
     let { ledgers } = opened(1)
     ledgers = { ...ledgers, run: movedTo(wounded(ledgers.run!, 6), { room: first.room, instance: first.instance, step: first.step, beat: 0 }) }
+    // art. 68: looked at in the first font, and — art. 82 — that is looking
+    // at the first font and not at the second.
+    ledgers = lookAround(ledgers, first)
 
     const spent = act(ledgers, mercyAct(first))
     const moved: Ledgers = {
@@ -289,13 +295,23 @@ describe('art. 82 — once per instance, and only per instance', () => {
         beat: 0,
       }),
     }
+    // art. 68 is per-instance too: looking at the first font is not looking
+    // at the second, so the second basin has to be tapped on its own before
+    // it offers anything. That is the same law as the deed, from the other
+    // side — and it is why this line is here rather than assumed.
+    const unlooked = enterRoom(moved, chain, ROOM_BOOK, second.instance)
+    expect(unlooked.tray.flatMap((o) => (o.kind === 'act' ? [o.act.id] : []))).not.toContain(
+      'act.drink',
+    )
+
     // art. 82: what you took *here* is gone from here, not from every copy.
+    const looked = lookAround(moved, second)
     expect(
-      enterRoom(moved, chain, ROOM_BOOK, second.instance).tray.flatMap((o) =>
+      enterRoom(looked, chain, ROOM_BOOK, second.instance).tray.flatMap((o) =>
         o.kind === 'act' ? [o.act.id] : [],
       ),
     ).toContain('act.drink')
-    expect(act(moved, mercyAct(second)).run!.health).toBeGreaterThan(moved.run!.health)
+    expect(act(looked, mercyAct(second)).run!.health).toBeGreaterThan(looked.run!.health)
   })
 
   it('shows the spent basin in the pixels, not only in the prose (art. 70)', () => {
