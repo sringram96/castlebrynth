@@ -16,8 +16,8 @@
  * and improved over time. The hero plates are a later phase.
  */
 
-import type { Brush, Prop, View, WorldMark } from '../../room/index.js'
-import { mix } from '../../room/index.js'
+import type { Brush, Drawn, Prop, View, WorldMark } from '../../room/index.js'
+import { mix, standing } from '../../room/index.js'
 import type { School } from '../palettes.js'
 import { alongSteps, lookOf } from '../palettes.js'
 import { AUTHORED_GRID } from '../render.js'
@@ -1023,4 +1023,43 @@ export function leftMark(school: School, mark: WorldMark): Prop {
       b.px(school.edge, at.x + s * 2 - g(1), at.y + s - g(1))
     },
   }
+}
+
+// ── Standing an authored thing (arts 100, 115) ─────────────────────────
+
+/**
+ * A drawn thing, standing in a room. Everything it needs beyond the drawing
+ * comes off the school: the ramp it takes its colours from, the ink of its
+ * contour, and — through the station — which side of it the light found.
+ *
+ * This is the seam art. 100 asks for. Content says *what* and *where*; the
+ * renderer decides every colour, so a drawing cannot fall out of palette and
+ * one drawing is one object in fourteen keys.
+ */
+export function thing(
+  school: School,
+  art: Drawn,
+  mark: WorldMark,
+  name: string,
+  readableTo = 46,
+  /**
+   * What this thing's `*` cells burn as. A light that carries is the one
+   * thing in a drawing the room does not get to colour, because it is not
+   * taking the room's light — it is making it (art. 100).
+   */
+  glow?: string,
+): Prop | null {
+  const look = lookOf(school)
+  return standing(
+    {
+      name,
+      at: mark,
+      art,
+      ramp: look.ramps.wall,
+      edge: school.edge,
+      readableTo,
+      glow: glow ?? look.light.tint,
+    },
+    look.light.station,
+  )
 }

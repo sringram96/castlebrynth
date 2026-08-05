@@ -23,6 +23,8 @@ export interface SurfaceRamps {
   readonly wall: Ramp
   readonly floor: Ramp
   readonly ceiling: Ramp
+  /** art. 96: an open room's sky. Absent everywhere a room has a ceiling. */
+  readonly sky?: Ramp
 }
 
 /**
@@ -104,6 +106,12 @@ export interface SurfaceShaders {
    * answers, asked of the plane the room stops at.
    */
   back(x: number, height: number): number
+  /**
+   * art. 96: the sky of an open room, given how far above the horizon the
+   * ray went. Answers a position on the sky's own ramp; the stars are the
+   * cast's, because a field is scattered and never drawn (art. 101).
+   */
+  sky?(up: number, across: number): number
 }
 
 /** Which surface a pixel first hit. Also the contour pass's alphabet. */
@@ -115,6 +123,8 @@ export const Surface = {
   Floor: 4,
   /** art. 96: the wall a chamber ends in. A tube never has one. */
   Back: 5,
+  /** art. 96: what an open room has instead of a ceiling. */
+  Sky: 6,
 } as const
 export type SurfaceId = (typeof Surface)[keyof typeof Surface]
 

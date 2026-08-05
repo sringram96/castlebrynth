@@ -70,6 +70,7 @@ import {
   SILT,
   SLATE,
   SOOT,
+  THRONE_STONE,
   VERDIGRIS,
   WET,
 } from './palettes.js'
@@ -90,9 +91,28 @@ import {
   stairHead,
   sumpGrate,
   tallyMarks,
+  thing,
   threshold,
   framedWidth,
 } from './plates/props.js'
+import {
+  BELL,
+  BOTTLE,
+  BRAZIER,
+  CAGE,
+  CAPS,
+  CHOIR,
+  COINS,
+  HANGED,
+  KNIFE,
+  LANTERN,
+  MANY,
+  RING,
+  SKULL,
+  STATUE,
+  THRONE,
+  WATCHER,
+} from './plates/bestiary.js'
 import { WAKE } from './plates/wake.js'
 import { ARRIVALS, BEATS, LABELS, LOOKS, NOUNS } from './prose.js'
 import { RENDER } from './render.js'
@@ -120,16 +140,33 @@ const CORRIDOR = { lens: 93, width: 11, ceiling: 7, back: 40 } as const
 const LOW = { lens: 88, width: 9, ceiling: 5, back: 34 } as const
 const CHAMBER = { lens: 96, width: 12, ceiling: 8, back: 43 } as const
 const HALL = { lens: 100, width: 14, ceiling: 9, back: 47 } as const
+/** art. 96: a throne hall is wide and tall and stops a long way off. */
+const GREAT = { lens: 104, width: 17, ceiling: 13, back: 58 } as const
+/** A sewer: narrow, low, and it ends soon. */
+const VAULT = { lens: 84, width: 8, ceiling: 4, back: 27 } as const
+/** art. 96: the open — no walls, no ceiling, and the sky instead. */
+const OPEN = { lens: 100, width: 40, ceiling: 40, open: true } as const
 
 /** Which of the four boxes a room is, for the marks that derive from it. */
-type ShapeKind = 'corridor' | 'low' | 'chamber' | 'hall'
+type ShapeKind = 'corridor' | 'low' | 'chamber' | 'hall' | 'great' | 'vault' | 'open'
 
 const SHAPES: Readonly<Record<ShapeKind, RoomShape>> = {
   corridor: CORRIDOR,
   low: LOW,
   chamber: CHAMBER,
   hall: HALL,
+  great: GREAT,
+  vault: VAULT,
+  open: OPEN,
 }
+
+/**
+ * art. 100: fire is fire. A light that carries is the one thing in a drawing
+ * the school does not colour, because it is not taking the room's light — it
+ * is making it, and a green flame in the drowned would be a lie about what
+ * is burning.
+ */
+const FIRE = '#ffb14a'
 
 /** The floor, in the world's own units — everything stands on it. */
 const FLOOR = -RENDER.eye
@@ -159,6 +196,11 @@ const DOOR_PLAN: Readonly<Record<ShapeKind, DoorPlan>> = {
   low: { high: 14, wide: 6.6 },
   chamber: { high: 17.5, wide: 8 },
   hall: { high: 19, wide: 9 },
+  great: { high: 24, wide: 11 },
+  vault: { high: 10.5, wide: 4.6 },
+  // art. 96: an open room's way on is a gap in nothing, so its threshold
+  // stands free on the ground and is the one place a frame is the whole wall.
+  open: { high: 20, wide: 8.5 },
 }
 
 /**
@@ -170,6 +212,9 @@ function doorDepth(kind: ShapeKind): number {
   return SHAPES[kind].back ?? DOOR_PLAN[kind].high * 2
 }
 
+/** art. 96: an open room has no wall, so its threshold stands on the ground. */
+const OPEN_DOOR_AT = 34
+
 /** How much room the doors leave themselves against the walls. */
 const DOOR_MARGIN = 0.8
 /**
@@ -179,7 +224,7 @@ const DOOR_MARGIN = 0.8
  */
 const DOOR_GAP = 1.7
 /** And never narrower than this: past it a hole stops reading as a way on. */
-const NARROWEST = 3.2
+const NARROWEST = 2.2
 
 /**
  * Where each of a room's doors stands, given how many it offers (art. 31).
@@ -194,16 +239,20 @@ const NARROWEST = 3.2
 export function doorMarks(kind: ShapeKind, count: number): readonly WorldMark[] {
   const plan = DOOR_PLAN[kind]
   const n = Math.max(1, count)
-  const span = 2 * (SHAPES[kind].width - DOOR_MARGIN)
+  const span = SHAPES[kind].open === true ? 26 : 2 * (SHAPES[kind].width - DOOR_MARGIN)
   const slot = span / n
+  // A narrow room's doors need a proportionally narrower gap: the law is
+  // that wall shows between two architraves, not that a fixed number of
+  // world units does (art. 105).
+  const gap = Math.min(DOOR_GAP, slot * 0.3)
   // The widest that still leaves wall between the architraves — measured on
   // the framed footprint, because that is what the eye reads as the thing.
   let width = plan.wide
-  while (width > NARROWEST && framedWidth(width) + DOOR_GAP > slot) width -= 0.1
+  while (width > NARROWEST && framedWidth(width) + gap > slot) width -= 0.1
   return Array.from({ length: n }, (_, i) => ({
     X: -span / 2 + slot * (i + 0.5),
     Y: FLOOR,
-    z: doorDepth(kind),
+    z: SHAPES[kind].open === true ? OPEN_DOOR_AT : doorDepth(kind),
     width,
     height: plan.high,
   }))
@@ -233,6 +282,9 @@ const DOOR_AT: Readonly<Record<ShapeKind, WorldMark>> = {
   low: doorMarks('low', 1)[0]!,
   chamber: doorMarks('chamber', 1)[0]!,
   hall: doorMarks('hall', 1)[0]!,
+  great: doorMarks('great', 1)[0]!,
+  vault: doorMarks('vault', 1)[0]!,
+  open: doorMarks('open', 1)[0]!,
 }
 
 /**
@@ -272,6 +324,21 @@ const SOCKET_AT: Readonly<Record<ShapeKind, Readonly<Record<string, WorldMark>>>
     [FAR_SOCKET]: { X: 0, Y: FLOOR, z: 31, width: 6.5, height: 9 },
     [FLOOR_SOCKET]: { X: 8.5, Y: FLOOR + 1.5, z: 19, width: 3.4, height: 2 },
     [MERCY_SOCKET]: { X: -8.6, Y: FLOOR, z: 22, width: 5, height: 8 },
+  },
+  great: {
+    [FAR_SOCKET]: { X: 0, Y: FLOOR, z: 40, width: 8, height: 11 },
+    [FLOOR_SOCKET]: { X: 10.5, Y: FLOOR + 1.5, z: 21, width: 3.4, height: 2 },
+    [MERCY_SOCKET]: { X: -10.5, Y: FLOOR, z: 25, width: 5.4, height: 8.5 },
+  },
+  vault: {
+    [FAR_SOCKET]: { X: 0, Y: FLOOR, z: 19, width: 3.6, height: 4.6 },
+    [FLOOR_SOCKET]: { X: 5, Y: FLOOR + 1.2, z: 14, width: 3, height: 1.8 },
+    [MERCY_SOCKET]: { X: -5, Y: FLOOR, z: 16, width: 3.2, height: 4.2 },
+  },
+  open: {
+    [FAR_SOCKET]: { X: 0, Y: FLOOR, z: 26, width: 7, height: 9.5 },
+    [FLOOR_SOCKET]: { X: 9, Y: FLOOR + 1.5, z: 17, width: 3.4, height: 2 },
+    [MERCY_SOCKET]: { X: -10, Y: FLOOR, z: 21, width: 5, height: 8 },
   },
 }
 
@@ -479,6 +546,114 @@ const AUTHORED: readonly Authored[] = [
     tappables: [['tally.marks', { X: 8.6, Y: FLOOR + 3, z: 20, width: 2.4, height: 4 }]],
   },
   {
+    id: 'room.hall.throne',
+    type: 'omen',
+    school: THRONE_STONE,
+    kind: 'great',
+    dressing: (school) => [
+      thing(school, THRONE, { X: 0, Y: FLOOR, z: 44, width: 11, height: 15 }, 'the throne', 60),
+      thing(school, BRAZIER, { X: -9, Y: FLOOR, z: 30, width: 4.6, height: 6 }, 'the brazier', 46, FIRE),
+      thing(school, BRAZIER, { X: 9, Y: FLOOR, z: 30, width: 4.6, height: 6 }, 'the brazier', 46, FIRE),
+      thing(school, BELL, { X: -13, Y: FLOOR + 9, z: 22, width: 4, height: 4.4 }, 'the bell'),
+    ].filter((one): one is NonNullable<typeof one> => one !== null),
+    tappables: [
+      ['throne.seat', { X: 0, Y: FLOOR, z: 44, width: 11, height: 15 }],
+      ['throne.bell', { X: -13, Y: FLOOR + 9, z: 22, width: 4, height: 4.4 }],
+    ],
+    teeth: STRAY_CHANCE,
+  },
+  {
+    id: 'room.passage.sewer',
+    type: 'passage',
+    school: SILT,
+    kind: 'vault',
+    dressing: (school) => [
+      runnel(school),
+      thing(school, CAPS, { X: -5.4, Y: FLOOR, z: 16, width: 4.2, height: 2.6 }, 'the caps'),
+      thing(school, BOTTLE, { X: 4.8, Y: FLOOR, z: 14, width: 1.4, height: 2 }, 'the bottle'),
+    ].filter((one): one is NonNullable<typeof one> => one !== null),
+    tappables: [
+      ['sewer.channel', { X: 0, Y: FLOOR, z: 13, width: 3.4, height: 1.6 }],
+      ['sewer.caps', { X: -5.4, Y: FLOOR, z: 16, width: 4.2, height: 2.6 }],
+    ],
+  },
+  {
+    id: 'room.open.barrow',
+    type: 'omen',
+    school: SLATE,
+    kind: 'open',
+    dressing: (school) => [
+      thing(school, STATUE, { X: -16, Y: FLOOR, z: 23, width: 7, height: 10.5 }, 'the statue', 56),
+      thing(school, STATUE, { X: 17, Y: FLOOR, z: 27, width: 7, height: 10.5 }, 'the statue', 56),
+      thing(school, HANGED, { X: 11, Y: FLOOR + 8, z: 16, width: 5, height: 10 }, 'the hanged'),
+    ].filter((one): one is NonNullable<typeof one> => one !== null),
+    tappables: [
+      ['barrow.sky', { X: 0, Y: FLOOR + 22, z: 30, width: 26, height: 12 }],
+      ['barrow.statue', { X: -16, Y: FLOOR, z: 23, width: 7, height: 10.5 }],
+      ['barrow.hanged', { X: 11, Y: FLOOR + 8, z: 16, width: 5, height: 10 }],
+    ],
+    teeth: NEVER,
+  },
+  {
+    id: 'room.lair.choir',
+    type: 'lair',
+    school: CHALK,
+    kind: 'chamber',
+    dressing: (school) => [
+      thing(school, CAGE, { X: -8.8, Y: FLOOR, z: 27, width: 4.6, height: 5.2 }, 'the cage'),
+      thing(school, CHOIR, { X: 8.6, Y: FLOOR, z: 24, width: 7.5, height: 9.5 }, 'the choir', 50),
+    ].filter((one): one is NonNullable<typeof one> => one !== null),
+    tappables: [
+      ['choir.cage', { X: -8.8, Y: FLOOR, z: 27, width: 4.6, height: 5.2 }],
+      ['choir.faces', { X: 8.6, Y: FLOOR, z: 24, width: 7.5, height: 9.5 }],
+    ],
+    teeth: LAIR_CHANCE,
+  },
+  {
+    id: 'room.trove.hoard',
+    type: 'trove',
+    school: OCHRE,
+    kind: 'chamber',
+    dressing: (school) => [
+      thing(school, COINS, { X: 1.5, Y: FLOOR, z: 16, width: 5, height: 2.6 }, 'the coins'),
+      thing(school, LANTERN, { X: -6.5, Y: FLOOR + 5.5, z: 19, width: 2.2, height: 2.4 }, 'the lantern', 46, FIRE),
+      thing(school, KNIFE, { X: 7, Y: FLOOR, z: 21, width: 2, height: 2 }, 'the knife'),
+      thing(school, RING, { X: -2.5, Y: FLOOR, z: 12, width: 1.2, height: 1.4 }, 'the ring'),
+    ].filter((one): one is NonNullable<typeof one> => one !== null),
+    tappables: [
+      ['hoard.coins', { X: 1.5, Y: FLOOR, z: 16, width: 5, height: 2.6 }],
+      ['hoard.lantern', { X: -6.5, Y: FLOOR + 5.5, z: 19, width: 2.2, height: 2.4 }],
+      ['hoard.ring', { X: -2.5, Y: FLOOR, z: 12, width: 1.2, height: 1.4 }],
+    ],
+    floor: 0.5,
+  },
+  {
+    id: 'room.puzzle.watcher',
+    type: 'puzzle',
+    school: VERDIGRIS,
+    kind: 'hall',
+    dressing: (school) => [
+      thing(school, WATCHER, { X: -9.5, Y: FLOOR, z: 26, width: 8.5, height: 11.5 }, 'the watcher', 52),
+      thing(school, SKULL, { X: 6.5, Y: FLOOR, z: 15, width: 1.8, height: 2 }, 'the skull'),
+    ].filter((one): one is NonNullable<typeof one> => one !== null),
+    tappables: [
+      ['watcher.neck', { X: -9.5, Y: FLOOR, z: 26, width: 8.5, height: 11.5 }],
+      ['watcher.skull', { X: 6.5, Y: FLOOR, z: 15, width: 1.8, height: 2 }],
+    ],
+  },
+  {
+    id: 'room.lair.crawl',
+    type: 'lair',
+    school: SOOT,
+    kind: 'low',
+    dressing: (school) => [
+      dragMark(school),
+      thing(school, MANY, { X: -1, Y: FLOOR, z: 17, width: 10, height: 6.6 }, 'the many', 46),
+    ].filter((one): one is NonNullable<typeof one> => one !== null),
+    tappables: [['crawl.legs', { X: -1, Y: FLOOR, z: 17, width: 10, height: 6.6 }]],
+    teeth: LAIR_CHANCE,
+  },
+  {
     id: 'room.warden',
     type: 'warden',
     school: IRON,
@@ -518,7 +693,7 @@ function thresholds(one: Authored, state: SceneState): readonly Prop[] {
   // frame in mid air, which is the thing art. 97 refuses, so this refuses it
   // instead of drawing it. Nothing declares a tube today; the guard is here
   // so that the day something does, it fails visibly rather than floating.
-  if (SHAPES[one.kind].back === undefined) return []
+  if (SHAPES[one.kind].back === undefined && SHAPES[one.kind].open !== true) return []
   const ways: readonly DoorState[] =
     state.doors.length > 0 ? state.doors : [{ at: 0, open: false, locked: false, ends: false }]
   const marks = doorMarks(one.kind, ways.length)
@@ -623,20 +798,41 @@ export const DEPTH_ONE: DepthPlan = {
   regions: [
     {
       id: DROWNED,
-      rooms: [room('room.passage.drip'), room('room.lair.cistern'), room('room.trove.sump')],
+      rooms: [
+        room('room.passage.drip'),
+        room('room.lair.cistern'),
+        room('room.trove.sump'),
+        room('room.passage.sewer'),
+      ],
     },
     {
       id: BURNT,
-      rooms: [room('room.passage.ash'), room('room.lair.kiln'), room('room.omen.pyre')],
+      rooms: [
+        room('room.passage.ash'),
+        room('room.lair.kiln'),
+        room('room.omen.pyre'),
+        room('room.lair.crawl'),
+      ],
     },
     {
       id: OSSUARY,
-      rooms: [room('room.lair.den'), room('room.passage.bonefield'), room('room.puzzle.tally')],
+      rooms: [
+        room('room.lair.den'),
+        room('room.passage.bonefield'),
+        room('room.puzzle.tally'),
+        room('room.lair.choir'),
+      ],
     },
   ],
   neutral: [
     room('room.trove.alcove'),
     room('room.passage.stair'),
+    // The look wave's new kinds: a hall that stops a long way off, ground
+    // with a sky over it, a hoard, and something with a long neck.
+    room('room.hall.throne'),
+    room('room.open.barrow'),
+    room('room.trove.hoard'),
+    room('room.puzzle.watcher'),
     // art. 40: neutral, not regional, so the drift can lean a run anywhere
     // it likes and the run still gets its breath (arts 77–78).
     room('room.sanctum.font'),

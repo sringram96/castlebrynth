@@ -141,6 +141,11 @@ export function masonry(school: School, shape: RoomShape, eye: number): SurfaceS
       if (hash(s, (x * 2) | 0) < 9) step -= STONE.defect
       return step
     },
+    // art. 96: the sky of an open room. Darkest overhead and opening a
+    // little toward the horizon, which is where the light that is left goes.
+    sky(up) {
+      return Math.max(0, 1 - Math.min(1, up * 2.4)) * 9 * DEEP * 0.42
+    },
     // art. 96: the far wall is the same masonry, coursed the same way and
     // laid across the end instead of along the sides. It runs on `x` where a
     // side wall runs on `z`, so the courses line up where the two meet and

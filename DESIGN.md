@@ -96,7 +96,7 @@ blind doors → the room behind it is dealt on the spot → keep choosing → a
 region locks and the depth announces where you have arrived → the rest of
 the depth deals from that region and its encounters wake → the Warden's
 door, refused without the key and terse with it. `npm test` is green: 31
-files, 283 tests.
+files, 284 tests.
 
 **And the tray became a rail and panels.** The playtest found two
 immersion breaks, and the tray stand-up of 2026-08-05 ruled on both. The
@@ -201,6 +201,100 @@ acts tab, then Run — where it used to be one. Art. 41 says FLEE is always
 timed (art. 1), so the tap buys a strip that holds still. If flight ever
 wants to be instant again, the fix is a fixed slot on the rail rather
 than a verb back in the shifting strip.
+
+## The look wave (arts 17, 94–96, 100, 113–115)
+
+The playtest verdict was that every room is a hallway, the doors read as
+chests, and you cannot tell what anything is. The renderer was not broken —
+it was under-specified — so this wave changed the law it obeys and then
+built against it.
+
+**The load-bearing amendment is art. 17.** The ban on gradients is lifted
+*inside a surface's own ramp*; what stays banned, and is now named properly,
+is **alpha compositing** — no translucent layer, no soft mask, nothing whose
+colour depends on what is behind it. The original ban was right about the
+failure it was aimed at (blending destroyed the material read at four device
+pixels to a game pixel) and cut too wide. The answer is to keep the dither
+in the darks, where banding actually shows.
+
+- **The ramp is deep and it turns** (art. 94). Sixty-four steps through
+  three HSL stops — cool desaturated dark, the school's own mid, warm
+  saturated light. `mixHSL` rounds the short way so a ramp never takes the
+  long road through green. Every grammar offset in the game was authored
+  against ten steps, so `deepen()` carries the masonry, the light's lift and
+  the air's gain up by the ramp's new depth in **one place** rather than
+  re-authoring fourteen rooms' worth of numbers.
+- **The hybrid dither** (art. 95). Blend across the upper ramp, dither below
+  `blendAbove` — a fifth today. It is the one number in the render
+  configuration a desktop panel cannot settle, and the config says so where
+  it is declared. **This is unverified on a phone** (see below).
+- **A light is a station, a reach and a colour** (arts 113–114). The station
+  resolves to a world point and the lift is Euclidean distance from it, so a
+  room lit from below has its ceiling as the darkest surface in the frame.
+  Every school declares one, because at sixty-four steps a palette stops
+  carrying identity on its own.
+- **The open** (art. 96, fourth shape). No walls and no ceiling: the ray
+  hits the ground or it hits the sky, and the stars are a scattered field —
+  art. 101 doing the one thing scatter is actually for.
+- **Things are authored as text** (arts 100, 115). `0`–`9` walk the room's
+  ramp, `.` is nothing, `*` is a light that carries, `+` is metal. The rim
+  is **derived**: each shape's distance-to-outside is computed once, the
+  edge normal is that field's gradient, and how hot an edge burns is that
+  normal against where the room's light stands. Nothing is hand-shaded, so
+  one drawing lights itself correctly in a room lit from below and in a room
+  lit from ahead.
+
+**Which rooms got which light.** Drowned (`WET`, `BRINE`, `SILT`) from
+below, through the water. Burnt: `EMBER` from the embers on the floor, `ASH`
+from ahead, `SOOT` from nothing at all. Ossuary (`CHALK`, `NOIR`,
+`GRANITE`) close and with you. Neutral: `OCHRE` and `VERDIGRIS` from above,
+`SLATE` from ahead. The Warden's hall takes no light. `THRONE_STONE` is a
+new school and the clearest case for art. 114 — it is the ossuary's palette
+almost exactly, and it is unmistakably another place because two braziers
+stand on its floor.
+
+**Seven new rooms, and the depth went from fourteen to twenty-one.** The
+throne hall (`great`: wide, tall, stops a long way off), the sewer
+(`vault`: narrow, low), the barrow (`open`: ground and stars), the choir,
+the hoard, the watcher and the crawl. Five shapes are now in play where
+there were four boxes at different sizes.
+
+**A bestiary and a hoard**, drawn once each: the hanged, the lantern-bearer,
+the many, the choir, the watcher; a skull, a lantern, a ring, a knife, a
+bottle, spilled coins; a brazier, a throne, a headless statue, lit caps, an
+open cage, a cracked bell. Fire is the one thing a school does not colour —
+a green flame in the drowned would be a lie about what is burning — so
+`thing()` takes a glow override and the braziers and the lantern use it.
+
+**The golden plate is relocked**, c344dfd9 → bbf46771, with the reason in
+the test: art. 17 amended, the ramp deepened and turned, the light given a
+station. Every pixel moved and none of them moved by accident. Relocked,
+never loosened into a tolerance — a tolerance would let the next wave change
+the box without anybody noticing.
+
+### What this wave did not build
+
+Named plainly rather than quietly skipped, because the wave document asked
+for them:
+
+- **Masses** (art. 102) — the floor as a plane plus a height, with the cast
+  marching downward rays against it. Not started. The sand the document asks
+  for needs it, and painting a crest in screen space is exactly what the
+  article refuses, so nothing was faked in its place.
+- **Features** (art. 99) — string courses, pilasters, niches, blind arcades,
+  the bricked-up doorway. Not started. This is still the tier the game lacks
+  entirely, and it is why the throne hall has no arcade behind its throne.
+- **The junction** (art. 96) — wide, full-height side apertures. The shape
+  is law and is not built; every room with doors is a chamber or the open.
+- **Re-authoring the original fourteen.** They took the new shading, the new
+  stations and the new thresholds, but their props are the old hand-written
+  painters rather than authored index grids, and only the seven new rooms
+  use the bestiary.
+- **The phone pass.** `blendAbove` is set at a fifth from the demos and has
+  been verified on nothing but a desktop panel. The banding threshold the
+  definition of done asks for is **not settled**, and the number in
+  `render.ts` should be treated as a guess until somebody walks a depth on a
+  real device.
 
 ## A door is a hole now, and the room ends (arts 96–97, built)
 

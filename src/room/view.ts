@@ -24,6 +24,14 @@ export interface RoomShape {
    * pass through.
    */
   readonly back?: number
+  /**
+   * art. 96: the **open** — no walls and no ceiling. A ray hits the ground
+   * or it hits the sky, and the sky is a ramp with a scattered field in it
+   * (art. 101). Everything else about the box is unchanged: the camera is
+   * still a person, the horizon is still fixed, and the ground still
+   * diminishes honestly.
+   */
+  readonly open?: boolean
 }
 
 /**

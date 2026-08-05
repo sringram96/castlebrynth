@@ -21,10 +21,14 @@ import { viewOf } from './view.js'
 export type { Frame, RenderConfig } from './config.js'
 export { focalLength, frameOf } from './config.js'
 export { dither, hash, ign } from './dither.js'
+export type { CellKind, Drawn } from './drawn.js'
+export { Cell, drawn, lightFrom } from './drawn.js'
+export type { Standing } from './place.js'
+export { standing } from './place.js'
 export type { Framebuffer } from './framebuffer.js'
 export { framebuffer } from './framebuffer.js'
 export type { Ramp, RampSpec } from './ramp.js'
-export { alongRamp, darkest, extend, lightest, mix, ramp, stepOf } from './ramp.js'
+export { alongRamp, darkest, extend, lightest, mix, mixHSL, ramp, stepOf, turned } from './ramp.js'
 export type {
   Air,
   Brush,

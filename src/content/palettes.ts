@@ -345,6 +345,34 @@ export const CHALK: School = {
  * The tally. The ossuary region's puzzle: slate, so the scratches cut into
  * the wall read as the only thing in the room anyone wrote down.
  */
+/**
+ * The throne hall: the same cold stone as the ossuary, lit from the floor by
+ * two braziers rather than by anything you carry. art. 114 — the station is
+ * what makes it another place, and the palette barely moves.
+ */
+export const THRONE_STONE: School = {
+  mortar: '#131414',
+  brick: ['#242727', '#313534', '#3e4341', '#313534'],
+  brickAlt: '#4d5350',
+  grime: '#0d0e0e',
+  moss: '#222a20',
+  moss2: '#2c3629',
+  damp: '#1a1f21',
+  flag: ['#1c1e1e', '#282b2b', '#282b2b', '#343837'],
+  slat: ['#191b1b', '#222524', '#191b1b', '#101111'],
+  bone: ['#8e8a78', '#bdb7a0', '#e0d9bd'],
+  accent: ['#3d2410', '#7a4416', '#c9762a', '#ffb14a'],
+  edge: '#030404',
+  iron: '#141618',
+  coin: '#cfa94f',
+  hollow: '#020303',
+  breath: '#0f1112',
+  // art. 114: fire on the floor, so the ceiling is the darkest thing in it.
+  station: 'below',
+  glow: '#ffb14a',
+  lamp: { reach: 34, lift: 2.4 },
+}
+
 export const SLATE: School = {
   mortar: '#101215',
   brick: ['#1a1d22', '#22262c', '#2b3037', '#22262c'],
@@ -493,6 +521,8 @@ export interface Shading {
   readonly wall: RampSpec
   readonly floor: RampSpec
   readonly ceiling: RampSpec
+  /** art. 96: an open room's sky. Every school has one; most never use it. */
+  readonly sky: RampSpec
   /** Where each surface's own stone sits on its ramp, unlit, in steps. */
   readonly base: { readonly wall: number; readonly floor: number; readonly ceiling: number }
   readonly light: Light
@@ -539,10 +569,20 @@ export function shadingOf(school: School): Shading {
     TURN.ceiling,
     HEAT.ceiling,
   )
+  // art. 96: a night, out of the school's own darkness and its own colour,
+  // so an open room in the drowned is not an open room in the burnt.
+  const sky = specOf(
+    [school.hollow, school.grime, school.damp, school.accent[0]],
+    STEPS.ceiling,
+    2.1,
+    TURN.ceiling,
+    HEAT.ceiling,
+  )
   const made: Shading = {
     wall,
     floor,
     ceiling,
+    sky,
     base: {
       // The commonest stone on each surface — the tone the old shaders
       // reached for in half of all cells, so a room starts from exactly
@@ -581,6 +621,7 @@ export function lookOf(school: School): Look {
       wall: ramp(shading.wall),
       floor: ramp(shading.floor),
       ceiling: ramp(shading.ceiling),
+      sky: ramp(shading.sky),
     },
     light: shading.light,
     air: shading.air,

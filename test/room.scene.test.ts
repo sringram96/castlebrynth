@@ -69,11 +69,17 @@ function fnv(bytes: Uint8ClampedArray): string {
 }
 
 describe('rooms — art. 21 (palette is authorial), art. 19 (props stand somewhere)', () => {
-  it('gives every room its own look, so no two rooms light the same', () => {
-    // Under the ramp wave a room's colour is its ramps as much as its four
-    // box tones, so the whole look is what has to differ.
-    const looks = ROOMS.map((held) => JSON.stringify(held.scene(bare(held.id)).look))
-    expect(new Set(looks).size).toBe(ROOMS.length)
+  it('gives no two rooms the same school in the same box (arts 34, 93)', () => {
+    // art. 93: a room is a box, a school, a shape, and its things. The first
+    // cut of this test asked every room for its own school, which was the
+    // right question while a school was all a room had. The look wave gave
+    // rooms shapes as well (art. 96), so two rooms may share a school when
+    // one is a low crawl and the other is a hall — what may never repeat is
+    // the pair, because that *is* the same room in a different place.
+    const pairs = ROOMS.map(
+      (held) => `${JSON.stringify(held.scene(bare(held.id)).look)}|${held.kind}`,
+    )
+    expect(new Set(pairs).size).toBe(ROOMS.length)
   })
 
   it('gives every surface a deep ramp that turns as it climbs (arts 94–95)', () => {
