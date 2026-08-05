@@ -280,6 +280,13 @@ export const NOTICES: Readonly<Record<string, string>> = {
   // full house is the five, never the five and one more.
   'claim.exact': 'No combo uses exactly these dice.',
   'claim.none': 'Nothing is chosen yet.',
+  // arts 60, 86: the hand is a chosen six, and choosing is a swap. Neither
+  // of these instructs — they say what is true of the tray right now, and
+  // the verb on the strip is the only thing that tells you what to press.
+  'swap.none': 'Nothing is chosen to leave, and nothing to take its place.',
+  'swap.done': 'The bone goes into your hand. The other one keeps.',
+  'swap.locked': 'Something is waiting behind that door. Your hand stays as it is.',
+  'pouch.spare': 'Yours, and not in your hand.',
 }
 
 /**
@@ -387,6 +394,8 @@ export const VERBS: Readonly<Record<string, string>> = {
   'keep-all': 'Keep all',
   claim: 'Claim',
   'take-back': 'Take back',
+  // art. 66: two words or fewer, and it never narrates.
+  swap: 'Swap',
   'end-turn': 'End turn',
   run: 'Run',
 }

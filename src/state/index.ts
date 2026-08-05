@@ -290,6 +290,8 @@ export function wake(permanent: PermanentLedger, seed: Seed, depth = 1): Ledgers
     healthMax: permanent.body.health,
     at: { room: CROSSING, instance: instanceOf(CROSSING, 0), step: 0, beat: 0 },
     history: { taken: [] },
+    // art. 60: the pouch's order is the hand, so a hand chosen by swapping
+    // (`swapInPouch`) is the hand you wake with next time, for free.
     hand: assembleHand(permanent.pouch, permanent.handSize),
     armor: armorFrom(permanent.wearables, permanent.body.armor),
     worn: permanent.wearables.map((wearable) => wearable.id),
@@ -416,14 +418,11 @@ function isWearable(taken: Talisman | Wearable): taken is Wearable {
  * (art. 53), so a keepsake found in this room is in the next fight already.
  */
 export function tookIntoRun(run: RunLedger, permanent: PermanentLedger): RunLedger {
-  const dice = [...run.hand.dice]
-  const held = new Set<string>(dice.map((die) => die.id as string))
-  for (const die of permanent.pouch.dice) {
-    if (dice.length >= permanent.handSize) break
-    if (held.has(die.id as string)) continue
-    dice.push(die)
-    held.add(die.id as string)
-  }
+  // art. 63: never while a fight is in flight or paused behind a door. The
+  // hand a fight was opened with is the hand it is replayed with (art. 75),
+  // and re-arming between fleeing and going back in would be a way to launder
+  // a card. A good found here waits for the fight to end.
+  const dice = run.fight === null ? handFrom(permanent) : [...run.hand.dice]
 
   const worn = [...run.worn]
   let armor = run.armor
@@ -433,8 +432,60 @@ export function tookIntoRun(run: RunLedger, permanent: PermanentLedger): RunLedg
     armor += wearable.armor
   }
 
-  if (dice.length === run.hand.dice.length && worn.length === run.worn.length) return run
-  return { ...run, hand: { dice }, worn, armor }
+  const same =
+    dice.length === run.hand.dice.length &&
+    dice.every((die, at) => die.id === run.hand.dice[at]?.id) &&
+    worn.length === run.worn.length
+  return same ? run : { ...run, hand: { dice }, worn, armor }
+}
+
+/**
+ * art. 60: the hand is assembled from the pouch, and the pouch is ordered —
+ * so the hand is simply the first `handSize` of it. Everything past that is
+ * a **spare**: owned, carried between runs, and not currently in play.
+ *
+ * The order being the answer is what lets a chosen hand survive a death for
+ * nothing: the reseed burns the run and the pouch is untouched, so the six
+ * you chose are still the first six when you wake.
+ */
+export function handFrom(permanent: PermanentLedger): readonly Die[] {
+  return permanent.pouch.dice.slice(0, Math.max(0, permanent.handSize))
+}
+
+/** art. 60: the dice you own that are not in the hand right now. */
+export function sparesOf(permanent: PermanentLedger): readonly Die[] {
+  return permanent.pouch.dice.slice(Math.max(0, permanent.handSize))
+}
+
+/**
+ * arts 60, 86 (ruled 2026-08-05): the hand is a **chosen** six, and choosing
+ * is a swap.
+ *
+ * A found die past a full hand does not simply pile up in the pouch waiting
+ * for a waking that will never look at it — it asks which die it replaces,
+ * and it is a straight exchange: the one you take goes into the hand's
+ * order, the one you give up becomes a spare. Nothing is destroyed and
+ * nothing is sold; the pouch is the collection (art. 60) and this only ever
+ * moves things inside it.
+ *
+ * It is done by exchanging positions rather than by keeping a second list,
+ * because the pouch's order *is* the hand (`handFrom`). One statement of
+ * what you are carrying, and nothing that can disagree with it.
+ */
+export function swapInPouch(
+  permanent: PermanentLedger,
+  taking: DieId,
+  leaving: DieId,
+): PermanentLedger {
+  if (taking === leaving) return permanent
+  const dice = [...permanent.pouch.dice]
+  const to = dice.findIndex((die) => die.id === taking)
+  const from = dice.findIndex((die) => die.id === leaving)
+  if (to < 0 || from < 0) return permanent
+  const held = dice[to]!
+  dice[to] = dice[from]!
+  dice[from] = held
+  return { ...permanent, pouch: { dice } }
 }
 
 /** art. 32: every death reseeds. The run burns; one line is written. */

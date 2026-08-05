@@ -31,7 +31,7 @@ import {
   refill,
 } from '../lots/index.js'
 import type { FightPhase, FightSave, InstanceId, Ledgers, Seed } from '../state/index.js'
-import { die, fighting, wake, wounded } from '../state/index.js'
+import { die, fighting, tookIntoRun, wake, wounded } from '../state/index.js'
 import type { Brush, Prop } from '../room/index.js'
 
 /** A door that is a fight. Opening it does not change rooms. */
@@ -298,7 +298,11 @@ export function routeDeath(ledgers: Ledgers, cause: string): Ledgers {
 export function carryOut(ledgers: Ledgers, fight: Fight): Ledgers {
   const run = ledgers.run
   if (run === null) return ledgers
-  return { ...ledgers, run: fighting(wounded(run, fight.yourHealth), null) }
+  const free = fighting(wounded(run, fight.yourHealth), null)
+  // arts 55, 60: a good found in the room this fight stood in waited for the
+  // fight to end rather than re-arming you inside it (`tookIntoRun`). The
+  // fight has ended, so it lands now instead of at the next waking.
+  return { ...ledgers, run: tookIntoRun(free, ledgers.permanent) }
 }
 
 /**
