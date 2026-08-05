@@ -35,7 +35,12 @@ in the-thumb.md (arts 66–76).
     permanent ledger, and survive death.
 11. STANDING — Two ledgers. The run burns at death; the permanent survives:
     dice, signature, keepsakes, knowledge, the Book of Ends.
-12. PARKED — Classes. (See art. 56: the socket is a curated starting hand.)
+12. REPEALED (ruled 2026-08-05) — Classes. There are none, ever. A build is
+    who you have found: the labyrinth deals its own starting hands, one dead
+    traveler at a time (art. 86). Art. 56's curated-starting-hand clause
+    dies with this article; its signature clause survives. Nothing may be
+    built that assumes a class, and no future ruling revives one — the
+    article is spent, not parked.
 
 ## The chain
 31. SETTLED (amended) — Blind chains. A depth is a chain of rooms joined
@@ -127,6 +132,13 @@ in the-thumb.md (arts 66–76).
     be shown as where you have been; art. 31 bans the road ahead, not
     the road behind. Showing it still requires an amendment. Parked,
     tracked on the board.
+89. SETTLED (ruled 2026-08-05) — The fork. A floor socket may offer a
+    fork: two goods, where taking one forfeits the other. The room
+    states the terms plainly before the take (arts 66, 68), the
+    forfeiture shows in pixels (art. 70), and it is final. A room that
+    offers two things is a collection point; a room that offers a fork
+    is a decision, and the decision is the same shape as the one that
+    made the dice good — a partition, not a purchase.
 
 ## Puzzles & the QTE guardrails
 59. DEFAULT — Puzzles are in-scene locks opened by observation and

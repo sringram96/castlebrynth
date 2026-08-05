@@ -94,14 +94,15 @@ import {
   harm,
   keep,
   recast,
+  ridersFired,
   sealed,
   unused,
   withTurn,
+  woundedBy,
 } from './lots/index.js'
 import type { FightPhase, InstanceId, ItemId, Ledgers, Seed } from './state/index.js'
 import {
   browserVault,
-  collect,
   finish,
   firstPermanent,
   load,
@@ -133,7 +134,6 @@ function must<T extends HTMLElement>(id: string): T {
 // ── Where we are ───────────────────────────────────────────────────────
 
 type Screen =
-  | { readonly kind: 'waking' }
   | { readonly kind: 'room' }
   | { readonly kind: 'fight'; readonly door: Door }
   | { readonly kind: 'dead' }
@@ -201,13 +201,14 @@ function greet(): void {
 function boot(): void {
   const found = load(vault)
   if (found === null || found.run === null) {
+    // arts 55–56: a first waking is five bones and a hole. There is no ritual
+    // left at the Crossing — the signature is the first traveler's die, and
+    // the labyrinth is where that is found (art. 86). Waking *is* the room.
     ledgers = wake(firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY), freshSeed())
-    screen = { kind: 'waking' }
   } else {
     ledgers = found
-    // art. 56: a waking that never named a signature is still a first one.
-    screen = ledgers.permanent.signature === null ? { kind: 'waking' } : { kind: 'room' }
   }
+  screen = { kind: 'room' }
   chain = deal(ledgers.run!.seed, ledgers.run!.depth, CATALOG, GRAMMAR, ledgers.run!.history)
   bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
   chosen = doors(bands)[0] ?? null
@@ -383,7 +384,7 @@ let fadeTimer: number | undefined
 function say(): void {
   const said = notice ?? wordOf()
   wordBand.replaceChildren(document.createTextNode(said))
-  const browsing = screen.kind === 'room' || screen.kind === 'waking'
+  const browsing = screen.kind === 'room'
   const left = bands.beats.length - 1 - (bands.word?.index ?? 0)
   if (notice === null && browsing && left > 0) {
     const more = document.createElement('span')
@@ -564,6 +565,11 @@ function vitals(): void {
       reading(READOUT.incoming ?? '', `${Math.max(0, now.turn.intent.amount - armorNow)}`),
       reading(READOUT.unused ?? '', `${unused(now.turn).length}`),
     )
+    // art. 86: what the cost faces are about to charge, visible before the
+    // turn ends and again while it resolves. art. 57 wants every running
+    // total shown, and a price you only see afterwards is hidden math.
+    const priced = pricedNow()
+    if (priced > 0) vitalsRegion.append(reading(READOUT.cost ?? '', `${priced}`))
     const offer = claimOffer()
     if (offer !== null) vitalsRegion.append(reading('', offer))
   } else {
@@ -585,6 +591,18 @@ function vitals(): void {
     paint()
   }
   vitalsRegion.append(glyph)
+}
+
+/**
+ * arts 54, 86: what the claims already made will charge in cost faces. It is
+ * read off the same riders the resolve will fire, so the number in the tray
+ * and the number that lands are one number.
+ */
+function pricedNow(): number {
+  const now = fight
+  if (now === null) return 0
+  if (resolving !== null) return resolving.hurt
+  return woundedBy(ridersFired(now.turn.claims, goods().riders))
 }
 
 /** What the current selection would take, and for how much (arts 57, 72). */
@@ -751,8 +769,6 @@ function carriedSlot(item: ItemId): HTMLButtonElement {
 function acts(): void {
   actStrip.replaceChildren()
   switch (screen.kind) {
-    case 'waking':
-      return wakingActs()
     case 'room':
       return roomActs()
     case 'fight':
@@ -768,24 +784,6 @@ function acts(): void {
         verb('read', () => { sheet = 'book'; paint() }),
       )
   }
-}
-
-// ── The first waking ───────────────────────────────────────────────────
-
-function wakingActs(): void {
-  const pale = PLAIN_POUCH.dice.at(-1)
-  actStrip.append(
-    verb('act.take-key', () => {
-      if (pale === undefined) return
-      // art. 56: the signature is simply the first die you collect, and
-      // art. 11: it crosses to the permanent only by the named ritual.
-      ledgers = { ...ledgers, permanent: collect(ledgers.permanent, pale) }
-      screen = { kind: 'room' }
-      notice = null
-      persist()
-      paint()
-    }),
-  )
 }
 
 // ── The room ───────────────────────────────────────────────────────────

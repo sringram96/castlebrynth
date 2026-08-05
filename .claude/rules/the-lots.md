@@ -1,7 +1,9 @@
 # The Lots — the dice
 Articles keep their numbers; cite as "art. N". Statuses as in
 the-world.md. Amended by the demo ruling of 2026-08-04: dice attack,
-armor defends, the card is the fuse.
+armor defends, the card is the fuse. Amended again by the travelers
+ruling of 2026-08-05: the start is five bones, and every other die in
+the game belonged to somebody (arts 86–88).
 Playable spec: `reference/castlebrynth-lots-demo.html` — where prose
 and code disagree, the demo's behavior wins until the re-authored
 fixture lands (tracked on the board).
@@ -78,14 +80,19 @@ fixture lands (tracked on the board).
 54. SETTLED — Every power pays: everything declared on inspect; every
     die audited against the plain bone's power budget; every rare
     carries a cost face, a carry tax, or a price.
-55. SETTLED (amended) — The start is bare: six plain bones, no riders,
-    no bonds, no talismans, base armor only. Everything else is
-    discovered in the labyrinth or bought — new dice that act on the
-    scoring the way jokers act on a deck, talismans, wearables. The
-    sockets ship first; the goods ship as content.
-56. DEFAULT — The signature is simply the first die you collect; a
-    class is a curated starting hand. Classes stay parked; the socket
-    is named.
+55. SETTLED (amended by ruling of 2026-08-05) — The start is bare:
+    **five** plain bones, no riders, no bonds, no talismans, base armor
+    only. Hand size stays six (art. 60), so the tray shows one empty
+    slot from the first waking — the hole in your hand is the
+    invitation. Everything else is discovered in the labyrinth or
+    bought — new dice that act on the scoring the way jokers act on a
+    deck, talismans, wearables. The sockets ship first; the goods ship
+    as content. (Superseded: six plain bones. A full hand at waking
+    asks for nothing.)
+56. DEFAULT (amended by ruling of 2026-08-05) — The signature is simply
+    the first die you collect, and under art. 86 that is a dead
+    traveler's — so the signature is the die that fills the slot art. 55
+    leaves empty. (The curated-starting-hand clause dies with art. 12.)
 
 ## Display & the pouch
 57. DEFAULT (amended) — Combat display: everything visible. The
@@ -98,5 +105,29 @@ fixture lands (tracked on the board).
     pouch, on the permanent ledger. The hand is assembled from it for
     the descent; hand size is a body stat — grown by mercies, shrunk by
     wounds and curses. Composition is the build: distributions and
-    riders aim the hand. v1 ships pouch of six plain bones, hand size
-    six.
+    riders aim the hand. v1 ships a pouch of five plain bones against a
+    hand size of six (art. 55): the hand is what the pouch can fill, and
+    what it cannot fill shows as an empty slot.
+
+## The travelers (ratified 2026-08-05)
+86. SETTLED (ruled) — The travelers. Every die beyond the bare five
+    belonged to someone who came down here before you and did not come
+    back. Each rare individual or event leaves exactly one unique die,
+    and a die's shape is how its owner died: the distribution is how
+    they played, the cost face is the mistake that killed them. You
+    learn the labyrinth partly by reading what it did to the people
+    ahead of you. With art. 12 repealed this is the whole of where a
+    build comes from — your build is who you have found.
+87. SETTLED (ruled) — The item law. An item's origin explains its
+    rules, in one sentence, for every good that ships. A rider is a
+    habit somebody carried into a fight; a bond is two people who went
+    down together; a talisman is the luck someone brought; a wearable
+    is what they wore. The sentence reaches the player on inspect,
+    beside the declared numbers (art. 54), and it is bound by
+    rules/voice.md like any other prose. If the sentence cannot be
+    written, the item does not ship.
+88. SETTLED (ruled) — Knowledge goods. A good may be pure knowledge — a
+    name, a mark, no stat at all — earning its place by changing what a
+    tap answers or what a horror does (arts 7, 10). It lives on the
+    permanent ledger like any other good and owes art. 87 its sentence
+    like any other good.

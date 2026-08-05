@@ -55,8 +55,16 @@ export interface Die {
 /**
  * art. 51: what a rider does when its face is spent in a claim. The species
  * is law; the number is tuning, so the effect arrives from content.
+ *
+ * art. 86: `wound` is the cost face — the mistake that killed the die's
+ * owner, charged to you on exactly the terms art. 51 already set. It fires
+ * only when its face is *spent in a claim*, so a cost face you keep or leave
+ * unused costs nothing: the price is for using the power, never for carrying
+ * it. That is what makes a cost face a decision rather than a tax.
  */
-export type RiderEffect = { readonly kind: 'heal'; readonly amount: number }
+export type RiderEffect =
+  | { readonly kind: 'heal'; readonly amount: number }
+  | { readonly kind: 'wound'; readonly amount: number }
 
 export interface Rider {
   readonly id: RiderId
@@ -101,6 +109,14 @@ export interface Wearable {
 
 /** art. 47: the stat itself, once the worn wearables and mercies are summed. */
 export type Armor = number
+
+/**
+ * arts 49, 86: anything collectible, on any of the axes that ship. It exists
+ * as one type because everything on it crosses to the permanent ledger by
+ * the same ritual (`collect` in src/state) and because art. 87 asks the same
+ * sentence of all of them.
+ */
+export type Good = Die | Talisman | Wearable
 
 /**
  * The company a hand keeps: what the permanent ledger lends to a claim. The
@@ -264,6 +280,12 @@ export interface Resolution {
   readonly harmTaken: number
   /** art. 51: on-use riders, fired between the claims and the intent. */
   readonly healed: number
+  /**
+   * art. 86: what the cost faces took, on the same beat and by the same
+   * rule. Separate from `harmTaken` because it is not the horror's doing —
+   * it is the price of a die you chose to spend, and the readout says so.
+   */
+  readonly hurt: number
   /** art. 57: the running total worth showing — how much armor ate. */
   readonly blocked: number
   /** art. 63: the lines this turn burned off the card. */
@@ -292,6 +314,7 @@ export type FightEvent =
   | { readonly kind: 'claimed'; readonly line: Line; readonly harm: number }
   | { readonly kind: 'dealt'; readonly amount: number }
   | { readonly kind: 'healed'; readonly amount: number }
+  | { readonly kind: 'cost'; readonly amount: number }
   | { readonly kind: 'blocked'; readonly amount: number }
   | { readonly kind: 'struck'; readonly amount: number }
   | { readonly kind: 'ended'; readonly outcome: Outcome }

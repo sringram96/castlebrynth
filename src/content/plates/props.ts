@@ -791,3 +791,127 @@ export function blackDoor(school: School, mark: WorldMark): Prop {
     },
   }
 }
+
+// ── The travelers, and what they left (arts 86–89) ─────────────────────
+
+/**
+ * A traveler, lying where they stopped. art. 86: every die past the bare
+ * five came off one of these, and the body is the sentence the die is
+ * written under — you are looking at what the labyrinth did to the person
+ * ahead of you.
+ *
+ * art. 70: the body stays after the bone is taken. What changes is the hand,
+ * which opens and holds nothing — an act that changes state changes the
+ * scene, and the change here is the one worth seeing.
+ */
+export function deadTraveler(school: School, mark: WorldMark, taken: boolean): Prop {
+  return {
+    name: 'the traveler',
+    z: mark.z,
+    paint(b: Brush): void {
+      const g = pixel(b.view)
+      const foot = b.project(mark.X, mark.Y, mark.z)
+      const half = (b.view.f * mark.width) / mark.z / 2
+      const deep = Math.max(g(3), (b.view.f * mark.height) / mark.z * 0.42)
+
+      // The mass: a long low shape against the wall, wider at the shoulder
+      // and tapering to where the legs went out.
+      for (let y = foot.y - deep; y < foot.y; y++) {
+        const up = (foot.y - y) / (deep || 1)
+        const w = half * (0.35 + 0.65 * (1 - up) ** 0.7)
+        for (let x = foot.x - w; x < foot.x + w; x++) {
+          const across = 1 - Math.abs(x - foot.x) / (w || 1)
+          b.px(b.dither(x, y, 3 + across * 8) ? school.slat[0]! : school.hollow, x, y)
+          if (b.hash(x | 0, y * 5) < 6) b.px(school.grime, x, y)
+        }
+        b.px(school.edge, foot.x - w, y)
+        b.px(school.edge, foot.x + w, y)
+      }
+
+      // The cloak has gone stiff: one hard fold along the length of it.
+      for (let x = foot.x - half * 0.8; x < foot.x + half * 0.8; x++) {
+        if (b.dither(x, foot.y - deep * 0.55, 9)) b.px(school.slat[1]!, x, foot.y - deep * 0.55)
+      }
+
+      // The skull, small and pale, at the end nearest the wall.
+      const head = Math.max(g(1), half * 0.16)
+      b.rect(school.bone[0]!, foot.x - half * 0.86, foot.y - deep * 0.9, head * 2, head * 2)
+      b.px(school.edge, foot.x - half * 0.86, foot.y - deep * 0.9)
+      b.px(school.hollow, foot.x - half * 0.86 + head, foot.y - deep * 0.9 + head)
+
+      // And the hand, at the other end. Closed on a bone, or open on nothing.
+      const hand = foot.x + half * 0.66
+      const at = foot.y - deep * 0.28
+      if (taken) {
+        // art. 70: open, and holding nothing. The fingers are the only thing
+        // in the room that moved, and they moved because you did.
+        b.px(school.bone[0]!, hand - g(1), at)
+        b.px(school.bone[0]!, hand + g(1), at)
+        b.px(school.edge, hand, at + g(1))
+        return
+      }
+      b.rect(school.bone[1]!, hand - g(1), at, Math.max(g(1), head), Math.max(g(1), head))
+      b.px(school.bone[2]!, hand, at)
+      b.px(school.edge, hand - g(1), at + Math.max(g(1), head))
+    },
+  }
+}
+
+/**
+ * A good, lying on the floor where the socket keeps it. Deliberately the
+ * same shape whatever it is: art. 68 says a tap investigates, and the tap is
+ * where you find out which of them it is — the floor only ever tells you
+ * that something is there.
+ */
+export function goodOnFloor(school: School, mark: WorldMark): Prop {
+  return {
+    name: 'the find',
+    z: mark.z,
+    paint(b: Brush): void {
+      const g = pixel(b.view)
+      const at = b.project(mark.X, mark.Y, mark.z)
+      const s = Math.max(g(1), b.view.f / mark.z / 6)
+
+      // What it is sitting in.
+      for (let j = at.y + s; j < at.y + s * 2; j++) {
+        for (let i = at.x - s * 2; i < at.x + s * 3; i++) {
+          if (b.dither(i, j, 7)) b.px(school.edge, i, j)
+        }
+      }
+      // A small pale mass with one lit corner. No more than that: the shape
+      // is the thumb's business and the word band's, not the floor's.
+      b.rect(school.bone[0]!, at.x - s, at.y - s, s * 3, s * 2)
+      b.rect(school.bone[1]!, at.x - s, at.y - s, s * 2, s)
+      b.px(school.bone[2]!, at.x, at.y - s)
+      b.px(school.edge, at.x - s, at.y + s)
+      b.px(school.edge, at.x + s * 2, at.y - s)
+    },
+  }
+}
+
+/**
+ * art. 89: what a forfeited good leaves. The thing is gone and the dust it
+ * lay in is not — prose confirms, pixels prove, and this is the pixel that
+ * proves the fork was final.
+ */
+export function leftMark(school: School, mark: WorldMark): Prop {
+  return {
+    name: 'the mark',
+    z: mark.z,
+    paint(b: Brush): void {
+      const g = pixel(b.view)
+      const at = b.project(mark.X, mark.Y, mark.z)
+      const s = Math.max(g(1), b.view.f / mark.z / 6)
+      // The clean shape of it, in a floor that is dirty everywhere else.
+      for (let j = at.y - s; j < at.y + s; j++) {
+        for (let i = at.x - s; i < at.x + s * 2; i++) {
+          b.px(b.dither(i, j, 10) ? school.hollow : school.grime, i, j)
+        }
+      }
+      b.px(school.edge, at.x - s, at.y - s)
+      b.px(school.edge, at.x + s * 2 - g(1), at.y - s)
+      b.px(school.edge, at.x - s, at.y + s - g(1))
+      b.px(school.edge, at.x + s * 2 - g(1), at.y + s - g(1))
+    },
+  }
+}

@@ -103,6 +103,23 @@ export interface Encounter {
   readonly horror?: string
   /** What a boon puts in your hands when its act is done. */
   readonly grants?: readonly ItemId[]
+  /**
+   * The first and last step this may be dealt at, both inclusive. Absent
+   * means anywhere.
+   *
+   * It exists for art. 52's carry: the Sisters are two people who went down
+   * together, and finding one half has to mean the other is somewhere
+   * *below*. Banding the halves apart is what makes that true of the run
+   * rather than true of the fiction — no run can hand you both before it has
+   * made you walk for the second.
+   */
+  readonly band?: readonly [number, number]
+  /**
+   * art. 89: the good this one stands beside in a fork. When both are free
+   * to be dealt they are dealt into one socket together, and taking either
+   * forfeits the other. Absent on everything that is not half of a fork.
+   */
+  readonly orElse?: EncounterId
 }
 
 /** art. 77: a region of a depth, and the rooms its pool holds. */
@@ -218,6 +235,12 @@ export interface Door {
 export interface Fill {
   readonly socket: SocketId
   readonly encounter: EncounterId
+  /**
+   * art. 89: the other half of a fork, standing in the same socket. Taking
+   * either forfeits the other, and the room says so before the take. Absent
+   * on an ordinary fill, which is nearly all of them.
+   */
+  readonly orElse?: EncounterId
 }
 
 /** One room, as dealt: an instance of a template, with what stands in it. */

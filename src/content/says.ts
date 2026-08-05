@@ -9,10 +9,10 @@
  * here.
  */
 
-import type { Die, Face, Intent, Line } from '../lots/index.js'
+import type { Die, Face, Good, Intent, Line } from '../lots/index.js'
 import type { ItemId } from '../state/index.js'
 import { LADDER } from './ladder.js'
-import { INTENT_SAYS, LABELS, LOOKS, READOUT } from './prose.js'
+import { INTENT_SAYS, LABELS, LOOKS, ORIGINS, READOUT } from './prose.js'
 
 /** Which name a die answers to. Shapes are free; the names are authored. */
 export function dieLabel(die: Die): string {
@@ -20,18 +20,35 @@ export function dieLabel(die: Die): string {
   if (id.startsWith('bone.sister')) return LABELS['die.sisters'] ?? id
   if (id === 'bone.orphan') return LABELS['die.orphan'] ?? id
   if (id === 'bone.leech') return LABELS['die.leech'] ?? id
+  if (id === 'bone.pusher') return LABELS['die.pusher'] ?? id
+  if (id === 'bone.careful') return LABELS['die.careful'] ?? id
+  if (id === 'bone.runner') return LABELS['die.runner'] ?? id
   return LABELS['die.plain'] ?? id
+}
+
+/**
+ * art. 87: the one sentence that makes a good an item rather than a stat
+ * block. Empty for the plain bones, which came off nobody.
+ */
+export function originOf(good: Good): string {
+  return ORIGINS[good.id as string] ?? ''
 }
 
 /**
  * art. 68: a possession's answer is its declared truth. In the pouch that is
  * its faces; on the table it is the face it shows, the rider on that face,
  * and the claim it has already been spent in (art. 45).
+ *
+ * art. 87: and in the pouch it is also where the die came from. The origin
+ * rides with the numbers rather than behind another tap, because the whole
+ * claim of the article is that the two explain each other.
  */
 export function saysDie(die: Die, showing?: Face, spentIn?: Line): string {
   const parts: string[] = [dieLabel(die)]
   if (showing === undefined) {
     parts.push(`${READOUT.faces} ${die.faces.map((face) => face.value).join(' ')}`)
+    const origin = originOf(die)
+    if (origin !== '') parts.push(origin)
   } else {
     parts.push(`${READOUT.showing} ${showing.value}`)
     if (showing.rider !== undefined) {
@@ -71,4 +88,15 @@ export function saysItem(item: ItemId): string {
 export function itemLabel(item: ItemId): string {
   const id = item as string
   return LABELS[id] ?? id
+}
+
+/**
+ * arts 54, 87: what a good that is not a die declares — its name, then the
+ * sentence that says where its rules come from. Talismans and wearables
+ * answer the same way a die does, because a tap is a tap (art. 68).
+ */
+export function saysGood(good: Good): string {
+  const label = LABELS[good.id as string] ?? (good.id as string)
+  const origin = originOf(good)
+  return origin === '' ? label : `${label} · ${origin}`
 }

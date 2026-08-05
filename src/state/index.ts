@@ -393,6 +393,33 @@ function isWearable(taken: Talisman | Wearable): taken is Wearable {
   return 'armor' in taken
 }
 
+/**
+ * arts 55–56, 60: a die found with room left in the hand joins the hand at
+ * once.
+ *
+ * art. 55 leaves the sixth slot empty from the first waking and calls it the
+ * invitation; an invitation you cannot accept until you die is not one. So
+ * the rule is *room, not reshuffle*: while the hand is short of the body's
+ * hand size, a newly collected die fills it, and it fills it by being
+ * appended — the dice already on the table keep their identities, which is
+ * what art. 75's replay depends on.
+ *
+ * Past that the hand is full and art. 60 stands unchanged: the pouch grows,
+ * and which six go down with you is settled at the next waking. Composition
+ * is the build, and choosing it is not this wave's business.
+ */
+export function tookIntoHand(run: RunLedger, permanent: PermanentLedger): RunLedger {
+  const dice = [...run.hand.dice]
+  const held = new Set<string>(dice.map((die) => die.id as string))
+  for (const die of permanent.pouch.dice) {
+    if (dice.length >= permanent.handSize) break
+    if (held.has(die.id as string)) continue
+    dice.push(die)
+    held.add(die.id as string)
+  }
+  return dice.length === run.hand.dice.length ? run : { ...run, hand: { dice } }
+}
+
 /** art. 32: every death reseeds. The run burns; one line is written. */
 export function die(ledgers: Ledgers, cause: string): PermanentLedger {
   return withEnding(ledgers, cause)

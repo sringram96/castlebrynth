@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { ALL_RIDERS, LADDER, NOTICES, THE_GNAWING } from '../src/content/index.js'
+import { ALL_RIDERS, LADDER, NOTICES, THE_CAREFUL, THE_GNAWING } from '../src/content/index.js'
 import { lotFrom } from '../src/gen/index.js'
 import type { DieId, Fight, Goods, Line, Lot, Value } from '../src/lots/index.js'
 import {
   advanceFight,
+  assembleHand,
   cast,
   casting,
   claim,
@@ -19,6 +20,8 @@ import {
   withTurn,
 } from '../src/lots/index.js'
 import { openFightDoor } from '../src/hinge/index.js'
+import type { Ledgers } from '../src/state/index.js'
+import { collect } from '../src/state/index.js'
 import { atAFight } from './drift.js'
 import { seedOf, turnOf } from './helpers.js'
 
@@ -122,17 +125,33 @@ function thumb(opened: Fight, lot: Lot) {
   }
 }
 
-/** The fight-door of the dealt chain, opened the way the shell opens it. */
+/**
+ * The fight-door of the dealt chain, opened the way the shell opens it —
+ * with one traveler's bone already in the pouch.
+ *
+ * arts 55, 86: a bare hand is five now, and five dice of signature 3-2 *are*
+ * a full house, so the defect art. 72 is about cannot be staged on one. It
+ * needs a hand holding one die more than the shape in it, and under the
+ * travelers ruling the only way a hand is six is that somebody down here
+ * already died for it. That is the run this test is standing in.
+ */
 function atTheFightDoor() {
   // art. 83: the fight is wherever this run's choices put teeth.
   const { ledgers, door } = atAFight(4)
-  return openFightDoor(ledgers, { door, horror: THE_GNAWING }, GOODS)
+  // art. 11: the bone crosses to the permanent by the ritual, and art. 60
+  // reassembles the hand from the pouch it now sits in.
+  const permanent = collect(ledgers.permanent, THE_CAREFUL)
+  const found: Ledgers = {
+    permanent,
+    run: { ...ledgers.run!, hand: assembleHand(permanent.pouch, permanent.handSize) },
+  }
+  return openFightDoor(found, { door, horror: THE_GNAWING }, GOODS)
 }
 
 /**
- * Seed 6 casts 4-1-4-2-4-1 off a bare pouch: three fours, two ones, and a
- * two that belongs to nothing. It is the playtest's hand — a full house you
- * can see, one die away from being the whole hand.
+ * Seed 6 casts 4-1-4-2-4-2 off that hand: three fours, two twos, and a one
+ * that belongs to nothing. It is the playtest's hand — a full house you can
+ * see, one die away from being the whole hand.
  */
 const FULL_HOUSE_SEED = 6
 
@@ -141,15 +160,15 @@ describe('the thumb — art. 72 (the exact selection, and why it fits nothing)',
     const play = thumb(atTheFightDoor(), lotFrom(seedOf(FULL_HOUSE_SEED)))
 
     play.roll()
-    expect(play.values()).toEqual([4, 1, 4, 2, 4, 1])
+    expect(play.values()).toEqual([4, 1, 4, 2, 4, 2])
 
     // Keeping is planning (art. 42), and this hand is already what it wants.
     play.keepAll()
     expect(play.phase).toBe('claim')
 
-    // The exact five: three fours and two ones, leaving the two behind.
+    // The exact five: three fours and two twos, leaving the one behind.
     const laid = play.laid()
-    const five = laid.filter((landed) => landed.face.value !== 2)
+    const five = laid.filter((landed) => landed.face.value !== 1)
     for (const landed of five) play.tap(landed.die)
     expect(play.selected()).toHaveLength(5)
 
@@ -160,14 +179,14 @@ describe('the thumb — art. 72 (the exact selection, and why it fits nothing)',
 
     const made = play.fight.turn.claims[0]!
     expect(made.line).toBe('full-house')
-    expect(made.sum).toBe(4 * 3 + 1 * 2)
-    expect(harm(made)).toBe(14 * LADDER['full-house'].multiplier)
+    expect(made.sum).toBe(4 * 3 + 2 * 2)
+    expect(harm(made)).toBe(16 * LADDER['full-house'].multiplier)
 
     // The card burns the line, and the horror wears the harm (arts 45, 63).
     expect(play.fight.turn.card['full-house']).toBe(true)
     const before = play.fight.horrorHealth
     const resolution = play.endTurn()
-    expect(resolution.harmDealt).toBe(14 * LADDER['full-house'].multiplier)
+    expect(resolution.harmDealt).toBe(16 * LADDER['full-house'].multiplier)
     expect(play.fight.horrorHealth).toBe(before - resolution.harmDealt)
   })
 
@@ -186,7 +205,7 @@ describe('the thumb — art. 72 (the exact selection, and why it fits nothing)',
     expect(play.says()).toBe('No combo uses exactly these dice.')
 
     // Releasing the one die that fits nothing turns the message into an offer.
-    const stray = play.laid().find((landed) => landed.face.value === 2)!
+    const stray = play.laid().find((landed) => landed.face.value === 1)!
     play.tap(stray.die)
     expect(play.offers()).toContain('full-house')
     expect(play.says()).toBeNull()
@@ -203,7 +222,7 @@ describe('the thumb — art. 72 (the exact selection, and why it fits nothing)',
   })
 
   it('holds its tongue when nothing is selected at all', () => {
-    const turn = turnOf([4, 1, 4, 2, 4, 1])
+    const turn = turnOf([4, 1, 4, 2, 4, 2])
     expect(fitsNothing(turn, [], LADDER)).toBe(false)
   })
 })

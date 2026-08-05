@@ -239,7 +239,14 @@ export function deal(
 
   const placedAlready = (): Set<string> => {
     const seen = new Set<string>()
-    for (const node of nodes) for (const fill of node.fills) seen.add(fill.encounter as string)
+    for (const node of nodes) {
+      for (const fill of node.fills) {
+        seen.add(fill.encounter as string)
+        // art. 89: the side of a fork you did not take is spent too. It was
+        // offered and it closed; a run does not get to be offered it twice.
+        if (fill.orElse !== undefined) seen.add(fill.orElse as string)
+      }
+    }
     return seen
   }
 
@@ -249,22 +256,49 @@ export function deal(
 
   const once = (one: Encounter): boolean => one.scope !== 'repeats'
 
+  /** Whether this step is inside the band the encounter declared, if any. */
+  const inBand = (one: Encounter, step: number): boolean =>
+    one.band === undefined || (step >= one.band[0] && step <= one.band[1])
+
   const fillSockets = (step: number, template: RoomTemplate): readonly Fill[] => {
     const lot = lotAt(seed, depth, taken, step, SALT.fills)
     const free: Socket[] = [...template.sockets]
     const fills: Fill[] = []
     const placed = placedAlready()
 
+    /**
+     * art. 89: a good that names an alternative brings it into the same
+     * socket, when the alternative is itself free to be dealt here. Both are
+     * marked placed — a fork spends two goods to make one decision, and the
+     * side you leave is spent as surely as the side you take.
+     */
+    const forkFor = (one: Encounter): Encounter | null => {
+      if (one.orElse === undefined) return null
+      const other = encounters.get(one.orElse as string)
+      if (other === undefined || other === one) return null
+      if (keyed.has(other.id as string)) return null
+      if (!awake(other) || !inBand(other, step)) return null
+      if (once(other) && placed.has(other.id as string)) return null
+      return other
+    }
+
     const stand = (socket: Socket, one: Encounter): void => {
-      fills.push({ socket: socket.id, encounter: one.id })
+      const other = forkFor(one)
+      fills.push(
+        other === null
+          ? { socket: socket.id, encounter: one.id }
+          : { socket: socket.id, encounter: one.id, orElse: other.id },
+      )
       free.splice(free.indexOf(socket), 1)
       placed.add(one.id as string)
+      if (other !== null) placed.add(other.id as string)
     }
 
     // art. 83: a bound encounter stands where it is bound, when it is awake.
     for (const one of catalog.encounters) {
       if (one.binding !== 'bound' || one.at !== template.id) continue
-      if (!awake(one) || (once(one) && placed.has(one.id as string))) continue
+      if (!awake(one) || !inBand(one, step)) continue
+      if (once(one) && placed.has(one.id as string)) continue
       const socket = free.find((held) => held.accepts === one.kind)
       if (socket !== undefined) stand(socket, one)
     }
@@ -294,6 +328,7 @@ export function deal(
           one.kind === socket.accepts &&
           !keyed.has(one.id as string) &&
           awake(one) &&
+          inBand(one, step) &&
           !(once(one) && placed.has(one.id as string)),
       )
       const drawn = pick(offers, (one) => one.weight, lot)
@@ -472,9 +507,17 @@ export function hereIn(chain: Chain): ChainNode | null {
   return chain.nodes.at(-1) ?? null
 }
 
-/** art. 84: who this room puts in front of you, so a meeting can be kept. */
+/**
+ * art. 84: who this room puts in front of you, so a meeting can be kept.
+ * Both halves of a fork count — you stood in the room with both of them, and
+ * a meeting is about standing there, not about what you walked out with.
+ */
 export function meetings(node: ChainNode | null): readonly EncounterId[] {
-  return node?.fills.map((fill) => fill.encounter) ?? []
+  return (
+    node?.fills.flatMap((fill) =>
+      fill.orElse === undefined ? [fill.encounter] : [fill.encounter, fill.orElse],
+    ) ?? []
+  )
 }
 
 /** The encounter an id names, for content and the shell to read (art. 83). */

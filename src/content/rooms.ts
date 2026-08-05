@@ -41,11 +41,12 @@ import {
   ENCOUNTERS,
   IRON_KEY,
   OSSUARY,
+  FLOOR_CHANCE,
   SAVIOR_CHANCE,
   WARDEN_KEY,
   WARDEN_KEY_ITEM,
-  encounterProp,
-  encounterWords,
+  fillProps,
+  fillWords,
 } from './encounters.js'
 import { horrorById } from './horrors.js'
 import type { School } from './palettes.js'
@@ -220,6 +221,13 @@ interface Authored {
    * socket before any chance is rolled.
    */
   readonly mercy?: number
+  /**
+   * art. 86: how often somebody is lying on this floor of the dealer's own
+   * accord. The two anchors are the exception and both set it to nothing —
+   * the Crossing is where you wake, and nothing is left in front of the
+   * Warden's door.
+   */
+  readonly floor?: number
 }
 
 const AUTHORED: readonly Authored[] = [
@@ -238,9 +246,13 @@ const AUTHORED: readonly Authored[] = [
       ['crossing.traveler', { X: 10.4, Y: FLOOR, z: 22.4, width: 5, height: 3.2 }],
       ['crossing.chain', { X: -9.8, Y: 0, z: 12, width: 2, height: 8 }],
     ],
-    // The Crossing opens every run (art. 37). Nothing waits in it.
+    // The Crossing opens every run (art. 37). Nothing waits in it, and
+    // nobody is lying in it: the traveler against its wall is authored
+    // scenery and not a socket, because the first room may not be the room
+    // that hands you your sixth bone (arts 55–56).
     teeth: NEVER,
     mercy: NEVER,
+    floor: NEVER,
   },
   {
     id: 'room.trove.alcove',
@@ -272,9 +284,11 @@ const AUTHORED: readonly Authored[] = [
     dressing: (school, state, at) => [fontSteps(school), doorway(school, opened(state), at)],
     tappables: [['font.step', { X: 0, Y: FLOOR - 1.2, z: 15, width: 8, height: 2.4 }]],
     // Nothing waits in a font, and nothing floats into it: its mercy socket
-    // is spoken for by the thing bound to it.
+    // is spoken for by the thing bound to it. Nobody died here either — it
+    // is the one room in the depth that is kind.
     teeth: NEVER,
     mercy: NEVER,
+    floor: NEVER,
   },
   {
     id: 'room.passage.drip',
@@ -373,6 +387,7 @@ const AUTHORED: readonly Authored[] = [
     // The Warden's door ends the depth. Nothing stands in front of it.
     teeth: NEVER,
     mercy: NEVER,
+    floor: NEVER,
   },
 ]
 
@@ -383,11 +398,14 @@ const AUTHORED: readonly Authored[] = [
  */
 function socketProps(one: Authored, state: SceneState): readonly Prop[] {
   const marks = SOCKET_AT[one.kind]
-  return state.fills
-    .map((fill) =>
-      encounterProp(fill.encounter, one.school, marks[fill.socket as string] ?? DOOR_AT[one.kind], state.done),
-    )
-    .filter((prop): prop is Prop => prop !== null)
+  return state.fills.flatMap((fill) =>
+    fillProps(
+      fill,
+      one.school,
+      marks[fill.socket as string] ?? DOOR_AT[one.kind],
+      state.done,
+    ),
+  )
 }
 
 function contentOf(one: Authored): RoomContent {
@@ -425,10 +443,10 @@ export const ROOMS: readonly RoomContent[] = AUTHORED.map(contentOf)
 function socketsOf(one: Authored): readonly Socket[] {
   return [
     { id: FAR_SOCKET, accepts: 'horror', chance: one.teeth ?? STRAY_CHANCE },
-    // art. 80: the boon socket is never filled of the dealer's own accord.
-    // The only thing that goes in it this tranche is the key the lock ahead
-    // demands, and the dealer puts that there because it must.
-    { id: FLOOR_SOCKET, accepts: 'boon', chance: 0 },
+    // arts 80, 86: the floor is where the dead are. The key still goes in
+    // ahead of anything optional — the dealer places it because it must, and
+    // this chance is only about what lies here when nothing is owed.
+    { id: FLOOR_SOCKET, accepts: 'boon', chance: one.floor ?? FLOOR_CHANCE },
     // art. 40: and the mercy socket, which is the Savior's whole rarity.
     { id: MERCY_SOCKET, accepts: 'mercy', chance: one.mercy ?? SAVIOR_CHANCE },
   ]
@@ -569,7 +587,7 @@ export const ROOM_BOOK: RoomBook = {
   acts: (id) => roomContent(id).acts,
   // art. 83: the room is handed over so the thing can stand somewhere, and
   // for nothing else — every word below comes from the encounter.
-  socket: (id, fill): SocketWords => encounterWords(fill.encounter, socketMark(id, fill.socket)),
+  socket: (id, fill): SocketWords => fillWords(fill, socketMark(id, fill.socket)),
   arrival: (region) => ARRIVALS[region as string] ?? [],
 }
 
