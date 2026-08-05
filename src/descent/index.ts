@@ -198,6 +198,18 @@ export interface RoomBook {
  * these fields, and the shell keys its frame cache on them, so an act that
  * changes state cannot leave the scene where it was.
  */
+/** art. 97: a threshold's state, which varies where its grammar may not. */
+export interface DoorState {
+  /** Which door of this room it is — the index the paint and the thumb share. */
+  readonly at: number
+  /** art. 70: already opened from here, so it stands open. */
+  readonly open: boolean
+  /** art. 97: it wants a key, so it wears the lock on its frame. */
+  readonly locked: boolean
+  /** art. 37: the Warden's door ends the depth and is its own object. */
+  readonly ends: boolean
+}
+
 export interface SceneState {
   /** art. 82: the template is what is painted. */
   readonly room: RoomId
@@ -207,6 +219,13 @@ export interface SceneState {
   readonly done: readonly string[]
   /** Doors already opened from here — an opened door stands open. */
   readonly opened: readonly string[]
+  /**
+   * arts 31, 97: the doors this room offers, in the order it offers them.
+   * The paint needs them because every door is a threshold and every
+   * threshold is drawn — a door with a tap region and no pixels is the
+   * defect art. 97 was written about.
+   */
+  readonly doors: readonly DoorState[]
   /** A wounded horror stays wounded: its health, or null if none stands. */
   readonly horror: number | null
   /** art. 83: what stands in this room's sockets, so the paint can show it. */
@@ -258,6 +277,14 @@ export function sceneStateOf(ledgers: Ledgers, book: RoomBook, node: ChainNode):
     opened: (run?.opened ?? []).filter((key) => key.startsWith(`${node.instance}→`)),
     horror: run?.fight?.horrorHealth ?? null,
     fills: node.fills,
+    // art. 97: every door offered is a threshold that gets drawn. What varies
+    // between them is state and never grammar.
+    doors: node.doors.map((door) => ({
+      at: door.at,
+      open: (run?.opened ?? []).includes(doorKey(node.instance, door)),
+      locked: door.demands.length > 0,
+      ends: door.ends === true,
+    })),
   }
 }
 
@@ -273,6 +300,9 @@ export function sceneKey(state: SceneState): string {
     state.instance,
     state.done.join('+'),
     state.opened.join('+'),
+    // art. 97: how many thresholds and what state each is in are both pixels,
+    // so a frame cached without them is a frame with the wrong doors in it.
+    state.doors.map((door) => `${door.at}${door.open ? 'o' : ''}${door.locked ? 'k' : ''}`).join('+'),
     state.horror ?? '-',
     state.fills
       .map((fill) => `${fill.socket}=${fill.encounter}${fill.orElse === undefined ? '' : `/${fill.orElse}`}`)

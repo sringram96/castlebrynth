@@ -94,7 +94,7 @@ blind doors → the room behind it is dealt on the spot → keep choosing → a
 region locks and the depth announces where you have arrived → the rest of
 the depth deals from that region and its encounters wake → the Warden's
 door, refused without the key and terse with it. `npm test` is green: 31
-files, 281 tests.
+files, 283 tests.
 
 **And the tray became a rail and panels.** The playtest found two
 immersion breaks, and the tray stand-up of 2026-08-05 ruled on both. The
@@ -200,6 +200,98 @@ timed (art. 1), so the tap buys a strip that holds still. If flight ever
 wants to be instant again, the fix is a fixed slot on the rail rather
 than a verb back in the shifting strip.
 
+## A door is a hole now, and the room ends (arts 96–97, built)
+
+The playtest screenshot showed three small outlined boxes hovering at the
+end of a corridor. Art. 97 was written about exactly that, and the article
+turned out to be describing three separate defects:
+
+- **Two of the three doors had no pixels at all.** The room painted one
+  doorway at its single authored mark while the shell laid out up to three
+  tap regions beside it, so a crossroads was one drawn door and two empty
+  outlines. Doors now come from `SceneState.doors` — one threshold drawn
+  per door offered, each in its own state — and `doorMarks(count)` is the
+  single place both the paint and the thumb ask where they stand (art. 68).
+- **They were half-height.** Doors were authored eight world units tall
+  against an eye standing at fourteen. Nothing that size is a way through a
+  wall, so the eye read the nearest thing it could: a chest. A threshold is
+  now seventeen units in a corridor — a head's clearance over the eye — and
+  art. 97's taller-than-wide falls out of the height instead of being asked
+  for. `THINNEST` enforces it whatever a mark requests.
+- **The box was the UI.** The gold rectangle was the tap region's CSS
+  border, drawn identically over doors and over anything else tappable. A
+  door that is drawn as a door needs no box to say so, so the border is
+  gone; only the door the thumb has *picked* wears one, and that outline is
+  a pick rather than a doorway.
+
+What replaced them is the grammar, in one function no room may override:
+architrave standing proud of the wall, aperture recessed to a plane set
+back behind it, jambs and soffit and sill shaded by their own faces, the
+inside at the bottom of the room's own wall ramp tinted by its air, and the
+lock — when a door wants a key — on the frame rather than in the hole.
+The frame's stone comes off the light end of the wall's ramp rather than a
+named tone, so it reads proud in the drowned and the burnt alike (art. 100:
+one drawing, two keys).
+
+Two doors and three doors share the far end by slicing it, and art. 105 is
+enforced on the **framed** footprint rather than the aperture: the first cut
+spaced the holes correctly and let the architraves touch, which read as one
+wide barrier — the same failure as one thing cut in half. Doors give up
+width rather than overlap.
+
+**And the room ends, so the hole has something to be a hole in (art. 96).**
+The first cut of this shipped thresholds standing in a tube: correct
+grammar, correct height, and still a frame hanging in fog, because what lay
+between two doorways was the mouth's darkness rather than stone. A door is
+a hole and a hole needs a wall.
+
+The chamber is built. `RoomShape` gains one optional fourth number — `back`,
+the depth its far wall stands at — and the cast gains one more plane, which
+is all art. 96 ever claimed it would take: every ray reaches the back at the
+same depth, so it wins wherever it is nearer than the four. Everything else
+came free, exactly as the article says. The contour pass inks the new
+corners without being told. The fog dims the wall because it stands inside
+it. The light lifts it. The masonry answers for it — the same grammar,
+coursed across `x` where a side wall courses along `z`, so the courses line
+up where the two meet and the corner reads as a corner rather than a change
+of material.
+
+A threshold's depth is now the wall's depth and is never authored beside
+it, so a door cannot drift off the wall it is a hole in.
+
+**One room stays a tube: the Crossing.** Its plate is the reference and it
+wins ties about the box, so `WAKE` is untouched and still renders as itself
+byte for byte. The room takes the chamber's shape while keeping the plate's
+props and light — because the alternative was doors that float, and no room
+gets an exemption from art. 97. The cost is honest and worth writing down:
+the wake plate's shaft of light was composed against a mouth, and it now
+stands between the camera and the far wall's doors. The doors read *through*
+it rather than beside it. Art. 105 says supporting things stand aside from
+the hero and the hero here is the shaft, so the Crossing wants a composition
+pass — the doors moved off the shaft's axis, or the shaft narrowed. It is
+the one room in the depth whose picture was authored before there was a wall
+in it.
+
+Making the Crossing a tube and staging its way on as the mouth was tried and
+reverted. It reads beautifully and it costs a choice: a tube can show one
+dark end, not three, so the Crossing would have to deal one door — and
+`gen.drift.test.ts` measured what that does, dropping a committed policy's
+lock rate from over 0.7 to 0.667. The room that opens every run is where
+the drift's tally starts, and taking a choice out of it weakens art. 77
+measurably. The wall is cheaper than the choice.
+
+**A prop that marched past the wall now stops at it.** `reach()` answers
+with the nearer of the mouth's cutoff and the far wall, because anything
+laid beyond `zBack` paints floor onto stone — the runnel, the ash banks, the
+standing water, the bone drifts, the seep's third leak, the stair's flights
+and the tally's last groups all ran four to nine world units past where the
+room now ends.
+
+Art. 106's stir is not built either: a doorway's darkness should move in
+the bottom two steps of its ramp, and doing that needs art. 109's one
+clock and art. 110's overlay repaint. A per-thing timer would have been the
+wrong shape, so the thresholds are still.
+
 ## The look is law now (arts 93–112)
 
 The graphics amendment is ratified. Arts 13–28 have always said the box
@@ -223,6 +315,7 @@ What the amendment settles, in the order a renderer would need it:
   one room at different sizes. This amends art. 14 — a chamber authors
   its far wall's depth, the only fourth number — and art. 16, whose mouth
   is now what a room has *instead of* a far wall rather than always.
+  **Built**, chamber only: the junction's wide side apertures are not.
 - **A door is a hole, not a thing** (art. 97). Taller than wide, standing
   on the floor, recessed honestly, framed, dark in the room's own
   darkness. A fixed grammar learned once and read forever, and the reason
