@@ -7,7 +7,7 @@ novel a candle at a time; the labyrinth is a blind chain of hand-authored
 rooms, procedurally rearranged every run; fights are poker-dice duels
 against horrors whose intents are always shown; death burns the run and
 keeps the knowledge. `reference/GAME.md` is the fantasy. The binding law is in
-`.claude/rules/` — 92 numbered articles; tasks cite them as "art. N".
+`.claude/rules/` — 112 numbered articles; tasks cite them as "art. N".
 
 ## Components
 - **src/state** — the two ledgers (run / permanent) behind named rituals;
@@ -16,7 +16,7 @@ keeps the knowledge. `reference/GAME.md` is the fantasy. The binding law is in
   proves winnability. (arts 31–39)
 - **src/room** — the computed-box renderer on the GRID dial; one ramp per
   surface and one dither between adjacent steps; the world marks a thumb
-  answers through. (arts 13–25, 68)
+  answers through. (arts 13–25, 68, 93–112)
 - **src/descent** — plays a room: candles, taps, acts, doors, and what has
   happened in the room. (arts 3, 5–9, 29, 70)
 - **src/lots** — the dice engine: turn, ladder, the card, armor, riders. (arts 41–65)
@@ -48,6 +48,11 @@ all state client-side.
   and did not come back. (arts 49–56, 60, 86–88)
 - **No battle screen** — a fight is the room with the thing come close.
   (art. 30)
+- **A room is six parts, and what stands in it is drawn, scattered or
+  cast** — a school of surfaces, light and air; a shape above its
+  proportions; a door that is a hole and never furniture; objects as ramp
+  indices, fields as scatter, masses as height on the floor; one hero, and
+  stillness spent a loop at a time. (arts 93–112)
 - **Content is data; prose is the sound design** — the voice rule binds
   every player-facing string, and art. 66 binds the controls instead.
   (rules/voice.md, the-thumb.md)
@@ -89,7 +94,7 @@ blind doors → the room behind it is dealt on the spot → keep choosing → a
 region locks and the depth announces where you have arrived → the rest of
 the depth deals from that region and its encounters wake → the Warden's
 door, refused without the key and terse with it. `npm test` is green: 31
-files, 279 tests.
+files, 281 tests.
 
 **And the tray became a rail and panels.** The playtest found two
 immersion breaks, and the tray stand-up of 2026-08-05 ruled on both. The
@@ -194,6 +199,78 @@ acts tab, then Run — where it used to be one. Art. 41 says FLEE is always
 timed (art. 1), so the tap buys a strip that holds still. If flight ever
 wants to be instant again, the fix is a fixed slot on the rail rather
 than a verb back in the shifting strip.
+
+## The look is law now (arts 93–112)
+
+The graphics amendment is ratified. Arts 13–28 have always said the box
+cannot lie; they never said what may stand in it, and the vacuum was
+filled the way vacuums are — a door that was a dark rectangle standing on
+the floor, which is a chest; sand drawn as eight sprites, which is eight
+small piles; scatter used for things that have silhouettes to get wrong.
+Twenty articles close that gap, drafted from four demos and numbered at
+merge. **No pixels changed in this tranche** — the shading half (94–95)
+already shipped under card 43, and everything from 96 down is law waiting
+for its build cards.
+
+What the amendment settles, in the order a renderer would need it:
+
+- **A room is six parts, and a school is three of them** (art. 93). Box,
+  surfaces, light, air, things, contour. The school — surfaces, light,
+  air — is what a region shares, which is the unit card 48 was already
+  reaching for without a word for it.
+- **Shape sits above proportion** (art. 96). Tube, chamber, junction. The
+  three dials were never enough: a depth built from proportions alone is
+  one room at different sizes. This amends art. 14 — a chamber authors
+  its far wall's depth, the only fourth number — and art. 16, whose mouth
+  is now what a room has *instead of* a far wall rather than always.
+- **A door is a hole, not a thing** (art. 97). Taller than wide, standing
+  on the floor, recessed honestly, framed, dark in the room's own
+  darkness. A fixed grammar learned once and read forever, and the reason
+  the playtest's chest-reading was a law failure rather than an art one.
+- **Three tiers, and the middle one does not exist yet** (arts 98–99).
+  Grammar, features, things. Features — pilasters, niches, a crack, a
+  bricked-up doorway — are what make walls differ by more than colour,
+  and the game has none. *A grammar without a gradient is wallpaper.*
+- **Objects are drawn, fields are scattered, masses are geometry** (arts
+  100–103). A sprite is a bitmap of ramp indices, so it cannot fall out
+  of palette and one drawing serves the drowned and the burnt; it carries
+  a derived contour of its own. A mass is a height on the floor that the
+  cast marches against, shaded by slope, banked against the walls.
+- **One hero, and things keep their distance** (arts 104–105).
+- **Stillness is capital** (arts 106–110). Thresholds stir and almost
+  nothing else does. At most three loops per room of at most three
+  authored frames; one-shots that end in the settled state (art. 1); one
+  blink, rarely. A moving thing that cannot be tapped is a bug, and a
+  fleeting window (art. 4) announces itself by moving. Mechanically: one
+  world clock phase-offset by hash, and animation as overlay repaint on a
+  cached base frame — cast twice and alternate where the whole room must
+  breathe — so art. 17's identical re-render survives motion intact.
+- **An answer names the thing** (art. 111), and **a third of the frame
+  stays dark** (art. 112). The first is now in voice.md's list; the
+  second was in the design agent's file as taste and is law now.
+
+Two debts are opened by ratifying rather than closed:
+
+**Three of the four demos are not in the repo.** Ramp shading is kept as
+`reference/castlebrynth-ramp-shading.html`; shapes, sprites and
+composition are not. Every other rule file names a reference that wins
+ties about intent, and arts 96–110 name three that cannot. Until they
+land the articles are the only statement of what the demos proved, and
+the file says so rather than implying a precedence it does not have.
+
+**Nothing is enforced by a test.** No test parses the rules, so the
+amendment binds reviewers and agents and nothing else. The candidates
+worth a lint when the builds land: a threshold whose authored width
+exceeds its height (art. 97); a room declaring more than three loops
+(art. 107); a room whose props' screen footprints overlap (art. 105); a
+tap answer whose first sentence names nothing (art. 111, which is the one
+the voice lint could take today).
+
+One open question in the ledger below shrinks. *"Art. 19's paint order —
+the law does not say whether a light is a sprite or atmosphere"*: art. 101
+answers half of it. A shaft of drifting motes is a field, so it is
+atmosphere, and it may never be an object. What the law still does not say
+is the paint order when a *drawn* thing and a field share a depth.
 
 ## The turn is three presses (art. 41, amended)
 
@@ -853,10 +930,13 @@ Named, not hidden. Each of these is a task, not an accident.
   three pairs, two triples — so a first-run player sees three lines on the
   card that are not for them yet. That reads as a promise if it is
   deliberate and as a bug if it is not, and no article says which.
-- **Art. 19's paint order.** Unchanged and still open: the reference lays
-  the traveler over a light shaft standing nearer than it, `far2near`
-  reports the plate as out of order, and the law does not say whether a
-  light is a sprite or atmosphere.
+- **Art. 19's paint order.** Half answered, half open. The reference lays
+  the traveler over a light shaft standing nearer than it and `far2near`
+  reports the plate as out of order; art. 101 now says a shaft of drifting
+  motes is a *field* — atmosphere, with no footprint and nothing to
+  identify — so the question is no longer whether a light is a sprite. It
+  is what the paint order is when a drawn thing and a field share a depth,
+  and the law still does not say.
 - **The Warden is a door, not a being.** Art. 37 names the Warden's door as
   the anchor that ends a depth; nothing says what the Warden is.
 - **Ladder modifiers are read as one multiplier per tier, and now one
