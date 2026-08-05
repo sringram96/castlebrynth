@@ -24,6 +24,13 @@ leaks.
   (art. 24).
 - Discrete rules (art. 1): no decision lost to slowness; animations
   skippable with a settled end-state.
+- Interaction is state (art. 75), and so is the panel the thumb is on
+  (art. 91): focus rides the run ledger and the vault, moves only on
+  declared events, and is never inferred from a screen.
+- A schema change to a ledger walks the vault's migration ladder and
+  never refuses-and-wipes (art. 11). A step that only adds fields to a
+  run carries that run forward; a step whose run cannot be replayed
+  keeps the permanent and drops the run, and says which it is.
 
 ## What you refuse
 State that can't be resumed. A number hardcoded outside config. Content

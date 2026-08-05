@@ -22,7 +22,7 @@ Never: filler, grind, a punished tap, one optimal play.
 ### design — "is it ours?"
 Owns theme, story, voice, and the look.
 Law: rules/voice.md, rules/the-room.md (arts 13–30), rules/the-thumb.md
-(arts 66–76).
+(arts 66–76, 90–92).
 Test: `reference/castlebrynth-wake-v3.html` and the hero-density image.
 Never: explanation, comfort, early spoilers, out-of-register art.
 
@@ -34,7 +34,7 @@ Test: kill the process anywhere; restart; nothing is lost.
 Never: unresumable state, a hardcoded pixel, content logic in the engine.
 
 ## The law
-`.claude/rules/` holds 89 numbered articles, cited in tasks as "art. N".
+`.claude/rules/` holds 92 numbered articles, cited in tasks as "art. N".
 Two are spent: art. 12 is repealed (there are no classes, ever) and
 art. 47's BRACE is repealed. The rest:
 - **the-world.md** — time, touch, structure, the chain, room grammar, the
@@ -46,8 +46,14 @@ art. 47's BRACE is repealed. The rest:
   the travelers (arts 86–88): the start is five bones, every other die
   belonged to somebody, and an item's origin explains its rules in one
   sentence or the item does not ship
-- **the-thumb.md** — the interaction model: registers, the tray,
-  look-then-take, dice states, the interaction budget
+- **the-thumb.md** — the interaction model: registers; the tray as a
+  rail and panels (art. 67, amended); look-then-take, where an act about
+  a thing does not exist until the thing has been tapped and the summons
+  persists per instance (art. 68, strengthened); dice states; the
+  interaction budget — and panels & focus (arts 90–92): tabs are taps
+  and are labels rather than controls, panel focus is state moved only
+  by declared events, and the map tab is a disabled socket with no
+  pixels behind it
 - **voice.md** — every player-facing string
 
 Statuses: SETTLED binds. STANDING is inherited from GAME.md, unamended.
