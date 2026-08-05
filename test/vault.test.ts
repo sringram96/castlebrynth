@@ -5,6 +5,7 @@ import type { Vault } from '../src/state/index.js'
 import {
   MIGRATIONS,
   QUARANTINE_KEY,
+  erase,
   VAULT_KEY,
   VAULT_VERSION,
   firstPermanent,
@@ -35,6 +36,7 @@ function killable(seeded: Readonly<Record<string, string>> = {}): {
   return {
     vault: {
       read: (key) => written.get(key) ?? null,
+      forget: (key) => void written.delete(key),
       write: (key, value) => void written.set(key, value),
     },
     bytes: () => Object.fromEntries(written),
@@ -204,5 +206,61 @@ describe('the vault ladder — quarantine, not destruction', () => {
     const { vault, bytes } = killable()
     expect(load(vault)).toBeNull()
     expect(bytes()[QUARANTINE_KEY]).toBeUndefined()
+  })
+})
+
+function freshLedgers() {
+  return wake(firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY), 7 as never)
+}
+
+describe('starting over — the vault is emptied, and nothing is kept back', () => {
+  /** A vault that remembers what it was told to forget, so the test can see. */
+  function watched(): { vault: Vault; store: Map<string, string> } {
+    const store = new Map<string, string>()
+    return {
+      store,
+      vault: {
+        read: (key) => store.get(key) ?? null,
+        write: (key, value) => void store.set(key, value),
+        forget: (key) => void store.delete(key),
+      },
+    }
+  }
+
+  it('leaves a machine that has never run the game (art. 11, the exception)', () => {
+    const { vault, store } = watched()
+    save(freshLedgers(), vault)
+    expect(load(vault)).not.toBeNull()
+
+    erase(vault)
+
+    // Not an empty string, not an empty snapshot: gone. `load` has to be
+    // able to tell "nothing was ever here" from "here is something I cannot
+    // read", because it quarantines the second and wakes fresh on the first.
+    expect(store.has(VAULT_KEY)).toBe(false)
+    expect(load(vault)).toBeNull()
+  })
+
+  it('takes the quarantine with it, so nothing is quietly kept', () => {
+    const { vault, store } = watched()
+    // A snapshot no ladder can walk: quarantined rather than destroyed.
+    vault.write(VAULT_KEY, JSON.stringify({ version: 999, ledgers: {} }))
+    expect(load(vault)).toBeNull()
+    expect(quarantined(vault)).not.toBeNull()
+
+    erase(vault)
+
+    // The quarantine exists so that nothing is thrown away by *accident*.
+    // A player pressing this is not an accident, and a start-over that
+    // quietly keeps a copy is only ever discovered by somebody who trusted
+    // it.
+    expect(quarantined(vault)).toBeNull()
+    expect(store.size).toBe(0)
+  })
+
+  it('is safe on a vault that holds nothing at all', () => {
+    const { vault } = watched()
+    expect(() => erase(vault)).not.toThrow()
+    expect(load(vault)).toBeNull()
   })
 })

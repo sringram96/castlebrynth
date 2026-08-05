@@ -39,6 +39,7 @@ function killable(): { vault: Vault; kill: () => Vault } {
   const written = new Map<string, string>()
   const open = (store: Map<string, string>): Vault => ({
     read: (key) => store.get(key) ?? null,
+    forget: (key) => void store.delete(key),
     write: (key, value) => void store.set(key, value),
   })
   return { vault: open(written), kill: () => open(new Map(written)) }

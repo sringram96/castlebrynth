@@ -53,7 +53,12 @@ export const BEATS: Readonly<Record<string, readonly string[]>> = {
     'The sump. The floor tilts to a grate, and what the depth loses ends here.',
     'Silt banks against the walls in a tidemark at knee height.',
   ],
-    'room.hall.throne': [
+    'room.trove.buried': [
+    'The buried hall. Sand comes in from both walls and meets in a ridge across the middle.',
+    'A skull sits on the ridge where the sand put it.',
+    'Something hangs above the far slope, clear of it.',
+  ],
+  'room.hall.throne': [
     'The throne hall. The ceiling goes up past what the light reaches.',
     'A chair stands at the far end, on a floor worn smooth in front of it.',
     'Two braziers still burn. Nobody set them going.',
@@ -124,6 +129,8 @@ export const NOUNS: Readonly<Record<string, string>> = {
   'stair.tread': 'the tread',
   'cistern.water': 'the black water',
   'sump.grate': 'the grate',
+  'buried.sand': 'the sand',
+  'buried.skull': 'the skull',
   'throne.seat': 'the throne',
   'throne.bell': 'the bell',
   'sewer.channel': 'the channel',
@@ -179,6 +186,8 @@ export const LOOKS: Readonly<Record<string, string>> = {
   'stair.tread': 'Each tread dips in the middle. A great many boots, or a few centuries.',
   'cistern.water': 'Flat, black, and deeper than the room is tall.',
   'sump.grate': 'Iron bars over a drop. Nothing comes back up it.',
+  'buried.sand': 'Sand, banked to the walls. It is still coming in.',
+  'buried.skull': 'A skull, half out of the sand. The jaw is somewhere under it.',
   'throne.seat': 'A stone chair, cold. The arms are worn smooth at the ends.',
   'throne.bell': 'A bell, cracked across. Hung too low to swing.',
   'sewer.channel': 'A channel, running. Whatever it carries, it carries down.',
@@ -339,6 +348,11 @@ export const NOTICES: Readonly<Record<string, string>> = {
     'You go through, and the stair keeps going down. What is on you now is more than your hand holds.',
   'book.empty': 'Nothing is written here yet.',
   'book.title': 'The Book of Ends.',
+  // art. 66: the prose states what is true and never instructs. The verb on
+  // the strip is the only thing that says what pressing it does.
+  'forget.asked':
+    'Every ending written here goes. The dice go with it, and the names, and the marks. Nothing is kept anywhere.',
+  'forget.done': 'The labyrinth does not know you.',
   'card.title': 'The card. Each line spends once, and refills at the next door.',
   'pouch.empty': 'Nothing is in this slot yet.',
   // art. 69: the pouch panel says what is true of it rather than going quiet.
@@ -378,6 +392,7 @@ export const LABELS: Readonly<Record<string, string>> = {
   'room.passage.drip': 'the wet passage',
   'room.lair.cistern': 'the cistern',
   'room.trove.sump': 'the sump',
+  'room.trove.buried': 'the buried hall',
   'room.hall.throne': 'the throne hall',
   'room.passage.sewer': 'the sewer',
   'room.open.barrow': 'the barrow',
@@ -472,6 +487,15 @@ export const VERBS: Readonly<Record<string, string>> = {
   // It names what the press does — it opens the question, it does not descend.
   choose: 'Choose',
   read: 'Read',
+  // The way back to the Book from the card, so the persistent glyph
+  // (art. 74) reaches both sheets and not only one.
+  book: 'Book',
+  // Starting over. Two presses, because it is the one act in the game that
+  // destroys anything — art. 71 wants a plain verb you pressed, and this one
+  // wants two of them.
+  forget: 'Forget',
+  'forget.all': 'Forget all',
+  keep: 'Keep',
   close: 'Close',
   card: 'Card',
   roll: 'Roll',

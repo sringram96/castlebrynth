@@ -41,7 +41,8 @@ import type {
 } from '../gen/index.js'
 import type { Horror } from '../lots/index.js'
 import type { RoomId } from '../state/index.js'
-import type { Prop, RoomShape, Scene, WorldMark } from '../room/index.js'
+import type { Mass, Prop, RoomShape, Scene, WorldMark } from '../room/index.js'
+import { dune } from '../room/index.js'
 import {
   BURNT,
   DROWNED,
@@ -58,6 +59,7 @@ import {
 import { horrorById } from './horrors.js'
 import type { School } from './palettes.js'
 import {
+  sandOf,
   ASH,
   BRINE,
   CHALK,
@@ -74,6 +76,16 @@ import {
   VERDIGRIS,
   WET,
 } from './palettes.js'
+import type { Feature } from './plates/features.js'
+import {
+  blindArcade,
+  brickedUp,
+  crack,
+  layered,
+  niche,
+  pilasters,
+  stringCourse,
+} from './plates/features.js'
 import { plainScene } from './plates/plain.js'
 import {
   alcove,
@@ -386,6 +398,14 @@ interface Authored {
   readonly acts?: readonly Act[]
   /** The reference plate, for the one room that has one. */
   readonly plate?: Scene
+  /** art. 102: what lies on this room's floor, as a height and not a heap. */
+  readonly buried?: (school: School, shape: RoomShape) => Mass
+  /** art. 99: the architecture on this room's walls, if it has any yet. */
+  readonly built?: {
+    readonly left?: Feature
+    readonly right?: Feature
+    readonly back?: Feature
+  }
   /** How often teeth stand at the far end unasked. A lair is always a lair. */
   readonly teeth?: number
   /**
@@ -550,6 +570,14 @@ const AUTHORED: readonly Authored[] = [
     type: 'omen',
     school: THRONE_STONE,
     kind: 'great',
+    // art. 99: a blind arcade down both walls and a course above it. The
+    // arcade wears no architrave, so nothing in it can be mistaken for a way
+    // out — art. 97 is what makes the two readable side by side.
+    built: {
+      left: layered(stringCourse(14.5), blindArcade(11, 6.4, 1, 12.5)),
+      right: layered(stringCourse(14.5), blindArcade(11, 6.4, 1, 12.5, 5.5)),
+      back: stringCourse(14.5),
+    },
     dressing: (school) => [
       thing(school, THRONE, { X: 0, Y: FLOOR, z: 44, width: 11, height: 15 }, 'the throne', 60),
       thing(school, BRAZIER, { X: -9, Y: FLOOR, z: 30, width: 4.6, height: 6 }, 'the brazier', 46, FIRE),
@@ -567,6 +595,7 @@ const AUTHORED: readonly Authored[] = [
     type: 'passage',
     school: SILT,
     kind: 'vault',
+    built: { left: crack(11, 12, 1, 29), right: stringCourse(11, 0.7) },
     dressing: (school) => [
       runnel(school),
       thing(school, CAPS, { X: -5.4, Y: FLOOR, z: 16, width: 4.2, height: 2.6 }, 'the caps'),
@@ -599,6 +628,11 @@ const AUTHORED: readonly Authored[] = [
     type: 'lair',
     school: CHALK,
     kind: 'chamber',
+    // art. 99: niches down one wall, and every one of them is empty.
+    built: {
+      left: layered(niche(14, 6, 11, 3.4), niche(23, 6, 11, 3.4), niche(32, 6, 11, 3.4)),
+      right: pilasters(9, 1.8, 3),
+    },
     dressing: (school) => [
       thing(school, CAGE, { X: -8.8, Y: FLOOR, z: 27, width: 4.6, height: 5.2 }, 'the cage'),
       thing(school, CHOIR, { X: 8.6, Y: FLOOR, z: 24, width: 7.5, height: 9.5 }, 'the choir', 50),
@@ -632,6 +666,12 @@ const AUTHORED: readonly Authored[] = [
     type: 'puzzle',
     school: VERDIGRIS,
     kind: 'hall',
+    // art. 99: a way out that somebody closed, and the wrong masonry inside
+    // the frame is what says so — without a word of prose.
+    built: {
+      right: layered(brickedUp(24, 9, 17.5), stringCourse(19, 0.8)),
+      left: layered(crack(18, 20, 3, 41), pilasters(11, 2, 4)),
+    },
     dressing: (school) => [
       thing(school, WATCHER, { X: -9.5, Y: FLOOR, z: 26, width: 8.5, height: 11.5 }, 'the watcher', 52),
       thing(school, SKULL, { X: 6.5, Y: FLOOR, z: 15, width: 1.8, height: 2 }, 'the skull'),
@@ -652,6 +692,45 @@ const AUTHORED: readonly Authored[] = [
     ].filter((one): one is NonNullable<typeof one> => one !== null),
     tappables: [['crawl.legs', { X: -1, Y: FLOOR, z: 17, width: 10, height: 6.6 }]],
     teeth: LAIR_CHANCE,
+  },
+  {
+    id: 'room.trove.buried',
+    type: 'trove',
+    school: OCHRE,
+    kind: 'hall',
+    // art. 99: a way out that somebody closed. It says what happened here
+    // without a word of prose, which is the whole argument for the tier.
+    built: { left: crack(16, 19, 2), right: stringCourse(17.5, 0.8) },
+    // art. 102: one form, and the rays hit it. Not eight dune sprites,
+    // which would read as eight small piles because that is what they are.
+    buried: (school, shape) => {
+      const sand = sandOf(school)
+      return dune(sand.ramp, sand.base, {
+        // It comes in from the far end, so the floor you are standing on is
+        // still floor and the room is visibly being taken rather than gone.
+        from: 11,
+        crest: 30,
+        high: 5.4,
+        // art. 103: banked against the walls, which is most of what makes a
+        // room look buried rather than decorated.
+        banked: 8,
+        halfWidth: shape.width,
+        until: 44,
+        relief: 9,
+        ripple: 0.3,
+      })
+    },
+    dressing: (school) => [
+      // art. 103: anything standing in a mass stands at the mass's height.
+      thing(school, SKULL, { X: -6.5, Y: FLOOR + 2.4, z: 19, width: 1.9, height: 2.1 }, 'the skull'),
+      thing(school, BOTTLE, { X: 5.2, Y: FLOOR + 1.9, z: 16, width: 1.5, height: 2.1 }, 'the bottle'),
+      thing(school, HANGED, { X: 9, Y: FLOOR + 11, z: 24, width: 5, height: 10 }, 'the hanged'),
+    ].filter((one): one is NonNullable<typeof one> => one !== null),
+    tappables: [
+      ['buried.sand', { X: 0, Y: FLOOR + 1.5, z: 14, width: 12, height: 3 }],
+      ['buried.skull', { X: -6.5, Y: FLOOR + 2.4, z: 19, width: 1.9, height: 2.1 }],
+    ],
+    floor: 0.55,
   },
   {
     id: 'room.warden',
@@ -737,7 +816,14 @@ function contentOf(one: Authored): RoomContent {
       // because its doors are holes and a hole needs a wall (arts 96, 97).
       const base = one.plate
         ? { ...one.plate, shape }
-        : plainScene(one.id, one.school, shape, () => one.dressing(one.school, state))
+        : plainScene(
+            one.id,
+            one.school,
+            shape,
+            () => one.dressing(one.school, state),
+            one.buried?.(one.school, shape),
+            one.built ?? {},
+          )
       // art. 97: every door the room offers is a threshold, and every
       // threshold is drawn. This is the room's, not the dressing's — the
       // grammar never varies between rooms, so no room gets to author it.
@@ -833,6 +919,7 @@ export const DEPTH_ONE: DepthPlan = {
     room('room.open.barrow'),
     room('room.trove.hoard'),
     room('room.puzzle.watcher'),
+    room('room.trove.buried'),
     // art. 40: neutral, not regional, so the drift can lean a run anywhere
     // it likes and the run still gets its breath (arts 77–78).
     room('room.sanctum.font'),

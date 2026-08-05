@@ -2,6 +2,8 @@ import { hash, ign } from './dither.js'
 import type { Framebuffer } from './framebuffer.js'
 import { colorOf, framebuffer, pokeRGB } from './framebuffer.js'
 import { mixPacked, packRamp } from './ramp.js'
+import type { Mass } from './mass.js'
+import { marchMass, slopeAt } from './mass.js'
 import type { Look, Station, SurfaceShaders } from './scene.js'
 import { Surface } from './scene.js'
 import type { View } from './view.js'
@@ -34,7 +36,13 @@ const TINT_FLOOR = 0.15
  * per pixel, never four; never between two colours far enough apart to read
  * as dots (art. 17, better served).
  */
-export function castBox(view: View, look: Look, surfaces: SurfaceShaders): Cast {
+export function castBox(
+  view: View,
+  look: Look,
+  surfaces: SurfaceShaders,
+  /** art. 102: the substance lying on the floor, if any lies here. */
+  mass?: Mass,
+): Cast {
   const { frame, shape, f, eye, zMouth, zBack, config } = view
   const { width: W, height: H, cx: CX, cy: CY } = frame
   const { palette, light, air } = look
@@ -51,6 +59,7 @@ export function castBox(view: View, look: Look, surfaces: SurfaceShaders): Cast 
   const floorRamp = packRamp(look.ramps.floor)
   const ceilRamp = packRamp(look.ramps.ceiling)
   const skyRamp = packRamp(look.ramps.sky ?? look.ramps.ceiling)
+  const massRamp = packRamp(mass?.ramp ?? look.ramps.floor)
   const lightTint = colorOf(light.tint)
   const airTint = colorOf(air.tint)
   const hollow = colorOf(palette.hollow)
@@ -152,6 +161,25 @@ export function castBox(view: View, look: Look, surfaces: SurfaceShaders): Cast 
         const gx = (dx * zG) / f
         resolve(i, sx, sy, zG, gx, (dy * zG) / f, surfaces.floor(zG, gx), floorRamp)
         continue
+      }
+
+      // art. 102: before the planes, the substance. A downward ray marches
+      // until it drops below the surface lying on the floor, so the mass
+      // occludes the walls and the far wall exactly the way a solid does —
+      // which is the whole reason it is geometry and not a painting.
+      if (mass !== undefined && dy < -0.01) {
+        const hit = marchMass(mass, dy / f, eye, dx / f, Math.min(zMouth, mass.until ?? zMouth))
+        if (hit !== null) {
+          surface[i] = Surface.Mass
+          depth[i] = hit
+          const mx = (dx * hit) / f
+          // art. 103: shaded by its slope. A face tilting away from the
+          // viewer catches the light; one tilting toward them falls into
+          // its own shadow; the crest takes the lit lip that read gives.
+          const n = slopeAt(mass, mx, hit)
+          resolve(i, sx, sy, hit, mx, (dy * hit) / f, mass.base + n.nz * mass.relief, massRamp)
+          continue
+        }
       }
 
       // First-hit depth against each of the four planes.

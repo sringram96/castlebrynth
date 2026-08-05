@@ -96,7 +96,7 @@ blind doors → the room behind it is dealt on the spot → keep choosing → a
 region locks and the depth announces where you have arrived → the rest of
 the depth deals from that region and its encounters wake → the Warden's
 door, refused without the key and terse with it. `npm test` is green: 31
-files, 284 tests.
+files, 287 tests.
 
 **And the tray became a rail and panels.** The playtest found two
 immersion breaks, and the tray stand-up of 2026-08-05 ruled on both. The
@@ -202,6 +202,108 @@ timed (art. 1), so the tap buys a strip that holds still. If flight ever
 wants to be instant again, the fix is a fixed slot on the rail rather
 than a verb back in the shifting strip.
 
+## Starting over (art. 11, the one exception)
+
+Resume is the whole point of the vault, and it left the game with no way
+back to the beginning short of a player clearing their browser storage —
+which is not a thing to ask of anybody, and not a thing most people know how
+to do.
+
+**`erase(vault)` empties it.** The run, the permanent ledger, the Book of
+Ends, and the quarantine beside them. The `Vault` port grows a `forget`,
+because writing an empty string would not do the job: `load` has to be able
+to tell "nothing was ever here" from "here is something I cannot read", and
+it quarantines the second while waking fresh on the first.
+
+This is the only thing in the game that destroys anything, and it is
+deliberately *not* a ritual in the sense arts 11 and 32 mean. Death burns the
+run and the permanent survives. This is the player saying they do not want
+the permanent either. Art. 11 promises the Book survives death, the reseed,
+and a schema change — every one of which is something that happens **to** a
+player. None of them is a player asking to be forgotten, and a promise the
+game keeps against its own player's wishes is not a promise, it is a lock.
+
+**The quarantine goes too**, and that is the considered part. Its whole
+reason to exist is that a snapshot nobody can read yet might be readable by a
+later build, so nothing is thrown away by accident. A player pressing this is
+not an accident, and a "start over" that quietly keeps a copy is only ever
+discovered by somebody who trusted it.
+
+**Where it lives.** Behind the persistent glyph (art. 74), at the foot of the
+Book — the Book is the record of everything the labyrinth remembers about you
+(art. 84), so it is where the act that ends that record belongs. It is not in
+the tray, which is anatomy and holds only what the moment offers (art. 67).
+The card's foot gained a `Book` verb so the one glyph reaches both sheets.
+
+**Two presses, with the loss stated between them.** `Forget` arms it and the
+sheet says plainly what goes; `Forget all` commits and `Keep` walks away.
+Art. 5 says tapping never harms and art. 71 wants a plain verb you pressed —
+this is the one act in the game that wanted two of them.
+
+There is no separate new-game path: `boot` already knows how to start from a
+vault with nothing in it, because that is exactly what a new install is. A
+second path would be a second thing to keep in step.
+
+Driven end to end in a real browser rather than only in tests: three doors
+walked, a quarantine planted, `Keep` changes nothing, `Forget all` leaves a
+new seed, no steps, an empty Book and no quarantine — and it is still a new
+game after a reload.
+
+## Masses and features, built (arts 99, 102–103)
+
+The two tiers the look wave named and did not build.
+
+**A mass is a heightfield the rays hit.** The floor is a plane plus a
+height, and every downward ray marches against that surface until it drops
+below it. So the sand occludes the doors, meets the walls where the walls
+are, takes the same light and the same air, and gets the derived contour for
+free — none of which is available to a crest painted in screen space, which
+would have run flat across the frame, agreed in size with nothing, and been
+unable to hide what stands behind it.
+
+art. 103 in full: the surface normal is measured off the *same* height
+function the rays are marched against, so the light can never disagree with
+the silhouette. The dune's shape is sand's real shape — a long windward
+haul, a short slip face, banked hard against both walls — and it carries the
+wind's ripples as **geometry** rather than as texture, because a flat mass
+shades flat and a mass that shades flat is a stain. Sand takes its own ramp
+and sits low on it, so the slope has room to lift a windward face and room
+to drop a slip face into shadow.
+
+The **buried hall** is the room that has one. It starts eleven units out, so
+the floor underfoot is still floor and the room reads as being taken rather
+than as already gone.
+
+**Features are architecture on the wall plane**, flush with it, answering
+the same question the masonry answers — where on this surface's ramp does
+this point sit. So they take the room's light and the room's air without
+being told to, and they recede because the wall does. Seven ship:
+`stringCourse`, `pilasters`, `blindArcade`, `niche`, `crack`, `brickedUp`,
+and `layered` to put several on one wall.
+
+Four rooms are built now. The **throne hall** has a blind arcade down both
+walls under a string course — and the reason its arches cannot be mistaken
+for ways out is art. 97: an arcade wears no architrave, and nothing that is
+not a way out may. The **watcher** has a bricked-up doorway, which is the
+argument for the whole tier in one feature: a frame with the wrong masonry
+inside it, saying something happened here without a word of prose. The
+**choir** has three empty niches and a run of pilasters; the **sewer** has a
+crack and a course.
+
+`brickedUp` is the one feature that *replaces* the grammar rather than
+offsetting it — smaller stones on their own courses, out of step with
+everything around them. A fill that shares the wall's courses is a patch
+nobody notices.
+
+### Still open
+
+- **The junction** (art. 96) — wide, full-height side apertures. Law, not
+  built; every room with doors is a chamber or the open.
+- **The original fourteen** still use hand-written prop painters rather than
+  authored index grids, so only the newer rooms get the derived rim.
+- **The phone pass.** `blendAbove` is still a guess at a fifth, verified on
+  nothing but a desktop panel.
+
 ## The look wave (arts 17, 94–96, 100, 113–115)
 
 The playtest verdict was that every room is a hallway, the doors read as
@@ -277,13 +379,8 @@ the box without anybody noticing.
 Named plainly rather than quietly skipped, because the wave document asked
 for them:
 
-- **Masses** (art. 102) — the floor as a plane plus a height, with the cast
-  marching downward rays against it. Not started. The sand the document asks
-  for needs it, and painting a crest in screen space is exactly what the
-  article refuses, so nothing was faked in its place.
-- **Features** (art. 99) — string courses, pilasters, niches, blind arcades,
-  the bricked-up doorway. Not started. This is still the tier the game lacks
-  entirely, and it is why the throne hall has no arcade behind its throne.
+- **Masses** (art. 102) and **features** (art. 99) — not started in that
+  wave; **both built in the one after it**, see above.
 - **The junction** (art. 96) — wide, full-height side apertures. The shape
   is law and is not built; every room with doors is a chamber or the open.
 - **Re-authoring the original fourteen.** They took the new shading, the new
