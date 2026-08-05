@@ -15,14 +15,15 @@ import {
   firstPermanent,
   handFrom,
   sparesOf,
-  swapInPouch,
+  chooseHand,
+  mustChoose,
   tookIntoRun,
   wake,
 } from '../src/state/index.js'
 
 /**
- * The hand is a chosen six, and choosing is a swap (arts 55, 60, 86, ruled
- * 2026-08-05).
+ * The hand is a chosen six, and it is chosen at the waking (arts 55, 60, 86,
+ * ruled 2026-08-05, amended).
  *
  * The first ruling of the travelers wave left a hole in the hand and had a
  * found die *fill* it. That is right exactly once. After that a find had
@@ -31,9 +32,11 @@ import {
  * opposite of art. 86's claim that your build is who you have found.
  *
  * What replaces it: the pouch is ordered, the hand is the first `handSize`
- * of it, and everything past that is a **spare**. A swap exchanges two
- * positions, so nothing is destroyed, nothing is sold, and the hand you
- * chose is still the hand when you wake — the order carries it for free.
+ * of it, and everything past that is a **spare**. A die found mid-descent
+ * goes into the pouch and stays there; which dice come *down* is settled
+ * where a descent begins, because art. 60 has always said the hand is
+ * assembled for the descent. Nothing is destroyed and nothing is sold — the
+ * choice is a reordering, and the order carries the hand for free.
  */
 
 const seedOf = (n: number): Seed => n as unknown as Seed
@@ -68,49 +71,57 @@ describe('arts 55, 60 — five bones, a hand of six, and the one free slot', () 
   })
 })
 
-describe('art. 60 — the swap', () => {
-  it('exchanges a die in the hand for one out of it, both ways round', () => {
-    const found = collect(collect(bare(), THE_PUSHER), THE_RUNNER)
-    const plain = handFrom(found)[0]!
-
-    const swapped = swapInPouch(found, THE_RUNNER.id, plain.id)
-    expect(ids(handFrom(swapped))).toContain(THE_RUNNER.id as string)
-    expect(ids(handFrom(swapped))).not.toContain(plain.id as string)
-    // The one you gave up is spare, not gone: the pouch is the collection.
-    expect(ids(sparesOf(swapped))).toEqual([plain.id as string])
-    expect(swapped.pouch.dice).toHaveLength(7)
-
-    // And it is reversible, because nothing was destroyed.
-    const back = swapInPouch(swapped, plain.id, THE_RUNNER.id)
-    expect(ids(handFrom(back))).toEqual(ids(handFrom(found)))
-    expect(ids(sparesOf(back))).toEqual([THE_RUNNER.id as string])
+describe('art. 60 — the choosing', () => {
+  it('asks only when the pouch has outgrown the hand', () => {
+    expect(mustChoose(bare())).toBe(false)
+    // Five bones and one find is exactly a hand: nothing to decide.
+    expect(mustChoose(collect(bare(), THE_PUSHER))).toBe(false)
+    expect(mustChoose(collect(collect(bare(), THE_PUSHER), THE_RUNNER))).toBe(true)
   })
 
-  it('keeps the hand at its size, and the pouch whole', () => {
+  it('brings the chosen dice to the front, in the order they were chosen', () => {
+    const found = collect(collect(bare(), THE_PUSHER), THE_RUNNER)
+    const keep = [THE_RUNNER.id, THE_PUSHER.id, ...ids(handFrom(found)).slice(0, 4)]
+    const chosen = chooseHand(found, keep as never)
+
+    expect(ids(handFrom(chosen))).toEqual(keep)
+    expect(handFrom(chosen)).toHaveLength(HAND_SIZE)
+    // What was not chosen is spare, not gone: the pouch is the collection.
+    expect(chosen.pouch.dice).toHaveLength(7)
+    expect(sparesOf(chosen)).toHaveLength(1)
+  })
+
+  it('destroys nothing and invents nothing', () => {
     const found = collect(collect(collect(bare(), THE_PUSHER), THE_RUNNER), THE_CAREFUL)
     const before = new Set(ids(found.pouch.dice))
-    const swapped = swapInPouch(found, THE_CAREFUL.id, handFrom(found)[2]!.id)
-    expect(handFrom(swapped)).toHaveLength(HAND_SIZE)
-    expect(new Set(ids(swapped.pouch.dice))).toEqual(before)
-    expect(swapped.pouch.dice).toHaveLength(8)
+    const chosen = chooseHand(found, [THE_CAREFUL.id, THE_RUNNER.id] as never)
+    expect(new Set(ids(chosen.pouch.dice))).toEqual(before)
+    expect(chosen.pouch.dice).toHaveLength(8)
   })
 
-  it('refuses a swap it cannot make, rather than inventing one', () => {
-    const found = collect(bare(), THE_PUSHER)
-    // A die that is not owned, and a die swapped with itself.
-    expect(swapInPouch(found, THE_LEECH.id, THE_PUSHER.id)).toBe(found)
-    expect(swapInPouch(found, THE_PUSHER.id, THE_LEECH.id)).toBe(found)
-    expect(swapInPouch(found, THE_PUSHER.id, THE_PUSHER.id)).toBe(found)
+  it('ignores what is not owned, and a name said twice', () => {
+    const found = collect(collect(bare(), THE_PUSHER), THE_RUNNER)
+    // THE_LEECH is not in this pouch; the pusher is named twice.
+    const chosen = chooseHand(found, [
+      THE_LEECH.id,
+      THE_PUSHER.id,
+      THE_PUSHER.id,
+    ] as never)
+    expect(ids(chosen.pouch.dice)).not.toContain(THE_LEECH.id as string)
+    expect(ids(chosen.pouch.dice)[0]).toBe(THE_PUSHER.id as string)
+    expect(chosen.pouch.dice).toHaveLength(7)
+    // A short choice is honoured as far as it goes; the rest fill behind it.
+    expect(handFrom(chosen)).toHaveLength(HAND_SIZE)
   })
 
   /**
    * art. 60: the pouch's order *is* the hand, so a chosen hand survives the
-   * reseed for nothing. This is the whole reason the swap is an exchange of
-   * positions rather than a second list.
+   * reseed for nothing. This is the whole reason the choice is a reordering
+   * rather than a second list.
    */
   it('carries the chosen hand through a death, without storing it twice', () => {
     const found = collect(collect(bare(), THE_PUSHER), THE_RUNNER)
-    const chosen = swapInPouch(found, THE_RUNNER.id, handFrom(found)[0]!.id)
+    const chosen = chooseHand(found, [THE_RUNNER.id, ...ids(handFrom(found)).slice(0, 5)] as never)
     const woken = wake(chosen, seedOf(9))
     expect(ids(woken.run!.hand.dice)).toEqual(ids(handFrom(chosen)))
     expect(ids(woken.run!.hand.dice)).toContain(THE_RUNNER.id as string)
@@ -118,12 +129,15 @@ describe('art. 60 — the swap', () => {
 })
 
 describe('arts 60, 63 — the hand and the run in flight', () => {
-  it('re-reads the run’s hand off the pouch the swap reordered', () => {
+  it('re-reads the run’s hand off the pouch the choice reordered', () => {
     const permanent = collect(collect(bare(), THE_PUSHER), THE_RUNNER)
     const ledgers = wake(permanent, seedOf(3))
     expect(ids(ledgers.run!.hand.dice)).not.toContain(THE_RUNNER.id as string)
 
-    const chosen = swapInPouch(permanent, THE_RUNNER.id, ledgers.run!.hand.dice[0]!.id)
+    const chosen = chooseHand(permanent, [
+      THE_RUNNER.id,
+      ...ids(handFrom(permanent)).slice(1),
+    ] as never)
     const armed = tookIntoRun(ledgers.run!, chosen)
     expect(ids(armed.hand.dice)).toContain(THE_RUNNER.id as string)
     expect(armed.hand.dice).toHaveLength(HAND_SIZE)
@@ -131,10 +145,10 @@ describe('arts 60, 63 — the hand and the run in flight', () => {
 
   /**
    * art. 63: a fled fight pauses with its card as spent as you left it, and
-   * art. 75 replays it off the hand it was opened with. Re-arming between
-   * backing out of a door and going back through it would be both a broken
-   * replay and a way to launder a card, so the hand does not move while a
-   * fight is waiting.
+   * art. 75 replays it off the hand it was opened with. The choosing screen
+   * only ever opens at a waking, so this can no longer be reached through
+   * the thumb — the guard stays because the ledger is the law and a caller
+   * that got it wrong would break a replay silently.
    */
   it('will not move the hand while a fight is paused behind a door', () => {
     const permanent = collect(collect(bare(), THE_PUSHER), THE_RUNNER)
@@ -157,7 +171,10 @@ describe('arts 60, 63 — the hand and the run in flight', () => {
         engaged: false,
       },
     }
-    const chosen = swapInPouch(permanent, THE_RUNNER.id, paused.hand.dice[0]!.id)
+    const chosen = chooseHand(permanent, [
+      THE_RUNNER.id,
+      ...ids(handFrom(permanent)).slice(1),
+    ] as never)
     // The pouch reordered; the hand in flight did not.
     expect(ids(tookIntoRun(paused, chosen).hand.dice)).toEqual(ids(paused.hand.dice))
     // And it lands the moment the fight is not waiting any more.

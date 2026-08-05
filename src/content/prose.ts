@@ -271,12 +271,28 @@ export const NOTICES: Readonly<Record<string, string>> = {
   'fight.resumed': 'It is where you leave it, and it remembers the rest.',
   'run.dead': 'The floor comes up. The run ends here.',
   'run.finished': 'You go through, and the stair keeps going down.',
+  // art. 60: an ending with a choice waiting behind it says so, because the
+  // next screen is a question rather than the labyrinth. It states what is
+  // true of the pouch and stops there — the Choose verb is what instructs.
+  'run.dead.choose': 'The floor comes up. The run ends here. What is on you now is more than your hand holds.',
+  'run.finished.choose':
+    'You go through, and the stair keeps going down. What is on you now is more than your hand holds.',
   'book.empty': 'Nothing is written here yet.',
   'book.title': 'The Book of Ends.',
   'card.title': 'The card. Each line spends once, and refills at the next door.',
   'pouch.empty': 'Nothing is in this slot yet.',
   // art. 69: the pouch panel says what is true of it rather than going quiet.
   'pouch.whole': 'Everything you own is in your hand.',
+  // art. 67: the pouch is a thing you read, not a thing you press.
+  'pouch.spares': 'What is past the line is yours, and is not going down with you.',
+  // art. 60: the choosing screen. It states the situation and never
+  // instructs — the verb on the strip is the only thing that says what to do.
+  'choose.which': 'More bones than your hand holds. The rest stay up here.',
+  'choose.full': 'Your hand is full. Put one back to take another.',
+  'choose.short': 'Your hand is not full yet.',
+  // art. 69: the acts panel during a fight. It says what it holds rather
+  // than going blank, and it never instructs (art. 66's other half).
+  'acts.infight': 'Nothing here but the room, and the room is waiting.',
   // art. 72: claim offers match the exact selection, so a selection that
   // fits nothing says why. The shape must be exactly what is chosen — a
   // full house is the five, never the five and one more.
@@ -388,6 +404,9 @@ export const VERBS: Readonly<Record<string, string>> = {
   descend: 'Descend',
   end: 'End run',
   wake: 'Wake',
+  // art. 60: the verb an ending offers when the pouch has outgrown the hand.
+  // It names what the press does — it opens the question, it does not descend.
+  choose: 'Choose',
   read: 'Read',
   close: 'Close',
   card: 'Card',
@@ -414,7 +433,6 @@ export const VERBS: Readonly<Record<string, string>> = {
 export const TABS: Readonly<Record<string, string>> = {
   acts: 'acts',
   pouch: 'pouch',
-  fight: 'fight',
   // arts 31, 85: a socket, named so that the absence reads as a decision
   // rather than as something nobody got to.
   map: 'map',

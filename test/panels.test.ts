@@ -146,8 +146,23 @@ describe('art. 91 — the transitions are a table, not a habit', () => {
 })
 
 describe('arts 90, 92 — the tabs', () => {
-  it('names every panel there is, and the socket that has none', () => {
-    expect(Object.keys(TABS).sort()).toEqual(['acts', 'fight', 'map', 'pouch'])
+  /**
+   * art. 67: FIGHT is not a tab. It is what the panel area *becomes* while a
+   * fight is on — the ground the tray sits on rather than a place you go —
+   * so it is deliberately absent from the rail, and a fight puts you there
+   * without your having to find it.
+   */
+  it('names the places you can go, and the socket that has none', () => {
+    expect(Object.keys(TABS).sort()).toEqual(['acts', 'map', 'pouch'])
+    expect(Object.keys(TABS)).not.toContain('fight')
+  })
+
+  it('still has a FIGHT panel for the fight to become', () => {
+    // The panel exists and the table sends a fight to it — it simply has no
+    // label on the rail, which is the whole of the change.
+    const panels: readonly Panel[] = ['acts', 'pouch', 'fight']
+    expect(panels).toContain('fight')
+    expect(panelAfter('fight-opened')).toBe('fight')
   })
 
   /**

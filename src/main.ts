@@ -114,7 +114,8 @@ import {
   meet,
   save,
   sparesOf,
-  swapInPouch,
+  chooseHand,
+  mustChoose,
   tookIntoRun,
   wake,
 } from './state/index.js'
@@ -145,6 +146,13 @@ function must<T extends HTMLElement>(id: string): T {
 
 type Screen =
   | { readonly kind: 'room' }
+  /**
+   * art. 60: the hand is assembled from the pouch **for the descent**, so
+   * when the pouch has outgrown the hand the descent opens by asking which
+   * dice come down. It is a screen of its own because it is a decision of
+   * its own — not a thing done in passing from a panel.
+   */
+  | { readonly kind: 'choosing' }
   | { readonly kind: 'fight'; readonly door: Door }
   | { readonly kind: 'dead' }
   | { readonly kind: 'finished' }
@@ -170,12 +178,11 @@ let sheet: 'card' | 'book' | null = null
 /** Which door the thumb has sensed. Sensing and going are two acts (art. 71). */
 let chosen: Door | null = null
 /**
- * arts 60, 72: the half-made swap. The hand is a chosen six, and choosing is
- * staged exactly the way a claim is — tap what leaves, tap what takes its
- * place, then press the verb. Nothing commits until the verb (art. 68).
+ * art. 60: the dice picked out on the choosing screen, in the order they
+ * were picked. Empty everywhere else — the pouch itself is informative and
+ * commits nothing (art. 67).
  */
-let leaving: DieId | null = null
-let taking: DieId | null = null
+let picked: readonly DieId[] = []
 
 /** art. 75: mirrored into the run on every mutation, never only here. */
 let fight: Fight | null = null
@@ -447,10 +454,18 @@ wordBand.onclick = () => {
 
 function wordOf(): string {
   switch (screen.kind) {
+    // art. 60: an ending that has a question behind it says so. The line is
+    // the same ending plus what is true of the pouch — never an instruction
+    // (art. 66); the verb on the strip is the thing that tells you to press.
     case 'dead':
-      return NOTICES['run.dead'] ?? ''
+      return (mustChoose(ledgers.permanent) ? NOTICES['run.dead.choose'] : NOTICES['run.dead']) ?? ''
     case 'finished':
-      return NOTICES['run.finished'] ?? ''
+      return (
+        (mustChoose(ledgers.permanent) ? NOTICES['run.finished.choose'] : NOTICES['run.finished']) ??
+        ''
+      )
+    case 'choosing':
+      return NOTICES['choose.which'] ?? ''
     case 'fight':
       return fight === null ? '' : saysIntent(fight.turn.intent)
     default:
@@ -555,13 +570,23 @@ function tray(): void {
   panels()
 }
 
-/** Which panel the thumb is on, clamped to one that exists right now. */
+/**
+ * Which panel the thumb is on, clamped to one that exists right now.
+ *
+ * art. 67: FIGHT is not a tab. It is what the panel area *becomes* while a
+ * fight is on — the ground the tray sits on rather than one of the places
+ * you can go — so it is never in the tab bar, and a fight puts you there
+ * without your having to find it.
+ *
+ * A save left on FIGHT by a fight that ended in another session lands home
+ * instead, because a panel with nothing in it is not a place either.
+ */
 function panelNow(): Panel {
   const held = ledgers.run?.panel ?? HOME
-  // FIGHT exists only during a fight (art. 67). A save that was left on it —
-  // a fight that ended in another session — lands on home rather than on a
-  // panel with nothing in it.
   if (held === 'fight' && !inAFight()) return HOME
+  // art. 67: the pouch is shut during a fight, so a save left on it lands on
+  // the fight rather than on a panel the fight has closed.
+  if (held === 'pouch' && inAFight()) return 'fight'
   return held
 }
 
@@ -593,16 +618,25 @@ function tabs(): void {
     el.setAttribute('aria-pressed', String(panel === on))
     el.onclick = () => {
       settle()
-      focus(panel)
+      // art. 67: during a fight the duel is the ground the tray sits on, so
+      // a tab is somewhere you *step aside to*. Pressing the one you are
+      // already on steps back — which is how you return to a fight that has
+      // no tab of its own.
+      focus(panel === on && inAFight() ? 'fight' : panel)
       notice = null
       persist()
       paint()
     }
     tabBar.append(el)
   }
+  // art. 60: while the choice is being made there is nowhere else to be.
+  if (screen.kind === 'choosing') return
   tab('acts', 'acts')
-  tab('pouch', 'pouch')
-  if (inAFight()) tab('fight', 'fight')
+  // art. 67: the pouch is shut during a fight. The hand a fight was opened
+  // with is the hand it is replayed with (arts 63, 75), so there is nothing
+  // to do in there — and a tab that only ever tells you "not now" is worse
+  // than a tab that is not offered.
+  if (!inAFight()) tab('pouch', 'pouch')
   // arts 31, 85: the map is a socket and stays one. A disabled tab is legal;
   // pixels behind it are not, so there is no panel to focus and no handler to
   // press. It is here to say that the road ahead is a thing the game has
@@ -615,6 +649,15 @@ function tabs(): void {
 }
 
 function panels(): void {
+  // art. 60: the choosing screen takes the whole panel area. It is not a
+  // panel you can tab to — it is what the tray is until the choice is made.
+  if (screen.kind === 'choosing') {
+    actStrip.classList.remove('on')
+    fightPanel.classList.remove('on')
+    pouchRegion.classList.add('on')
+    pouchRegion.replaceChildren()
+    return choosingPanel()
+  }
   const on = panelNow()
   actStrip.classList.toggle('on', on === 'acts')
   pouchRegion.classList.toggle('on', on === 'pouch')
@@ -804,6 +847,18 @@ function scoreOf(line: Line): number {
  * The dice have left the descent screen entirely: outside a fight this is
  * the one place in the game a die is drawn.
  */
+/**
+ * art. 67 (amended): the POUCH panel — what you own, and nothing you press.
+ *
+ * It is **informative**. The hand, then a rule, then the spares set apart,
+ * dimmer and unlit; every die answers with its declared truth on a tap
+ * (art. 68) and commits nothing. Choosing which of them descend is a
+ * decision made at the waking, on a screen of its own (art. 60), because a
+ * hand changed mid-descent is a hand a fight could be re-armed from.
+ *
+ * The dice of a *turn* are never here — those are the duel's, and they are
+ * drawn in FIGHT and nowhere else.
+ */
 function pouch(): void {
   pouchRegion.replaceChildren()
   const run = ledgers.run!
@@ -824,27 +879,12 @@ function pouch(): void {
   // art. 68: what you carry is a possession and answers the same way.
   for (const item of run.carried) pouchRegion.append(carriedSlot(item))
 
-  // art. 69: a panel that cannot do the thing it is for says so, rather than
-  // offering a verb that quietly fails. arts 63, 75: the hand a fight was
-  // opened with is the hand it is replayed with.
+  // art. 69: the panel says what it is rather than leaving the spares
+  // unexplained. It never instructs — it states what is true of them.
   const aside = document.createElement('div')
   aside.className = 'aside'
-  if (run.fight !== null) aside.textContent = NOTICES['swap.locked'] ?? ''
-  else if (spares.length === 0) aside.textContent = NOTICES['pouch.whole'] ?? ''
-  if (aside.textContent !== '') pouchRegion.append(aside)
-
-  pouchActs()
-}
-
-/**
- * arts 60, 68: the one commitment this panel offers. It sits in the panel
- * rather than in a shared strip because it is the panel's act — ACTS is
- * where the *room* is played from, and a swap is not about the room.
- */
-function pouchActs(): void {
-  if (ledgers.run!.fight !== null) return
-  if (sparesOf(ledgers.permanent).length === 0) return
-  pouchRegion.append(verb('swap', doSwap))
+  aside.textContent = NOTICES[spares.length > 0 ? 'pouch.spares' : 'pouch.whole'] ?? ''
+  pouchRegion.append(aside)
 }
 
 function slot(className: string): HTMLButtonElement {
@@ -881,8 +921,9 @@ function pips(value: number): HTMLSpanElement {
  * inverts entirely; claimed is sunk and ringed. Unused dims at resolve.
  */
 function dieSlot(die: Die, landed: Landed | null, claimed: boolean): HTMLButtonElement {
-  const isSelected =
-    landed !== null ? selected.includes(landed.die) : leaving === die.id
+  // art. 67: in the pouch a die is a thing you read, so `selected` is only
+  // ever the duel's selection. The choosing screen marks its own picks.
+  const isSelected = landed !== null && selected.includes(landed.die)
   const kept = landed !== null && landed.kept && phase === 'keep'
   const idle =
     resolving !== null && landed !== null && !claimed
@@ -902,12 +943,6 @@ function dieSlot(die: Die, landed: Landed | null, claimed: boolean): HTMLButtonE
     const spentIn = claimed ? claimIn(landed!.die) : undefined
     notice = saysDie(die, landed?.face, spentIn ?? undefined)
     if (landed !== null) tapDie(landed.die)
-    // art. 60: outside a fight the hand is a thing you arrange, so a tap on a
-    // die in it also stages that die as the one a swap would give up.
-    else if (sparesOf(ledgers.permanent).length > 0) {
-      leaving = leaving === die.id ? null : die.id
-      persist()
-    }
     paint()
   }
   return el
@@ -931,18 +966,16 @@ function emptySlot(): HTMLButtonElement {
 
 /**
  * art. 60: a die you own and are not carrying. Tapping it answers with its
- * declared truth like any possession (art. 68) and stages it as the one that
- * would come in — the swap's other half is a die in the hand.
+ * declared truth like any possession (art. 68) and commits nothing — which
+ * dice descend is settled at the waking, not here.
  */
 function spareSlot(die: Die): HTMLButtonElement {
-  const el = slot(`spare${taking === die.id ? ' sel' : ''}`)
+  const el = slot('spare')
   el.append(pips(die.faces[0]?.value ?? 1))
   el.setAttribute('aria-label', saysDie(die))
   el.onclick = () => {
     settle()
     notice = saysDie(die)
-    taking = taking === die.id ? null : die.id
-    persist()
     paint()
   }
   return el
@@ -970,17 +1003,25 @@ function acts(): void {
     case 'room':
       return roomActs()
     case 'fight':
-      return fightActs()
+      // art. 67: the fight's own verbs belong to the fight's own panel, and
+      // they are rendered there (`theFightPanel`). What ACTS holds during a
+      // fight is what ACTS is for — the things you do that are not the duel.
+      return actsInAFight()
+    // art. 60: the verb names what the press actually does. With a choice
+    // waiting it opens the question rather than the labyrinth, so it says
+    // Choose — art. 71's rule that no press lies about where it takes you.
     case 'dead':
       return actStrip.append(
-        verb('descend', () => { screen = { kind: 'room' }; notice = null; persist(); paint() }),
+        verb(mustChoose(ledgers.permanent) ? 'choose' : 'descend', beginDescent),
         verb('read', () => { sheet = 'book'; paint() }),
       )
     case 'finished':
       return actStrip.append(
-        verb('wake', () => { screen = { kind: 'room' }; notice = null; persist(); paint() }),
+        verb(mustChoose(ledgers.permanent) ? 'choose' : 'wake', beginDescent),
         verb('read', () => { sheet = 'book'; paint() }),
       )
+    case 'choosing':
+      return
   }
 }
 
@@ -1011,43 +1052,29 @@ function roomActs(): void {
     actStrip.append(verb('end', () => died('end.kept')))
   }
 
-  // arts 60, 86: the hand is a chosen six. While anything is spare there is
-  // a swap to be made, and it is a plain verb pressed after a staged
-  // selection — the same shape the claim phase already taught the thumb.
-  if (sparesOf(ledgers.permanent).length > 0) {
-    actStrip.append(verb('swap', doSwap))
-  }
-
   if (bands.room === CROSSING) {
     actStrip.append(verb('read', () => { sheet = 'book'; paint() }))
   }
 }
 
 /**
- * art. 68: an act commits, and this one exchanges a die in the hand for one
- * out of it. art. 69: it never goes quiet — a half-made selection is told
- * what it is still missing, and a fight waiting behind a door is told why
- * the hand will not move (art. 63).
+ * art. 67: what ACTS is for during a fight — the things that are not the
+ * duel. The room is still there (art. 30: no battle screen), so a verb
+ * looking summoned is still yours to press; the doors are not, because the
+ * door you are standing at *is* the fight.
+ *
+ * It is nearly always empty today. The spells and consumables that will fill
+ * it are later waves; what matters now is that the panel exists, says so,
+ * and is not where the dice live.
  */
-function doSwap(): void {
-  const run = ledgers.run!
-  if (run.fight !== null) {
-    notice = NOTICES['swap.locked'] ?? ''
-    return paint()
-  }
-  if (leaving === null || taking === null) {
-    notice = NOTICES['swap.none'] ?? ''
-    return paint()
-  }
-  // art. 11: the pouch is the permanent's, so the exchange is a ritual; the
-  // run's hand is then re-read off the pouch it just reordered (art. 60).
-  const permanent = swapInPouch(ledgers.permanent, taking, leaving)
-  ledgers = { permanent, run: tookIntoRun(run, permanent) }
-  leaving = null
-  taking = null
-  notice = NOTICES['swap.done'] ?? ''
-  persist()
-  paint()
+function actsInAFight(): void {
+  const offers = bands.tray.flatMap((offer) => (offer.kind === 'act' ? [offer.act] : []))
+  for (const one of offers) actStrip.append(verb(one.id, () => doAct(one)))
+  if (offers.length > 0) return
+  const aside = document.createElement('div')
+  aside.className = 'aside'
+  aside.textContent = NOTICES['acts.infight'] ?? ''
+  actStrip.append(aside)
 }
 
 function doAct(one: Act): void {
@@ -1061,6 +1088,85 @@ function doAct(one: Act): void {
   // the thing in it, which the scene state has already stopped drawing.
   notice =
     mercy === null ? null : (NOTICES[mercy > 0 ? 'mercy.breath' : 'mercy.whole'] ?? null)
+  persist()
+  paint()
+}
+
+/**
+ * art. 60: the choosing screen — which dice come down.
+ *
+ * It opens where a descent opens: after an ending, when the pouch has
+ * outgrown the hand. Nothing about it is new vocabulary — the dice are
+ * tapped the way every die in the game is tapped, the picks are staged the
+ * way a claim is (art. 72), and one plain verb commits (art. 66).
+ */
+function choosingPanel(): void {
+  const permanent = ledgers.permanent
+  const size = permanent.handSize
+  for (const die of permanent.pouch.dice) {
+    const at = picked.indexOf(die.id)
+    const el = slot(`die${at < 0 ? ' rest' : ' sel'}`)
+    el.append(pips(die.faces[0]?.value ?? 1))
+    el.setAttribute('aria-label', saysDie(die))
+    el.onclick = () => {
+      settle()
+      // art. 68: a tap answers first, always — the pick is what it leaves.
+      notice = saysDie(die)
+      picked =
+        at >= 0
+          ? picked.filter((one) => one !== die.id)
+          : picked.length >= size
+            ? picked
+            : [...picked, die.id]
+      if (at < 0 && picked.length >= size && !picked.includes(die.id)) {
+        // Full: the tap still answered, and the hand did not move (art. 5).
+        notice = NOTICES['choose.full'] ?? notice
+      }
+      paint()
+    }
+    pouchRegion.append(el)
+  }
+
+  const aside = document.createElement('div')
+  aside.className = 'aside'
+  aside.textContent = `${picked.length}/${size}`
+  pouchRegion.append(aside)
+  pouchRegion.append(verb('descend', commitChoice, picked.length !== size))
+}
+
+/**
+ * art. 60: the choice, committed. The pouch is reordered so the chosen dice
+ * are its first `handSize` — the order *is* the hand — and the run is then
+ * re-read off it. Nothing is destroyed; the rest are spares.
+ */
+function commitChoice(): void {
+  if (picked.length !== ledgers.permanent.handSize) {
+    notice = NOTICES['choose.short'] ?? ''
+    return paint()
+  }
+  const permanent = chooseHand(ledgers.permanent, picked)
+  ledgers = { permanent, run: tookIntoRun(ledgers.run!, permanent) }
+  picked = []
+  screen = { kind: 'room' }
+  notice = null
+  persist()
+  paint()
+}
+
+/**
+ * art. 60: a descent begins by asking which dice come down, when there is
+ * anything to ask. A pouch that fits the hand asks nothing and the player
+ * walks straight in.
+ */
+function beginDescent(): void {
+  if (mustChoose(ledgers.permanent)) {
+    picked = ledgers.run!.hand.dice.map((die) => die.id)
+    screen = { kind: 'choosing' }
+    focus('pouch')
+  } else {
+    screen = { kind: 'room' }
+  }
+  notice = null
   persist()
   paint()
 }
@@ -1091,8 +1197,6 @@ function commitDoor(door: Door): void {
 
 function walk(door: Door, said: string | null = null): void {
   refused = false
-  leaving = null
-  taking = null
   // art. 79: the room behind this door does not exist until now. Walking
   // deals it, which is why the walk hands back both the run and the chain.
   const walked = chooseDoor(ledgers, chain, ROOM_BOOK, door, DEALER)
@@ -1218,6 +1322,11 @@ function settle(): void {
   if (resolving !== null) settleTurn()
 }
 
+/**
+ * art. 67: everything the duel needs, in the duel's own panel — roll, keep,
+ * recast, claim, end the turn, run. The bug this replaces put them in ACTS,
+ * so a fight force-focused a panel you then had to leave in order to play.
+ */
 function fightActs(): void {
   const now = fight
   if (now === null) return
@@ -1227,7 +1336,7 @@ function fightActs(): void {
   const lots = turnLots(ledgers.run!.seed, ledgers.run!.at.step, now.turnNumber)
 
   if (phase === 'pre') {
-    actStrip.append(
+    fightPanel.append(
       verb('roll', () => {
         fight = withTurn(now, cast(now.turn, lots(1)))
         phase = 'keep'
@@ -1241,7 +1350,7 @@ function fightActs(): void {
   }
 
   if (phase === 'keep') {
-    actStrip.append(
+    fightPanel.append(
       verb(
         'recast',
         () => {
@@ -1270,7 +1379,7 @@ function fightActs(): void {
     made.dice.some((one) => selected.includes(one.die)),
   )
   if (line !== null) {
-    actStrip.append(
+    fightPanel.append(
       verb('claim', () => {
         fight = withTurn(now, claim(now.turn, selected, line, LADDER, goods()))
         selected = []
@@ -1281,7 +1390,7 @@ function fightActs(): void {
     )
   }
   if (takingBack) {
-    actStrip.append(
+    fightPanel.append(
       verb('take-back', () => {
         let turn = now.turn
         for (const made of now.turn.claims) {
@@ -1294,7 +1403,7 @@ function fightActs(): void {
       }),
     )
   }
-  actStrip.append(verb('end-turn', endTurn), verb('run', runFromTheFight))
+  fightPanel.append(verb('end-turn', endTurn), verb('run', runFromTheFight))
 }
 
 /**
