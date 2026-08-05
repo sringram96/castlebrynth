@@ -40,6 +40,17 @@ skeleton playtest.
     is still yours to press, but the doors are not, because the door you
     are standing at *is* the fight.
 
+    **And FIGHT holds only the duel** (amended by ruling of 2026-08-05).
+    What the duel needs is the dice and the verbs that move a turn:
+    Roll, Recast, Keep all, Claim, Take back, End turn. **Run is not one
+    of them** — running is not a move in the duel, it is the one thing
+    you can still do about the door you are standing at, so it lives in
+    ACTS with the room's other verbs. FIGHT's strip is three different
+    sets across a turn; a verb that *leaves* the fight has no business
+    shifting position under the thumb each time the phase turns. Art. 41
+    is unchanged and better served: FLEE is always offered, and it is
+    offered in one fixed place for the whole fight.
+
     The original article's fixed regions are not repealed, only
     relocated: a region still lives in exactly one place and never
     moves. What changed is that the tray stopped showing every region

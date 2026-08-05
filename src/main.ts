@@ -1070,11 +1070,17 @@ function roomActs(): void {
 function actsInAFight(): void {
   const offers = bands.tray.flatMap((offer) => (offer.kind === 'act' ? [offer.act] : []))
   for (const one of offers) actStrip.append(verb(one.id, () => doAct(one)))
-  if (offers.length > 0) return
-  const aside = document.createElement('div')
-  aside.className = 'aside'
-  aside.textContent = NOTICES['acts.infight'] ?? ''
-  actStrip.append(aside)
+  // art. 41 (amended 2026-08-05): FLEE is always offered, and it is offered
+  // here. Running is not a move in the duel — it is the one thing you can do
+  // about the door you are standing at, so it belongs with the room's verbs
+  // and not with the dice. It sits in one place all fight, which is what
+  // FIGHT's own strip could not give it: that strip is three different sets
+  // of verbs across a turn, and a verb that leaves the fight has no business
+  // moving under the thumb each time the phase turns (art. 67).
+  //
+  // Unconditional, including through the resolve beat — `runFromTheFight`
+  // clears the timers itself, so "always" can mean always (arts 1, 41).
+  actStrip.append(verb('run', runFromTheFight))
 }
 
 function doAct(one: Act): void {
@@ -1344,7 +1350,6 @@ function fightActs(): void {
         persist()
         paint()
       }),
-      verb('run', runFromTheFight),
     )
     return
   }
@@ -1369,7 +1374,6 @@ function fightActs(): void {
         persist()
         paint()
       }),
-      verb('run', runFromTheFight),
     )
     return
   }
@@ -1403,7 +1407,7 @@ function fightActs(): void {
       }),
     )
   }
-  fightPanel.append(verb('end-turn', endTurn), verb('run', runFromTheFight))
+  fightPanel.append(verb('end-turn', endTurn))
 }
 
 /**

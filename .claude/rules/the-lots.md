@@ -12,7 +12,10 @@ fixture lands (tracked on the board).
 41. SETTLED (amended) — Yahtzee turns survive at the core: a first
     casting, keep any dice, one second casting of the rest. Then the
     claim phase: assemble combos from the hand and end the turn. FLEE is
-    always offered. The THROW / BRACE / FLEE decision trio is repealed —
+    always offered — from the ACTS panel, which is where art. 67 (as
+    amended 2026-08-05) puts it: leaving is a thing you do about the
+    door, not a move in the duel. The THROW / BRACE / FLEE decision trio
+    is repealed —
     attacking is claiming, and defense is armor (art. 47). Vocabulary:
     *keep* (or *freeze*) is mid-turn holding; "brace" leaves the game's
     vocabulary.

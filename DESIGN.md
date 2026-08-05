@@ -175,8 +175,25 @@ the panel area becomes while a fight is on. It carries everything the
 duel needs, takes no room on the rail, and you return to it by pressing
 the tab you are already on: a tab is somewhere you step aside to. The
 dice of a turn are drawn in FIGHT and nowhere else; ACTS keeps the room's
-summoned verbs, which is where spells and consumables will sit, and says
-so when it is empty rather than going blank.
+summoned verbs, which is where spells and consumables will sit.
+
+**FIGHT holds only the duel, so Run moved out of it.** The fight's strip
+is three different sets of verbs across a turn — Roll, then Recast and
+Keep all, then Claim and Take back and End turn — and Run was riding
+along at the end of each, shifting position every time the phase turned.
+Running is not a move in the duel anyway: it is the one thing you can
+still do about the door you are standing at, which is a room act. So it
+sits in ACTS, in one place, for the whole fight, and it is the first
+thing that panel has ever had a reason to hold. It is offered
+unconditionally now, through the resolve beat as well — `runFromTheFight`
+clears its own timers, so art. 41's "always" can mean always.
+
+The cost is honest and worth stating: **fleeing is two taps now** — the
+acts tab, then Run — where it used to be one. Art. 41 says FLEE is always
+*offered*, not that it is always one press, and no fight in this game is
+timed (art. 1), so the tap buys a strip that holds still. If flight ever
+wants to be instant again, the fix is a fixed slot on the rail rather
+than a verb back in the shifting strip.
 
 **The vault carried all of it.** `VAULT_VERSION` went 3 → 4 → 5 in one
 wave, and both rungs are the *good* kind: nothing about the arrangement

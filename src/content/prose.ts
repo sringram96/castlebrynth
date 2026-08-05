@@ -290,9 +290,6 @@ export const NOTICES: Readonly<Record<string, string>> = {
   'choose.which': 'More bones than your hand holds. The rest stay up here.',
   'choose.full': 'Your hand is full. Put one back to take another.',
   'choose.short': 'Your hand is not full yet.',
-  // art. 69: the acts panel during a fight. It says what it holds rather
-  // than going blank, and it never instructs (art. 66's other half).
-  'acts.infight': 'Nothing here but the room, and the room is waiting.',
   // art. 72: claim offers match the exact selection, so a selection that
   // fits nothing says why. The shape must be exactly what is chosen — a
   // full house is the five, never the five and one more.
