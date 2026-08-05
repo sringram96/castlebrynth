@@ -19,7 +19,7 @@
 import type { Brush, Prop, View, WorldMark } from '../../room/index.js'
 import { mix } from '../../room/index.js'
 import type { School } from '../palettes.js'
-import { lookOf } from '../palettes.js'
+import { alongSteps, lookOf } from '../palettes.js'
 import { AUTHORED_GRID } from '../render.js'
 
 /** An authored pixel, on whatever grid the dial is set to (art. 23). */
@@ -791,10 +791,13 @@ export function threshold(school: School, mark: WorldMark, state: ThresholdState
       const wall = look.ramps.wall
       // art. 97: the room's own darkness, which is the bottom of the wall's
       // ramp with the air's tint in it — never one shared black hole.
-      const inside = mix(wall[0] ?? school.hollow, look.air.tint, 0.45)
+      // Fractions of the ramp rather than indices into it: art. 94 made the
+      // ramp sixty-four steps deep, and the bottom of a ramp is where it
+      // starts, not where its first three entries happen to be.
+      const inside = mix(alongSteps(wall, 0), look.air.tint, 0.45)
       const reveal = [
-        mix(wall[1] ?? school.hollow, look.air.tint, 0.3),
-        mix(wall[2] ?? school.grime, look.air.tint, 0.22),
+        mix(alongSteps(wall, 0.08), look.air.tint, 0.3),
+        mix(alongSteps(wall, 0.16), look.air.tint, 0.22),
       ] as const
 
       // Taller than wide, always — whatever the mark asked for.
@@ -812,8 +815,8 @@ export function threshold(school: School, mark: WorldMark, state: ThresholdState
       // it has to read in every school. Its stone comes off the light end of
       // the room's own wall ramp rather than off a named tone, so a frame is
       // proud in the drowned and the burnt alike (arts 94, 100).
-      const face = wall[wall.length - 3] ?? school.brickAlt
-      const turn = wall[wall.length - 5] ?? school.grime
+      const face = alongSteps(wall, 0.78)
+      const turn = alongSteps(wall, 0.58)
       for (let y = arch.y0; y < arch.y1; y++) {
         for (let x = arch.x0; x < arch.x1; x++) {
           if (x > near.x0 && x < near.x1 && y > near.y0) continue

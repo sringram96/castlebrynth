@@ -33,6 +33,7 @@ export type {
   Prop,
   RoomPalette,
   Scene,
+  Station,
   SurfaceRamps,
   SurfaceShaders,
   SurfaceId,

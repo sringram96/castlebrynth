@@ -26,18 +26,42 @@ export interface SurfaceRamps {
 }
 
 /**
- * The room's light, as a lift along the ramp. One station only — the light
- * that stands where you do, falling off with distance — because the light
- * stations are a later wave; this is the existing light, expressed.
+ * art. 113: where a light *stands*. A station is a place in the room and
+ * never a direction, so the lift falls off from somewhere — which is the
+ * lever that inverts a room. Lit from below, the ceiling becomes the
+ * darkest surface in the frame.
+ */
+export type Station =
+  /** The light that stands where you do. */
+  | 'with'
+  /** Overhead — a grate, a hole in the roof, a hanging lamp. */
+  | 'above'
+  /** Underfoot — water throwing it up, embers, something down there. */
+  | 'below'
+  /** At the far end, so the room is lit from where you are going. */
+  | 'ahead'
+  /** None. The ramp and the air are the whole of it. */
+  | 'none'
+
+/**
+ * The room's light: a station, a reach, and a colour (art. 113). The colour
+ * is applied after quantisation and in proportion to how lit a pixel is, so
+ * light warms what it reaches and leaves the rest to the ramp.
+ *
+ * art. 114: at sixty-four steps the palette stops carrying identity on its
+ * own, so this is where a region is recognised — the drowned lit from below
+ * through water, the burnt from its embers, the ossuary close and with you.
  */
 export interface Light {
+  /** art. 113: where it stands. */
+  readonly station: Station
   /** How far the lift reaches, in world units. Zero is a room with no light. */
   readonly reach: number
   /** How many ramp steps it lifts at its brightest. */
   readonly lift: number
-  /** What colour lit pixels are nudged toward, sparingly, after quantisation. */
+  /** What colour lit pixels are nudged toward, after quantisation. */
   readonly tint: string
-  /** How far toward it. Small: the ramp should be doing the work. */
+  /** How far toward it. The ramp should still be doing most of the work. */
   readonly tintAmt: number
 }
 

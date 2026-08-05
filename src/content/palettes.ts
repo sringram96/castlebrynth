@@ -1,4 +1,4 @@
-import type { Air, Light, Look, RampSpec, RoomPalette } from '../room/index.js'
+import type { Air, Light, Look, RampSpec, RoomPalette, Station } from '../room/index.js'
 import { darkest, extend, lightest, ramp, stepOf } from '../room/index.js'
 
 /**
@@ -30,6 +30,21 @@ export interface School {
   /** art. 16: the structural near-black past the cutoff. */
   readonly hollow: string
   readonly breath: string
+  /**
+   * art. 113: where this room's light stands. Omitted is the light you
+   * carry, which is what every room had before there were stations.
+   *
+   * art. 114 is why this is on the school and not on the room: at
+   * sixty-four steps a palette stops carrying identity on its own, so a
+   * region is known by its light. The drowned is lit from below through
+   * water; the burnt from its embers; the ossuary close and with you; the
+   * neutral pool is quiet.
+   */
+  readonly station?: Station
+  /** What the light is the colour of. Omitted takes the school's pale bone. */
+  readonly glow?: string
+  /** How far it reaches and how hard it lifts, if this room is not ordinary. */
+  readonly lamp?: { readonly reach?: number; readonly lift?: number; readonly tintAmt?: number }
 }
 
 export const MUTED: School = {
@@ -49,6 +64,8 @@ export const MUTED: School = {
   coin: '#cfa94f',
   hollow: '#020304',
   breath: '#101215',
+  // art. 114: The waking corridor: what light there is falls through the grate.
+  station: 'above',
 }
 
 /**
@@ -72,6 +89,9 @@ export const WET: School = {
   coin: '#7fb9c4',
   hollow: '#010303',
   breath: '#0c1417',
+  // art. 114: The drowned: thrown up off the water, so the ceiling is the dark.
+  station: 'below',
+  glow: '#46a094',
 }
 
 /**
@@ -95,6 +115,8 @@ export const OCHRE: School = {
   coin: '#e0b452',
   hollow: '#030202',
   breath: '#141009',
+  // art. 114: Neutral, and quiet: a little day from somewhere overhead.
+  station: 'above',
 }
 
 /**
@@ -118,6 +140,8 @@ export const ASH: School = {
   coin: '#b8b2a4',
   hollow: '#020203',
   breath: '#101114',
+  // art. 114: Burnt. Something is still alight at the far end of it.
+  station: 'ahead',
 }
 
 /**
@@ -141,6 +165,8 @@ export const IRON: School = {
   coin: '#93a3bb',
   hollow: '#010102',
   breath: '#0b0e13',
+  // art. 114: The Warden's hall takes no light at all.
+  station: 'none',
 }
 
 export const NOIR: School = {
@@ -160,6 +186,8 @@ export const NOIR: School = {
   coin: '#a7adb6',
   hollow: '#020304',
   breath: '#101215',
+  // art. 114: Ossuary. Close, and it finds very little.
+  station: 'with',
 }
 
 /**
@@ -183,6 +211,8 @@ export const GRANITE: School = {
   coin: '#9aa1ab',
   hollow: '#010102',
   breath: '#0e0f12',
+  // art. 114: Ossuary. The stone gives nothing back.
+  station: 'with',
 }
 
 /**
@@ -206,6 +236,8 @@ export const BRINE: School = {
   coin: '#6aa8b4',
   hollow: '#000202',
   breath: '#081113',
+  // art. 114: Drowned. Off the water, and colder than the drip.
+  station: 'below',
 }
 
 /**
@@ -229,6 +261,8 @@ export const SILT: School = {
   coin: '#9c8f5e',
   hollow: '#020201',
   breath: '#0f0d0a',
+  // art. 114: Drowned, and the water is thick with what it carries.
+  station: 'below',
 }
 
 /**
@@ -252,6 +286,9 @@ export const EMBER: School = {
   coin: '#d4763a',
   hollow: '#030101',
   breath: '#150c0a',
+  // art. 114: The burnt: the embers are on the floor, and they are the light.
+  station: 'below',
+  glow: '#ff8b3d',
 }
 
 /**
@@ -275,6 +312,8 @@ export const SOOT: School = {
   coin: '#7d7568',
   hollow: '#010101',
   breath: '#0c0b0a',
+  // art. 114: Burnt out. Nothing here is lit; the ramp is the whole of it.
+  station: 'none',
 }
 
 /**
@@ -298,6 +337,8 @@ export const CHALK: School = {
   coin: '#cabf9f',
   hollow: '#030302',
   breath: '#16150f',
+  // art. 114: The ossuary: close light, and it goes no further than you do.
+  station: 'with',
 }
 
 /**
@@ -321,6 +362,8 @@ export const SLATE: School = {
   coin: '#8e96a4',
   hollow: '#010102',
   breath: '#0a0c0f',
+  // art. 114: Neutral. The way on is brighter than where you stand.
+  station: 'ahead',
 }
 
 /**
@@ -345,6 +388,9 @@ export const VERDIGRIS: School = {
   coin: '#6fc79a',
   hollow: '#010302',
   breath: '#0b1210',
+  // art. 114: Neutral, and something green is lit from up there.
+  station: 'above',
+  glow: '#9fe8dc',
 }
 
 /** The four colours the box needs that are not on a ramp. */
@@ -383,7 +429,39 @@ export function roomPalette(school: School): RoomPalette {
  * more than about fourteen and it stops reading as pixel art. The ceiling
  * gets fewer because it holds the least light and the least eye.
  */
-const STEPS = { wall: 10, floor: 10, ceiling: 8 } as const
+/**
+ * art. 94 as amended: the ramp is deep. Sixty-four steps is not sixty-four
+ * bands — the upper ramp blends (art. 95), so the count is headroom for the
+ * light to lift into rather than a number of visible belts.
+ */
+const STEPS = { wall: 64, floor: 64, ceiling: 64 } as const
+
+/**
+ * art. 94: how far a ramp turns. The dark end goes cool and desaturated,
+ * the light end warm and saturated — the direction stone under a flame
+ * actually goes, and most of the visible gain in the demos.
+ *
+ * The floor turns hardest because it holds the widest span of light in the
+ * frame; the ceiling least, because it is mostly dark and a turn there
+ * reads as a colour cast rather than as light.
+ */
+const TURN = { wall: 14, floor: 18, ceiling: 9 } as const
+const HEAT = { wall: 0.1, floor: 0.13, ceiling: 0.07 } as const
+
+/**
+ * art. 94: how much deeper the ramp is than the ten steps every grammar
+ * offset in this game was authored against. Every offset expressed in ramp
+ * steps — a seam's depth, a defect's drop, the light's lift, the air's
+ * gain — is multiplied by this and by nothing else, so the wave that
+ * deepened the ramp did not re-author fourteen rooms' worth of numbers.
+ */
+export const DEEP = STEPS.wall / 10
+
+/** A tone a fraction of the way along a ramp, rather than at an index. */
+export function alongSteps(ramp: readonly string[], t: number): string {
+  const top = ramp.length - 1
+  return ramp[Math.max(0, Math.min(top, Math.round(t * top)))] ?? ramp[0]!
+}
 
 /**
  * The bend, weighting steps toward the dark end — where this game lives.
@@ -408,7 +486,7 @@ const HEADROOM = 0.45
  * where you do — because the light stations are a later wave. This is the
  * light the rooms already had, expressed.
  */
-const LIGHT = { reach: 22, lift: 1.9, tintAmt: 0.1 } as const
+const LIGHT = { reach: 22, lift: 1.9, tintAmt: 0.16 } as const
 
 /** Everything a school says about how its stone takes light and distance. */
 export interface Shading {
@@ -421,9 +499,15 @@ export interface Shading {
   readonly air: Air
 }
 
-function specOf(tones: readonly string[], steps: number, bend: number): RampSpec {
+function specOf(
+  tones: readonly string[],
+  steps: number,
+  bend: number,
+  turn: number,
+  heat: number,
+): RampSpec {
   const dark = darkest(tones)
-  return { dark, light: extend(dark, lightest(tones), HEADROOM), steps, bend }
+  return { dark, light: extend(dark, lightest(tones), HEADROOM), steps, bend, turn, heat }
 }
 
 const shadings = new Map<School, Shading>()
@@ -438,9 +522,23 @@ export function shadingOf(school: School): Shading {
     [school.grime, school.mortar, ...school.brick, school.brickAlt, school.damp, school.moss],
     STEPS.wall,
     BEND.wall,
+    TURN.wall,
+    HEAT.wall,
   )
-  const floor = specOf([school.grime, school.mortar, ...school.flag], STEPS.floor, BEND.floor)
-  const ceiling = specOf([school.grime, ...school.slat], STEPS.ceiling, BEND.ceiling)
+  const floor = specOf(
+    [school.grime, school.mortar, ...school.flag],
+    STEPS.floor,
+    BEND.floor,
+    TURN.floor,
+    HEAT.floor,
+  )
+  const ceiling = specOf(
+    [school.grime, ...school.slat],
+    STEPS.ceiling,
+    BEND.ceiling,
+    TURN.ceiling,
+    HEAT.ceiling,
+  )
   const made: Shading = {
     wall,
     floor,
@@ -453,7 +551,16 @@ export function shadingOf(school: School): Shading {
       floor: stepOf(floor, school.flag[1]),
       ceiling: stepOf(ceiling, school.slat[0]),
     },
-    light: { reach: LIGHT.reach, lift: LIGHT.lift, tint: school.bone[0], tintAmt: LIGHT.tintAmt },
+    light: {
+      // art. 113: every school declares a station. This is the default —
+      // the light you carry — and `schoolLight` overrides it per region,
+      // because art. 114 says that is where identity now lives.
+      station: school.station ?? 'with',
+      reach: school.lamp?.reach ?? LIGHT.reach,
+      lift: (school.lamp?.lift ?? LIGHT.lift) * DEEP,
+      tint: school.glow ?? school.bone[0],
+      tintAmt: school.lamp?.tintAmt ?? LIGHT.tintAmt,
+    },
     // art. 16: the far end resolves into the same darkness the mouth is.
     air: { tint: school.hollow, rate: 1 },
   }

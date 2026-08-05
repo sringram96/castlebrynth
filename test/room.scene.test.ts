@@ -76,15 +76,16 @@ describe('rooms — art. 21 (palette is authorial), art. 19 (props stand somewhe
     expect(new Set(looks).size).toBe(ROOMS.length)
   })
 
-  it('dithers a surface only between two adjacent steps of its own ramp', () => {
-    // The bug the ramp wave fixed, as a property: a wall pixel can only ever
-    // take a wall-ramp colour, and the ramp's own neighbours are close
-    // enough together that no dot reads as a dot.
+  it('gives every surface a deep ramp that turns as it climbs (arts 94–95)', () => {
+    // The ramp wave's law was seven-to-fourteen steps, because every step
+    // was quantised hard and more of them read as mud. The look wave
+    // amended it: the upper ramp blends now, so depth is headroom rather
+    // than banding, and the ends turn — cool in the shadows, warm in the
+    // lights, which is most of the visible gain.
     for (const held of ROOMS) {
       const { wall, floor, ceiling } = held.scene(bare(held.id)).look.ramps
       for (const one of [wall, floor, ceiling]) {
-        expect(one.length, held.id as string).toBeGreaterThanOrEqual(7)
-        expect(one.length, held.id as string).toBeLessThanOrEqual(14)
+        expect(one.length, held.id as string).toBeGreaterThanOrEqual(32)
         for (let i = 1; i < one.length; i++) {
           const gap = Math.max(
             ...[16, 8, 0].map((shift) =>
@@ -94,12 +95,42 @@ describe('rooms — art. 21 (palette is authorial), art. 19 (props stand somewhe
               ),
             ),
           )
-          // Adjacent steps within a quarter of the byte range: a dithered
-          // pair the eye blends instead of counting.
-          expect(gap, `${held.id as string} step ${i}`).toBeLessThanOrEqual(64)
+          // Adjacent steps a hair apart: a blended pair the eye cannot
+          // resolve, and a dithered pair in the darks it does not read as
+          // dots either.
+          expect(gap, `${held.id as string} step ${i}`).toBeLessThanOrEqual(24)
         }
+        // art. 94: the ramp *turns*. A cold school stays a cold school —
+        // the ends move relative to each other, not toward some shared
+        // warm — so what is asserted is the turn itself, in degrees of hue.
+        const hueOf = (hex: string): number => {
+          const n = parseInt(hex.slice(1), 16)
+          const r = ((n >> 16) & 255) / 255
+          const g = ((n >> 8) & 255) / 255
+          const b = (n & 255) / 255
+          const max = Math.max(r, g, b)
+          const span = max - Math.min(r, g, b)
+          if (span === 0) return 0
+          const h = max === r ? (g - b) / span + (g < b ? 6 : 0) : max === g ? (b - r) / span + 2 : (r - g) / span + 4
+          return (h * 60 + 360) % 360
+        }
+        const turn = Math.abs(((hueOf(one[one.length - 1]!) - hueOf(one[0]!) + 540) % 360) - 180)
+        expect(180 - turn, held.id as string).toBeGreaterThan(3)
       }
     }
+  })
+
+  it('gives every room a light that stands somewhere (art. 113)', () => {
+    const stations = new Set(ROOMS.map((held) => held.scene(bare(held.id)).look.light.station))
+    for (const held of ROOMS) {
+      const { light } = held.scene(bare(held.id)).look
+      expect(['with', 'above', 'below', 'ahead', 'none'], held.id as string).toContain(
+        light.station,
+      )
+    }
+    // art. 114: a region is known by its light, so a depth that lights every
+    // room from the same place has thrown that away.
+    expect(stations.size).toBeGreaterThan(1)
   })
 
   it('stands at least one prop in every room, at world coordinates (art. 19)', () => {

@@ -31,6 +31,19 @@ describe('room — art. 17 (a room renders identical every visit), arts 14, 22�
    * its mouth, all of which this still lands on — but it no longer decides
    * what colour a surface takes, so its bytes are no longer the number.
    *
+   * **Relocked by the look wave (2026-08-05), from c344dfd9 to bbf46771.**
+   * Art. 17 was amended: blending inside a ramp is allowed and alpha
+   * compositing is what stays banned, so every surface above the darkest
+   * fifth now interpolates instead of dithering (art. 95). The ramp also
+   * went from ten steps to sixty-four and turns in hue across its length
+   * (art. 94), and the light became a station rather than the camera
+   * (art. 113). Every pixel in the plate moved; none of them moved by
+   * accident.
+   *
+   * Relock, never loosen. A tolerance here would let the next wave change
+   * the box without anybody noticing, which is the whole thing this test
+   * exists to prevent.
+   *
    * Regenerate only when the renderer is deliberately changed.
    */
   it('lands byte-identical on the reference plate at GRID 240 (arts 13–18)', () => {
@@ -40,7 +53,7 @@ describe('room — art. 17 (a room renders identical every visit), arts 14, 22�
       h ^= byte
       h = Math.imul(h, 16777619) >>> 0
     }
-    expect(h.toString(16)).toBe('c344dfd9')
+    expect(h.toString(16)).toBe('bbf46771')
   })
 
   it('is opaque everywhere — no alpha, no gradients (art. 17)', () => {
