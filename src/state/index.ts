@@ -699,6 +699,13 @@ export function wounded(run: RunLedger, health: number): RunLedger {
 export interface Vault {
   read(key: string): string | null
   write(key: string, value: string): void
+  /**
+   * Take a key out of the vault entirely. Writing an empty string would not
+   * do: `load` has to be able to tell "nothing was ever here" from "here is
+   * something I cannot read", because it quarantines the second and wakes
+   * fresh on the first.
+   */
+  forget(key: string): void
 }
 
 /** One versioned key. */
@@ -956,6 +963,34 @@ function climb(raw: Raw): Raw | null {
   return walking
 }
 
+/**
+ * **Start over.** Everything the vault holds, gone — the run, the permanent
+ * ledger, the Book of Ends, and the quarantine beside them.
+ *
+ * This is the one thing in the game that destroys anything, and it is
+ * deliberately not a ritual in the sense arts 11 and 32 mean. Death burns
+ * the run and the permanent survives; *this* is the player saying they do
+ * not want the permanent either. art. 11 promises the Book survives death,
+ * the reseed, and a schema change — all of which are things that happen
+ * **to** a player. None of them is a player asking to be forgotten, and a
+ * promise that the game keeps against its own player's wishes is not a
+ * promise, it is a lock.
+ *
+ * The quarantine goes too, and that is the considered part. Its whole reason
+ * to exist is that a snapshot nobody can read yet might be readable by a
+ * later build, so nothing is thrown away by accident (art. 11). A player
+ * pressing this is not an accident. Leaving it would mean a "start over"
+ * that quietly keeps a copy, which is the kind of thing that is only ever
+ * discovered by somebody who trusted it.
+ *
+ * The shell boots after this exactly as it boots on a machine that has never
+ * run the game, because `load` now finds nothing and says so.
+ */
+export function erase(vault: Vault): void {
+  vault.forget(VAULT_KEY)
+  vault.forget(QUARANTINE_KEY)
+}
+
 /** What was set aside because it could not be read, if anything. */
 export function quarantined(vault: Vault): string | null {
   return vault.read(QUARANTINE_KEY)
@@ -966,6 +1001,7 @@ export function browserVault(storage: Storage): Vault {
   return {
     read: (key) => storage.getItem(key),
     write: (key, value) => storage.setItem(key, value),
+    forget: (key) => storage.removeItem(key),
   }
 }
 
@@ -975,5 +1011,6 @@ export function memoryVault(): Vault {
   return {
     read: (key) => written.get(key) ?? null,
     write: (key, value) => void written.set(key, value),
+    forget: (key) => void written.delete(key),
   }
 }

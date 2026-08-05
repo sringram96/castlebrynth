@@ -105,6 +105,7 @@ import type { FightPhase, InstanceId, ItemId, Ledgers, Panel, Seed } from './sta
 import {
   HOME,
   browserVault,
+  erase,
   panelAfter,
   finish,
   focused,
@@ -174,6 +175,8 @@ let notice: string | null = null
 let refused = false
 /** art. 74: the card and the Book live behind glyphs, never mid-screen. */
 let sheet: 'card' | 'book' | null = null
+/** Set while the Book is asking whether everything should really go. */
+let asking = false
 /** Which door the thumb has sensed. Sensing and going are two acts (art. 71). */
 let chosen: Door | null = null
 /**
@@ -511,8 +514,77 @@ function drawSheet(): void {
   title.textContent = NOTICES[sheet === 'card' ? 'card.title' : 'book.title'] ?? ''
   sheetBand.append(title)
   if (sheet === 'card') cardLines()
+  else if (asking) askToForget()
   else bookLines()
-  sheetBand.append(row(verb('close', () => { sheet = null; paint() })))
+  if (asking) {
+    // art. 71: an irreversible act goes through a plain verb you pressed —
+    // and this one, which is the only act in the game that destroys
+    // anything, goes through two of them with the loss stated between.
+    sheetBand.append(
+      row(
+        verb('forget.all', () => forgetEverything()),
+        verb('keep', () => { asking = false; paint() }),
+      ),
+    )
+    return
+  }
+  sheetBand.append(
+    row(
+      ...(sheet === 'card'
+        ? [verb('book', () => { sheet = 'book'; paint() })]
+        : [verb('forget', () => { asking = true; paint() })]),
+      verb('close', () => { sheet = null; paint() }),
+    ),
+  )
+}
+
+/**
+ * What is about to be lost, stated plainly and once. The Book is the record
+ * of everything the labyrinth remembers about you (art. 84), so it is where
+ * the act that ends that record belongs — behind the persistent glyph
+ * (art. 74), never on the tray, which is anatomy and holds only what the
+ * moment offers (art. 67).
+ */
+function askToForget(): void {
+  const said = document.createElement('div')
+  said.className = 'line open'
+  said.textContent = NOTICES['forget.asked'] ?? ''
+  sheetBand.append(said)
+}
+
+/**
+ * Start over. The vault is emptied and the shell boots exactly as it boots
+ * on a machine that has never run the game — there is no separate "new game"
+ * path to keep in step with the ordinary one, because a second path is a
+ * second thing to get wrong.
+ */
+function forgetEverything(): void {
+  // Whatever pulse was running has nothing left to settle *into* — the
+  // ledgers it would have written are about to stop existing — so the timers
+  // are stopped rather than settled (art. 1's end state is the fresh waking).
+  clearTimeout(advanceTimer)
+  clearTimeout(resolveTimer)
+  clearTimeout(fadeTimer)
+  resolving = null
+  fight = null
+  phase = 'pre'
+  selected = []
+  advanced = false
+  closeness = 1
+  asking = false
+  sheet = null
+  chosen = null
+  picked = []
+  refused = false
+  painted.clear()
+
+  erase(vault)
+  // No separate "new game" path: `boot` already knows how to start from a
+  // vault with nothing in it, because that is what a new install is. A
+  // second path would be a second thing to keep in step.
+  boot()
+  notice = NOTICES['forget.done'] ?? null
+  paint()
 }
 
 function cardLines(): void {

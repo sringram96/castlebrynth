@@ -348,6 +348,11 @@ export const NOTICES: Readonly<Record<string, string>> = {
     'You go through, and the stair keeps going down. What is on you now is more than your hand holds.',
   'book.empty': 'Nothing is written here yet.',
   'book.title': 'The Book of Ends.',
+  // art. 66: the prose states what is true and never instructs. The verb on
+  // the strip is the only thing that says what pressing it does.
+  'forget.asked':
+    'Every ending written here goes. The dice go with it, and the names, and the marks. Nothing is kept anywhere.',
+  'forget.done': 'The labyrinth does not know you.',
   'card.title': 'The card. Each line spends once, and refills at the next door.',
   'pouch.empty': 'Nothing is in this slot yet.',
   // art. 69: the pouch panel says what is true of it rather than going quiet.
@@ -482,6 +487,15 @@ export const VERBS: Readonly<Record<string, string>> = {
   // It names what the press does — it opens the question, it does not descend.
   choose: 'Choose',
   read: 'Read',
+  // The way back to the Book from the card, so the persistent glyph
+  // (art. 74) reaches both sheets and not only one.
+  book: 'Book',
+  // Starting over. Two presses, because it is the one act in the game that
+  // destroys anything — art. 71 wants a plain verb you pressed, and this one
+  // wants two of them.
+  forget: 'Forget',
+  'forget.all': 'Forget all',
+  keep: 'Keep',
   close: 'Close',
   card: 'Card',
   roll: 'Roll',

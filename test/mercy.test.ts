@@ -29,7 +29,7 @@ import {
 import type { Catalog, Chain, ChainNode, RegionId } from '../src/gen/index.js'
 import { FRESH_DRIFT, hereIn } from '../src/gen/index.js'
 import { renderRoom, viewOf } from '../src/room/index.js'
-import type { Ledgers, RoomId } from '../src/state/index.js'
+import type { Ledgers, RoomId, Vault } from '../src/state/index.js'
 import { hasMet, instanceOf, load, movedTo, remembers, save, wounded } from '../src/state/index.js'
 import { routeDeath } from '../src/hinge/index.js'
 import type { Policy } from './drift.js'
@@ -131,11 +131,12 @@ function withTheMender(): { seed: number; ledgers: Ledgers; chain: Chain; node: 
 }
 
 /** A vault that can be killed: only the bytes come back. */
-function killable(): { vault: { read(k: string): string | null; write(k: string, v: string): void }; kill: () => { read(k: string): string | null; write(k: string, v: string): void } } {
+function killable(): { vault: Vault; kill: () => Vault } {
   const written = new Map<string, string>()
-  const open = (store: Map<string, string>) => ({
+  const open = (store: Map<string, string>): Vault => ({
     read: (key: string) => store.get(key) ?? null,
     write: (key: string, value: string) => void store.set(key, value),
+    forget: (key: string) => void store.delete(key),
   })
   return { vault: open(written), kill: () => open(new Map(written)) }
 }
