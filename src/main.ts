@@ -31,8 +31,9 @@ import {
   ROOM_BOOK,
   VERBS,
   atGrid,
-  horrorAt,
+  endLineOf,
   horrorById,
+  horrorOf,
   intentChip,
   itemLabel,
   roomContent,
@@ -57,8 +58,8 @@ import {
   sceneKey,
   sceneStateOf,
 } from './descent/index.js'
-import type { Chain, Door } from './gen/index.js'
-import { deal, reseed } from './gen/index.js'
+import type { Chain, ChainNode, Door } from './gen/index.js'
+import { deal, dealerOf, meetings, nodeAt, reseed } from './gen/index.js'
 import type { Standing } from './hinge/index.js'
 import {
   advance,
@@ -96,8 +97,17 @@ import {
   unused,
   withTurn,
 } from './lots/index.js'
-import type { FightPhase, ItemId, Ledgers, RoomId, Seed } from './state/index.js'
-import { browserVault, collect, finish, firstPermanent, load, save, wake } from './state/index.js'
+import type { FightPhase, InstanceId, ItemId, Ledgers, Seed } from './state/index.js'
+import {
+  browserVault,
+  collect,
+  finish,
+  firstPermanent,
+  load,
+  meet,
+  save,
+  wake,
+} from './state/index.js'
 import type { Framebuffer, RenderedRoom, WorldMark } from './room/index.js'
 import { fillScale, markRect, overpaint, present, renderRoom } from './room/index.js'
 
@@ -130,6 +140,13 @@ type Screen =
 
 const vault = browserVault(localStorage)
 
+/**
+ * art. 79: a door commits a room, and committing a room means dealing one.
+ * Whatever walks the player through a door has to be holding the catalog and
+ * the grammar, so the shell holds them once and hands them over.
+ */
+const DEALER = dealerOf(CATALOG, GRAMMAR)
+
 let ledgers: Ledgers
 let chain: Chain
 let bands: Bands
@@ -160,6 +177,26 @@ function goods(): Goods {
 
 // ── Boot ───────────────────────────────────────────────────────────────
 
+/** art. 82: the room the run is standing in, as dealt. */
+function here(): ChainNode {
+  const node = nodeAt(chain, ledgers.run!.at.instance)
+  if (node === null) throw new Error(`no room dealt at ${ledgers.run!.at.instance}`)
+  return node
+}
+
+/**
+ * art. 84: a meeting is knowledge. Standing in a room with something in it
+ * is meeting it, and that crosses to the permanent at once — the encounter
+ * burns with the run, the fact of it does not.
+ */
+function greet(): void {
+  let permanent = ledgers.permanent
+  for (const one of meetings(nodeAt(chain, ledgers.run!.at.instance))) {
+    permanent = meet(permanent, one)
+  }
+  if (permanent !== ledgers.permanent) ledgers = { ...ledgers, permanent }
+}
+
 function boot(): void {
   const found = load(vault)
   if (found === null || found.run === null) {
@@ -170,14 +207,15 @@ function boot(): void {
     // art. 56: a waking that never named a signature is still a first one.
     screen = ledgers.permanent.signature === null ? { kind: 'waking' } : { kind: 'room' }
   }
-  chain = deal(ledgers.run!.seed, ledgers.run!.depth, CATALOG, GRAMMAR)
-  bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.room)
+  chain = deal(ledgers.run!.seed, ledgers.run!.depth, CATALOG, GRAMMAR, ledgers.run!.history)
+  bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
   chosen = doors(bands)[0] ?? null
+  greet()
   // art. 75: a half-spent turn survives the lock screen. If one was in
   // flight rather than paused, boot lands back inside it, selection and all.
   // A fight you ran out on is saved the same way and stays where you left
   // it — in the room, behind its door (art. 63).
-  const held = pausedAt(ledgers, ledgers.run!.at.room)
+  const held = pausedAt(ledgers, ledgers.run!.at.instance)
   const gate = doors(bands).find((door) => door.fight !== undefined)
   if (held !== null && held.engaged && gate !== undefined) {
     resume(held.at)
@@ -198,7 +236,7 @@ function persist(): void {
   if (fight !== null && screen.kind === 'fight') {
     ledgers = keepFight(
       ledgers,
-      saveFight(fight, ledgers.run!.at.room, phase, selected, advanced, true),
+      saveFight(fight, ledgers.run!.at.instance, phase, selected, advanced, true),
     )
   }
   save(ledgers, vault)
@@ -222,9 +260,9 @@ function frameHeight(): number {
 }
 
 function world(): void {
-  const room = ledgers.run!.at.room
-  const content = roomContent(room)
-  const state = sceneStateOf(ledgers, ROOM_BOOK, room)
+  const node = here()
+  const content = roomContent(node.room)
+  const state = sceneStateOf(ledgers, ROOM_BOOK, node)
   const stamp = `${sceneKey(state)}:${frameHeight()}`
   let base = painted.get(stamp)
   if (base === undefined) {
@@ -308,16 +346,22 @@ function markFor(target: Tappable): HTMLButtonElement {
   return el
 }
 
+/**
+ * arts 31, 69, 77: a door answers, and what it answers with is itself. Its
+ * region tag is hidden — a sense would be exactly that tag leaking, and the
+ * hint system is parked — so the line the tap gives back says what a shut
+ * door says and no more.
+ */
 function doorMark(door: Door): HTMLButtonElement {
   const el = document.createElement('button')
-  el.className = `door${chosen?.to === door.to ? ' chosen' : ''}`
-  el.setAttribute('aria-label', door.sense)
+  el.className = `door${chosen?.at === door.at ? ' chosen' : ''}`
+  el.setAttribute('aria-label', LABELS['door.ahead'] ?? 'the door')
   el.onclick = () => {
     settle()
-    // art. 71: a bare tap never walks you through a door. It senses it, and
-    // the going is a verb in the act strip.
+    // art. 71: a bare tap never walks you through a door. It picks it out,
+    // and the going is a verb in the act strip.
     chosen = door
-    notice = door.sense
+    notice = NOTICES['door.blind'] ?? ''
     paint()
   }
   return el
@@ -752,7 +796,7 @@ function roomActs(): void {
   }
 
   const ahead = doors(bands)
-  if (chosen === null || !ahead.some((door) => door.to === chosen!.to)) chosen = ahead[0] ?? null
+  if (chosen === null || !ahead.some((door) => door.at === chosen!.at)) chosen = ahead[0] ?? null
   const door = chosen
   if (door !== null) {
     actStrip.append(
@@ -770,14 +814,14 @@ function roomActs(): void {
     actStrip.append(verb('end', () => died('end.kept')))
   }
 
-  if (run.at.room === CROSSING) {
+  if (bands.room === CROSSING) {
     actStrip.append(verb('read', () => { sheet = 'book'; paint() }))
   }
 }
 
 function doAct(one: Act): void {
   ledgers = act(ledgers, one)
-  bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.room)
+  bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
   // art. 70: prose confirms, pixels prove — the answer is the room without
   // the thing in it, which the scene state has already stopped drawing.
   notice = null
@@ -791,8 +835,7 @@ function doAct(one: Act): void {
  * still lies here, the lock holds, or there is nothing to open.
  */
 function commitDoor(door: Door): void {
-  const room = ledgers.run!.at.room
-  if (!mayLeave(ledgers, ROOM_BOOK, room)) {
+  if (!mayLeave(ledgers, ROOM_BOOK, here())) {
     // A stop, not a hint: it names nothing and points at nothing (art. 3).
     notice = NOTICES['door.held'] ?? ''
     paint()
@@ -812,9 +855,14 @@ function commitDoor(door: Door): void {
 
 function walk(door: Door, said: string | null = null): void {
   refused = false
-  ledgers = chooseDoor(ledgers, chain, ROOM_BOOK, door)
-  bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.room)
+  // art. 79: the room behind this door does not exist until now. Walking
+  // deals it, which is why the walk hands back both the run and the chain.
+  const walked = chooseDoor(ledgers, chain, ROOM_BOOK, door, DEALER)
+  ledgers = walked.ledgers
+  chain = walked.chain
+  bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
   chosen = doors(bands)[0] ?? null
+  greet()
   notice = said
   persist()
   paint()
@@ -824,9 +872,10 @@ function finishTheDepth(): void {
   // The Warden's door: a terse ending, its own Book line, a fresh waking.
   const permanent = finish(ledgers, 'end.warden')
   ledgers = wake(permanent, reseed(ledgers.run!.seed))
-  chain = deal(ledgers.run!.seed, ledgers.run!.depth, CATALOG, GRAMMAR)
-  bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.room)
+  chain = deal(ledgers.run!.seed, ledgers.run!.depth, CATALOG, GRAMMAR, ledgers.run!.history)
+  bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
   chosen = doors(bands)[0] ?? null
+  greet()
   screen = { kind: 'finished' }
   notice = null
   persist()
@@ -841,12 +890,14 @@ function finishTheDepth(): void {
  * a retreat, never a way to launder a card.
  */
 function openTheFight(door: Door): void {
-  const room = ledgers.run!.at.room
-  const horror = horrorAt(room)
+  const at = ledgers.run!.at.instance
+  // art. 83: which horror this is comes from what stands in the room's
+  // socket, never from the room.
+  const horror = horrorOf(here().fills)
   if (horror === null) return
-  const held = pausedAt(ledgers, room)
+  const held = pausedAt(ledgers, at)
   if (held !== null) {
-    resume(room)
+    resume(at)
     screen = { kind: 'fight', door }
     ledgers = openDoor(ledgers, door)
     notice = NOTICES['fight.resumed'] ?? ''
@@ -867,8 +918,8 @@ function openTheFight(door: Door): void {
 }
 
 /** art. 75: the fight as it stood, read back out of the run. */
-function resume(room: RoomId): void {
-  const held = pausedAt(ledgers, room)
+function resume(at: InstanceId): void {
+  const held = pausedAt(ledgers, at)
   if (held === null) return
   const horror = horrorById(held.horror)
   if (horror === null) return
@@ -1065,25 +1116,26 @@ function runFromTheFight(): void {
   resolving = null
   ledgers = routeFlight(
     ledgers,
-    saveFight(now, ledgers.run!.at.room, phase, selected, advanced, false),
+    saveFight(now, ledgers.run!.at.instance, phase, selected, advanced, false),
   )
   fight = null
   screen = { kind: 'room' }
-  bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.room)
+  bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
   chosen = doors(bands)[0] ?? null
   notice = NOTICES['fight.fled'] ?? ''
   persist()
   paint()
 }
 
-function died(cause = 'end.gnawing'): void {
+function died(cause: string = endLineOf(fight?.horror.id ?? '')): void {
   clearTimeout(advanceTimer)
   clearTimeout(resolveTimer)
   resolving = null
   ledgers = routeDeath(ledgers, cause)
-  chain = deal(ledgers.run!.seed, ledgers.run!.depth, CATALOG, GRAMMAR)
-  bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.room)
+  chain = deal(ledgers.run!.seed, ledgers.run!.depth, CATALOG, GRAMMAR, ledgers.run!.history)
+  bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
   chosen = doors(bands)[0] ?? null
+  greet()
   fight = null
   refused = false
   screen = { kind: 'dead' }

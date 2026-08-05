@@ -30,7 +30,7 @@ import {
   recast,
   refill,
 } from '../lots/index.js'
-import type { FightPhase, FightSave, Ledgers, RoomId, Seed } from '../state/index.js'
+import type { FightPhase, FightSave, InstanceId, Ledgers, Seed } from '../state/index.js'
 import { die, fighting, wake, wounded } from '../state/index.js'
 import type { Brush, Prop } from '../room/index.js'
 
@@ -166,7 +166,7 @@ export interface Standing {
  */
 export function saveFight(
   fight: Fight,
-  at: RoomId,
+  at: InstanceId,
   phase: FightPhase,
   selected: readonly DieId[],
   advanced: boolean,
@@ -252,10 +252,14 @@ export function keepFight(ledgers: Ledgers, save: FightSave): Ledgers {
   return { ...ledgers, run: fighting(run, save) }
 }
 
-/** Which paused fight belongs to this room, if any (art. 63). */
-export function pausedAt(ledgers: Ledgers, room: RoomId): FightSave | null {
+/**
+ * Which paused fight belongs to this room, if any (art. 63) — by instance,
+ * because art. 82 lets a run deal the same room twice and a fight you backed
+ * out of down there is not waiting for you up here.
+ */
+export function pausedAt(ledgers: Ledgers, at: InstanceId): FightSave | null {
   const save = ledgers.run?.fight ?? null
-  return save !== null && save.at === room ? save : null
+  return save !== null && save.at === at ? save : null
 }
 
 /** Where a resolved turn sends the player: on, out, or to the Crossing. */
@@ -314,8 +318,8 @@ export function routeFlight(ledgers: Ledgers, save: FightSave): Ledgers {
 }
 
 /** Which room the fight was fought at the door of (art. 30: it never moves). */
-export function roomOf(ledgers: Ledgers): RoomId | null {
-  return ledgers.run?.at.room ?? null
+export function roomOf(ledgers: Ledgers): InstanceId | null {
+  return ledgers.run?.at.instance ?? null
 }
 
 /** The lot a fight is thrown with, so the caller need not invent one. */

@@ -1,260 +1,418 @@
 /**
- * src/gen — the seeded blind chain, the room grammar, the winnability check
- * (arts 31–39).
+ * src/gen — the drift: the seeded blind chain, the room grammar, and
+ * winnability by construction (arts 31–39, 77–82).
  *
  * Rooms are hand-authored and arrive from `src/content`; this module only
- * arranges them, under constraints, and proves the arrangement can be
- * finished.
+ * arranges them, and it arranges them lazily. A room is dealt when its door
+ * is opened, derived from the seed plus the choices made — so the road not
+ * taken is never computed, and nothing about it can leak (art. 79).
  *
- * This is the interim dealer. It deals a single path — a seeded shuffle
- * with hard placement — behind the signatures the real grammar engine will
- * keep: `deal`, `isWinnable`, `explainWinnability`. Art. 31's two-to-three
- * doors per room wait for that engine; the debt is written down in
- * DESIGN.md.
+ * The three signatures the shell knows have not moved: `deal`, `isWinnable`
+ * and `explainWinnability`. What `deal` returns is now the run's history
+ * graph replayed, rather than a whole depth laid out in advance.
  */
 
-import type { RoomId, Seed } from '../state/index.js'
+import type { RoomId, RunHistory, Seed } from '../state/index.js'
+import { instanceOf } from '../state/index.js'
+import { FRESH_DRIFT, NEUTRAL, locked, poolRooms, pools, pull, tallied } from './drift.js'
+import type { Lot } from './lot.js'
+import { SALT, lotAt, pick, pickAt, pickSome } from './lot.js'
+import type {
+  Catalog,
+  Chain,
+  ChainNode,
+  DepthPlan,
+  Door,
+  Drift,
+  Encounter,
+  EncounterId,
+  Fill,
+  Grammar,
+  InstanceId,
+  KeyId,
+  RegionId,
+  RoomTemplate,
+  RoomType,
+  Socket,
+} from './types.js'
 
-/** art. 36: one seed derives the whole arrangement, so resume is exact. */
-export interface Lot {
-  next(): number
+export type {
+  Binding,
+  Catalog,
+  Chain,
+  ChainNode,
+  DepthLock,
+  DepthPlan,
+  Door,
+  Drift,
+  Encounter,
+  EncounterId,
+  EncounterKind,
+  Fill,
+  Grammar,
+  InstanceId,
+  KeyId,
+  Region,
+  RegionId,
+  RoomTemplate,
+  RoomType,
+  Scope,
+  Socket,
+  SocketId,
+} from './types.js'
+export type { Lot } from './lot.js'
+export { lotFrom, reseed, shuffle } from './lot.js'
+export { FRESH_DRIFT, NEUTRAL, tallyOf } from './drift.js'
+
+/** A run that has opened no door yet. Every run starts here (art. 36). */
+export const NO_HISTORY: RunHistory = { taken: [] }
+
+/**
+ * The catalog and the grammar, carried together. A door commits a room, and
+ * committing a room means dealing one — so whatever walks the player through
+ * a door has to be holding these.
+ */
+export interface Dealer {
+  readonly catalog: Catalog
+  readonly grammar: Grammar
+}
+
+export function dealerOf(catalog: Catalog, grammar: Grammar): Dealer {
+  return { catalog, grammar }
+}
+
+/** art. 36: a door taken is a choice written down, and the run is its choices. */
+export function taking(history: RunHistory, door: Door): RunHistory {
+  return { taken: [...history.taken, door.at] }
 }
 
 /**
- * A seeded source of chance. The same seed yields the same sequence on any
- * machine, which is the whole of art. 36: senses are stable, resume is
- * exact, and rerolling the labyrinth costs a death.
- */
-export function lotFrom(seed: Seed): Lot {
-  let state = (seed as number) >>> 0
-  return {
-    next(): number {
-      state = (state + 0x6d2b79f5) >>> 0
-      let t = state
-      t = Math.imul(t ^ (t >>> 15), t | 1)
-      t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-    },
-  }
-}
-
-/** art. 32: every death reseeds, and the next seed follows from this one. */
-export function reseed(seed: Seed): Seed {
-  const lot = lotFrom(seed)
-  return (Math.floor(lot.next() * 0x7fffffff) || 1) as unknown as Seed
-}
-
-/** art. 37: the taxonomy the generator deals. Length is tuning, not law. */
-export type RoomType =
-  | 'passage'
-  | 'lair'
-  | 'puzzle'
-  | 'trove'
-  | 'omen'
-  | 'sanctum'
-  | 'merchant'
-  | 'savior'
-  | 'crossing'
-  | 'warden'
-
-declare const keyBrand: unique symbol
-/** What a lock demands. art. 33: it must exist upstream of the lock. */
-export type KeyId = string & { readonly [keyBrand]: 'key' }
-
-/** A hand-authored room, as the generator deals it (art. 9). */
-export interface RoomTemplate {
-  readonly id: RoomId
-  readonly type: RoomType
-  /** Keys this room can hand over. */
-  readonly grants: readonly KeyId[]
-  /** What this room's door demands before it opens. */
-  readonly demands: readonly KeyId[]
-  /**
-   * How a door into this room reads from the other side — one line, true
-   * and incomplete (rules/voice.md). Authored in content; carried here.
-   */
-  readonly sense: string
-  /** art. 30: set when this room's door is a fight rather than a walk. */
-  readonly fight?: string
-  /** art. 37: the Warden's door ends the depth instead of committing a room. */
-  readonly ends?: boolean
-}
-
-export interface Catalog {
-  readonly rooms: readonly RoomTemplate[]
-}
-
-/**
- * art. 31: a depth is a chain of rooms joined by doors; at each room, 2–3
- * doors, each sensed in one line. No map UI exists.
- */
-export interface Door {
-  /** art. 35: a door commits exactly one room. No hidden multi-room lanes. */
-  readonly to: RoomId
-  /** True, and incomplete — one line, authored in content (rules/voice.md). */
-  readonly sense: string
-  readonly demands: readonly KeyId[]
-  /** art. 30: this door is a fight; the horror is content's to name. */
-  readonly fight?: string
-  /** art. 37: the Warden's door — past it the depth is finished. */
-  readonly ends?: boolean
-}
-
-export interface ChainNode {
-  readonly room: RoomId
-  readonly type: RoomType
-  readonly doors: readonly Door[]
-}
-
-/** Fixed anchors: the Crossing opens every run, the Warden's door ends it. */
-export interface Chain {
-  readonly seed: Seed
-  readonly depth: number
-  readonly start: RoomId
-  readonly nodes: readonly ChainNode[]
-}
-
-/**
- * art. 38: rules, not templates. Every number here is tuning and arrives
- * from content; the generator only obeys.
- */
-export interface Grammar {
-  /** Pairs that may not stand next to each other. */
-  readonly adjacencyBans: readonly (readonly [RoomType, RoomType])[]
-  /** Types that must appear at least once per depth. */
-  readonly guarantees: readonly RoomType[]
-  /** Keys in the first half, locks in the last half. */
-  readonly keyBand: readonly [number, number]
-  readonly lockBand: readonly [number, number]
-  readonly fightBand: readonly [number, number]
-  /** art. 39: soft type-weights per depth — quiet shallow, teeth deep. */
-  readonly weights: Readonly<Record<RoomType, number>>
-}
-
-/** A seeded shuffle. Fisher–Yates, so the same seed deals the same hand. */
-export function shuffle<T>(items: readonly T[], lot: Lot): readonly T[] {
-  const out = [...items]
-  for (let i = out.length - 1; i > 0; i--) {
-    const j = Math.floor(lot.next() * (i + 1))
-    const a = out[i]!
-    const b = out[j]!
-    out[i] = b
-    out[j] = a
-  }
-  return out
-}
-
-/**
- * art. 32: every death reseeds. Each run is a fresh arrangement of the
- * authored rooms — shuffled, then placed hard: the Crossing first, the
- * Warden's door last, whatever grants a key in the first half, and a
- * fight-door standing between the key and the lock (art. 38).
+ * The run so far, dealt (arts 36, 79).
  *
- * The placement is hard rather than sampled-and-rejected, so `isWinnable`
- * can never be false for a chain this function dealt. That is the point:
- * blind play cannot dodge cruelty, so mercy lives in the math (art. 33).
+ * With no history this is the Crossing and the doors in front of it. With a
+ * history it is every room those choices dealt, in order, and the doors in
+ * front of the last one. Nothing beyond that is computed — not the room
+ * behind an untaken door, not the room behind the door you are about to
+ * open. Replaying the same seed with the same choices replays the same
+ * rooms, which is the whole of exact resume.
  */
-export function deal(seed: Seed, depth: number, catalog: Catalog, grammar: Grammar): Chain {
-  const lot = lotFrom(seed)
-  const rooms = catalog.rooms
-  const crossings = rooms.filter((room) => room.type === 'crossing')
-  const wardens = rooms.filter((room) => room.type === 'warden')
-  const middles = rooms.filter((room) => room.type !== 'crossing' && room.type !== 'warden')
+export function deal(
+  seed: Seed,
+  depth: number,
+  catalog: Catalog,
+  grammar: Grammar,
+  history: RunHistory = NO_HISTORY,
+): Chain {
+  const plan = planFor(catalog, depth)
+  if (plan === null || plan.length <= 0 || catalog.rooms.length === 0) {
+    return { seed, depth, length: 0, start: '' as InstanceId, nodes: [], drift: FRESH_DRIFT }
+  }
 
-  const shuffled = shuffle(middles, lot)
-  const keys = shuffled.filter((room) => room.grants.length > 0)
-  const fights = shuffled.filter((room) => room.grants.length === 0 && room.fight !== undefined)
-  const quiet = shuffled.filter(
-    (room) => room.grants.length === 0 && room.fight === undefined,
+  const taken = history.taken
+  const templates = new Map<string, RoomTemplate>(
+    catalog.rooms.map((room) => [room.id as string, room]),
   )
+  const encounters = new Map<string, Encounter>(
+    catalog.encounters.map((one) => [one.id as string, one]),
+  )
+  const keyed = new Set<string>(plan.locks.map((lock) => lock.key as string))
 
-  // art. 38: the key band is the first half, the fight sits between the key
-  // and the lock. Everything else is filler, split either side of them.
-  const [, keyBandEnd] = grammar.keyBand
-  const before = Math.min(quiet.length, Math.max(0, Math.round(quiet.length * keyBandEnd)))
-  const order: readonly RoomTemplate[] = [
-    ...crossings.slice(0, 1),
-    ...quiet.slice(0, before),
-    ...keys,
-    ...fights,
-    ...quiet.slice(before),
-    ...wardens.slice(0, 1),
-  ]
+  const nodes: ChainNode[] = []
+  let drift: Drift = FRESH_DRIFT
 
-  const nodes: ChainNode[] = order.map((room, i) => {
-    const next = order[i + 1]
-    const doors: Door[] = []
-    if (next !== undefined) {
-      doors.push(door(next.id, next.sense, room.demands, room.fight, false))
-    } else if (room.ends === true) {
-      // art. 37: the Warden's door ends the depth. It commits no room.
-      doors.push(door(room.id, room.sense, room.demands, room.fight, true))
+  // ── Which room, out of which pool ────────────────────────────────────
+
+  const anchor = (type: RoomType): RoomTemplate | null =>
+    catalog.rooms.find((room) => room.type === type) ?? null
+
+  const fightsSoFar = (): number =>
+    nodes.filter((node) =>
+      node.fills.some((fill) => encounters.get(fill.encounter as string)?.kind === 'horror'),
+    ).length
+
+  /** Rooms still to be dealt after this one, before the Warden's room. */
+  const middlesLeft = (step: number): number => Math.max(0, plan.length - 2 - step)
+
+  const banned = (before: RoomType | undefined, type: RoomType): boolean =>
+    before !== undefined &&
+    grammar.adjacencyBans.some(([one, other]) => one === before && other === type)
+
+  /** art. 38: the fight band is a pressure, not a solved constraint. */
+  const bandSteer = (template: RoomTemplate, step: number): number => {
+    const [least, most] = grammar.fightBand
+    const fights = fightsSoFar()
+    const left = middlesLeft(step)
+    const brings = template.sockets.some(
+      (socket) => socket.accepts === 'horror' && socket.chance >= 1,
+    )
+    // The pull is scaled by how little room is left to pay the debt in. A
+    // band that leaned this hard from the first room would not be a band —
+    // it would be a template with extra steps (art. 38).
+    const urgency = 1 / Math.max(1, left)
+    if (brings) {
+      if (fights >= most) return 1 / (1 + grammar.bandPull)
+      if (fights + left < least) return 1 + grammar.bandPull * 4
+      if (fights < least) return 1 + grammar.bandPull * urgency
+      return 1
     }
-    return { room: room.id, type: room.type, doors }
-  })
+    if (fights + left < least) return 1 / (1 + grammar.bandPull * 4)
+    if (fights >= most) return 1 + grammar.bandPull
+    return 1
+  }
+
+  /** Types the depth still owes. The anchors pay themselves (art. 37). */
+  const owedTypes = (): readonly RoomType[] =>
+    grammar.guarantees.filter(
+      (type) =>
+        type !== 'crossing' && type !== 'warden' && !nodes.some((node) => node.type === type),
+    )
+
+  const guaranteeSteer = (template: RoomTemplate, step: number): number => {
+    const owed = owedTypes()
+    if (owed.length === 0) return 1
+    if (owed.includes(template.type)) {
+      return 1 + (grammar.bandPull * 4) / Math.max(1, middlesLeft(step))
+    }
+    // The depth owes exactly as many rooms as it has left to deal.
+    return owed.length > middlesLeft(step) ? 0 : 1
+  }
+
+  const roomWeight = (template: RoomTemplate, step: number): number => {
+    const before = nodes[step - 1]
+    if (banned(before?.type, template.type)) return 0
+    let weight = plan.tendencies[template.type] ?? 0
+    // art. 82: rooms may repeat within a run, but not back to back.
+    if (before !== undefined && before.room === template.id) weight *= grammar.clumpPenalty
+    return weight * bandSteer(template, step) * guaranteeSteer(template, step)
+  }
+
+  const chooseRoom = (step: number): { template: RoomTemplate; region: RegionId | null } => {
+    const lot = lotAt(seed, depth, taken, step, SALT.room)
+    const offered = pools(drift, plan)
+    const drawnAt = pickAt(offered, (one) => pull(drift, one, grammar), lot)
+    const region = drawnAt < 0 ? null : (offered[drawnAt] ?? null)
+    const pool = poolRooms(plan, region)
+      .map((id) => templates.get(id))
+      .filter((held): held is RoomTemplate => held !== undefined)
+    const candidates = pool.length > 0 ? pool : middles(catalog)
+    const chosen =
+      pick(candidates, (held) => roomWeight(held, step), lot) ??
+      // Mercy in the math (art. 38): a pool the pressures have zeroed out
+      // still deals a room rather than stranding the run.
+      pick(candidates, (held) => plan.tendencies[held.type] ?? 1, lot) ??
+      candidates[0]
+    if (chosen === undefined) throw new Error(`depth ${depth} has no room to deal at step ${step}`)
+    return { template: chosen, region }
+  }
+
+  // ── What stands in the room ──────────────────────────────────────────
+
+  const placedAlready = (): Set<string> => {
+    const seen = new Set<string>()
+    for (const node of nodes) for (const fill of node.fills) seen.add(fill.encounter as string)
+    return seen
+  }
+
+  /** art. 78: a region's encounters wake when that region locks. */
+  const awake = (one: Encounter): boolean =>
+    one.region === null || one.region === drift.locked
+
+  const once = (one: Encounter): boolean => one.scope !== 'repeats'
+
+  const fillSockets = (step: number, template: RoomTemplate): readonly Fill[] => {
+    const lot = lotAt(seed, depth, taken, step, SALT.fills)
+    const free: Socket[] = [...template.sockets]
+    const fills: Fill[] = []
+    const placed = placedAlready()
+
+    const stand = (socket: Socket, one: Encounter): void => {
+      fills.push({ socket: socket.id, encounter: one.id })
+      free.splice(free.indexOf(socket), 1)
+      placed.add(one.id as string)
+    }
+
+    // art. 83: a bound encounter stands where it is bound, when it is awake.
+    for (const one of catalog.encounters) {
+      if (one.binding !== 'bound' || one.at !== template.id) continue
+      if (!awake(one) || (once(one) && placed.has(one.id as string))) continue
+      const socket = free.find((held) => held.accepts === one.kind)
+      if (socket !== undefined) stand(socket, one)
+    }
+
+    // art. 80: keys arrive just in time, and before anything optional can
+    // take the socket they need. The chance rises as the lock comes closer
+    // and reaches certainty at the last room that can hold it, so the run
+    // cannot be dealt into a refusal.
+    for (const lock of plan.locks) {
+      if (lock.at <= step || placed.has(lock.key as string)) continue
+      const one = encounters.get(lock.key as string)
+      if (one === undefined) continue
+      const socket = free.find((held) => held.accepts === one.kind)
+      if (socket === undefined) continue
+      const chances = lock.at - step
+      const keyLot = lotAt(seed, depth, taken, step, SALT.key + lock.at * 97)
+      if (chances <= 1 || keyLot.next() < 1 / chances) stand(socket, one)
+    }
+
+    // Whatever floats, by the socket's own chance (art. 83).
+    for (const socket of [...free]) {
+      if (!free.includes(socket)) continue
+      if (lot.next() >= socket.chance) continue
+      const offers = catalog.encounters.filter(
+        (one) =>
+          one.binding === 'floating' &&
+          one.kind === socket.accepts &&
+          !keyed.has(one.id as string) &&
+          awake(one) &&
+          !(once(one) && placed.has(one.id as string)),
+      )
+      const drawn = pick(offers, (one) => one.weight, lot)
+      if (drawn !== null) stand(socket, drawn)
+    }
+
+    return fills
+  }
+
+  // ── The doors in front of you ────────────────────────────────────────
+
+  const fightIn = (fills: readonly Fill[]): string | undefined => {
+    for (const fill of fills) {
+      const one = encounters.get(fill.encounter as string)
+      if (one?.kind === 'horror' && one.horror !== undefined) return one.horror
+    }
+    return undefined
+  }
+
+  const doorCount = (lot: Lot): number =>
+    pick([1, 2, 3], (n) => grammar.doorWeights[n - 1] ?? 0, lot) ?? 1
+
+  const dealDoors = (
+    step: number,
+    template: RoomTemplate,
+    fills: readonly Fill[],
+  ): readonly Door[] => {
+    // art. 37: the Warden's door ends the depth. It commits no room, so it
+    // is one door and it carries no tag — there is nothing left to lean.
+    if (step >= plan.length - 1) {
+      return [{ at: 0, region: null, demands: template.demands, ends: true }]
+    }
+    const lot = lotAt(seed, depth, taken, step, SALT.doors)
+    const wanted = doorCount(lot)
+    const tagLot = lotAt(seed, depth, taken, step, SALT.tags)
+    const offered = pools(drift, plan)
+    const tags: readonly (RegionId | null)[] =
+      drift.locked !== null
+        ? Array.from({ length: wanted }, () => drift.locked)
+        : pickSome(offered, wanted, (one) => pull(drift, one, grammar), tagLot)
+    const fight = fightIn(fills)
+    return tags.map((region, at) => {
+      const base: Door = { at, region, demands: template.demands }
+      return fight === undefined ? base : { ...base, fight }
+    })
+  }
+
+  // ── The replay ───────────────────────────────────────────────────────
+
+  const dealAt = (step: number, announces: RegionId | null): ChainNode => {
+    const last = step >= plan.length - 1
+    const fixed = step === 0 ? anchor('crossing') : last ? anchor('warden') : null
+    const drawn = fixed === null ? chooseRoom(step) : { template: fixed, region: null }
+    const template = drawn.template
+    const fills = fillSockets(step, template)
+    return {
+      // art. 82: the instance is where you stand, and where you stand in a
+      // forward-only run is exactly how far down you are.
+      instance: instanceOf(template.id, step),
+      room: template.id,
+      type: template.type,
+      step,
+      region: drawn.region,
+      doors: dealDoors(step, template, fills),
+      fills,
+      announces,
+    }
+  }
+
+  nodes.push(dealAt(0, null))
+  for (let i = 0; i < taken.length; i++) {
+    if (nodes.length >= plan.length) break
+    const here = nodes[i]
+    const door = here?.doors[taken[i] ?? -1]
+    // A choice that is not on the table ends the replay rather than
+    // inventing one, and the Warden's door commits no room (art. 37).
+    if (door === undefined || door.ends === true) break
+    const before = drift.locked
+    drift = tallied(drift, door.region)
+    drift = locked(drift, plan, lotAt(seed, depth, taken, i, SALT.lock))
+    // art. 78: the first room after the lock announces the arrival.
+    const announces = before === null && drift.locked !== null ? drift.locked : null
+    nodes.push(dealAt(i + 1, announces))
+  }
 
   return {
     seed,
     depth,
-    start: nodes[0]?.room ?? ('' as RoomId),
+    length: plan.length,
+    start: nodes[0]?.instance ?? ('' as InstanceId),
     nodes,
+    drift,
   }
 }
 
-function door(
-  to: RoomId,
-  sense: string,
-  demands: readonly KeyId[],
-  fight: string | undefined,
-  ends: boolean,
-): Door {
-  const base: Door = { to, sense, demands }
-  if (fight !== undefined && ends) return { ...base, fight, ends: true }
-  if (fight !== undefined) return { ...base, fight }
-  if (ends) return { ...base, ends: true }
-  return base
+function planFor(catalog: Catalog, depth: number): DepthPlan | null {
+  return catalog.depths.find((plan) => plan.depth === depth) ?? null
 }
 
+function middles(catalog: Catalog): readonly RoomTemplate[] {
+  return catalog.rooms.filter((room) => room.type !== 'crossing' && room.type !== 'warden')
+}
+
+// ── Winnability, by construction (arts 33, 80) ─────────────────────────
+
 /**
- * art. 33: every arrangement must be winnable — on any path the player can
- * be forced down, whatever a lock demands exists upstream of it. Blind play
- * cannot dodge cruelty, so mercy lives in the math.
+ * art. 33: every arrangement must be winnable. Under art. 80 this is no
+ * longer a search over a laid-out depth — the key is placed into the path
+ * ahead of its lock, so a chain cannot be dealt into a refusal. This is the
+ * assertion of that, not the mechanism: it reads a run as dealt and says
+ * whether anything in it was ever demanded before it was offered.
  */
 export function isWinnable(chain: Chain, catalog: Catalog): boolean {
   return explainWinnability(chain, catalog).length === 0
 }
 
-/** Why a chain failed the check, so a failing seed can be read, not guessed. */
+/** Why a run failed the check, so a failing seed can be read, not guessed. */
 export interface Unwinnable {
   readonly room: RoomId
   readonly demanded: KeyId
-  readonly reason: 'no-upstream-grant' | 'forced-past-grant' | 'unreachable'
+  readonly reason: 'no-upstream-grant' | 'forced-past-grant'
 }
 
 export function explainWinnability(chain: Chain, catalog: Catalog): readonly Unwinnable[] {
-  const templates = new Map<string, RoomTemplate>(
-    catalog.rooms.map((room) => [room.id as string, room]),
+  const encounters = new Map<string, Encounter>(
+    catalog.encounters.map((one) => [one.id as string, one]),
   )
-  const known = new Set<string>(chain.nodes.map((node) => node.room as string))
+  const anywhere = new Set<string>(
+    catalog.encounters.flatMap((one) => (one.grants ?? []).map((item) => item as string)),
+  )
   const failures: Unwinnable[] = []
   const held = new Set<string>()
 
   for (const node of chain.nodes) {
-    // The room is entered before its door is tried, so its grants are yours.
-    for (const key of templates.get(node.room)?.grants ?? []) held.add(key)
-    for (const gate of node.doors) {
-      if (gate.ends !== true && !known.has(gate.to as string)) {
-        failures.push({ room: node.room, demanded: '' as KeyId, reason: 'unreachable' })
-        continue
+    // The room is entered before its doors are tried, so what stands in its
+    // sockets is yours to take before any of them is asked for.
+    for (const fill of node.fills) {
+      for (const item of encounters.get(fill.encounter as string)?.grants ?? []) {
+        held.add(item as string)
       }
+    }
+    for (const gate of node.doors) {
       for (const demanded of gate.demands) {
-        if (held.has(demanded)) continue
-        const granted = catalog.rooms.some((room) => room.grants.includes(demanded))
+        if (held.has(demanded as string)) continue
         failures.push({
           room: node.room,
           demanded,
-          // The key exists but the chain put it downstream of its own lock.
-          reason: granted ? 'forced-past-grant' : 'no-upstream-grant',
+          // The key exists, but this run put it downstream of its own lock.
+          reason: anywhere.has(demanded as string) ? 'forced-past-grant' : 'no-upstream-grant',
         })
       }
     }
@@ -262,12 +420,48 @@ export function explainWinnability(chain: Chain, catalog: Catalog): readonly Unw
   return failures
 }
 
-/** Where a room stands in a dealt chain, or -1 when it is not in it. */
-export function stepOf(chain: Chain, room: RoomId): number {
-  return chain.nodes.findIndex((node) => node.room === room)
+// ── Reading a dealt run ────────────────────────────────────────────────
+
+/** Where an instance stands in the run as dealt, or -1 when it is not in it. */
+export function stepOf(chain: Chain, instance: InstanceId): number {
+  return chain.nodes.findIndex((node) => node.instance === instance)
 }
 
-/** The node a room is, in the chain as dealt. */
-export function nodeAt(chain: Chain, room: RoomId): ChainNode | null {
-  return chain.nodes.find((node) => node.room === room) ?? null
+/** The node an instance is, in the run as dealt (art. 82). */
+export function nodeAt(chain: Chain, instance: InstanceId): ChainNode | null {
+  return chain.nodes.find((node) => node.instance === instance) ?? null
+}
+
+/** Where the run stands now: the last room dealt. */
+export function hereIn(chain: Chain): ChainNode | null {
+  return chain.nodes.at(-1) ?? null
+}
+
+/** art. 84: who this room puts in front of you, so a meeting can be kept. */
+export function meetings(node: ChainNode | null): readonly EncounterId[] {
+  return node?.fills.map((fill) => fill.encounter) ?? []
+}
+
+/** art. 30: which horror stands in this room, by identity, if any. */
+export function horrorIn(node: ChainNode | null, catalog: Catalog): string | null {
+  for (const fill of node?.fills ?? []) {
+    const one = catalog.encounters.find((held) => held.id === fill.encounter)
+    if (one?.kind === 'horror' && one.horror !== undefined) return one.horror
+  }
+  return null
+}
+
+/** The encounter an id names, for content and the shell to read (art. 83). */
+export function encounterOf(catalog: Catalog, id: EncounterId): Encounter | null {
+  return catalog.encounters.find((one) => one.id === id) ?? null
+}
+
+/** art. 77: which region a run has committed to, if it has committed yet. */
+export function arrivedAt(chain: Chain): RegionId | null {
+  return chain.drift.locked
+}
+
+/** What the pattern of doors has said, region by region (art. 77). */
+export function leaning(chain: Chain): Readonly<Record<string, number>> {
+  return { [NEUTRAL]: 0, ...chain.drift.tally }
 }

@@ -45,6 +45,14 @@ export interface RunLedger {
   readonly healthMax: number
   /** Where in the chain you are — a room identity, never a coordinate. */
   readonly at: RoomVisit
+  /**
+   * art. 36 (amended): seed + choice history → the same run, always. This is
+   * the run's history graph, and it is the source of truth — every room the
+   * run has dealt is the replay of it (`deal` in src/gen), so there is one
+   * statement of where the player has been and nothing that can disagree
+   * with it.
+   */
+  readonly history: RunHistory
   /** art. 60: assembled from the pouch for this descent. */
   readonly hand: Hand
   /**
@@ -56,11 +64,21 @@ export interface RunLedger {
   readonly worn: readonly WearableId[]
   readonly carried: readonly ItemId[]
   /**
-   * art. 70: doors already opened, as `from→to`. The world remembers in
-   * pixels, and a door is the one thing in a room an act can leave standing
-   * open — so which ones are open is run state, not a repaint.
+   * art. 70: doors already opened, as `instance→index`. The world remembers
+   * in pixels, and a door is the one thing in a room an act can leave
+   * standing open — so which ones are open is run state, not a repaint.
+   *
+   * art. 82: keyed on the instance and not the template. What stands open
+   * here stands open *here*, not in every copy of the room.
    */
   readonly opened: readonly string[]
+  /**
+   * art. 82: acts already done, as `instance|act`. Two instances of one
+   * room each hold their own key; taking one leaves the other lying where
+   * it lies. Inferring this from what is carried was right while a room
+   * could not repeat, and is wrong now.
+   */
+  readonly did: readonly string[]
   /** art. 4: a window open when the app closes resolves as missed. */
   readonly window: OpenWindow | null
   /**
@@ -86,6 +104,16 @@ export interface PermanentLedger {
   readonly wearables: readonly Wearable[]
   /** art. 34: keyed on room and entity identity, never on position. */
   readonly known: readonly Clue[]
+  /**
+   * art. 84: unique encounters respawn with the reseed — the run burns — but
+   * meetings are knowledge. This is who the player has met, ever.
+   */
+  readonly met: readonly EncounterId[]
+  /**
+   * art. 84: and what they remember of the player. The socket is typed and
+   * empty: the merchant who would fill it awaits the economy ruling.
+   */
+  readonly memories: readonly Memory[]
   readonly bookOfEnds: readonly EndLine[]
   /** art. 60: hand size is a body stat, grown and shrunk. Not the constant six. */
   readonly handSize: number
@@ -116,11 +144,46 @@ declare const roomBrand: unique symbol
 export type RoomId = string & { readonly [roomBrand]: 'room' }
 declare const clueBrand: unique symbol
 export type ClueId = string & { readonly [clueBrand]: 'clue' }
+declare const encounterBrand: unique symbol
+/** art. 83: a thing that stands in a socket, or is bound to a room. */
+export type EncounterId = string & { readonly [encounterBrand]: 'encounter' }
+declare const instanceBrand: unique symbol
+/**
+ * art. 82: template and instance. A run may deal the same room twice; the
+ * template is what you recognise, and this is where you are standing.
+ * Knowledge keys on the template (art. 34); scene state keys on this.
+ */
+export type InstanceId = string & { readonly [instanceBrand]: 'instance' }
 
 /** art. 34: a clue keys on a thing, so it survives death and the reseed. */
 export interface Clue {
   readonly id: ClueId
   readonly about: RoomId | DieId
+}
+
+/**
+ * art. 84: what an encounter remembers of the player. The labyrinth
+ * remembers you, and it remembers you across deaths — so this lives on the
+ * permanent and not in the run that burns.
+ *
+ * Nothing writes a mark yet. The merchant is the encounter this is for, and
+ * the merchant waits on the economy; shipping the socket typed and empty is
+ * what art. 84 asks for and all it asks for.
+ */
+export interface Memory {
+  readonly about: EncounterId
+  /** What it holds. Empty until there is something to hold. */
+  readonly marks: readonly string[]
+}
+
+/**
+ * art. 36 (amended): the run's history graph. Every room dealt and every
+ * door taken — recorded as the choices, because under art. 79 the rooms are
+ * derived from them and a second copy could only ever disagree.
+ */
+export interface RunHistory {
+  /** Which door was opened at each room dealt, in order. */
+  readonly taken: readonly number[]
 }
 
 /** One line per death, and a different line for the Warden's door. */
@@ -131,7 +194,10 @@ export interface EndLine {
 }
 
 export interface RoomVisit {
+  /** art. 82: the template — what you recognise, and what knowledge keys on. */
   readonly room: RoomId
+  /** art. 82: the instance — where you stand, and what scene state keys on. */
+  readonly instance: InstanceId
   /** How far down the chain — the road behind you does not exist (art. 9). */
   readonly step: number
   /** Which candle of the room's text you are on (art. 29). */
@@ -156,8 +222,12 @@ export interface OpenWindow {
  */
 export interface FightSave {
   readonly horror: string
-  /** Which room's door this fight stands at (art. 30: it never moves). */
-  readonly at: RoomId
+  /**
+   * Which room's door this fight stands at (art. 30: it never moves), by
+   * instance — art. 82: a fight paused here is not paused in every copy of
+   * the room.
+   */
+  readonly at: InstanceId
   readonly horrorHealth: number
   readonly yourHealth: number
   readonly turnNumber: number
@@ -202,6 +272,15 @@ export interface ClaimSave {
 /** The room every run opens in. art. 37: the Crossing is a fixed anchor. */
 export const CROSSING = 'room.crossing' as RoomId
 
+/**
+ * art. 82: an instance is a template at a step. The engine has no back
+ * (art. 9), so how far down you are names a room dealt uniquely — which is
+ * what lets the whole graph be replayed from the choices alone.
+ */
+export function instanceOf(room: RoomId, step: number): InstanceId {
+  return `${room}#${step}` as InstanceId
+}
+
 /** Wake at the Crossing: a fresh run from the permanent, seeded (art. 36). */
 export function wake(permanent: PermanentLedger, seed: Seed, depth = 1): Ledgers {
   const run: RunLedger = {
@@ -209,12 +288,14 @@ export function wake(permanent: PermanentLedger, seed: Seed, depth = 1): Ledgers
     depth,
     health: permanent.body.health,
     healthMax: permanent.body.health,
-    at: { room: CROSSING, step: 0, beat: 0 },
+    at: { room: CROSSING, instance: instanceOf(CROSSING, 0), step: 0, beat: 0 },
+    history: { taken: [] },
     hand: assembleHand(permanent.pouch, permanent.handSize),
     armor: armorFrom(permanent.wearables, permanent.body.armor),
     worn: permanent.wearables.map((wearable) => wearable.id),
     carried: [],
     opened: [],
+    did: [],
     window: null,
     fight: null,
   } as unknown as RunLedger
@@ -225,6 +306,24 @@ export function wake(permanent: PermanentLedger, seed: Seed, depth = 1): Ledgers
 export function learn(permanent: PermanentLedger, clue: Clue): PermanentLedger {
   if (permanent.known.some((held) => held.id === clue.id)) return permanent
   return { ...permanent, known: [...permanent.known, clue] }
+}
+
+/**
+ * art. 84: a meeting is knowledge. The encounter itself burns with the run
+ * and respawns with the reseed — but that you have met it does not, and the
+ * memory it keeps of you does not either. The labyrinth remembers you.
+ *
+ * A meeting crosses the ledgers, so it is a ritual and not an assignment
+ * (art. 11).
+ */
+export function meet(permanent: PermanentLedger, who: EncounterId): PermanentLedger {
+  if (permanent.met.includes(who)) return permanent
+  return { ...permanent, met: [...permanent.met, who] }
+}
+
+/** art. 84: whether this is a face the player has seen before, ever. */
+export function hasMet(permanent: PermanentLedger, who: EncounterId): boolean {
+  return permanent.met.includes(who)
 }
 
 /**
@@ -288,6 +387,8 @@ export function firstPermanent(pouch: Pouch, handSize: number, body: Body): Perm
     keepsakes: [],
     wearables: [],
     known: [],
+    met: [],
+    memories: [],
     bookOfEnds: [],
     handSize,
     body,
@@ -299,6 +400,27 @@ export function firstPermanent(pouch: Pouch, handSize: number, body: Body): Perm
 /** Nothing mutates in place: a run moves by being rewritten (art. 11). */
 export function movedTo(run: RunLedger, at: RoomVisit): RunLedger {
   return { ...run, at }
+}
+
+/**
+ * art. 36: a door taken is written into the history before anything else
+ * moves, because the history *is* the run — the room the player is about to
+ * stand in is derived from it (art. 79).
+ */
+export function tookDoor(run: RunLedger, at: number): RunLedger {
+  return { ...run, history: { taken: [...run.history.taken, at] } }
+}
+
+/** art. 82: an act is done here, in this instance, and only here. */
+export function didHere(run: RunLedger, instance: InstanceId, act: string): RunLedger {
+  const key = deedKey(instance, act)
+  if (run.did.includes(key)) return run
+  return { ...run, did: [...run.did, key] }
+}
+
+/** How a deed is written down, so a room can read back what it has lost. */
+export function deedKey(instance: InstanceId, act: string): string {
+  return `${instance}|${act}`
 }
 
 export function atBeat(run: RunLedger, beat: number): RunLedger {
@@ -341,10 +463,11 @@ export interface Vault {
 export const VAULT_KEY = 'castlebrynth'
 /**
  * Bumped when the run's shape changes: art. 75 put the fight, the doors it
- * has opened and the thumb's half-made selection on the ledger, and a
- * snapshot written before that cannot answer for them.
+ * has opened and the thumb's half-made selection on the ledger, and the
+ * drift put the history graph, the instance and the deeds beside them. A
+ * snapshot written before either cannot answer for them.
  */
-export const VAULT_VERSION = 2
+export const VAULT_VERSION = 3
 
 /**
  * art. 36: every mutation persists; boot restores exactly. A snapshot is a
