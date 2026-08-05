@@ -1,50 +1,94 @@
 /**
- * The skeleton labyrinth, as data (arts 9, 31, 33, 37).
+ * The labyrinth, as data (arts 9, 31, 37, 77–83).
  *
- * Six hand-authored rooms and nothing else: the Crossing that opens every
- * run, two Passages, a Trove holding the key, a Lair whose door is the
- * Gnawing, and the Warden's door that ends the depth. `src/gen` arranges
- * them; this file is what it arranges.
+ * Thirteen hand-authored rooms: two fixed anchors, two in the neutral pool,
+ * and three each in the drowned, the burnt and the ossuary. `src/gen` deals
+ * them lazily under the drift; this file is what it deals from.
  *
  * art. 34: every clue, name, and lock keys on a room's identity, never on
  * its position — so the arrangement may move and knowledge still holds. That
  * is also why every room here has its own school and its own props: a room
- * the player cannot tell from the last one is a room they cannot learn.
+ * the player cannot tell from the last one is a room they cannot learn. Under
+ * art. 82 that matters twice over, because a run may now deal the same room
+ * more than once and recognising the repeat is the point.
  *
- * art. 70: a room's scene is a function of what has happened in it. The key
- * is a prop until it is taken, and then it is not.
+ * art. 83: a room declares sockets and never speaks for what fills them.
+ * Nothing below assumes a horror, a key, or a merchant — the words those
+ * things say live in `encounters.ts`, beside the things themselves.
+ *
+ * art. 70: a room's scene is a function of what has happened in it, and
+ * under art. 82 that is what has happened in *this* instance of it.
  */
 
-import type { Act, RoomBook, SceneState, Tappable } from '../descent/index.js'
-import type { Catalog, Grammar, KeyId, RoomTemplate } from '../gen/index.js'
+import type { Act, RoomBook, SceneState, SocketWords, Tappable } from '../descent/index.js'
+import type {
+  Catalog,
+  DepthPlan,
+  Fill,
+  Grammar,
+  KeyId,
+  RoomTemplate,
+  RoomType,
+  Socket,
+  SocketId,
+} from '../gen/index.js'
 import type { Horror } from '../lots/index.js'
-import type { ItemId, RoomId } from '../state/index.js'
-import type { RoomShape, Scene, WorldMark } from '../room/index.js'
-import { THE_GNAWING } from './horrors.js'
-import { ASH, IRON, MUTED, NOIR, OCHRE, WET } from './palettes.js'
+import type { RoomId } from '../state/index.js'
+import type { Prop, RoomShape, Scene, WorldMark } from '../room/index.js'
+import {
+  BURNT,
+  DROWNED,
+  ENCOUNTERS,
+  IRON_KEY,
+  OSSUARY,
+  WARDEN_KEY,
+  WARDEN_KEY_ITEM,
+  encounterProp,
+  encounterWords,
+} from './encounters.js'
+import { horrorById } from './horrors.js'
+import type { School } from './palettes.js'
+import {
+  ASH,
+  BRINE,
+  CHALK,
+  EMBER,
+  GRANITE,
+  IRON,
+  MUTED,
+  NOIR,
+  OCHRE,
+  SILT,
+  SLATE,
+  SOOT,
+  WET,
+} from './palettes.js'
 import { plainScene } from './plates/plain.js'
 import {
   alcove,
   ashBanks,
   blackDoor,
+  boneDrifts,
   dragMark,
   doorway,
   dust,
+  kilnMouth,
   motes,
+  pyreStack,
   runnel,
   seep,
-  theKey,
+  standingWater,
+  stairHead,
+  sumpGrate,
+  tallyMarks,
 } from './plates/props.js'
 import { WAKE } from './plates/wake.js'
-import { BEATS, DOOR_SENSES, LABELS, LOOKS, NOUNS, VERBS } from './prose.js'
+import { ARRIVALS, BEATS, LABELS, LOOKS, NOUNS } from './prose.js'
 import { RENDER } from './render.js'
 
-const room = (s: string): RoomId => s as RoomId
+export { WARDEN_KEY, WARDEN_KEY_ITEM } from './encounters.js'
 
-/** The one lock in the depth, and the one key that opens it (art. 33). */
-export const WARDEN_KEY = 'key.warden' as KeyId
-/** The same thing, carried: run ledgers hold items, doors demand keys. */
-export const WARDEN_KEY_ITEM = 'key.warden' as ItemId
+const room = (s: string): RoomId => s as RoomId
 
 export const CROSSING = room('room.crossing')
 export const WARDEN = room('room.warden')
@@ -52,7 +96,18 @@ export const WARDEN = room('room.warden')
 /** art. 14: the box is three authored numbers, and no more. */
 const CORRIDOR = { lens: 93, width: 11, ceiling: 7 } as const
 const LOW = { lens: 88, width: 9, ceiling: 5 } as const
+const CHAMBER = { lens: 96, width: 12, ceiling: 8 } as const
 const HALL = { lens: 100, width: 14, ceiling: 9 } as const
+
+/** Which of the four boxes a room is, for the marks that derive from it. */
+type ShapeKind = 'corridor' | 'low' | 'chamber' | 'hall'
+
+const SHAPES: Readonly<Record<ShapeKind, RoomShape>> = {
+  corridor: CORRIDOR,
+  low: LOW,
+  chamber: CHAMBER,
+  hall: HALL,
+}
 
 /** The floor, in the world's own units — everything stands on it. */
 const FLOOR = -RENDER.eye
@@ -63,191 +118,356 @@ const FLOOR = -RENDER.eye
  * rather than derived: art. 16's cutoff is a render number, and a door the
  * player has to squint at is not a door they can tap.
  */
-const DOOR_AT: Readonly<Record<'corridor' | 'low' | 'hall', WorldMark>> = {
+const DOOR_AT: Readonly<Record<ShapeKind, WorldMark>> = {
   corridor: { X: 0, Y: FLOOR, z: 34, width: 6.5, height: 8 },
   low: { X: 0, Y: FLOOR, z: 30, width: 5.5, height: 6.5 },
+  chamber: { X: 0, Y: FLOOR, z: 36, width: 7, height: 9 },
   hall: { X: 0, Y: FLOOR, z: 38, width: 9, height: 11 },
+}
+
+/**
+ * art. 83: the two sockets every room in this depth declares. A far one, at
+ * the end the door is at, which takes whatever comes with teeth; and a floor
+ * one, near enough to reach, which takes whatever can be picked up.
+ *
+ * They are the same two everywhere on purpose. A socket is a place, and a
+ * place the player learns to look is worth more than a place they have to
+ * find — art. 34's learning loop applies to furniture as well as to rooms.
+ */
+export const FAR_SOCKET = 'socket.far' as SocketId
+export const FLOOR_SOCKET = 'socket.floor' as SocketId
+
+const SOCKET_AT: Readonly<Record<ShapeKind, Readonly<Record<string, WorldMark>>>> = {
+  corridor: {
+    [FAR_SOCKET]: { X: 0, Y: FLOOR, z: 27, width: 5, height: 7 },
+    [FLOOR_SOCKET]: { X: 6.5, Y: FLOOR + 1.5, z: 16, width: 3.4, height: 2 },
+  },
+  low: {
+    [FAR_SOCKET]: { X: 0, Y: FLOOR, z: 24, width: 4.4, height: 5.6 },
+    [FLOOR_SOCKET]: { X: 5.4, Y: FLOOR + 1.5, z: 15, width: 3.4, height: 2 },
+  },
+  chamber: {
+    [FAR_SOCKET]: { X: 0, Y: FLOOR, z: 29, width: 5.5, height: 7.5 },
+    [FLOOR_SOCKET]: { X: 7.2, Y: FLOOR + 1.5, z: 17, width: 3.4, height: 2 },
+  },
+  hall: {
+    [FAR_SOCKET]: { X: 0, Y: FLOOR, z: 31, width: 6.5, height: 9 },
+    [FLOOR_SOCKET]: { X: 8.5, Y: FLOOR + 1.5, z: 19, width: 3.4, height: 2 },
+  },
 }
 
 /** What a room is, beyond what the generator needs to place it. */
 export interface RoomContent {
   readonly id: RoomId
+  readonly type: RoomType
+  readonly school: School
+  readonly kind: ShapeKind
+  readonly shape: RoomShape
   /** art. 70: the room as it stands now, not the room as it was authored. */
   scene(state: SceneState): Scene
-  readonly shape: RoomShape
   readonly tappables: readonly Tappable[]
   readonly acts: readonly Act[]
   /** Where this room's door stands, for the thumb and for the paint. */
   readonly door: WorldMark
-  /** art. 30: set when this room's door is a fight rather than a walk. */
-  readonly horror?: Horror
+  /** art. 83: where this room keeps each of its sockets. */
+  readonly sockets: Readonly<Record<string, WorldMark>>
 }
 
 const tappable = (id: string, at: WorldMark): Tappable => ({ id, noun: NOUNS[id] ?? id, at })
 
-/**
- * The skeleton's one act (art. 7), and the one required thing in the depth
- * (art. 3): the Warden's lock demands it, and movement is forward only, so
- * the room will not let it be left behind.
- */
-const TAKE_THE_KEY: Act = {
-  id: 'act.take-key',
-  // art. 66: a control is a plain imperative verb, two words or fewer.
-  verb: VERBS['act.take-key'] ?? 'Take',
-  needs: [],
-  gives: [WARDEN_KEY_ITEM],
-  required: true,
-}
+/** How often a room fills its own far socket of its own accord (art. 83). */
+const LAIR_CHANCE = 1
+const STRAY_CHANCE = 0.06
 
-export const ROOMS: readonly RoomContent[] = [
-  {
-    id: CROSSING,
-    // The reference plate, unchanged: it wins ties about intent, and the
-    // room parity test measures it byte for byte.
-    scene: () => WAKE,
-    shape: WAKE.shape,
-    tappables: [
-      tappable('crossing.grate', { X: 0, Y: 4, z: 17.7, width: 7.5, height: 4 }),
-      tappable('crossing.bones', { X: -1, Y: FLOOR, z: 13.8, width: 17, height: 2.4 }),
-      tappable('crossing.traveler', { X: 10.4, Y: FLOOR, z: 22.4, width: 5, height: 3.2 }),
-      tappable('crossing.chain', { X: -9.8, Y: 0, z: 12, width: 2, height: 8 }),
-    ],
-    acts: [],
-    door: DOOR_AT.corridor,
-  },
-  {
-    id: room('room.passage.drip'),
-    scene: (state) =>
-      plainScene('room.passage.drip', WET, CORRIDOR, () => [
-        runnel(WET),
-        seep(WET),
-        doorway(WET, opened(state), DOOR_AT.corridor),
-      ]),
-    shape: CORRIDOR,
-    tappables: [tappable('drip.water', { X: 0, Y: FLOOR, z: 11, width: 6, height: 2.2 })],
-    acts: [],
-    door: DOOR_AT.corridor,
-  },
-  {
-    id: room('room.trove.alcove'),
-    scene: (state) =>
-      plainScene('room.trove.alcove', OCHRE, LOW, () => [
-        alcove(OCHRE),
-        dust(OCHRE),
-        // art. 70: taken is gone. The floor it lay on is the floor again.
-        ...(state.done.includes('act.take-key') ? [] : [theKey(OCHRE)]),
-        doorway(OCHRE, opened(state), DOOR_AT.low),
-      ]),
-    shape: LOW,
-    tappables: [
-      tappable('alcove.key', { X: 8.4, Y: -12.5, z: 20.5, width: 3.4, height: 2 }),
-      tappable('alcove.dust', { X: 7.2, Y: FLOOR, z: 22.5, width: 3.4, height: 1.6 }),
-    ],
-    acts: [TAKE_THE_KEY],
-    door: DOOR_AT.low,
-  },
-  {
-    id: room('room.lair.gnawing'),
-    scene: (state) =>
-      plainScene('room.lair.gnawing', NOIR, LOW, () => [
-        dragMark(NOIR),
-        doorway(NOIR, opened(state), DOOR_AT.low),
-      ]),
-    shape: LOW,
-    tappables: [tappable('lair.drag', { X: -3, Y: FLOOR, z: 18, width: 9, height: 2 })],
-    acts: [],
-    door: DOOR_AT.low,
-    horror: THE_GNAWING,
-  },
-  {
-    id: room('room.passage.ash'),
-    scene: (state) =>
-      plainScene('room.passage.ash', ASH, CORRIDOR, () => [
-        ashBanks(ASH),
-        motes(ASH),
-        doorway(ASH, opened(state), DOOR_AT.corridor),
-      ]),
-    shape: CORRIDOR,
-    tappables: [tappable('ash.ash', { X: -8.5, Y: FLOOR, z: 15, width: 5, height: 2 })],
-    acts: [],
-    door: DOOR_AT.corridor,
-  },
-  {
-    id: WARDEN,
-    scene: () =>
-      plainScene('room.warden', IRON, HALL, () => [blackDoor(IRON, DOOR_AT.hall)]),
-    shape: HALL,
-    tappables: [
-      // The lock is a small thing on a large one, and both answer (art. 69).
-      tappable('warden.lock', { X: 0, Y: -7.4, z: 38, width: 2.4, height: 2.6 }),
-      tappable('warden.door', { X: 0, Y: FLOOR, z: 38, width: 8, height: 9.6 }),
-    ],
-    acts: [],
-    door: DOOR_AT.hall,
-  },
-]
-
-/** art. 70: whether the one door out of this room already stands open. */
+/** art. 70: whether a door out of this room already stands open. */
 function opened(state: SceneState): boolean {
   return state.opened.length > 0
 }
 
-/**
- * The same six rooms as the generator deals them (art. 9): an identity, a
- * type, what they hand over, what their door demands, and the one line the
- * door reads as from the other side.
- */
-export const CATALOG: Catalog = {
-  rooms: [
-    template('room.crossing', 'crossing', [], []),
-    template('room.passage.drip', 'passage', [], []),
-    template('room.trove.alcove', 'trove', [WARDEN_KEY], []),
-    template('room.lair.gnawing', 'lair', [], [], 'horror.gnawing'),
-    template('room.passage.ash', 'passage', [], []),
-    { ...template('room.warden', 'warden', [], [WARDEN_KEY]), ends: true },
-  ],
+/** One room, as authored. The scene is assembled from it below. */
+interface Authored {
+  readonly id: string
+  readonly type: RoomType
+  readonly school: School
+  readonly kind: ShapeKind
+  /** The room's own props — never the sockets' (art. 83). */
+  readonly dressing: (school: School, state: SceneState, at: WorldMark) => readonly Prop[]
+  readonly tappables: readonly (readonly [string, WorldMark])[]
+  /** The room's own acts. The skeleton's one act now belongs to a socket. */
+  readonly acts?: readonly Act[]
+  /** The reference plate, for the one room that has one. */
+  readonly plate?: Scene
+  /** How often teeth stand at the far end unasked. A lair is always a lair. */
+  readonly teeth?: number
 }
 
-function template(
-  id: string,
-  type: RoomTemplate['type'],
-  grants: readonly KeyId[],
-  demands: readonly KeyId[],
-  fight?: string,
-): RoomTemplate {
-  const base: RoomTemplate = {
-    id: room(id),
-    type,
-    grants,
-    demands,
-    sense: DOOR_SENSES[id] ?? '',
+const AUTHORED: readonly Authored[] = [
+  {
+    id: 'room.crossing',
+    type: 'crossing',
+    school: MUTED,
+    kind: 'corridor',
+    // The reference plate, unchanged: it wins ties about intent, and the
+    // room parity test measures it byte for byte.
+    plate: WAKE,
+    dressing: () => [],
+    tappables: [
+      ['crossing.grate', { X: 0, Y: 4, z: 17.7, width: 7.5, height: 4 }],
+      ['crossing.bones', { X: -1, Y: FLOOR, z: 13.8, width: 17, height: 2.4 }],
+      ['crossing.traveler', { X: 10.4, Y: FLOOR, z: 22.4, width: 5, height: 3.2 }],
+      ['crossing.chain', { X: -9.8, Y: 0, z: 12, width: 2, height: 8 }],
+    ],
+    // The Crossing opens every run (art. 37). Nothing waits in it.
+    teeth: 0,
+  },
+  {
+    id: 'room.trove.alcove',
+    type: 'trove',
+    school: OCHRE,
+    kind: 'low',
+    dressing: (school, state, at) => [alcove(school), dust(school), doorway(school, opened(state), at)],
+    tappables: [['alcove.dust', { X: 7.2, Y: FLOOR, z: 22.5, width: 3.4, height: 1.6 }]],
+  },
+  {
+    id: 'room.passage.stair',
+    type: 'passage',
+    school: GRANITE,
+    kind: 'corridor',
+    dressing: (school, state, at) => [stairHead(school), doorway(school, opened(state), at)],
+    tappables: [['stair.tread', { X: 0, Y: FLOOR, z: 24, width: 7, height: 2.4 }]],
+  },
+  {
+    id: 'room.passage.drip',
+    type: 'passage',
+    school: WET,
+    kind: 'corridor',
+    dressing: (school, state, at) => [
+      runnel(school),
+      seep(school),
+      doorway(school, opened(state), at),
+    ],
+    tappables: [['drip.water', { X: 0, Y: FLOOR, z: 11, width: 6, height: 2.2 }]],
+  },
+  {
+    id: 'room.lair.cistern',
+    type: 'lair',
+    school: BRINE,
+    kind: 'chamber',
+    dressing: (school, state, at) => [standingWater(school), doorway(school, opened(state), at)],
+    tappables: [['cistern.water', { X: 0, Y: FLOOR, z: 13, width: 12, height: 2.4 }]],
+    teeth: LAIR_CHANCE,
+  },
+  {
+    id: 'room.trove.sump',
+    type: 'trove',
+    school: SILT,
+    kind: 'low',
+    dressing: (school, state, at) => [sumpGrate(school), doorway(school, opened(state), at)],
+    tappables: [['sump.grate', { X: 0, Y: FLOOR, z: 24, width: 5, height: 2 }]],
+  },
+  {
+    id: 'room.passage.ash',
+    type: 'passage',
+    school: ASH,
+    kind: 'corridor',
+    dressing: (school, state, at) => [
+      ashBanks(school),
+      motes(school),
+      doorway(school, opened(state), at),
+    ],
+    tappables: [['ash.ash', { X: -8.5, Y: FLOOR, z: 15, width: 5, height: 2 }]],
+  },
+  {
+    id: 'room.lair.kiln',
+    type: 'lair',
+    school: EMBER,
+    kind: 'chamber',
+    dressing: (school, state, at) => [kilnMouth(school), doorway(school, opened(state), at)],
+    tappables: [['kiln.mouth', { X: -12, Y: FLOOR + 2, z: 19, width: 3, height: 7 }]],
+    teeth: LAIR_CHANCE,
+  },
+  {
+    id: 'room.omen.pyre',
+    type: 'omen',
+    school: SOOT,
+    kind: 'chamber',
+    dressing: (school, state, at) => [pyreStack(school), doorway(school, opened(state), at)],
+    tappables: [['pyre.timber', { X: 0, Y: FLOOR + 2, z: 21, width: 5.5, height: 4.5 }]],
+  },
+  {
+    id: 'room.lair.den',
+    type: 'lair',
+    school: NOIR,
+    kind: 'low',
+    dressing: (school, state, at) => [dragMark(school), doorway(school, opened(state), at)],
+    tappables: [['den.drag', { X: -3, Y: FLOOR, z: 18, width: 9, height: 2 }]],
+    teeth: LAIR_CHANCE,
+  },
+  {
+    id: 'room.passage.bonefield',
+    type: 'passage',
+    school: CHALK,
+    kind: 'corridor',
+    dressing: (school, state, at) => [boneDrifts(school), doorway(school, opened(state), at)],
+    tappables: [['bonefield.bone', { X: 8.5, Y: FLOOR, z: 15, width: 5, height: 2 }]],
+  },
+  {
+    id: 'room.puzzle.tally',
+    type: 'puzzle',
+    school: SLATE,
+    kind: 'low',
+    dressing: (school, state, at) => [tallyMarks(school), doorway(school, opened(state), at)],
+    tappables: [['tally.marks', { X: 8.6, Y: FLOOR + 3, z: 20, width: 2.4, height: 4 }]],
+  },
+  {
+    id: 'room.warden',
+    type: 'warden',
+    school: IRON,
+    kind: 'hall',
+    dressing: (school, _state, at) => [blackDoor(school, at)],
+    tappables: [
+      // The lock is a small thing on a large one, and both answer (art. 69).
+      ['warden.lock', { X: 0, Y: -7.4, z: 38, width: 2.4, height: 2.6 }],
+      ['warden.door', { X: 0, Y: FLOOR, z: 38, width: 8, height: 9.6 }],
+    ],
+    // The Warden's door ends the depth. Nothing stands in front of it.
+    teeth: 0,
+  },
+]
+
+/**
+ * art. 83: what stands in the sockets, painted where the sockets are. The
+ * room does not know what these are and does not have to — it declares the
+ * places, and the encounters bring their own pixels.
+ */
+function socketProps(one: Authored, state: SceneState): readonly Prop[] {
+  const marks = SOCKET_AT[one.kind]
+  return state.fills
+    .map((fill) =>
+      encounterProp(fill.encounter, one.school, marks[fill.socket as string] ?? DOOR_AT[one.kind], state.done),
+    )
+    .filter((prop): prop is Prop => prop !== null)
+}
+
+function contentOf(one: Authored): RoomContent {
+  const shape = SHAPES[one.kind]
+  const door = DOOR_AT[one.kind]
+  return {
+    id: room(one.id),
+    type: one.type,
+    school: one.school,
+    kind: one.kind,
+    shape,
+    scene: (state) => {
+      const base =
+        one.plate ??
+        plainScene(one.id, one.school, shape, () => one.dressing(one.school, state, door))
+      const laid = socketProps(one, state)
+      if (laid.length === 0) return base
+      // art. 19: painted near over far, so the list is declared far to near.
+      return {
+        ...base,
+        props: (view) => [...base.props(view), ...laid].sort((a, b) => b.z - a.z),
+      }
+    },
+    tappables: one.tappables.map(([id, at]) => tappable(id, at)),
+    acts: one.acts ?? [],
+    door,
+    sockets: SOCKET_AT[one.kind],
   }
-  return fight === undefined ? base : { ...base, fight }
+}
+
+export const ROOMS: readonly RoomContent[] = AUTHORED.map(contentOf)
+
+// ── The catalog the dealer deals from ──────────────────────────────────
+
+function socketsOf(one: Authored): readonly Socket[] {
+  return [
+    { id: FAR_SOCKET, accepts: 'horror', chance: one.teeth ?? STRAY_CHANCE },
+    // art. 80: the boon socket is never filled of the dealer's own accord.
+    // The only thing that goes in it this tranche is the key the lock ahead
+    // demands, and the dealer puts that there because it must.
+    { id: FLOOR_SOCKET, accepts: 'boon', chance: 0 },
+  ]
+}
+
+function template(one: Authored): RoomTemplate {
+  const demands: readonly KeyId[] = one.type === 'warden' ? [WARDEN_KEY] : []
+  const base: RoomTemplate = {
+    id: room(one.id),
+    type: one.type,
+    sockets: socketsOf(one),
+    demands,
+  }
+  return one.type === 'warden' ? { ...base, ends: true } : base
 }
 
 /**
- * art. 38: rules, not templates. The interim dealer honours the bands and
- * the guarantees; the adjacency bans and the weights wait for the real
- * grammar engine, and are declared empty rather than invented.
+ * art. 81: depth length is a content variable — fixed rooms per depth,
+ * authored per depth, changeable without touching the engine. So is the door
+ * count that forces the lock (art. 78) and how many regions there are
+ * (art. 77). All three of them are here, and nowhere else.
  */
-export const GRAMMAR: Grammar = {
-  adjacencyBans: [],
-  guarantees: ['crossing', 'warden'],
-  keyBand: [0, 0.5],
-  lockBand: [0.5, 1],
-  fightBand: [1, 1],
-  weights: {
-    passage: 1,
-    lair: 1,
-    puzzle: 0,
-    trove: 1,
-    omen: 0,
+export const DEPTH_ONE: DepthPlan = {
+  depth: 1,
+  length: 9,
+  lockAt: 4,
+  regions: [
+    {
+      id: DROWNED,
+      rooms: [room('room.passage.drip'), room('room.lair.cistern'), room('room.trove.sump')],
+    },
+    {
+      id: BURNT,
+      rooms: [room('room.passage.ash'), room('room.lair.kiln'), room('room.omen.pyre')],
+    },
+    {
+      id: OSSUARY,
+      rooms: [room('room.lair.den'), room('room.passage.bonefield'), room('room.puzzle.tally')],
+    },
+  ],
+  neutral: [room('room.trove.alcove'), room('room.passage.stair')],
+  // art. 39: the shallow leans quiet. Passages are the bread; teeth are the
+  // exception the band keeps honest.
+  tendencies: {
+    passage: 3,
+    lair: 1.6,
+    puzzle: 2,
+    trove: 2,
+    omen: 2,
     sanctum: 0,
     merchant: 0,
     savior: 0,
     crossing: 0,
     warden: 0,
   },
+  // art. 80: the depth is committed to the Warden's lock from the first
+  // room, so the key goes into the path ahead of it, wherever the path goes.
+  locks: [{ at: 8, demands: [WARDEN_KEY], key: IRON_KEY }],
+}
+
+export const CATALOG: Catalog = {
+  rooms: AUTHORED.map(template),
+  encounters: ENCOUNTERS,
+  depths: [DEPTH_ONE],
+}
+
+/**
+ * art. 38 (amended): rules, not templates. None of these solve anything —
+ * they are the pressures the dealer leans with, and whether they held is a
+ * question asked of a thousand runs rather than of one.
+ */
+export const GRAMMAR: Grammar = {
+  // Two fights back to back is the one rhythm the depth never plays.
+  adjacencyBans: [['lair', 'lair']],
+  guarantees: ['crossing', 'warden', 'lair'],
+  fightBand: [1, 3],
+  // art. 31: two doors is the ordinary room, one is a corridor moment, and
+  // three is a crossroads.
+  doorWeights: [1, 6, 3],
+  clumpPenalty: 0.05,
+  driftPull: 1.4,
+  bandPull: 3,
 }
 
 const byId = new Map<string, RoomContent>(ROOMS.map((held) => [held.id as string, held]))
@@ -258,14 +478,19 @@ export function roomContent(id: RoomId): RoomContent {
   return held
 }
 
-/** art. 30: which horror stands behind this room's door, if any. */
-export function horrorAt(id: RoomId): Horror | null {
-  return byId.get(id as string)?.horror ?? null
+/** art. 83: where a room keeps one of its sockets, for the thing in it. */
+export function socketMark(id: RoomId, socket: SocketId): WorldMark {
+  const held = roomContent(id)
+  return held.sockets[socket as string] ?? held.door
 }
 
-/** The horrors the depth can deal, by identity — for restoring a fight. */
-export function horrorById(id: string): Horror | null {
-  return ROOMS.find((held) => held.horror?.id === id)?.horror ?? null
+/** art. 30: which horror stands in this room right now, if any. */
+export function horrorOf(fills: readonly Fill[]): Horror | null {
+  for (const fill of fills) {
+    const one = ENCOUNTERS.find((held) => held.id === fill.encounter)
+    if (one?.kind === 'horror' && one.horror !== undefined) return horrorById(one.horror)
+  }
+  return null
 }
 
 /**
@@ -277,6 +502,10 @@ export const ROOM_BOOK: RoomBook = {
   tappables: (id) => roomContent(id).tappables,
   look: (_id, target) => LOOKS[target] ?? '',
   acts: (id) => roomContent(id).acts,
+  // art. 83: the room is handed over so the thing can stand somewhere, and
+  // for nothing else — every word below comes from the encounter.
+  socket: (id, fill): SocketWords => encounterWords(fill.encounter, socketMark(id, fill.socket)),
+  arrival: (region) => ARRIVALS[region as string] ?? [],
 }
 
 /** The name a room answers to, for the beat that opens it (art. 34). */

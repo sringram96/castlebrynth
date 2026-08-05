@@ -129,19 +129,22 @@ export function alcove(school: School): Prop {
 const SHELF = { X: 8.4, z: 20.5 } as const
 
 /**
- * The iron key, lying in the dust at the back of the alcove. art. 70: when
- * it is taken this prop is simply not in the scene, and the floor it lay on
- * is the floor again.
+ * The iron key, lying where the room's boon socket is (art. 83). It belongs
+ * to no room: art. 80 unbinds required items from rooms and puts them in the
+ * path when the lock ahead demands one, so it is drawn wherever the room
+ * that received it keeps its socket.
+ *
+ * art. 70: when it is taken this prop is simply not in the scene, and the
+ * floor it lay on is the floor again.
  */
-export function theKey(school: School): Prop {
+export function theKey(school: School, mark: WorldMark): Prop {
   return {
     name: 'the key',
-    z: SHELF.z,
+    z: mark.z,
     paint(b: Brush): void {
-      const { eye } = b.view
       const g = pixel(b.view)
-      const at = b.project(SHELF.X, -eye + 1.5, SHELF.z)
-      const s = Math.max(g(1), b.view.f / SHELF.z / 5)
+      const at = b.project(mark.X, mark.Y, mark.z)
+      const s = Math.max(g(1), b.view.f / mark.z / 5)
       const x = at.x - s * 3
       const y = at.y
       // The shadow it sits in.
@@ -260,6 +263,254 @@ export function motes(school: School): Prop {
         const x = (b.hash(n * 7, 3) / 97) * frame.width
         const y = (b.hash(n * 13, 11) / 97) * frame.height
         b.px(b.hash(n, n * 3) < 30 ? school.bone[1]! : school.bone[0]!, x, y)
+      }
+    },
+  }
+}
+
+// ── The stair ──────────────────────────────────────────────────────────
+
+/** Short flights going down at the far end, and the flights do not line up. */
+export function stairHead(school: School): Prop {
+  return {
+    name: 'the stair',
+    z: 26,
+    paint(b: Brush): void {
+      const { eye } = b.view
+      const g = pixel(b.view)
+      let drop = 0
+      for (let z = 20; z < 46; z += 1.6) {
+        // Each flight steps down, and each starts a little off the last.
+        const skew = ((z / 8) | 0) % 2 === 0 ? -1.1 : 1.1
+        const left = b.project(skew - 3.2, -eye - drop, z)
+        const right = b.project(skew + 3.2, -eye - drop, z)
+        const y = Math.round(left.y)
+        for (let x = left.x; x < right.x; x++) {
+          b.px(b.dither(x, y, 7) ? school.flag[3]! : school.flag[1]!, x, y)
+        }
+        b.px(school.edge, left.x, y)
+        b.px(school.edge, right.x - g(1), y)
+        for (let x = left.x; x < right.x; x++) b.px(school.brickAlt, x, y - g(1))
+        drop += 0.42
+      }
+    },
+  }
+}
+
+// ── The cistern ────────────────────────────────────────────────────────
+
+/** Black water lying flat across the whole floor, and giving one line back. */
+export function standingWater(school: School): Prop {
+  return {
+    name: 'the standing water',
+    z: 9,
+    paint(b: Brush): void {
+      const { eye, shape } = b.view
+      for (let z = 3; z < reach(b.view); z += 0.3) {
+        const left = b.project(-shape.width + 0.4, -eye, z)
+        const right = b.project(shape.width - 0.4, -eye, z)
+        const y = Math.round(left.y)
+        for (let x = left.x; x < right.x; x++) {
+          b.px(school.damp, x, y)
+          if (b.dither(x, y, 3)) b.px(school.hollow, x, y)
+          // The one line it gives back, straight down the middle.
+          if (Math.abs(x - (left.x + right.x) / 2) < 1 && b.hash(x | 0, y * 3) < 40) {
+            b.px(school.accent[2]!, x, y)
+          }
+        }
+      }
+    },
+  }
+}
+
+// ── The sump ───────────────────────────────────────────────────────────
+
+/** A grate the floor tilts toward, with the silt banked in a tidemark. */
+export function sumpGrate(school: School): Prop {
+  return {
+    name: 'the grate',
+    z: 24,
+    paint(b: Brush): void {
+      const { eye, shape } = b.view
+      const g = pixel(b.view)
+      const at = b.project(0, -eye, 24)
+      const s = Math.max(g(2), b.view.f / 24 / 2)
+      for (let j = at.y - s * 1.4; j < at.y + s * 1.4; j++) {
+        for (let i = at.x - s * 3; i < at.x + s * 3; i++) {
+          b.px(b.dither(i, j, 4) ? school.hollow : school.iron, i, j)
+        }
+      }
+      for (let i = at.x - s * 3; i < at.x + s * 3; i += Math.max(1, g(3))) {
+        for (let j = at.y - s * 1.4; j < at.y + s * 1.4; j++) b.px(school.brickAlt, i, j)
+      }
+      // The tidemark, at knee height on both walls.
+      for (const side of [-1, 1] as const) {
+        for (let z = 6; z < reach(b.view); z += 0.5) {
+          const mark = b.project(side * shape.width, -eye + 1.9, z)
+          b.px(school.bone[0]!, mark.x, mark.y)
+          if (b.dither(mark.x, mark.y + g(1), 8)) b.px(school.accent[1]!, mark.x, mark.y + g(1))
+        }
+      }
+    },
+  }
+}
+
+// ── The kiln ───────────────────────────────────────────────────────────
+
+/** A brick mouth in the left wall, tall enough to walk into, and dark. */
+export function kilnMouth(school: School): Prop {
+  return {
+    name: 'the kiln mouth',
+    z: 20,
+    paint(b: Brush): void {
+      const { shape, eye } = b.view
+      const g = pixel(b.view)
+      const wall = -shape.width
+      const near = 13
+      const far = 25
+      for (let z = near; z < far; z += 0.12) {
+        const arc = Math.sin((Math.PI * (z - near)) / (far - near))
+        const top = b.project(wall, -eye + 1 + 6.4 * arc, z)
+        const foot = b.project(wall, -eye, z)
+        for (let y = top.y; y < foot.y; y++) {
+          b.px(b.dither(top.x, y, 3) ? school.grime : school.hollow, top.x, y)
+        }
+        b.px(school.edge, top.x, top.y)
+        // The brick ring around it keeps a little of the heat.
+        b.px(school.accent[0]!, top.x, top.y - g(1))
+        if (b.dither(top.x, top.y - g(2), 5)) b.px(school.accent[1]!, top.x, top.y - g(2))
+      }
+    },
+  }
+}
+
+// ── The pyre ───────────────────────────────────────────────────────────
+
+/** Timber stacked in a square, burnt through and still holding its shape. */
+export function pyreStack(school: School): Prop {
+  return {
+    name: 'the pyre',
+    z: 21,
+    paint(b: Brush): void {
+      const { eye } = b.view
+      const g = pixel(b.view)
+      const z = 21
+      for (let layer = 0; layer < 7; layer++) {
+        const y = -eye + layer * 0.6
+        const across = layer % 2 === 0
+        for (let n = -2; n <= 2; n++) {
+          const a = across ? b.project(n * 0.9, y, z - 2.6) : b.project(-2.4, y, z + n * 0.9)
+          const c = across ? b.project(n * 0.9, y, z + 2.6) : b.project(2.4, y, z + n * 0.9)
+          const steps = Math.max(2, Math.abs(c.x - a.x) + Math.abs(c.y - a.y))
+          for (let t = 0; t <= steps; t++) {
+            const x = a.x + ((c.x - a.x) * t) / steps
+            const yy = a.y + ((c.y - a.y) * t) / steps
+            b.px(b.hash(x | 0, yy | 0) < 20 ? school.grime : school.slat[layer % 4]!, x, yy)
+            b.px(school.edge, x, yy + g(1))
+          }
+        }
+      }
+    },
+  }
+}
+
+// ── The bonefield ──────────────────────────────────────────────────────
+
+/** Bone banked against both walls, the way ash banks elsewhere, and paler. */
+export function boneDrifts(school: School): Prop {
+  return {
+    name: 'the bone',
+    z: 13,
+    paint(b: Brush): void {
+      const { eye, shape } = b.view
+      for (let z = 3; z < reach(b.view); z += 0.3) {
+        const deep = Math.min(1, z / 50)
+        const bank = 1.2 + deep * 3.2
+        for (const side of [-1, 1] as const) {
+          const outer = b.project(side * shape.width, -eye, z)
+          const inner = b.project(side * (shape.width - bank), -eye, z)
+          const y = Math.round(outer.y)
+          const from = Math.min(outer.x, inner.x)
+          const to = Math.max(outer.x, inner.x)
+          for (let x = from; x < to; x++) {
+            const into = side < 0 ? (to - x) / (to - from || 1) : (x - from) / (to - from || 1)
+            if (b.dither(x, y, into * 13)) b.px(school.bone[1]!, x, y)
+            if (b.dither(x, y, into * 6)) b.px(school.bone[2]!, x, y)
+            // Nothing in it matches: a long one every so often, inked.
+            if (b.hash(x | 0, y * 7) < 4) b.px(school.edge, x, y)
+          }
+        }
+      }
+    },
+  }
+}
+
+// ── The tally ──────────────────────────────────────────────────────────
+
+/** Scratches down the right wall, cut in groups of five. The last has four. */
+export function tallyMarks(school: School): Prop {
+  return {
+    name: 'the tally',
+    z: 18,
+    paint(b: Brush): void {
+      const { shape, eye } = b.view
+      const g = pixel(b.view)
+      let group = 0
+      for (let z = 8; z < 44; z += 1.1) {
+        const at = group % 5
+        // The gate across each finished group of five.
+        const top = b.project(shape.width, -eye + 4.4, z)
+        const foot = b.project(shape.width, -eye + 1.6, z)
+        for (let y = top.y; y < foot.y; y++) {
+          b.px(school.bone[2]!, top.x, y)
+          b.px(school.edge, top.x + g(1), y)
+        }
+        if (at === 4) {
+          const mid = b.project(shape.width, -eye + 3, z - 2.2)
+          const steps = Math.max(2, Math.abs(top.x - mid.x) + Math.abs(top.y - mid.y))
+          for (let t = 0; t <= steps; t++) {
+            b.px(
+              school.bone[1]!,
+              mid.x + ((top.x - mid.x) * t) / steps,
+              mid.y + ((top.y - mid.y) * t) / steps,
+            )
+          }
+        }
+        // The last group stops one short.
+        if (z > 40 && at >= 3) break
+        group++
+      }
+    },
+  }
+}
+
+// ── What stands in a socket (art. 83) ──────────────────────────────────
+
+/**
+ * A shape at the far end, before it is a fight. art. 70: prose confirms,
+ * pixels prove — a room the drift has put a horror into looks like a room
+ * with a horror in it, and looks that way before anything is committed.
+ *
+ * It is deliberately a mass and no more. The advance (`src/hinge`) is what
+ * brings it to the lens; this is the thing standing where the word says it
+ * stands.
+ */
+export function lurker(school: School, mark: WorldMark, tall: boolean): Prop {
+  return {
+    name: tall ? 'the tall shape' : 'the wet shape',
+    z: mark.z,
+    paint(b: Brush): void {
+      const foot = b.project(mark.X, mark.Y, mark.z)
+      const half = (b.view.f * mark.width) / mark.z / 2
+      const high = (b.view.f * mark.height * (tall ? 1.35 : 1)) / mark.z
+      for (let y = foot.y - high; y < foot.y; y++) {
+        const down = (y - (foot.y - high)) / high
+        const reachOut = half * (tall ? 0.4 + 0.3 * down : 0.5 + 0.5 * Math.sin(Math.PI * down))
+        for (let x = foot.x - reachOut; x < foot.x + reachOut; x++) {
+          const edge = 1 - Math.abs(x - foot.x) / (reachOut || 1)
+          if (b.dither(x, y, 2 + edge * 12)) b.px(school.hollow, x, y)
+          else if (b.dither(x + 2, y, edge * 4)) b.px(school.edge, x, y)
+        }
       }
     },
   }

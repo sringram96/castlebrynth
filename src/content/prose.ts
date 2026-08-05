@@ -32,15 +32,43 @@ export const BEATS: Readonly<Record<string, readonly string[]>> = {
   ],
   'room.trove.alcove': [
     'The alcove, cut square into the right-hand wall of a low room.',
-    'A key lies in the dust at the back of it.',
+    'The dust at the back of it lies deep enough to hold a print.',
   ],
-  'room.lair.gnawing': [
-    'The low room. A wide mark drags across the floor and turns at the corner.',
-    'The door at the far end breathes.',
+  'room.passage.stair': [
+    'The stair. It goes down in short flights, and the flights do not line up.',
+    'Grit slides off each tread and keeps going without you.',
+  ],
+  'room.lair.cistern': [
+    'The cistern. Black water lies flat across the whole floor.',
+    'It gives back one line of light and nothing else.',
+  ],
+  'room.trove.sump': [
+    'The sump. The floor tilts to a grate, and what the depth loses ends here.',
+    'Silt banks against the walls in a tidemark at knee height.',
   ],
   'room.passage.ash': [
     'The ash passage. Ash banks against both walls and pales the flagstones.',
-    'Nothing moves it. The stair down starts past the door.',
+    'Nothing moves it. The way down starts past the door.',
+  ],
+  'room.lair.kiln': [
+    'The kiln. A brick mouth gapes in the left wall, tall enough to walk into.',
+    'The stone around it keeps a little of the heat.',
+  ],
+  'room.omen.pyre': [
+    'The pyre. Timber stacks in a square, burnt through and holding its shape.',
+    'Nothing on it is bone. Whatever it burned, it burned somewhere else.',
+  ],
+  'room.lair.den': [
+    'The den. A wide mark drags across the floor and turns at the corner.',
+    'The door at the far end breathes.',
+  ],
+  'room.passage.bonefield': [
+    'The bonefield. Bone banks against both walls the way ash does elsewhere.',
+    'None of it matches. None of it is small.',
+  ],
+  'room.puzzle.tally': [
+    'The tally. Scratches run the length of the right wall, cut in fives.',
+    'The last group stops at four.',
   ],
   'room.warden': [
     "The Warden's door. Black iron, three bands, no seam.",
@@ -55,12 +83,23 @@ export const NOUNS: Readonly<Record<string, string>> = {
   'crossing.traveler': 'the traveler',
   'crossing.chain': 'the chain',
   'drip.water': 'the water',
-  'alcove.key': 'the key',
   'alcove.dust': 'the dust',
-  'lair.drag': 'the drag mark',
+  'stair.tread': 'the tread',
+  'cistern.water': 'the black water',
+  'sump.grate': 'the grate',
   'ash.ash': 'the ash',
+  'kiln.mouth': 'the kiln mouth',
+  'pyre.timber': 'the timber',
+  'den.drag': 'the drag mark',
+  'bonefield.bone': 'the bone',
+  'tally.marks': 'the scratches',
   'warden.lock': 'the lock',
   'warden.door': 'the black door',
+  // art. 83: what stands in a socket names itself, wherever it stands.
+  'gnawing.shape': 'the wet shape',
+  'marrow.shape': 'the tall shape',
+  'key.iron': 'the iron key',
+  'door.ahead': 'the door',
 }
 
 /** What looking answers. Looking is free and always answers (art. 6). */
@@ -70,27 +109,50 @@ export const LOOKS: Readonly<Record<string, string>> = {
   'crossing.traveler': 'A traveler lies along the wall. The cloak has gone stiff.',
   'crossing.chain': 'A chain comes out of the dark above and stops short of the floor.',
   'drip.water': 'The water goes under the wall and keeps going.',
-  'alcove.key': 'Iron, long as your palm, cut with three teeth.',
-  'alcove.dust': 'Dust, and the shape of something lifted out of it.',
-  'lair.drag': 'A wide smear in the dust, from the door to the corner and back.',
+  'alcove.dust': 'Dust, undisturbed, and deep enough to hold a print.',
+  'stair.tread': 'Each tread dips in the middle. A great many boots, or a few centuries.',
+  'cistern.water': 'Flat, black, and deeper than the room is tall.',
+  'sump.grate': 'Iron bars over a drop. Nothing comes back up it.',
   'ash.ash': 'Ash, banked and cold. Nothing burns here now.',
+  'kiln.mouth': 'Brick, glazed smooth by heat. The inside goes back further than the wall.',
+  'pyre.timber': 'Charred through and still square. Nothing has knocked it down.',
+  'den.drag': 'A wide smear in the dust, from the door to the corner and back.',
+  'bonefield.bone': 'Long bones, none of them a pair, none of them yours yet.',
+  'tally.marks': 'Someone counts something here. The counting continues.',
   'warden.lock': 'One keyhole, cut for three teeth.',
   'warden.door': 'Black iron. The stone around it is scored where it swings.',
+  'gnawing.shape': 'It keeps to the far end. When you stop, the scratching stops.',
+  'marrow.shape': 'It stands a head above the door beside it, and it does not lean.',
+  'key.iron': 'Iron, long as your palm, cut with three teeth.',
+  'door.ahead': 'Shut. Nothing comes under it, and nothing goes through it but you.',
 }
 
-/** A door's sense is one line — true, and incomplete (voice). */
-export const DOOR_SENSES: Readonly<Record<string, string>> = {
-  'room.crossing': 'The corridor behind you is stone, and stays stone.',
-  'room.passage.drip': 'Water runs down the far side of this one.',
-  'room.trove.alcove': 'Cold air comes under this one, and the smell of iron.',
-  'room.lair.gnawing': 'Behind this one, something wet is scratching.',
-  'room.passage.ash': 'Ash comes under this one and settles on your boot.',
-  'room.warden': 'Nothing comes from this one. The nothing goes on a long way.',
+/**
+ * art. 83: what stands in a socket says its own words. A room never says
+ * them — that rule is what lets thirteen rooms hold thirty rooms' worth of
+ * moments, and breaking it here would break it everywhere.
+ */
+export const SOCKET_BEATS: Readonly<Record<string, readonly string[]>> = {
+  'enc.gnawing': ['Something wet scratches at the far end, and stops when you stop.'],
+  'enc.marrow': ['A tall shape waits in the dark ahead. It does not narrow as you near it.'],
+  'enc.iron-key': ['An iron key lies where the floor is worn, cut with three teeth.'],
+}
+
+/**
+ * art. 78: the first room after the lock announces the arrival. Every run
+ * arrives somewhere, and this is the somewhere saying so — once, in one
+ * candle, and never again (the labyrinth never explains itself twice).
+ */
+export const ARRIVALS: Readonly<Record<string, readonly string[]>> = {
+  'region.drowned': ['The floor slopes, and stays sloped. Everything under this runs to water.'],
+  'region.burnt': ['The air dries out. Everything under this has burned once already.'],
+  'region.ossuary': ['The walls go pale. Everything under this is bone, and set in courses.'],
 }
 
 /** One line per death, and one for the door that is not a death (art. 11). */
 export const END_LINES: Readonly<Record<string, string>> = {
   'end.gnawing': 'The Gnawing opens you and goes back to its corner.',
+  'end.marrow': 'The Marrow closes over you. The scratching starts again behind it.',
   'end.warden': 'The Warden stands aside. The stair keeps going down.',
   'end.kept': 'The door does not open, and the corridor behind you is stone.',
 }
@@ -106,11 +168,15 @@ export const INTENT_SAYS: Readonly<Record<string, string>> = {
   COVET: 'It curses your sixes. Sixes count as nothing this turn.',
   CORRODE: 'It spits something corrosive. Your armor does nothing this turn.',
   BELLOW: 'It takes a long breath.',
+  REND: 'It opens you from the shoulder down.',
 }
 
 /** The lines the shell says at the seams of a run. */
 export const NOTICES: Readonly<Record<string, string>> = {
   'door.locked': 'The lock holds. Whatever opens it is not on you.',
+  // arts 31, 77: a door's sense would be its region tag leaking, and the
+  // hint system is parked. A door still answers — it answers with itself.
+  'door.blind': 'Shut, and giving nothing away. The road is what you pick.',
   // arts 3 and 9: a stop, not a hint. It names nothing and points at nothing.
   'door.held': 'Something here is still yours to take.',
   'fight.won': 'The room goes quiet. The door gives.',
@@ -137,12 +203,23 @@ export const NOTICES: Readonly<Record<string, string>> = {
  */
 export const LABELS: Readonly<Record<string, string>> = {
   'horror.gnawing': 'the gnawing',
+  'horror.marrow': 'the marrow',
   'room.crossing': 'the crossing',
-  'room.passage.drip': 'the wet passage',
   'room.trove.alcove': 'the alcove',
-  'room.lair.gnawing': 'the low room',
+  'room.passage.stair': 'the stair',
+  'room.passage.drip': 'the wet passage',
+  'room.lair.cistern': 'the cistern',
+  'room.trove.sump': 'the sump',
   'room.passage.ash': 'the ash passage',
+  'room.lair.kiln': 'the kiln',
+  'room.omen.pyre': 'the pyre',
+  'room.lair.den': 'the den',
+  'room.passage.bonefield': 'the bonefield',
+  'room.puzzle.tally': 'the tally',
   'room.warden': "the warden's door",
+  'region.drowned': 'the drowned',
+  'region.burnt': 'the burnt',
+  'region.ossuary': 'the ossuary',
   'key.warden': 'the iron key',
   'die.plain': 'a plain bone',
   'die.orphan': 'the orphan',

@@ -70,6 +70,49 @@ export const THE_GNAWING: Horror = scriptedHorror(
 )
 
 /**
+ * THE MARROW — the special horror, and the drift's proof (arts 83, 84). It
+ * floats into whatever socket will take it, it is unique per run, and it
+ * wakes only when the ossuary locks: a region's encounters activating is
+ * what art. 78 means by arrival, and this is what arriving costs.
+ *
+ * Its numbers sit a little under the Gnawing's and its script runs one
+ * shorter, so the loop comes round sooner. Rarer, not merely bigger.
+ */
+export const MARROW_SCRIPT: readonly Intent[] = [
+  { verb: 'REND', amount: 9 },
+  { verb: 'SEAL', amount: 6, effect: { kind: 'seal', lines: PAIRISH } },
+  { verb: 'COVET', amount: 5, effect: { kind: 'curse', value: 5 } },
+  { verb: 'CORRODE', amount: 8, effect: { kind: 'corrode' } },
+  { verb: 'REND', amount: 13 },
+]
+
+export const MARROW_ESCALATION = 3
+
+export const MARROW_HEALTH = 120
+
+export const THE_MARROW: Horror = scriptedHorror(
+  'horror.marrow',
+  MARROW_HEALTH,
+  MARROW_SCRIPT,
+  MARROW_ESCALATION,
+)
+
+/** Every horror the depth can deal, for restoring a fight by identity. */
+export const HORRORS: readonly Horror[] = [THE_GNAWING, THE_MARROW]
+
+export function horrorById(id: string): Horror | null {
+  return HORRORS.find((held) => held.id === id) ?? null
+}
+
+/**
+ * Which line the Book of Ends takes when a horror finishes a run (art. 11).
+ * A death is authored per horror, like everything else it says.
+ */
+export function endLineOf(id: string): string {
+  return id === 'horror.marrow' ? 'end.marrow' : 'end.gnawing'
+}
+
+/**
  * The Crawling One is retired. It was authored at ninety health for the
  * THROW/BRACE turn the demo ruling repealed, and the fight it belonged to
  * is superseded (`reference/the-crawling-one-encounter.md`). Nothing deals

@@ -42,14 +42,33 @@ export {
   GNAWING_SCRIPT,
   GNAWING_ESCALATION,
   GNAWING_HEALTH,
+  THE_MARROW,
+  MARROW_SCRIPT,
+  MARROW_ESCALATION,
+  MARROW_HEALTH,
+  HORRORS,
+  endLineOf,
+  horrorById,
   loopOf,
   scriptedHorror,
 } from './horrors.js'
 export {
+  BURNT,
+  DROWNED,
+  ENCOUNTERS,
+  GNAWING,
+  IRON_KEY,
+  MARROW,
+  OSSUARY,
+  encounterProp,
+  encounterWords,
+} from './encounters.js'
+export {
+  ARRIVALS,
   BEATS,
   NOUNS,
   LOOKS,
-  DOOR_SENSES,
+  SOCKET_BEATS,
   END_LINES,
   INTENT_SAYS,
   NOTICES,
@@ -70,25 +89,28 @@ export type { RoomContent } from './rooms.js'
 export {
   CATALOG,
   CROSSING,
+  DEPTH_ONE,
+  FAR_SOCKET,
+  FLOOR_SOCKET,
   GRAMMAR,
   ROOMS,
   ROOM_BOOK,
   WARDEN,
   WARDEN_KEY,
   WARDEN_KEY_ITEM,
-  horrorAt,
-  horrorById,
+  horrorOf,
   roomContent,
   roomName,
+  socketMark,
 } from './rooms.js'
 export type { Utterance, VoiceCategory, VoiceComplaint } from './voice.js'
 export { lintVoice, asBeats, asLabels, CANDLE_WORDS } from './voice.js'
 
-import { GNAWING_SCRIPT } from './horrors.js'
+import { GNAWING_SCRIPT, MARROW_SCRIPT } from './horrors.js'
 import { LADDER } from './ladder.js'
 import {
+  ARRIVALS,
   BEATS,
-  DOOR_SENSES,
   END_LINES,
   INTENT_SAYS,
   LABELS,
@@ -96,6 +118,7 @@ import {
   NOTICES,
   NOUNS,
   READOUT,
+  SOCKET_BEATS,
 } from './prose.js'
 import type { Utterance } from './voice.js'
 import { asBeats, asLabels } from './voice.js'
@@ -118,8 +141,12 @@ export function everyString(): readonly Utterance[] {
   return [
     ...asBeats([
       ...Object.values(BEATS).flat(),
+      // art. 83: a socket's words reach the player exactly as a room's do,
+      // so they are judged exactly as a room's are.
+      ...Object.values(SOCKET_BEATS).flat(),
+      // art. 78: the arrival is one candle like any other.
+      ...Object.values(ARRIVALS).flat(),
       ...Object.values(LOOKS),
-      ...Object.values(DOOR_SENSES),
       ...Object.values(END_LINES),
       ...Object.values(INTENT_SAYS),
       ...Object.values(NOTICES),
@@ -130,6 +157,7 @@ export function everyString(): readonly Utterance[] {
       ...Object.values(READOUT),
       ...Object.values(LADDER).map((tier) => tier.name),
       ...GNAWING_SCRIPT.map((intent) => intent.verb),
+      ...MARROW_SCRIPT.map((intent) => intent.verb),
     ]),
   ]
 }
