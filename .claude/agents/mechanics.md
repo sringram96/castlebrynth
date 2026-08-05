@@ -19,7 +19,17 @@ leaks.
   rewrite.
 - Focal length derived from lens, never authored (art. 14). Props at
   world coordinates, 1/z, z-buffer respected (art. 19). Outlines from the
-  contour pass (art. 18).
+  contour pass (art. 18), for sprites and masses too (arts 100, 102).
+- A room's proportions stay three numbers; a shape that ends in a far wall
+  authors that wall's depth and nothing else (arts 14, 96). A mass is a
+  height on the floor that the cast marches against, never a crest painted
+  in screen space (art. 102) — geometry, so occlusion and perspective come
+  free instead of being faked.
+- Motion is overlay repaint on a cached base frame, never a recast; where
+  the whole room breathes it is cast twice and the frames alternate
+  (art. 110). One world clock, phase offset per instance by hash, so a
+  room breathes identically every visit (arts 17, 109). No per-thing
+  timers.
 - Necessities inside the safe frame; overflow is atmosphere only
   (art. 24).
 - Discrete rules (art. 1): no decision lost to slowness; animations

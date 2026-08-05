@@ -21,27 +21,38 @@ Never: filler, grind, a punished tap, one optimal play.
 
 ### design — "is it ours?"
 Owns theme, story, voice, and the look.
-Law: rules/voice.md, rules/the-room.md (arts 13–30), rules/the-thumb.md
-(arts 66–76, 90–92).
+Law: rules/voice.md, rules/the-room.md (arts 13–30, 93–112),
+rules/the-thumb.md (arts 66–76, 90–92).
 Test: `reference/castlebrynth-wake-v3.html` and the hero-density image.
 Never: explanation, comfort, early spoilers, out-of-register art.
 
 ### mechanics — "does it hold?"
 Owns state, persistence, generation wiring, rendering correctness, the
 engine/content boundary.
-Law: rules/the-world.md (arts 9–11, 36), the-room.md (arts 14–25).
+Law: rules/the-world.md (arts 9–11, 36), the-room.md (arts 14–25, and the
+graphics amendment's geometry — arts 96, 102, 109–110).
 Test: kill the process anywhere; restart; nothing is lost.
 Never: unresumable state, a hardcoded pixel, content logic in the engine.
 
 ## The law
-`.claude/rules/` holds 92 numbered articles, cited in tasks as "art. N".
+`.claude/rules/` holds 112 numbered articles, cited in tasks as "art. N".
 Two are spent: art. 12 is repealed (there are no classes, ever) and
 art. 47's BRACE is repealed. The rest:
 - **the-world.md** — time, touch, structure, the chain, room grammar, the
   drift (arts 77–85): regions, the forced lock, lazy dealing,
   just-in-time keys, template and instance, binding and scope — and the
   fork (art. 89): a floor socket where taking one good forfeits the other
-- **the-room.md** — parallax law, scale, the look, the screen
+- **the-room.md** — parallax law, scale, the look, the screen — and the
+  graphics amendment (arts 93–112), which says what may stand in the box:
+  a room as six parts and a school (93); the ramp and the one dither, both
+  shipped (94–95); shape above proportion, tube / chamber / junction (96);
+  a door as a hole and not a thing (97); the three tiers, where a grammar
+  without a gradient is wallpaper (98–99); objects drawn as ramp indices,
+  fields scattered, masses as geometry the rays hit (100–103); one hero
+  per room and things that keep their distance (104–105); motion as a
+  spent capital — loops, one-shots, the blink, one clock, one cached base
+  frame (106–110); an answer that names the thing (111); and a third of
+  the frame dark (112)
 - **the-lots.md** — the dice: turn, duel, the card, collection, armor, and
   the travelers (arts 86–88): the start is five bones, every other die
   belonged to somebody, and an item's origin explains its rules in one

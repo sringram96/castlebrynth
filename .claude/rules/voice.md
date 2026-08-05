@@ -10,3 +10,6 @@ in the-thumb.md.
 - The labyrinth never explains itself twice.
 - Tappable nouns are concrete and singular. A door's sense is one line —
   true, and incomplete.
+- An answer names the thing first — *"A stone basin, dry."* — and only
+  then says anything atmospheric (art. 111, the-room.md). Naming is
+  legibility, not style: this file governs the sentence after the noun.
