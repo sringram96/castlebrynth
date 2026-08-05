@@ -161,6 +161,167 @@ export const NOIR: School = {
   breath: '#101215',
 }
 
+/**
+ * The stair. The neutral pool's second room: grey granite, no character of
+ * its own, which is the character — a room that leans nowhere (art. 77).
+ */
+export const GRANITE: School = {
+  mortar: '#141416',
+  brick: ['#212226', '#2a2b30', '#34363b', '#2a2b30'],
+  brickAlt: '#454850',
+  grime: '#101012',
+  moss: '#242629',
+  moss2: '#2f3236',
+  damp: '#1a1c20',
+  flag: ['#1b1c1f', '#242629', '#242629', '#2e3034'],
+  slat: ['#1b1c1e', '#232427', '#1b1c1e', '#121314'],
+  bone: ['#8f9195', '#b9bcc1', '#dee1e6'],
+  accent: ['#2c3138', '#3f4650', '#6b7482', '#a9b3c0'],
+  edge: '#020203',
+  iron: '#111215',
+  coin: '#9aa1ab',
+  hollow: '#010102',
+  breath: '#0e0f12',
+}
+
+/**
+ * The cistern. The drowned region's lair: everything below the tidemark is
+ * black and flat, and the accent is the one thing the water gives back.
+ */
+export const BRINE: School = {
+  mortar: '#0b1315',
+  brick: ['#132022', '#1a2c2e', '#22383a', '#1a2c2e'],
+  brickAlt: '#2f4a4d',
+  grime: '#080f10',
+  moss: '#12291f',
+  moss2: '#1a3b2b',
+  damp: '#0d2228',
+  flag: ['#0e1719', '#141f22', '#141f22', '#1a292c'],
+  slat: ['#0f1618', '#161f21', '#0f1618', '#090e0f'],
+  bone: ['#7d8f8b', '#a6b9b4', '#cde0da'],
+  accent: ['#07303a', '#0d5364', '#1a8ba4', '#6fd4e6'],
+  edge: '#010303',
+  iron: '#0b1114',
+  coin: '#6aa8b4',
+  hollow: '#000202',
+  breath: '#081113',
+}
+
+/**
+ * The sump. Where the depth's water ends up, and everything it carried with
+ * it: brown, thick, and the only school whose flagstones read as wet mud.
+ */
+export const SILT: School = {
+  mortar: '#12100c',
+  brick: ['#1e1a14', '#28231b', '#332c22', '#28231b'],
+  brickAlt: '#483e2f',
+  grime: '#0d0b08',
+  moss: '#20261a',
+  moss2: '#2c3423',
+  damp: '#1b1a12',
+  flag: ['#191510', '#231d15', '#231d15', '#2d2519'],
+  slat: ['#171410', '#201b15', '#171410', '#0f0d0a'],
+  bone: ['#8a7f6a', '#b3a68d', '#d8cbaf'],
+  accent: ['#2b2a12', '#484522', '#7a7338', '#bdb271'],
+  edge: '#030302',
+  iron: '#131210',
+  coin: '#9c8f5e',
+  hollow: '#020201',
+  breath: '#0f0d0a',
+}
+
+/**
+ * The kiln. The burnt region's lair: the one school in the depth with heat
+ * still in it, and the accent is the only red anywhere in the game.
+ */
+export const EMBER: School = {
+  mortar: '#160f0c',
+  brick: ['#26170f', '#331e14', '#40271a', '#331e14'],
+  brickAlt: '#5a3823',
+  grime: '#110b08',
+  moss: '#2b1d13',
+  moss2: '#3a281a',
+  damp: '#22140e',
+  flag: ['#1f1410', '#2a1a14', '#2a1a14', '#35211a'],
+  slat: ['#1c120e', '#261813', '#1c120e', '#120b08'],
+  bone: ['#9d8875', '#c8b09a', '#e8d4c0'],
+  accent: ['#4a1206', '#7c2409', '#c04a12', '#f08a4a'],
+  edge: '#040202',
+  iron: '#161010',
+  coin: '#d4763a',
+  hollow: '#030101',
+  breath: '#150c0a',
+}
+
+/**
+ * The pyre. What the kiln leaves behind: the burnt region without the heat,
+ * flat black on flat grey, and no accent worth the name.
+ */
+export const SOOT: School = {
+  mortar: '#0f0e0d',
+  brick: ['#1a1918', '#22201e', '#2b2926', '#22201e'],
+  brickAlt: '#3d3a36',
+  grime: '#0a0a09',
+  moss: '#1c1b19',
+  moss2: '#262421',
+  damp: '#141312',
+  flag: ['#141312', '#1c1a18', '#1c1a18', '#252220'],
+  slat: ['#141312', '#1b1917', '#141312', '#0d0c0b'],
+  bone: ['#7f7a73', '#a5a099', '#cbc6bd'],
+  accent: ['#231f1b', '#3a342d', '#5e564a', '#8f8577'],
+  edge: '#020202',
+  iron: '#121110',
+  coin: '#7d7568',
+  hollow: '#010101',
+  breath: '#0c0b0a',
+}
+
+/**
+ * The bonefield. The ossuary region's passage: chalk-pale everywhere, which
+ * is the tell — it is the brightest room in the depth and the least alive.
+ */
+export const CHALK: School = {
+  mortar: '#232019',
+  brick: ['#2e2b23', '#3a362d', '#474338', '#3a362d'],
+  brickAlt: '#5f5a4c',
+  grime: '#1a1813',
+  moss: '#2f2d24',
+  moss2: '#3d3a2f',
+  damp: '#26241d',
+  flag: ['#484333', '#55503e', '#55503e', '#635d49'],
+  slat: ['#26231c', '#302c24', '#26231c', '#1a1814'],
+  bone: ['#c0b9a4', '#ded7c2', '#f6f1e2'],
+  accent: ['#4c4636', '#6e6650', '#9c9478', '#d8d2bc'],
+  edge: '#050504',
+  iron: '#1b1a16',
+  coin: '#cabf9f',
+  hollow: '#030302',
+  breath: '#16150f',
+}
+
+/**
+ * The tally. The ossuary region's puzzle: slate, so the scratches cut into
+ * the wall read as the only thing in the room anyone wrote down.
+ */
+export const SLATE: School = {
+  mortar: '#101215',
+  brick: ['#1a1d22', '#22262c', '#2b3037', '#22262c'],
+  brickAlt: '#3c424b',
+  grime: '#0c0e11',
+  moss: '#1d2126',
+  moss2: '#272c33',
+  damp: '#161a1f',
+  flag: ['#161a1e', '#1e2328', '#1e2328', '#262c33'],
+  slat: ['#151819', '#1d2124', '#151819', '#0e1012'],
+  bone: ['#98a0a8', '#c0c8d0', '#e6ecf2'],
+  accent: ['#2a2a3a', '#3d3d55', '#63637f', '#9f9fbc'],
+  edge: '#020304',
+  iron: '#101317',
+  coin: '#8e96a4',
+  hollow: '#010102',
+  breath: '#0a0c0f',
+}
+
 /** The six colours the box itself needs, drawn out of a school. */
 export function roomPalette(school: School): RoomPalette {
   return {

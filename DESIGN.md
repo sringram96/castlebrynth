@@ -75,36 +75,65 @@ accounts, exactly one horror.
 
 
 ## Status
-**The game is legible.** `npm run dev` is a playable loop in a portrait
-browser: wake → descend a generated chain → take the key → fight the
-Gnawing → win or die → the Book gains a line → a reseeded chain → the
-Warden's door, refused without the key and terse with it. `npm test` is
-green: 21 files, 132 tests.
+**The labyrinth leans.** `npm run dev` is a playable loop in a portrait
+browser: wake → open one of one to three blind doors → the room behind
+it is dealt on the spot → keep choosing → a region locks and the depth
+announces where you have arrived → the rest of the depth deals from that
+region and its encounters wake → the Warden's door, refused without the
+key and terse with it. `npm test` is green: 23 files, 173 tests.
 
-The skeleton walked; it could not be read. Every room rendered
-identically, acts changed only the bottom text, the tray was a menu of
-prose buttons, four dice states were four border colours, and a
-half-spent turn died with the tab. All of that was written down as a
-violation list under arts 66–76, and this tranche is that list closed.
-A player can now tell where they are, see that their actions did
-something, read the fight at a glance, and never lose progress.
+The dealer was dumb. It dealt a single path, so art. 31's two-to-three
+doors did not exist and blind play had nothing to choose between; that
+was the first debt on this list, and it is closed. The replacement is
+**the drift** (arts 77–85): every dealt door carries a hidden region
+tag, choosing tallies it, and the pools weight by the tally, so the
+labyrinth leans as the player leans. At a content-set door count one
+region locks and takes the rest of the depth. Twenty questions, not a
+fork in a road — no single door means much, the pattern means
+everything, and every run arrives somewhere.
+
+Three things changed shape underneath that. Dealing is **lazy**: a room
+is dealt when its door is opened, from seed plus choice history, so the
+road not taken is never computed and cannot leak (art. 79). Winnability
+stopped being a **search** and became a **construction**: required items
+are unbound from rooms, and the dealer places the key in the path ahead
+of the lock it opens (art. 80). And a room now has a **template** and an
+**instance** (art. 82): rooms repeat within a run, knowledge keys on
+what you recognise, and scene state keys on where you stand.
 
 What is still deliberately unfinished: the prose is functional
-placeholder rather than the register, the ordinary rooms are art. 26's
-first tier and not its second, and phase 0's non-goals all still hold.
+placeholder rather than the register — more of it than before — the
+ordinary rooms are art. 26's first tier and not its second, and phase
+0's non-goals all still hold.
 
 ### What exists
-- **src/state** — the two branded ledgers and the five rituals (`wake`,
-  `learn`, `collect`, `die`, `finish`). Persistence through the `Vault`
+- **src/state** — the two branded ledgers and the six rituals (`wake`,
+  `learn`, `meet`, `collect`, `die`, `finish`). Persistence through the `Vault`
   port: one versioned key, a browser impl and an in-memory one, every
   mutation written. Health and base armor are body stats on the permanent
   beside hand size, because arts 47 and 60 make them stats and content
-  owns the numbers. (arts 11, 36, 47, 56, 60)
-- **src/gen** — the interim dealer: a seeded shuffle with hard placement
-  (Crossing first, Warden's door last, key in the first half, fight-door
-  between key and lock), `isWinnable`, and `explainWinnability` naming the
-  failure. Placement is hard rather than sampled-and-rejected, so a chain
-  it deals cannot be unwinnable. (arts 31–36, 38)
+  owns the numbers. The run now carries its **history graph** — the doors
+  taken, in order — which is the source of truth art. 36 names: every
+  room the run has dealt is the replay of it, so there is one statement
+  of where the player has been and nothing that can disagree with it. It
+  also carries the deeds, keyed on the instance (art. 82). The permanent
+  gained `met` and a typed, empty `memories`: unique encounters respawn
+  with the reseed, but meetings are knowledge, and the labyrinth
+  remembers you (art. 84). A sixth ritual, `meet`, is the only way a
+  meeting crosses. `VAULT_VERSION` is 3. (arts 11, 36, 47, 56, 60, 82,
+  84)
+- **src/gen** — the drift, behind the three signatures the shell always
+  knew: `deal`, `isWinnable`, `explainWinnability`. `deal` now takes the
+  run's choice history and returns the history graph replayed — every
+  room dealt, in order, and the doors in front of the last one, and
+  nothing further. `lot.ts` folds seed, depth, step and the choices
+  upstream of a decision into that decision's lot, which is what makes
+  the replay exact and the road not taken uncomputable. `drift.ts` is the
+  tally, the pools, and the forced lock. Room choice is a weighted draw
+  under pressures — depth tendencies, the fight band, the guarantees, the
+  adjacency bans, the no-clump penalty — none of which solve anything.
+  They lean, and whether they held is asked of a thousand runs.
+  (arts 31–39, 77–83)
 - **src/lots** — the whole duel. The turn (intent first, cast, keep, one
   recast); the shapes and the ladder; the card at once-per-fight; armor as
   a stat with corrode, seal and curse as declared intent data; riders,
@@ -117,7 +146,13 @@ first tier and not its second, and phase 0's non-goals all still hold.
   renderer reads and what the frame cache is keyed on (art. 70) — and
   `mayLeave`, which is art. 3: a required thing still lying here refuses
   every door in the room. The `RoomBook` port keeps prose out of the
-  engine. (arts 3, 5–9, 29, 70)
+  engine. Two of the drift's articles land here because both are about a
+  room under the thumb: art. 82's template/instance split, so what you
+  took *here* is gone from here and not from every copy; and art. 83's
+  socket composition, where a room's own words are laid end to end with
+  the words each socket brought with it. `chooseDoor` hands back the run
+  *and* the chain, because under art. 79 committing a door is what deals
+  the room behind it. (arts 3, 5–9, 29, 70, 79, 82–83)
 - **src/hinge** — the fight-door, the staged advance as a prop painted
   into the same box, the four exits, death routing, and the two laws
   about a fight's place in a *run*: `saveFight`/`restoreFight` (art. 75)
@@ -130,10 +165,17 @@ first tier and not its second, and phase 0's non-goals all still hold.
   region that answers a tap on a thing is derived from the same world
   coordinates the thing is painted at (arts 19, 68), and `overpaint`, so
   a motion can be laid over a cast box without casting it again.
-- **src/content** — six hand-authored rooms, each with its own school
-  and its own props; the Gnawing at the demo's numbers, the demo's five
-  goods, the ladder, the reference fight's kit, and every player-facing
-  string. The voice lint runs in two categories — prose owes the whole
+- **src/content** — thirteen hand-authored rooms, each with its own
+  school and its own signature prop: two fixed anchors, two in the
+  neutral pool, and three each in the drowned, the burnt and the
+  ossuary. Every room declares the same two sockets — a far one that
+  takes teeth, a floor one that takes what can be picked up — and no
+  room's prose or pixels assume what fills either. Three encounters ship
+  against art. 83's two axes: the Gnawing floats and repeats freely; the
+  Marrow floats, is unique per run, and wakes only when the ossuary
+  locks; the iron key floats and is placed by the dealer alone. The
+  Gnawing at the demo's numbers, the demo's five goods, the ladder, the
+  reference fight's kit, and every player-facing string. The voice lint runs in two categories — prose owes the whole
   rule, a name owes it minus second person and present tense — and the
   controls in `VERBS` are held to art. 66 instead, which is the same
   review by a different rule.
@@ -155,7 +197,9 @@ first tier and not its second, and phase 0's non-goals all still hold.
 | `lots.invariants` | a die never twice, a line never twice, damage floors, the recast odds |
 | `lots.fairness` | a bare player beats the Gnawing more often than not, and not always (art. 33) |
 | `lots.fight` | `reference/the-gnawing-fight.md`, turn for turn |
-| `gen` | 1000 seeds, every arrangement winnable (arts 32, 33, 36, 38) |
+| `gen` | the dealer run by run: lazy dealing, one-to-three doors, the instance, the prefix property, winnability by construction (arts 31, 33, 36, 79–82) |
+| `gen.drift` | 1000 runs per policy: every run locks and announces, a committed policy locks its own region, a coin flip still arrives, the fight band, the bans, the repeats, the tendencies (arts 31, 36–39, 77–78, 82) |
+| `encounters` | binding and scope on every encounter, the room that never speaks for its sockets, unique-per-run, the region that wakes one, and the meeting that survives death and a reload (arts 78, 83–84) |
 | `state` | kill the process, restore exactly; the ledgers never mix (arts 11, 36) |
 | `descent` | candles, taps, doors, forward only, the candle written down (arts 5–9, 29, 36) |
 | `hinge` | the fight-door, the four exits, wounds carried out (art. 30) |
@@ -163,26 +207,72 @@ first tier and not its second, and phase 0's non-goals all still hold.
 | `room` | byte-identical renders, the GRID dial, the mouth (arts 13–18, 22–23) |
 | `room.scene` | a palette and a prop per room, distinct pixels, the name in the first candle, the taken key gone, the opened door open (arts 19, 21, 34, 70) |
 | `fight.persist` | the round trip at every point in a turn over 30 seeds, and the card that flight can never refresh (arts 63, 75) |
-| `descent.required` | no legal walk reaches a lock without its key — with the control that proves the law is doing the work (arts 3, 4, 9) |
+| `descent.required` | the key unbound from rooms, placed once and before its lock across 7000 runs of adversarial policies; no legal walk reaches the lock keyless — with the control that proves the law is doing the work (arts 3, 4, 9, 80) |
 | `content.voice` | every player-facing string, in its category; every control against art. 66 |
 
 ### Debt
 Named, not hidden. Each of these is a task, not an accident.
 
-- **The dealer is dumb.** It deals a single path, so art. 31's two-to-three
-  doors per room do not exist yet and blind play has nothing to choose
-  between. The real grammar engine — adjacency bans, per-depth guarantees,
-  fight-count bands, the depth weights of art. 39 — goes in behind the
-  same three signatures. `Grammar` is honoured in shape and mostly empty.
+- **~~The dealer is dumb.~~** Closed by this wave. The drift replaced it:
+  one to three doors per room, hidden region tags, lazy dealing, the
+  forced lock, keys placed just in time, template and instance, sockets
+  and encounters. `Grammar` and `DepthPlan` are honoured in full.
+- **New: the drift's knobs are all in content, and one depth uses them.**
+  Everything the drift can be tuned by lives in `src/content/rooms.ts`
+  and nowhere else. Per depth (`DEPTH_ONE`): `length` (9 rooms, art. 81),
+  `lockAt` (4 doors, art. 78), the `regions` and what is in each pool,
+  the `neutral` pool, the `tendencies` per room type (art. 39), and the
+  `locks` the depth is committed to (art. 80). Across depths (`GRAMMAR`):
+  `doorWeights` (art. 31), `fightBand`, `adjacencyBans` and `guarantees`
+  (art. 38), `clumpPenalty` (art. 82), `driftPull` — how hard the tally
+  leans the pools (art. 77) — and `bandPull`, how hard an unmet band
+  pulls back. Per room: each socket's `chance`. Turning any of them needs
+  no engine change, and the distributional suite is how you find out what
+  you did.
+- **New: a door says nothing, and that may be too little.** Door senses
+  are gone: art. 31 parked them with the hint system, and art. 77 notes
+  that a sense is simply a region tag leaking. So a door answers a tap
+  with one line that is true and carries no information. Art. 69 is
+  satisfied and art. 77 is protected, but a crossroads of three
+  indistinguishable doors is a thinner moment than the old sensed door
+  was. Whether the drift wants a partial, unreliable, or earned leak —
+  and what it costs — is the hint system's wave, and a design question.
+- **New: only one depth exists, so art. 39 is half-exercised.** Depth
+  tendencies are per depth by construction, and the tests show that
+  moving them moves the distribution. But "shallow leans quiet, deep
+  leans toward teeth" is a claim about *two* depths, and there is one.
+- **New: the boon socket is never filled of the dealer's own accord.**
+  Its chance is zero everywhere. The only thing that goes into it is the
+  key art. 80 puts there. Art. 4's fleeting optional treasure has the
+  socket it needs and no content to put in it — that waits on the
+  economy, as does art. 83's `remembers` scope, which ships typed and
+  unfilled because the merchant it exists for does.
+- **New: the neutral pool holds no lair.** A consequence rather than a
+  decision: it caps how far a tendency change can move the mix, because a
+  run's pre-lock rooms may come from a pool the change cannot reach.
+  Whether the neutral pool should mirror the regions' shape or stay
+  deliberately quiet is a content question nobody has ruled on.
+- **New: a whole depth is very hard to survive.** The drift deals about
+  two and a half fights a run and nothing heals between them, so an
+  honest bare-pouch playthrough usually ends before the lock. That is not
+  the drift's doing — arts 40 and 55 park the Sanctum, the Savior and the
+  economy, which are the three things that would answer it — but the
+  drift is what made it visible, because a depth is now long enough to
+  die halfway down.
 - **Still no design pass.** The shell is now legible, which is law; it is
   not styled, which is not. arts 26–30's second tier is unspent: the
   ordinary rooms are the computed box plus basic sprites, there are no
   hero plates, and art. 28's idle patches do not exist. `index.html`'s
   CSS is anatomy and four dice states, not a look. The design-agent
   consult is still owed.
-- **Placeholder prose.** `src/content/prose.ts` is functional second
-  person, not the register. Content review is voice review, and the lint
-  passes — but passing the lint is not being in register.
+- **Placeholder prose, and more of it.** `src/content/prose.ts` is
+  functional second person, not the register — and this wave more than
+  doubled it: seven new rooms, three arrival lines (art. 78), three
+  socket beats (art. 83), and the line a blind door answers with. Content
+  review is voice review, and the lint passes — but passing the lint is
+  not being in register. The arrivals are the most exposed of these: an
+  arrival is the payoff of a whole depth of committing, and it is
+  currently one flat sentence.
 - **One depth, one horror, no economy.** The phase-0 non-goals still hold.
 - **The renderer is the shell's slow part.** The box is computed per pixel,
   so `src/main.ts` caches every rendered frame by scene state and height.
@@ -201,7 +291,21 @@ Named, not hidden. Each of these is a task, not an accident.
   one verb in the act strip doing what art. 74's glyph does for the card;
   whether the Book deserves its own glyph is a design question, not a
   law one.
-- **New: `end.kept` is unreachable.** Art. 3 now refuses the door rather
+- **New: at the Warden's door, the lock covers the door's tap region.**
+  Found by walking the real app. Art. 69 puts the small thing on the
+  large thing it is part of, so `warden.lock` is laid over `warden.door`
+  — and a single door is centred on the same mark, so the middle of the
+  one door in that room answers "the lock" rather than picking the door.
+  Nothing is unreachable: `Descend` is in the act strip, the door is
+  already the chosen one, and the door's edge still answers. It predates
+  the drift, and a corridor moment being a single centred door makes it
+  easier to meet.
+- **The trail is PARKED.** Art. 85 says the run's history graph could
+  someday be shown as where you have been, and that showing it still
+  requires an amendment. The graph now exists and is trivially
+  renderable, which makes the temptation worse rather than better. There
+  is a board task saying do not pick it up.
+- **`end.kept` is unreachable.** Art. 3 now refuses the door rather
   than letting a run strand, so the ending that burned a stranded run
   cannot be arrived at by play. The valve is kept in `roomActs` against a
   chain that failed art. 33's guarantee, and its line is still authored.

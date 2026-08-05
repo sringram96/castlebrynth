@@ -1,25 +1,24 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  BARE_BODY,
-  CATALOG,
-  GRAMMAR,
+  FAR_SOCKET,
+  FLOOR_SOCKET,
   GRID,
-  HAND_SIZE,
+  IRON_KEY,
   LABELS,
-  PLAIN_POUCH,
   ROOMS,
   ROOM_BOOK,
   atGrid,
   roomContent,
 } from '../src/content/index.js'
 import type { SceneState } from '../src/descent/index.js'
-import { act, enterRoom, sceneKey, sceneStateOf } from '../src/descent/index.js'
-import { deal } from '../src/gen/index.js'
+import { act, chooseDoor, enterRoom, sceneKey, sceneStateOf } from '../src/descent/index.js'
+import type { EncounterId } from '../src/gen/index.js'
+import { hereIn } from '../src/gen/index.js'
 import { markRect, renderRoom, viewOf } from '../src/room/index.js'
 import type { RoomId } from '../src/state/index.js'
-import { firstPermanent, wake } from '../src/state/index.js'
-import { seedOf } from './helpers.js'
+import { instanceOf } from '../src/state/index.js'
+import { DEALER, opened } from './drift.js'
 
 /**
  * Rooms you can tell apart, and a world that remembers (arts 19, 21, 34,
@@ -32,7 +31,22 @@ import { seedOf } from './helpers.js'
 const CONFIG = atGrid(GRID, 260)
 
 function bare(room: RoomId): SceneState {
-  return { room, done: [], opened: [], horror: null }
+  return {
+    room,
+    instance: instanceOf(room, 0),
+    done: [],
+    opened: [],
+    horror: null,
+    fills: [],
+  }
+}
+
+/** The same room, with something standing in one of its sockets (art. 83). */
+function filled(room: RoomId, encounter: string, socket = FLOOR_SOCKET): SceneState {
+  return {
+    ...bare(room),
+    fills: [{ socket, encounter: encounter as unknown as EncounterId }],
+  }
 }
 
 function pixelsOf(state: SceneState): Uint8ClampedArray {
@@ -101,35 +115,44 @@ describe('rooms — art. 21 (palette is authorial), art. 19 (props stand somewhe
 })
 
 describe('the world remembers — art. 70 (prose confirms, pixels prove)', () => {
-  function atTheAlcove() {
-    const ledgers = wake(firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY), seedOf(7))
-    const chain = deal(seedOf(7), 1, CATALOG, GRAMMAR)
-    const trove = chain.nodes.find((node) => node.type === 'trove')!
-    return { ledgers, chain, room: trove.room }
+  /** The room the dealer put this run's key in, and the run standing in it. */
+  function atTheKey() {
+    let { ledgers, chain } = opened(7)
+    for (let n = 0; n < 12; n++) {
+      const node = hereIn(chain)!
+      if (node.fills.some((fill) => fill.encounter === IRON_KEY)) return { ledgers, chain, node }
+      const walked = chooseDoor(ledgers, chain, ROOM_BOOK, node.doors[0]!, DEALER)
+      ledgers = walked.ledgers
+      chain = walked.chain
+    }
+    throw new Error('the key was never dealt')
   }
 
-  it('keys the frame on what has happened, not on the room id alone', () => {
-    const { ledgers, chain, room } = atTheAlcove()
-    const before = sceneStateOf(ledgers, ROOM_BOOK, room)
-    const bands = enterRoom(ledgers, chain, ROOM_BOOK, room)
+  it('keys the frame on what has happened here, not on the room id alone', () => {
+    const { ledgers, chain, node } = atTheKey()
+    const before = sceneStateOf(ledgers, ROOM_BOOK, node)
+    const bands = enterRoom(ledgers, chain, ROOM_BOOK, node.instance)
     const taking = bands.tray.flatMap((offer) => (offer.kind === 'act' ? [offer.act] : []))
-    const after = sceneStateOf(act(ledgers, taking[0]!), ROOM_BOOK, room)
+    const after = sceneStateOf(act(ledgers, taking[0]!), ROOM_BOOK, node)
 
     // The bug art. 70 names: one key for two states is one frame for two rooms.
     expect(sceneKey(before)).not.toBe(sceneKey(after))
     expect(before.done).toEqual([])
     expect(after.done).toEqual(['act.take-key'])
+    // art. 82: the key of the frame names the instance, so a second copy of
+    // the room is not painted with the first one's losses.
+    expect(sceneKey(before)).toContain(node.instance as string)
   })
 
   it('takes the key out of the room when the key is taken', () => {
-    const { ledgers, chain, room } = atTheAlcove()
-    const bands = enterRoom(ledgers, chain, ROOM_BOOK, room)
+    const { ledgers, chain, node } = atTheKey()
+    const bands = enterRoom(ledgers, chain, ROOM_BOOK, node.instance)
     const taking = bands.tray.flatMap((offer) => (offer.kind === 'act' ? [offer.act] : []))
-    const before = sceneStateOf(ledgers, ROOM_BOOK, room)
-    const after = sceneStateOf(act(ledgers, taking[0]!), ROOM_BOOK, room)
+    const before = sceneStateOf(ledgers, ROOM_BOOK, node)
+    const after = sceneStateOf(act(ledgers, taking[0]!), ROOM_BOOK, node)
 
     const propsIn = (state: SceneState): readonly string[] => {
-      const scene = roomContent(room).scene(state)
+      const scene = roomContent(node.room).scene(state)
       return scene.props(viewOf(scene.shape, CONFIG)).map((prop) => prop.name)
     }
     expect(propsIn(before)).toContain('the key')
@@ -138,16 +161,33 @@ describe('the world remembers — art. 70 (prose confirms, pixels prove)', () =>
     expect(fnv(pixelsOf(after))).not.toBe(fnv(pixelsOf(before)))
   })
 
+  it('paints what a socket holds, and paints nothing when it holds nothing (art. 83)', () => {
+    const room = 'room.passage.stair' as RoomId
+    const propsIn = (state: SceneState): readonly string[] => {
+      const scene = roomContent(room).scene(state)
+      return scene.props(viewOf(scene.shape, CONFIG)).map((prop) => prop.name)
+    }
+    // The room's authored prose and pixels assume nothing about its sockets.
+    expect(propsIn(bare(room))).not.toContain('the key')
+    expect(propsIn(bare(room))).not.toContain('the wet shape')
+    // Fill them, and the same room shows what is standing in it.
+    expect(propsIn(filled(room, 'enc.iron-key'))).toContain('the key')
+    expect(propsIn(filled(room, 'enc.gnawing', FAR_SOCKET))).toContain('the wet shape')
+    expect(fnv(pixelsOf(filled(room, 'enc.gnawing', FAR_SOCKET)))).not.toBe(
+      fnv(pixelsOf(bare(room))),
+    )
+  })
+
   it('leaves an opened door standing open', () => {
-    const { room } = atTheAlcove()
+    const room = 'room.trove.alcove' as RoomId
     const shut = bare(room)
-    const open: SceneState = { ...shut, opened: [`${room}→somewhere`] }
+    const open: SceneState = { ...shut, opened: [`${shut.instance}→0`] }
     expect(sceneKey(open)).not.toBe(sceneKey(shut))
     expect(fnv(pixelsOf(open))).not.toBe(fnv(pixelsOf(shut)))
   })
 
   it('keeps a wounded horror wounded in the frame key, as it always did', () => {
-    const { room } = atTheAlcove()
+    const room = 'room.trove.alcove' as RoomId
     const whole: SceneState = { ...bare(room), horror: 150 }
     const hurt: SceneState = { ...bare(room), horror: 40 }
     expect(sceneKey(whole)).not.toBe(sceneKey(hurt))

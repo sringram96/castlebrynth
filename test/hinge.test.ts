@@ -1,17 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import {
-  BARE_BODY,
-  CATALOG,
-  GRAMMAR,
-  HAND_SIZE,
-  LADDER,
-  PLAIN_POUCH,
-  THE_GNAWING,
-  WARDEN,
-  horrorAt,
-} from '../src/content/index.js'
-import { deal } from '../src/gen/index.js'
+import { BARE_BODY, LADDER, THE_GNAWING, horrorOf } from '../src/content/index.js'
 import { lotFrom } from '../src/gen/index.js'
 import type { Fight } from '../src/lots/index.js'
 import { advanceFight, cast, casting, claim, claimable, decide, withTurn } from '../src/lots/index.js'
@@ -25,8 +14,7 @@ import {
   routeTurn,
   saveFight,
 } from '../src/hinge/index.js'
-import { firstPermanent, wake } from '../src/state/index.js'
-import { seedOf } from './helpers.js'
+import { atAFight, seedOf } from './drift.js'
 
 /**
  * The hinge — art. 30. A fight is the room with the thing come close: the
@@ -34,11 +22,10 @@ import { seedOf } from './helpers.js'
  * the whole run to the Crossing.
  */
 function atTheLair() {
-  const ledgers = wake(firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY), seedOf(4))
-  const chain = deal(seedOf(4), 1, CATALOG, GRAMMAR)
-  const lair = chain.nodes.find((node) => node.type === 'lair')!
-  const door = lair.doors[0]!
-  return { ledgers, chain, lair, door }
+  // art. 83: horrors float into sockets, so there is no lair to look up —
+  // the fight is wherever this run's choices put one.
+  const { ledgers, chain, node, door } = atAFight(4)
+  return { ledgers, chain, lair: node, door }
 }
 
 /** One turn, played the plainest way: cast, claim what is there, end. */
@@ -53,13 +40,17 @@ function playTurn(fight: Fight, seed: number, decision: 'end-turn' | 'flee' = 'e
 }
 
 describe('hinge — art. 30 (no battle screen), arts 11 and 32 (death routes on)', () => {
-  it('finds the horror behind the fight-door, and only there', () => {
+  it('finds the horror in the room it stands in, and nowhere else (arts 30, 83)', () => {
     const { chain, lair, door } = atTheLair()
-    expect(door.fight).toBe(THE_GNAWING.id)
-    expect(horrorAt(lair.room)?.id).toBe(THE_GNAWING.id)
+    expect(door.fight).toBe(horrorOf(lair.fills)?.id)
+    expect(horrorOf(lair.fills)).not.toBeNull()
+    // Every door out of this room is that fight, and only rooms with
+    // something in the socket have one at all.
+    for (const gate of lair.doors) expect(gate.fight).toBe(door.fight)
     for (const node of chain.nodes) {
-      if (node.room === lair.room) continue
-      expect(horrorAt(node.room)).toBeNull()
+      if (node.instance === lair.instance) continue
+      if (horrorOf(node.fills) !== null) continue
+      for (const gate of node.doors) expect(gate.fight).toBeUndefined()
     }
   })
 
@@ -107,13 +98,15 @@ describe('hinge — art. 30 (no battle screen), arts 11 and 32 (death routes on)
     // run keeps is the fight as it stood, not the absence of one.
     const paused = routeFlight(
       ledgers,
-      saveFight(fight, lair.room, 'pre', [], true, false),
+      saveFight(fight, lair.instance, 'pre', [], true, false),
     )
     expect(paused.run!.fight).not.toBeNull()
-    expect(pausedAt(paused, lair.room)!.horrorHealth).toBe(fight.horrorHealth)
-    expect(pausedAt(paused, lair.room)!.engaged).toBe(false)
+    expect(pausedAt(paused, lair.instance)!.horrorHealth).toBe(fight.horrorHealth)
+    expect(pausedAt(paused, lair.instance)!.engaged).toBe(false)
     // And it belongs to its own door: another room has no fight waiting.
-    expect(pausedAt(paused, WARDEN)).toBeNull()
+    // And it belongs to its own instance: art. 82 lets a run deal the same
+    // room twice, and a fight down there is not waiting for you up here.
+    expect(pausedAt(paused, `${lair.room}#99` as typeof lair.instance)).toBeNull()
   })
 
   it('carries the wounds out of the fight and into the run (art. 30)', () => {
@@ -135,5 +128,7 @@ describe('hinge — art. 30 (no battle screen), arts 11 and 32 (death routes on)
     expect(woken.run!.health).toBe(BARE_BODY.health)
     expect(woken.run!.carried).toEqual([])
     expect(woken.run!.at.step).toBe(0)
+    // art. 36: the history burns with the run — the reseed is a new road.
+    expect(woken.run!.history.taken).toEqual([])
   })
 })
