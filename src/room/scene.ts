@@ -113,6 +113,14 @@ export interface SurfaceShaders {
    * cast's, because a field is scattered and never drawn (art. 101).
    */
   sky?(up: number, across: number): number
+  /**
+   * art. 96: the wall across the far end of a junction's turn. Same two
+   * questions the far wall answers — across, and up — asked of the plane a
+   * turn stops at. It is the same stone (art. 93: one school, four
+   * surfaces), so a room that authors no jamb gets the far wall's shader
+   * without the far wall's features on it.
+   */
+  jamb?(x: number, height: number): number
 }
 
 /** Which surface a pixel first hit. Also the contour pass's alphabet. */
@@ -128,6 +136,8 @@ export const Surface = {
   Sky: 6,
   /** art. 102: the substance lying on the floor, which the rays hit. */
   Mass: 7,
+  /** art. 96: the wall a junction's turn ends in, seen through the hole. */
+  Turn: 8,
 } as const
 export type SurfaceId = (typeof Surface)[keyof typeof Surface]
 

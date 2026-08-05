@@ -45,7 +45,7 @@ export type {
   SurfaceId,
 } from './scene.js'
 export { Surface } from './scene.js'
-export type { MarkRect, Projected, RoomShape, View, WorldMark } from './view.js'
+export type { MarkRect, Projected, RoomShape, Turn, View, WorldMark } from './view.js'
 export { markRect, viewOf } from './view.js'
 
 /** One rendered room: the pixels, and the buffers that explain them. */

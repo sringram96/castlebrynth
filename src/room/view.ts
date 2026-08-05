@@ -32,6 +32,39 @@ export interface RoomShape {
    * diminishes honestly.
    */
   readonly open?: boolean
+  /**
+   * art. 96: the **junction** — a chamber whose side apertures are wide and
+   * full-height, where a door is a direction you turn rather than an item you
+   * pick. Declared per wall, because a junction that offers one way on is a
+   * corner and still a junction: the room deals the turns it has ways out of,
+   * and never one it does not (art. 70 — the pixels may not offer what the
+   * chain does not).
+   */
+  readonly turns?: { readonly left?: Turn; readonly right?: Turn }
+}
+
+/**
+ * One of art. 96's turns, as the cast sees it: a stretch of side wall that
+ * is not there, and a corridor going out behind it.
+ *
+ * It is geometry and not a painting, for the reason art. 102 gives about
+ * masses: an opening painted on a side wall would run flat across the frame
+ * instead of receding, would agree in size with nothing else in the room,
+ * and could not hide what stands behind it. Cast, all three stop being
+ * true — the floor and the ceiling run on into the turn by themselves, the
+ * jamb narrows by the same perspective as everything else, and art. 18's
+ * contour inks the hole without anybody drawing it.
+ */
+export interface Turn {
+  /** Where along the wall the aperture starts and stops, in depth. */
+  readonly from: number
+  readonly to: number
+  /**
+   * How far out the turn runs before there is nothing left to see: past it
+   * is the mouth (art. 16), because you cannot see round a corner and the
+   * game already has a way of saying so.
+   */
+  readonly throat: number
 }
 
 /**

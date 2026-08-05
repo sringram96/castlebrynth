@@ -152,6 +152,27 @@ export function brickedUp(at: number, wide: number, high: number, low = 0): Feat
   }
 }
 
+/**
+ * The architrave around a junction's turn (arts 96, 97).
+ *
+ * A turn is a way out, and art. 97 says a way out is framed — an architrave
+ * standing proud of the wall around the aperture, and nothing that is not a
+ * way out may wear one. The hole itself is geometry and is cast, not drawn
+ * (art. 96); this is the band of proud stone on the wall either side of it,
+ * which is the whole of what the wall has to say about it.
+ *
+ * There is no lintel, because a junction's aperture is full-height and there
+ * is no wall above it to put one on.
+ */
+export function turnFrame(from: number, to: number, thick = 1.4): Feature {
+  return (along, _height, base) => {
+    const off = along < from ? from - along : along > to ? along - to : 0
+    if (off <= 0 || off > thick) return null
+    // Proud, and falling away from the opening rather than a flat band.
+    return base + d(0.7 + 1.5 * (1 - off / thick))
+  }
+}
+
 /** Lay several features on one wall, nearest the eye winning. */
 export function layered(...features: readonly Feature[]): Feature {
   return (along, height, base) => {

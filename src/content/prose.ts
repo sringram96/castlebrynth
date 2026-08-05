@@ -30,7 +30,9 @@ export const BEATS: Readonly<Record<string, readonly string[]>> = {
   ],
   'room.passage.drip': [
     'The wet passage. Water runs in a cut down the middle of the floor.',
-    'Three seams in the ceiling let it in. The far end narrows to a door.',
+    // art. 96: the room turns now, so the beat says what the pixels say —
+    // the cut goes on sideways, and so does the way out.
+    'Three seams in the ceiling let it in. The cut goes out through the left-hand wall.',
   ],
   // art. 83: the room says the room. What stands in it says itself.
   'room.sanctum.font': [
@@ -102,7 +104,7 @@ export const BEATS: Readonly<Record<string, readonly string[]>> = {
   ],
   'room.lair.den': [
     'The den. A wide mark drags across the floor and turns at the corner.',
-    'The door at the far end breathes.',
+    'The corner it turns at is open, and something in it breathes.',
   ],
   'room.passage.bonefield': [
     'The bonefield. Bone banks against both walls the way ash does elsewhere.',
@@ -153,6 +155,16 @@ export const NOUNS: Readonly<Record<string, string>> = {
   'bonefield.bone': 'the bone',
   'tally.marks': 'the scratches',
   'font.step': 'the step',
+  // The threshold wave: the one thing each of the first fourteen was
+  // missing (art. 104). An answer names the thing (art. 111), so each of
+  // them is a plain noun before it is anything else.
+  'alcove.coins': 'the coins',
+  'cistern.cage': 'the cage',
+  'sump.skull': 'the skull',
+  'ash.bearer': 'the lantern-bearer',
+  'kiln.brazier': 'the brazier',
+  'bonefield.urn': 'the urn',
+  'tally.bell': 'the bell',
   'warden.lock': 'the lock',
   'warden.door': 'the black door',
   // art. 83: what stands in a socket names itself, wherever it stands.
@@ -186,6 +198,13 @@ export const LOOKS: Readonly<Record<string, string>> = {
   'stair.tread': 'Each tread dips in the middle. A great many boots, or a few centuries.',
   'cistern.water': 'Flat, black, and deeper than the room is tall.',
   'sump.grate': 'Iron bars over a drop. Nothing comes back up it.',
+  'alcove.coins': 'Coins, spilled short of the alcove. Somebody dropped them running.',
+  'cistern.cage': 'A cage, standing in the water to its middle. The door of it is open.',
+  'sump.skull': 'A skull, come down with everything else. The silt has been in it.',
+  'ash.bearer': 'A figure, stooped under a lantern. It faces away and stays that way.',
+  'kiln.brazier': 'A brazier, still going. Nobody has fed it and it is not out.',
+  'bonefield.urn': 'An urn, upright, and the lid is off. What it holds is out in the drifts.',
+  'tally.bell': 'A bell, hung low against the wall. The clapper is gone.',
   'buried.sand': 'Sand, banked to the walls. It is still coming in.',
   'buried.skull': 'A skull, half out of the sand. The jaw is somewhere under it.',
   'throne.seat': 'A stone chair, cold. The arms are worn smooth at the ends.',
