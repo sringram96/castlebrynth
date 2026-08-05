@@ -10,7 +10,7 @@
 
 import type { Prop, RoomShape, Scene, View } from '../../room/index.js'
 import type { School } from '../palettes.js'
-import { roomPalette } from '../palettes.js'
+import { lookOf } from '../palettes.js'
 import { RENDER } from '../render.js'
 import { masonry } from './wake.js'
 
@@ -29,7 +29,7 @@ export function plainScene(
   return {
     id,
     shape,
-    palette: roomPalette(school),
+    look: lookOf(school),
     surfaces: masonry(school, shape, RENDER.eye),
     // art. 19: painted near over far, so the list is declared far to near.
     props: (view) => [...dressing(view)].sort((one, other) => other.z - one.z),

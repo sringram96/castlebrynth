@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Castlebrynth — the levers, v2</title>
+<style>
+  :root{ --ink:#0a0908; --ink2:#141210; --line:#2b2722;
+         --bone:#d8d0c0; --dim:#8a8478; --faint:#55504a; --wax:#d9b36a; }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  body{margin:0; background:var(--ink); color:var(--bone);
+    font-family:"Iowan Old Style",Palatino,Georgia,serif; line-height:1.45}
+  header{padding:16px 14px 10px; border-bottom:1px solid var(--line)}
+  h1{margin:0 0 5px; font-size:1rem; letter-spacing:.3em; font-variant:small-caps; font-weight:500}
+  header p{margin:0 0 6px; font-size:.82rem; color:var(--dim)}
+  section{padding:16px 0 6px; border-bottom:1px solid var(--line)}
+  h2{margin:0 14px 3px; font-size:.85rem; letter-spacing:.2em; font-variant:small-caps; font-weight:500}
+  .why{margin:0 14px 10px; font-size:.78rem; color:var(--dim)}
+  .strip{display:flex; gap:10px; overflow-x:auto; padding:0 14px 12px;
+    scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch}
+  .tile{flex:0 0 auto; scroll-snap-align:start}
+  .tile canvas{display:block; border:1px solid var(--line); image-rendering:pixelated}
+  .tile.room canvas{width:150px; height:250px}
+  .tile.crop canvas{width:190px; height:150px}
+  .tile b{display:block; font-size:.7rem; letter-spacing:.1em; font-variant:small-caps;
+    font-weight:500; padding-top:6px}
+  .tile span{display:block; font-size:.66rem; color:var(--faint); line-height:1.35; max-width:190px}
+  .note{margin:10px 14px 0; font-size:.72rem; color:var(--faint); font-style:italic}
+  .ramp{display:flex; margin:0 14px 10px; height:14px; border:1px solid var(--line)}
+  .ramp i{flex:1}
+  footer{padding:16px 14px 34px; font-size:.75rem; color:var(--faint)}
+</style>
+</head>
+<body>
+<header>
+  <h1>the levers · v2</h1>
+  <p>The dot pattern is fixed the way pixel art has always fixed it: one <b>ramp</b> per school, and dither only ever between two <i>adjacent</i> steps on it. Material, grime, light and fog all move a pixel along the same ramp instead of mixing arbitrary colour pairs.</p>
+  <p>Grammar rows now show a close crop of the wall, because those knobs are invisible at thumbnail size.</p>
+</header>
+<div id="rows"></div>
+<footer>Still first-hit casting, still ordered dither, still deterministic, still no alpha and no gradients. One dither per pixel instead of four.</footer>
+
+<script>
+"use strict";
+/* ── noise ─────────────────────────────────────────────────────────
+   Bayer 4x4 is a regular lattice, and at 3 device pixels per game
+   pixel the eye reads the lattice instead of the shade. Interleaved
+   gradient noise is deterministic like Bayer but spatially scattered,
+   so a half-lit surface reads as a surface, not as a screen door. */
+function ign(x,y){
+  const f=(v)=>v-Math.floor(v);
+  return f(52.9829189*f(0.06711056*x+0.00583715*y));
+}
+const h2=(a,b)=>{let n=(a*73856093 ^ b*19349663)>>>0; n^=n>>13; n=(n*1274126177)>>>0; return n%100;};
+const mix=(a,b,t)=>{
+  const A=parseInt(a.slice(1),16), B=parseInt(b.slice(1),16);
+  const r=Math.round((A>>16&255)*(1-t)+(B>>16&255)*t);
+  const g=Math.round((A>>8&255)*(1-t)+(B>>8&255)*t);
+  const l=Math.round((A&255)*(1-t)+(B&255)*t);
+  return "#"+((r<<16|g<<8|l)>>>0).toString(16).padStart(6,"0");
+};
+/* Build a ramp of N steps from a dark end to a light end, bent so the
+   dark half has more steps — which is where a dark game lives. */
+function ramp(dark,light,n,bend=1.5){
+  const out=[];
+  for(let i=0;i<n;i++){ const t=Math.pow(i/(n-1),bend); out.push(mix(dark,light,t)); }
+  return out;
+}
+
+/* ── schools ───────────────────────────────────────────────────────
+   A school is: a ramp per surface, a light, air, and a grammar whose
+   knobs move a cell UP OR DOWN THE RAMP rather than picking a colour. */
+const BASE={
+  box:{ lens:62, width:9, ceiling:6.4, depth:52 },
+  ramps:{
+    wall: ramp("#0c0e10","#6f7a85",9),
+    floor:ramp("#0b0d0f","#66707a",9),
+    ceil: ramp("#08090b","#4a525a",9),
+  },
+  grammar:{
+    unit:0.85, seam:0.10,
+    spread:1.2,     // how far cells stray up/down the ramp
+    defect:8, defectDrop:2.2,
+    gradient:"none", gradientStrength:1,
+    inclusion:0, inclusionLift:3.2,
+  },
+  light:{ station:"withYou", reach:18, lift:3.4, tint:"#9aa7b3", tintAmt:0.16 },
+  air:{ tint:"#000000", rate:1.0 },
+  base:{ wall:4.6, floor:4.4, ceil:2.8 },   // where each surface sits unlit
+  edge:"#07080a",
+};
+const clone=(o)=>{
+  const c=JSON.parse(JSON.stringify(o)); return c;
+};
+function vary(path,value){
+  const S=clone(BASE); const p=path.split(".");
+  let t=S; for(let i=0;i<p.length-1;i++) t=t[p[i]];
+  t[p[p.length-1]]=value; return S;
+}
+
+/* ── the renderer ──────────────────────────────────────────────────
+   One scalar per pixel — a position on the ramp — then ONE dither
+   between the two steps it falls between. That is the whole fix. */
+function shade(ctx,W,H,S,mode){
+  const {lens,width,ceiling,depth:zF}=S.box;
+  const HWd=width/2, HC=ceiling*0.62, HF=ceiling*0.38;
+  const CX=W/2, CY=Math.round(H*0.46);
+  const F=(W/2)/Math.tan(lens*Math.PI/360);
+  const G=S.grammar, L=S.light, A=S.air, R=S.ramps;
+  const img=ctx.createImageData(W,H), d=img.data, surf=new Uint8Array(W*H);
+  const put=(i,hex)=>{const n=parseInt(hex.slice(1),16);
+    d[i*4]=n>>16&255;d[i*4+1]=n>>8&255;d[i*4+2]=n&255;d[i*4+3]=255;};
+
+  /* a cell's offset along the ramp — the grammar, expressed as steps */
+  function wallStep(z,hgt){
+    const unit=G.unit, seam=unit*G.seam;
+    const course=Math.floor(hgt/unit), block=Math.floor(z/(unit*1.9))+(course%2?0:1);
+    let step=S.base.wall;
+    if((hgt/unit-course)*unit<seam) return step-2.6;           // the seam is a groove
+    step += ((h2(course*7,block*5)%5)-2)/2 * G.spread;          // variation, in steps
+    if(h2(block,course*11)<G.defect) step-=G.defectDrop;        // a wrong cell
+    if(G.inclusion>0 && h2(course*3,block*9)<G.inclusion) step+=G.inclusionLift;
+    if(G.gradient==="soot")      step -= Math.min(1,Math.max(0,(hgt-HF*0.4)/(HC+HF)))*3.4*G.gradientStrength;
+    else if(G.gradient==="waterline") step += Math.max(0,1-hgt/(HF*1.5))*2.6*G.gradientStrength;
+    else if(G.gradient==="moss") step -= Math.max(0,1-hgt/(HF*2.0))*2.0*G.gradientStrength;
+    return step;
+  }
+  function floorStep(z,X){
+    const fz=Math.floor(z/2.4), fx=Math.floor((X+40)/2.4)+(fz%2);
+    if((z/2.4-fz)<0.07||(((X+40)/2.4)%1)<0.08) return S.base.floor-2.4;
+    let step=S.base.floor + ((h2(fz*7,fx*5)%5)-2)/2*G.spread;
+    if(h2(fz,fx*11)<G.defect) step-=G.defectDrop;
+    return step;
+  }
+  function ceilStep(z,X){
+    const s=Math.floor(z/2.1);
+    if((z/2.1-s)<0.1) return S.base.ceil-1.8;
+    let step=S.base.ceil + ((h2(s*9,Math.floor(X/3))%5)-2)/2*G.spread*0.6;
+    if(h2(s,X*2|0)<G.defect) step-=G.defectDrop*0.6;
+    return step;
+  }
+  function litness(z,X,y){
+    if(L.station==="none") return 0;
+    if(L.station==="withYou") return Math.max(0,1-z/L.reach);
+    let lz,ly;
+    if(L.station==="above"){ lz=L.reach*0.75; ly=HC; }
+    else if(L.station==="below"){ lz=L.reach*0.75; ly=-HF; }
+    else { lz=zF*0.92; ly=0; }
+    const dist=Math.hypot(z-lz,(y-ly)*1.5,X*0.4);
+    return Math.max(0,1-dist/(L.reach*1.15));
+  }
+
+  for(let sy=0;sy<H;sy++)for(let sx=0;sx<W;sx++){
+    const i=sy*W+sx, dx=sx-CX, dy=CY-sy;
+    const zR=dx>0.01?F*HWd/dx:1e9, zL=dx<-0.01?F*HWd/(-dx):1e9;
+    const zC=dy>0.01?F*HC/dy:1e9, zFl=dy<-0.01?F*HF/(-dy):1e9;
+    let z=1e9,s=0;
+    if(zL>0&&zL<z){z=zL;s=1;} if(zR>0&&zR<z){z=zR;s=2;}
+    if(zC>0&&zC<z){z=zC;s=3;} if(zFl>0&&zFl<z){z=zFl;s=4;}
+    if(mode==="crop"){ /* a flat wall, straight on, to read the material */
+      z=6+ (sy/H)*0; s=1;
+    }
+    if(mode!=="crop" && (z>=zF||s===0)){
+      surf[i]=0;
+      const e=Math.max(0,1-Math.hypot(dx/18,(sy-CY)/24));
+      put(i, ign(sx,sy)<e*0.18 ? mix(A.tint,L.tint,0.14) : A.tint);
+      continue;
+    }
+    surf[i]=s;
+    let step, X=0, y=0, use=R.wall;
+    if(mode==="crop"){
+      const hgt=(H-sy)/H*(HC+HF), zz=(sx/W)*10+2;
+      step=wallStep(zz,hgt); use=R.wall; z=8; X=0; y=hgt-HF;
+    } else if(s===1||s===2){ const Y=dy*z/F; const hgt=Y+HF; X=s===1?-HWd:HWd; y=Y; step=wallStep(z,hgt); use=R.wall; }
+    else if(s===3){ X=dx*z/F; y=HC; step=ceilStep(z,X); use=R.ceil; }
+    else { X=dx*z/F; y=-HF; step=floorStep(z,X); use=R.floor; }
+
+    const lit=litness(z,X,y);
+    step += lit*lit*L.lift;                              // light lifts along the ramp
+    const fog=Math.max(0,(z/zF-0.40))*A.rate*7;
+    step -= fog;                                          // distance drops along it
+
+    /* ONE dither, between the two adjacent steps this pixel falls between */
+    const top=use.length-1;
+    let p=Math.max(0,Math.min(top,step));
+    const lo=Math.floor(p), frac=p-lo;
+    const hi=Math.min(top,lo+1);
+    let c = ign(sx,sy) < frac ? use[hi] : use[lo];
+    if(lit>0.15 && L.tintAmt>0) c=mix(c,L.tint,L.tintAmt*lit*lit);
+    if(fog>0.6) c=mix(c,A.tint,Math.min(0.55,(fog-0.6)*0.22));
+    put(i,c);
+  }
+  if(mode!=="crop"){
+    for(let sy=0;sy<H-1;sy++)for(let sx=0;sx<W-1;sx++){
+      const i=sy*W+sx;
+      if(surf[i]!==surf[i+1]||surf[i]!==surf[i+W]){
+        const n=parseInt(S.edge.slice(1),16);
+        d[i*4]=n>>16&255;d[i*4+1]=n>>8&255;d[i*4+2]=n&255;
+      }
+    }
+  }
+  ctx.putImageData(img,0,0);
+}
+
+/* schools used below */
+const SCHOOL={
+  burnt:(()=>{ const S=clone(BASE);
+    S.box={lens:78,width:12,ceiling:7.5,depth:48};
+    S.ramps={ wall:ramp("#100704","#8a4a24",9), floor:ramp("#150803","#b4551d",10,1.9), ceil:ramp("#0a0503","#4a2413",8) };
+    S.grammar.gradient="soot"; S.grammar.defect=16; S.grammar.seam=0.14; S.grammar.spread=1.4;
+    S.light={station:"below",reach:17,lift:4.6,tint:"#e08a3c",tintAmt:0.20};
+    S.air={tint:"#160804",rate:1.15}; S.base={wall:4.4,floor:4.8,ceil:2.2}; S.edge="#080302"; return S;})(),
+  font:(()=>{ const S=clone(BASE);
+    S.box={lens:72,width:13,ceiling:4.4,depth:42};
+    S.ramps={ wall:ramp("#070d0e","#4e7a7c",9), floor:ramp("#06100f","#79c8c0",10,1.7), ceil:ramp("#040708","#243033",8) };
+    S.grammar.gradient="waterline"; S.grammar.seam=0.20; S.grammar.defect=14;
+    S.light={station:"below",reach:20,lift:4.2,tint:"#8fd8d0",tintAmt:0.18};
+    S.air={tint:"#050e11",rate:1.0}; S.base={wall:4.2,floor:5.0,ceil:1.8}; S.edge="#04090a"; return S;})(),
+  ossuary:(()=>{ const S=clone(BASE);
+    S.box={lens:48,width:5.4,ceiling:13,depth:56};
+    S.ramps={ wall:ramp("#0d0b09","#8d8069",10), floor:ramp("#0b0908","#6f6553",9), ceil:ramp("#060505","#231f1a",7) };
+    S.grammar.unit=0.5; S.grammar.seam=0.22; S.grammar.defect=20; S.grammar.spread=1.5;
+    S.grammar.inclusion=24; S.grammar.inclusionLift=3.6;
+    S.light={station:"withYou",reach:15,lift:4.0,tint:"#cbbfa4",tintAmt:0.12};
+    S.air={tint:"#080706",rate:1.2}; S.base={wall:4.0,floor:3.8,ceil:1.6}; S.edge="#070605"; return S;})(),
+  throat:(()=>{ const S=clone(BASE);
+    S.box={lens:40,width:4.2,ceiling:5,depth:30};
+    S.ramps={ wall:ramp("#080a0b","#4b545b",8), floor:ramp("#070809","#434b51",8), ceil:ramp("#050607","#2a3035",7) };
+    S.grammar.defect=6; S.grammar.unit=0.7; S.grammar.spread=0.9;
+    S.light={station:"none",reach:10,lift:0,tint:"#828c93",tintAmt:0};
+    S.air={tint:"#000000",rate:1.5}; S.base={wall:4.2,floor:4.0,ceil:2.4}; S.edge="#050506"; return S;})(),
+};
+
+/* ── rows ─────────────────────────────────────────────────────────── */
+const ROWS=[
+{ title:"0 · the fix itself", kind:"room",
+  why:"The same burnt gallery, three ways. Old: four dither passes with a 4×4 Bayer lattice between far-apart colours. New: one ramp, one dither, between adjacent steps.",
+  note:"The dots do not disappear — they stop being a grid, and they stop being high-contrast. That is what makes dither read as shading instead of as a screen door.",
+  tiles:[
+    ["ramp · 10 steps","the fix: adjacent-step dither, scattered noise", SCHOOL.burnt],
+    ["ramp · 5 steps","too few steps — banding returns as wide flat belts", (()=>{const S=clone(SCHOOL.burnt);
+       S.ramps={wall:ramp("#100704","#8a4a24",5),floor:ramp("#150803","#b4551d",5,1.9),ceil:ramp("#0a0503","#4a2413",4)}; return S;})()],
+    ["ramp · 18 steps","nearly continuous — smooth, but stops reading as pixel art", (()=>{const S=clone(SCHOOL.burnt);
+       S.ramps={wall:ramp("#100704","#8a4a24",18),floor:ramp("#150803","#b4551d",18,1.9),ceil:ramp("#0a0503","#4a2413",14)}; return S;})()],
+  ]},
+{ title:"1 · the light station", kind:"room",
+  why:"Where the light stands relative to you. Everything else identical. Still the biggest lever in the system.",
+  note:"Below inverts the room — the ceiling becomes the darkest surface in the frame. Ahead makes the room a tunnel about its far end.",
+  tiles:[
+    ["with you","falls off with distance — the corridor default", vary("light.station","withYou")],
+    ["above","a shaft. the floor is brightest; you are below something", vary("light.station","above")],
+    ["below","embers or water. faces light from underneath", vary("light.station","below")],
+    ["ahead","everything between you and it silhouettes", vary("light.station","ahead")],
+    ["none","fog only. flat, cold, dead", vary("light.station","none")],
+  ]},
+{ title:"2 · the ramp's colour", kind:"room",
+  why:"A school's ramp is its whole palette. Because every surface, every grime cell and every lit pixel is an index into it, the room cannot fall out of key.",
+  note:"This replaces 'pick four wall tones and a grime colour'. One dark end, one light end, a count, and a bend.",
+  tiles:[
+    ["cold stone","the default", clone(BASE)],
+    ["drowned","the font's ramp, on the same box", (()=>{const S=clone(BASE); S.ramps=clone(SCHOOL.font.ramps);
+       S.light.tint="#8fd8d0"; S.air.tint="#050e11"; return S;})()],
+    ["burnt","the gallery's ramp, on the same box", (()=>{const S=clone(BASE); S.ramps=clone(SCHOOL.burnt.ramps);
+       S.light.tint="#e08a3c"; S.air.tint="#160804"; return S;})()],
+    ["bone","the ossuary's ramp, on the same box", (()=>{const S=clone(BASE); S.ramps=clone(SCHOOL.ossuary.ramps);
+       S.light.tint="#cbbfa4"; S.air.tint="#080706"; return S;})()],
+  ]},
+{ title:"3 · the gradient — close up", kind:"crop",
+  why:"A flat wall, straight on, so the material is actually legible. This is the knob that turns texture into history — and it was invisible at thumbnail size.",
+  note:"The gradient should agree with the light's story: soot rises from the fire that lights the room; the waterline sits at the level of the water.",
+  tiles:[
+    ["none","even all the way up — wallpaper", vary("grammar.gradient","none")],
+    ["soot","climbing; wall tops fall into black", vary("grammar.gradient","soot")],
+    ["waterline","low and bright — it has stood in water", vary("grammar.gradient","waterline")],
+    ["moss","thickening near the floor. damp, slow", vary("grammar.gradient","moss")],
+  ]},
+{ title:"4 · unit & seam — close up", kind:"crop",
+  why:"How big the repeating cell is, and how deep the groove between cells cuts. The same wall in different centuries.",
+  note:"The seam is a step DOWN the ramp, not a colour. That is why it still reads as a groove when the light moves.",
+  tiles:[
+    ["small · thin","0.45 unit, tight seam — institutional", (()=>{const S=vary("grammar.unit",0.45); S.grammar.seam=0.06; return S;})()],
+    ["mid · default","0.85 unit", clone(BASE)],
+    ["large · deep","1.9 unit, thick seam — quarried, ancient", (()=>{const S=vary("grammar.unit",1.9); S.grammar.seam=0.18; return S;})()],
+    ["poured","no seam, no variation, no defect — nothing to read", (()=>{const S=vary("grammar.unit",2.8);
+       S.grammar.seam=0.001; S.grammar.spread=0; S.grammar.defect=0; return S;})()],
+  ]},
+{ title:"5 · defect & inclusion — close up", kind:"crop",
+  why:"How often a cell comes up wrong, and how often one comes up as something else entirely. Both are ramp offsets — down for defect, up for inclusion.",
+  note:"At 24% an inclusion stops being a detail and becomes the material. That is the ossuary.",
+  tiles:[
+    ["kept","almost no defect — maintained", (()=>{const S=vary("grammar.defect",2); return S;})()],
+    ["crumbling","30% defect — abandoned", (()=>{const S=vary("grammar.defect",30); return S;})()],
+    ["rare inclusion · 5%","a pale thing set in the course", (()=>{const S=vary("grammar.inclusion",5); return S;})()],
+    ["the material · 24%","no longer an inclusion — bone", (()=>{const S=vary("grammar.inclusion",24); S.grammar.unit=0.5; S.grammar.seam=0.22; S.grammar.defect=18; return S;})()],
+  ]},
+{ title:"6 · the whole stack", kind:"room",
+  why:"Four schools: a ramp, a light station, an air, a gradient, and dials — each chosen in agreement with the one before it.",
+  note:"These differ from each other far more than any single-knob row, because five knobs turn together instead of one turning alone.",
+  tiles:[
+    ["the font","below · drowned ramp · waterline · wide and low", SCHOOL.font],
+    ["the ossuary","with you · bone ramp · 24% inclusion · narrow and tall", SCHOOL.ossuary],
+    ["the burnt gallery","below · burnt ramp · soot · wide, mid height", SCHOOL.burnt],
+    ["the throat","none · cold ramp · nothing to read · tight and shallow", SCHOOL.throat],
+  ]},
+];
+
+const rows=document.getElementById("rows");
+ROWS.forEach(R=>{
+  const sec=document.createElement("section");
+  const h=document.createElement("h2"); h.textContent=R.title; sec.appendChild(h);
+  const why=document.createElement("p"); why.className="why"; why.textContent=R.why; sec.appendChild(why);
+  const strip=document.createElement("div"); strip.className="strip";
+  R.tiles.forEach(([name,desc,spec])=>{
+    const t=document.createElement("div"); t.className="tile "+(R.kind==="crop"?"crop":"room");
+    const cv=document.createElement("canvas");
+    const w=R.kind==="crop"?95:150, hh=R.kind==="crop"?75:250;
+    cv.width=w; cv.height=hh;
+    t.appendChild(cv);
+    const b=document.createElement("b"); b.textContent=name; t.appendChild(b);
+    const s=document.createElement("span"); s.textContent=desc; t.appendChild(s);
+    strip.appendChild(t);
+    shade(cv.getContext("2d"), w, hh, spec, R.kind==="crop"?"crop":"room");
+  });
+  sec.appendChild(strip);
+  const n=document.createElement("p"); n.className="note"; n.textContent=R.note; sec.appendChild(n);
+  rows.appendChild(sec);
+});
+</script>
+</body>
+</html>

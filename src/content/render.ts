@@ -29,7 +29,9 @@ export const RENDER: RenderConfig = {
   eye: 14,
   mouth: 24 / GRID,
   breath: { x: 26 / GRID, y: 34 / GRID },
-  fog: { start: 0.45, gain: 22, second: 0.7 },
+  // The distance drop, in ramp steps: nothing until the far half of the
+  // room, then down the ramp toward the mouth's own darkness.
+  fog: { start: 0.3, gain: 9, tintAt: 3.2, tintRate: 0.16, tintCap: 0.6 },
   rim: 48 / GRID,
 }
 

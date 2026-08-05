@@ -10,7 +10,7 @@
 import type { Prop, RoomShape, Scene, SurfaceShaders, View } from '../../room/index.js'
 import { hash } from '../../room/index.js'
 import type { School } from '../palettes.js'
-import { MUTED, roomPalette } from '../palettes.js'
+import { MUTED, lookOf, shadingOf } from '../palettes.js'
 import { AUTHORED_GRID, AUTHORED_HEIGHT, RENDER } from '../render.js'
 
 /** art. 14: exactly three authored numbers. Focal length is derived. */
@@ -41,13 +41,53 @@ const Z_CHAIN = 1.15
 const CHAIN_DROP = 58 / AUTHORED_HEIGHT
 
 /**
+ * The masonry's grammar, in ramp steps. Every one of these was a colour
+ * before the ramp wave and is an offset now: the seam is a groove rather
+ * than a tone, so it stays a groove when the light moves across it; the
+ * grime is a drop rather than a black speck, so it stops reading as a hole.
+ *
+ * Shared by the whole depth, exactly as the masonry itself is. What makes
+ * one room not another is its ramp, not its grammar (art. 21).
+ */
+const STONE = {
+  /** How far a seam cuts below the stone either side of it. */
+  seam: 2.9,
+  /**
+   * The four brick tones, as offsets. The old sets ran dark, mid, light,
+   * mid, and these are those tones' own distances from the mid one, taken
+   * off the ramps the schools converted to.
+   */
+  tone: [-1.25, 0, 1.1, 0],
+  /** The pale cell — an inclusion, one course in eleven or so. */
+  alt: 2.4,
+  /**
+   * A cell that came up wrong, and the broken corner. The old grime went
+   * all the way to the ramp's dark end; a drop of two is enough to read as
+   * a bad stone without punching a hole in the wall.
+   */
+  defect: 2,
+  /** Low on the wall: what has stood in water, and what grew on it. */
+  damp: 0.9,
+  moss: 1.5,
+  moss2: 0.9,
+  /** The flagstones ran dark, mid, mid, light. */
+  flagTone: [-1.15, 0, 0, 0.9],
+  /** The slats ran dark, light, dark, darkest — the base is the dark one. */
+  slatTone: [0, 0.95, 0, -1.5],
+} as const
+
+/**
  * The world-space masonry of the whole depth. Exported because the
  * skeleton's ordinary rooms are the same stone in a different light
  * (`plain.ts`), and art. 15 wants the texture in world space wherever it is
  * laid.
+ *
+ * Every shader answers a position on its surface's ramp, unlit and
+ * unfogged. The cast adds the light and the distance and dithers once.
  */
 export function masonry(school: School, shape: RoomShape, eye: number): SurfaceShaders {
   const tall = eye + shape.ceiling
+  const base = shadingOf(school).base
   return {
     wall(side, z, height) {
       const course = Math.floor(height / COURSE)
@@ -56,35 +96,35 @@ export function masonry(school: School, shape: RoomShape, eye: number): SurfaceS
       const b = Math.floor(u / BRICK)
       const fu = u / BRICK - b
       const fv = height / COURSE - course
-      if (fv < 0.1 || fu < 0.075) return school.mortar
+      if (fv < 0.1 || fu < 0.075) return base.wall - STONE.seam
       const id = b * 13 + course * 7 + (side > 0 ? 101 : 0)
-      let c: string = school.brick[hash(id, 3) % 4]!
-      if (hash(b * 5, course * 3 + id) < 9) c = school.brickAlt
-      if (hash(id, (fv * 9) | 0) < 3) c = school.grime
-      if (height < 0.3 * tall && hash(id, b) < 24) c = school.damp
+      let step = base.wall + STONE.tone[hash(id, 3) % 4]!
+      if (hash(b * 5, course * 3 + id) < 9) step += STONE.alt
+      if (hash(id, (fv * 9) | 0) < 3) step -= STONE.defect
+      if (height < 0.3 * tall && hash(id, b) < 24) step -= STONE.damp
       if (height < 0.45 * tall && hash(id * 3, course) < 7) {
-        c = hash(b, id) < 40 ? school.moss : school.moss2
+        step -= hash(b, id) < 40 ? STONE.moss : STONE.moss2
       }
       // a broken corner, once in a while
-      if (hash(id, 1) < 7 && fv > 0.5 && fu > 0.8) c = school.grime
-      return c
+      if (hash(id, 1) < 7 && fv > 0.5 && fu > 0.8) step -= STONE.defect
+      return step
     },
     floor(z, x) {
       const fz = Math.floor(z / FLAG_LENGTH)
       const fx = Math.floor((x + 40) / FLAG_WIDTH) + (fz % 2)
       if (z / FLAG_LENGTH - fz < 0.07 || ((x + 40) / FLAG_WIDTH) % 1 < 0.08) {
-        return school.mortar
+        return base.floor - STONE.seam
       }
-      let c: string = school.flag[hash(fz * 7, fx * 5) % 4]!
-      if (hash(fz, fx * 11) < 8) c = school.grime
-      return c
+      let step = base.floor + STONE.flagTone[hash(fz * 7, fx * 5) % 4]!
+      if (hash(fz, fx * 11) < 8) step -= STONE.defect
+      return step
     },
     ceiling(z, x) {
       const s = Math.floor(z / SLAT)
-      if (z / SLAT - s < 0.1) return school.mortar
-      let c: string = school.slat[hash(s * 9, Math.floor(x / 3)) % 4]!
-      if (hash(s, (x * 2) | 0) < 9) c = school.grime
-      return c
+      if (z / SLAT - s < 0.1) return base.ceiling - STONE.seam
+      let step = base.ceiling + STONE.slatTone[hash(s * 9, Math.floor(x / 3)) % 4]!
+      if (hash(s, (x * 2) | 0) < 9) step -= STONE.defect
+      return step
     },
   }
 }
@@ -251,7 +291,7 @@ function props(view: View): readonly Prop[] {
 export const WAKE: Scene = {
   id: 'crossing.wake',
   shape: SHAPE,
-  palette: roomPalette(MUTED),
+  look: lookOf(MUTED),
   surfaces: masonry(MUTED, SHAPE, RENDER.eye),
   props,
 }

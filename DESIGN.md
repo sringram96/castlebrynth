@@ -14,9 +14,9 @@ keeps the knowledge. `reference/GAME.md` is the fantasy. The binding law is in
   every mutation persists; boot restores exactly. (arts 11, 36)
 - **src/gen** — seeds and deals the blind chain under the grammar rules;
   proves winnability. (arts 31–39)
-- **src/room** — the computed-box renderer on the GRID dial; the port of
-  `reference/castlebrynth-wake-v3.html`; the world marks a thumb answers
-  through. (arts 13–25, 68)
+- **src/room** — the computed-box renderer on the GRID dial; one ramp per
+  surface and one dither between adjacent steps; the world marks a thumb
+  answers through. (arts 13–25, 68)
 - **src/descent** — plays a room: candles, taps, acts, doors, and what has
   happened in the room. (arts 3, 5–9, 29, 70)
 - **src/lots** — the dice engine: turn, ladder, the card, armor, riders. (arts 41–65)
@@ -81,7 +81,7 @@ browser: wake → open one of one to three blind doors → the room behind
 it is dealt on the spot → keep choosing → a region locks and the depth
 announces where you have arrived → the rest of the depth deals from that
 region and its encounters wake → the Warden's door, refused without the
-key and terse with it. `npm test` is green: 24 files, 193 tests.
+key and terse with it. `npm test` is green: 24 files, 194 tests.
 
 The dealer was dumb. It dealt a single path, so art. 31's two-to-three
 doors did not exist and blind play had nothing to choose between; that
@@ -115,6 +115,64 @@ step 2 or 3 whatever the drift does. The Savior is a *being* — the Mender,
 which floats into any ordinary room's mercy socket, is unique per run, and
 remembers you. That fills the last two rows of art. 83's straw table and
 writes the first mark into art. 84's memory socket.
+
+**And the rooms stopped wearing a screen door.** At GRID 240 on a phone —
+about three device pixels to a game pixel — the box dithered four times
+per pixel: light, light-accent, fog, fog-accent, each pass with the same
+4×4 Bayer matrix, each between colours far enough apart that a dot read
+as a dot. Layered lattices compound into a lattice, and a lattice over
+every surface is a screen door rather than shading. The **ramp wave**
+replaces the whole of that with one rule. Each surface gets **one ramp**
+— a dark end, a light end, a step count, a bend — and a pixel resolves to
+a single scalar, a position on that ramp, before any colour is chosen.
+Everything that used to pick a colour now moves that scalar: the stone's
+variation, the seam (a groove, so it stays a groove when the light moves
+across it), the defect drop where a cell came up wrong, the pale cell's
+inclusion lift, the light's lift falling off with distance, the air's
+drop with z. Then **one** dither, between the two adjacent steps the
+scalar falls between, thresholded against **interleaved gradient noise**
+instead of Bayer — deterministic, so art. 17's identical-re-render law
+holds unchanged, but scattered rather than gridded, so a half-lit surface
+reads as a surface. Nothing moved: the same box (art. 15), the same
+derived contours (art. 18), still no alpha and no gradient (art. 17),
+still nothing in device pixels (arts 22–23). The visual bar is
+`reference/castlebrynth-ramp-shading.html`.
+
+**The knobs, named.** Per school, in `src/content/palettes.ts`: the three
+**ramp ends** — the darkest and lightest tone the school already declared
+for that surface, the light end carried 45% further along the same line so
+the light has somewhere to lift into (along the line, not toward a pale
+neutral, or the kiln stops being hot); the **step count**, 10 wall, 10
+floor, 8 ceiling — under seven and the bands show, over about fourteen and
+it stops reading as pixel art; the **bend**, 1.5 / 1.6 / 1.35, weighting
+steps toward the dark end where this game lives; the **base**, where that
+surface's commonest stone already sits on its own ramp, derived rather
+than typed so every room starts exactly where it stood; and the **light**
+(reach 22 world units, lift 1.9 steps, a 10% tint after quantisation) and
+the **air** (the mouth's own darkness). Per depth, in
+`src/content/plates/wake.ts`, the masonry's **offsets**, all in ramp
+steps: seam −2.9, brick tones −1.25 / 0 / +1.1, the pale cell +2.4,
+defect −2, damp −0.9, moss −1.5, and the flags' and slats' own. The
+distance drop is `RENDER.fog`: nothing until 0.3 of the cutoff, nine
+steps by it.
+
+**What converted badly: nothing, and one thing.** Every school's mortar,
+bricks and flagstones land within four bytes of their own ramp's line —
+the fourteen palettes were in key with themselves, which is the good news
+this measurement was asked for. The exceptions are **`moss`, `moss2` and
+`damp`**, which were never value departures but hue ones: a green patch
+on a warm wall, a blue one on a cold floor. One ramp can only spend them
+as drops, so the waking corridor and the wet passage lose a little of
+their green (MUTED off the line by 16 bytes, WET by 14, BRINE by 11,
+SILT and VERDIGRIS by 8; every other tone in every school is under 5).
+Giving those cells a short ramp of their own, or a tint after
+quantisation like the light's, is a question for the wave that ratifies
+the articles — not a licence to re-author a room.
+
+One lattice survives, deliberately: **props still dither with Bayer**.
+The grate's falling light in the waking corridor is the visible one. A
+sprite covers tens of pixels rather than a wall, the reference plate was
+authored against that matrix, and props were outside this wave.
 
 What is still deliberately unfinished: the prose is functional
 placeholder rather than the register — more of it than before — the
@@ -188,11 +246,17 @@ ordinary rooms are art. 26's first tier and not its second, and phase
   `turnLot` derives each casting's lot from seed, step, turn and casting
   number, which is what lets a turn be replayed instead of stored.
   (arts 28, 30, 32, 63, 75)
-- **src/room** — the port of `reference/castlebrynth-wake-v3.html`,
-  still byte-identical at GRID 240. Gains `WorldMark`/`markRect`, so the
-  region that answers a tap on a thing is derived from the same world
-  coordinates the thing is painted at (arts 19, 68), and `overpaint`, so
-  a motion can be laid over a cast box without casting it again.
+- **src/room** — the box of `reference/castlebrynth-wake-v3.html` with the
+  shading of `reference/castlebrynth-ramp-shading.html`: the geometry, the
+  contours and the mouth are v3's, and what colour a surface takes is the
+  ramp's. `ramp.ts` builds a ramp and says where a tone already sits on
+  one; `dither.ts` gained `ign`, the scattered noise the box thresholds
+  against; a `Look` — palette, ramps, light, air — is what a scene now
+  declares, and a `SurfaceShaders` answers a step rather than a colour.
+  Also `WorldMark`/`markRect`, so the region that answers a tap on a thing
+  is derived from the same world coordinates the thing is painted at
+  (arts 19, 68), and `overpaint`, so a motion can be laid over a cast box
+  without casting it again.
 - **src/content** — fourteen hand-authored rooms, each with its own
   school and its own signature prop: two fixed anchors, three in the
   neutral pool, and three each in the drowned, the burnt and the
@@ -238,7 +302,7 @@ ordinary rooms are art. 26's first tier and not its second, and phase
 | `hinge` | the fight-door, the four exits, wounds carried out (art. 30) |
 | `death` | the run burns and the permanent survives a reload (arts 11, 32) |
 | `room` | byte-identical renders, the GRID dial, the mouth (arts 13–18, 22–23) |
-| `room.scene` | a palette and a prop per room, distinct pixels, the name in the first candle, the taken key gone, the opened door open (arts 19, 21, 34, 70) |
+| `room.scene` | a look and a prop per room, ramps that only ever dither between adjacent steps, distinct pixels, the name in the first candle, the taken key gone, the opened door open (arts 17, 19, 21, 34, 70) |
 | `fight.persist` | the round trip at every point in a turn over 30 seeds, and the card that flight can never refresh (arts 63, 75) |
 | `descent.required` | the key unbound from rooms, placed once and before its lock across 7000 runs of adversarial policies; no legal walk reaches the lock keyless — with the control that proves the law is doing the work (arts 3, 4, 9, 80) |
 | `content.voice` | every player-facing string, in its category; every control against art. 66 |

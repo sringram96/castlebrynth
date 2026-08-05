@@ -6,8 +6,19 @@
  */
 
 export { GRID, AUTHORED_GRID, AUTHORED_HEIGHT, RENDER, atGrid } from './render.js'
-export type { School } from './palettes.js'
-export { ASH, IRON, MUTED, NOIR, OCHRE, VERDIGRIS, WET, roomPalette } from './palettes.js'
+export type { School, Shading } from './palettes.js'
+export {
+  ASH,
+  IRON,
+  MUTED,
+  NOIR,
+  OCHRE,
+  VERDIGRIS,
+  WET,
+  lookOf,
+  roomPalette,
+  shadingOf,
+} from './palettes.js'
 export { WAKE, masonry } from './plates/wake.js'
 export type { Dressing } from './plates/plain.js'
 export { BARE, plainScene } from './plates/plain.js'
