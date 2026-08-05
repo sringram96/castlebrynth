@@ -29,6 +29,7 @@ import {
   PLAIN_POUCH,
   READOUT,
   ROOM_BOOK,
+  TABS,
   VERBS,
   atGrid,
   endLineOf,
@@ -100,10 +101,12 @@ import {
   withTurn,
   woundedBy,
 } from './lots/index.js'
-import type { FightPhase, InstanceId, ItemId, Ledgers, Seed } from './state/index.js'
+import type { FightPhase, InstanceId, ItemId, Ledgers, Panel, Seed } from './state/index.js'
 import {
+  HOME,
   browserVault,
   finish,
+  focused,
   firstPermanent,
   load,
   meet,
@@ -125,8 +128,10 @@ const markLayer = must<HTMLDivElement>('marks')
 const crownBand = must<HTMLDivElement>('crown')
 const sheetBand = must<HTMLDivElement>('sheet')
 const vitalsRegion = must<HTMLDivElement>('vitals')
+const tabBar = must<HTMLDivElement>('tabs')
 const pouchRegion = must<HTMLDivElement>('pouch')
 const actStrip = must<HTMLDivElement>('acts')
+const fightPanel = must<HTMLDivElement>('fight')
 
 function must<T extends HTMLElement>(id: string): T {
   const found = document.getElementById(id)
@@ -236,7 +241,10 @@ function boot(): void {
   const gate = doors(bands).find((door) => door.fight !== undefined)
   if (held !== null && held.engaged && gate !== undefined) {
     resume(held.at)
-    if (fight !== null) screen = { kind: 'fight', door: gate }
+    if (fight !== null) {
+      screen = { kind: 'fight', door: gate }
+      focus('fight')
+    }
   }
   persist()
   paint()
@@ -524,10 +532,87 @@ function bookLines(): void {
 
 // ── The tray: anatomy, not a menu (art. 67) ────────────────────────────
 
+/**
+ * art. 67 (amended): the tray is a **persistent rail** and a **panel area**.
+ *
+ * The rail never changes — your body's numbers, and the tabs. The panels
+ * swap under it: ACTS is where the game is played from, POUCH is the swap
+ * surface, FIGHT exists only while a fight does. Nothing else is ever in the
+ * tray, which is the part of art. 67 that did not move.
+ */
 function tray(): void {
   vitals()
-  pouch()
-  acts()
+  tabs()
+  panels()
+}
+
+/** Which panel the thumb is on, clamped to one that exists right now. */
+function panelNow(): Panel {
+  const held = ledgers.run?.panel ?? HOME
+  // FIGHT exists only during a fight (art. 67). A save that was left on it —
+  // a fight that ended in another session — lands on home rather than on a
+  // panel with nothing in it.
+  if (held === 'fight' && !inAFight()) return HOME
+  return held
+}
+
+function inAFight(): boolean {
+  return screen.kind === 'fight' && fight !== null
+}
+
+/**
+ * arts 67, 75: focus moves by a declared transition and by nothing else, and
+ * every move is written down. There is no branch anywhere that guesses.
+ */
+function focus(panel: Panel): void {
+  const run = ledgers.run
+  if (run === null) return
+  ledgers = { ...ledgers, run: focused(run, panel) }
+}
+
+/**
+ * art. 76: a tab bar is taps. No new interaction type enters the game — the
+ * budget is unspent, and the slide stays a named option (art. 90).
+ */
+function tabs(): void {
+  tabBar.replaceChildren()
+  const on = panelNow()
+  const tab = (panel: Panel, key: string): void => {
+    const el = document.createElement('button')
+    el.textContent = TABS[key] ?? key
+    el.className = panel === on ? 'on' : ''
+    el.setAttribute('aria-pressed', String(panel === on))
+    el.onclick = () => {
+      settle()
+      focus(panel)
+      notice = null
+      persist()
+      paint()
+    }
+    tabBar.append(el)
+  }
+  tab('acts', 'acts')
+  tab('pouch', 'pouch')
+  if (inAFight()) tab('fight', 'fight')
+  // arts 31, 85: the map is a socket and stays one. A disabled tab is legal;
+  // pixels behind it are not, so there is no panel to focus and no handler to
+  // press. It is here to say that the road ahead is a thing the game has
+  // decided not to show you, rather than a thing nobody thought of.
+  const map = document.createElement('button')
+  map.textContent = TABS.map ?? 'map'
+  map.disabled = true
+  map.setAttribute('aria-disabled', 'true')
+  tabBar.append(map)
+}
+
+function panels(): void {
+  const on = panelNow()
+  actStrip.classList.toggle('on', on === 'acts')
+  pouchRegion.classList.toggle('on', on === 'pouch')
+  fightPanel.classList.toggle('on', on === 'fight')
+  if (on === 'acts') acts()
+  else if (on === 'pouch') pouch()
+  else theFightPanel()
 }
 
 function row(...kids: readonly Node[]): HTMLDivElement {
@@ -566,36 +651,27 @@ function vitals(): void {
   vitalsRegion.replaceChildren()
   const run = ledgers.run!
   const now = fight
+  // art. 67 (amended): the rail is the body and nothing else. The turn's
+  // running totals belong to the fight, so art. 57 keeps them pinned in the
+  // FIGHT panel's header rather than in a rail that is always on screen.
+  const corroded = now !== null && inAFight() && now.turn.intent.effect?.kind === 'corrode'
+  vitalsRegion.append(
+    reading(READOUT.health ?? '', now !== null && inAFight()
+      ? `${now.yourHealth}/${now.yourHealthMax}`
+      : `${run.health}/${run.healthMax}`),
+    reading(
+      READOUT.armor ?? '',
+      corroded ? `0 ${READOUT.corroded}` : `${now !== null && inAFight() ? now.armor : run.armor}`,
+    ),
+  )
+  // art. 74: the card lives behind a small, persistent glyph — and while a
+  // fight is on it lives in the fight's own header, where the rest of that
+  // fight's numbers are. One glyph, never two.
+  if (!inAFight()) vitalsRegion.append(cardGlyph())
+}
 
-  if (now !== null && screen.kind === 'fight') {
-    const corroded = now.turn.intent.effect?.kind === 'corrode'
-    const armorNow = corroded ? 0 : now.armor
-    vitalsRegion.append(
-      reading(READOUT.health ?? '', `${now.yourHealth}/${now.yourHealthMax}`),
-      reading(READOUT.armor ?? '', corroded ? `0 ${READOUT.corroded}` : `${armorNow}`),
-      reading(
-        READOUT.attack ?? '',
-        `${now.turn.claims.reduce((sum, made) => sum + harm(made), 0)}`,
-      ),
-      reading(READOUT.incoming ?? '', `${Math.max(0, now.turn.intent.amount - armorNow)}`),
-      reading(READOUT.unused ?? '', `${unused(now.turn).length}`),
-    )
-    // art. 86: what the cost faces are about to charge, visible before the
-    // turn ends and again while it resolves. art. 57 wants every running
-    // total shown, and a price you only see afterwards is hidden math.
-    const priced = pricedNow()
-    if (priced > 0) vitalsRegion.append(reading(READOUT.cost ?? '', `${priced}`))
-    const offer = claimOffer()
-    if (offer !== null) vitalsRegion.append(reading('', offer))
-  } else {
-    vitalsRegion.append(
-      reading(READOUT.health ?? '', `${run.health}/${run.healthMax}`),
-      reading(READOUT.armor ?? '', `${run.armor}`),
-    )
-  }
-
-  // art. 74: the card lives behind a small, persistent glyph. One tap opens
-  // it; it is never parked mid-screen.
+/** art. 74: one tap opens the card, and it is never parked mid-screen. */
+function cardGlyph(): HTMLButtonElement {
   const glyph = document.createElement('button')
   glyph.className = 'glyph'
   glyph.textContent = '▤'
@@ -605,7 +681,51 @@ function vitals(): void {
     sheet = sheet === 'card' ? null : 'card'
     paint()
   }
-  vitalsRegion.append(glyph)
+  return glyph
+}
+
+/**
+ * art. 30: there is no battle screen — the world band is still the room with
+ * the thing come close. What changes mode is the tray, and this is the panel
+ * that does it: its own ground, art. 57's running totals pinned in its
+ * header, the hand under them, and the card's glyph where the numbers are.
+ */
+function theFightPanel(): void {
+  fightPanel.replaceChildren()
+  const now = fight
+  if (now === null) return
+
+  const corroded = now.turn.intent.effect?.kind === 'corrode'
+  const armorNow = corroded ? 0 : now.armor
+  const totals = document.createElement('div')
+  totals.className = 'totals'
+  totals.append(
+    reading(READOUT.attack ?? '', `${now.turn.claims.reduce((sum, made) => sum + harm(made), 0)}`),
+    reading(READOUT.incoming ?? '', `${Math.max(0, now.turn.intent.amount - armorNow)}`),
+    reading(READOUT.unused ?? '', `${unused(now.turn).length}`),
+  )
+  const priced = pricedNow()
+  if (priced > 0) totals.append(reading(READOUT.cost ?? '', `${priced}`))
+  const offer = claimOffer()
+  if (offer !== null) totals.append(reading('', offer))
+  totals.append(cardGlyph())
+  fightPanel.append(totals)
+
+  // The hand, as it lies. art. 72's four states are the die slot's business
+  // and have not moved.
+  const laid = casting(now.turn)
+  const byId = new Map(ledgers.run!.hand.dice.map((die) => [die.id as string, die] as const))
+  if (laid.length > 0) {
+    const spent = claimedDice(now.turn)
+    for (const landed of laid) {
+      const die = byId.get(landed.die)
+      if (die === undefined) continue
+      fightPanel.append(dieSlot(die, landed, spent.has(landed.die)))
+    }
+  } else {
+    for (const die of ledgers.run!.hand.dice) fightPanel.append(dieSlot(die, null, false))
+  }
+  fightActs()
 }
 
 /**
@@ -664,56 +784,58 @@ function scoreOf(line: Line): number {
  * the same slots hold the same dice, cast: the hand is assembled from the
  * pouch, so the region is the pouch either way.
  */
+/**
+ * art. 67 (amended): the POUCH panel — the swap surface, not a display case.
+ *
+ * art. 60 as amended by PR #38: the pouch is ordered, the hand is its first
+ * `handSize`, and everything past that is a spare. So the panel draws the
+ * hand, then a rule, then the spares — set apart, dimmer, unlit — because
+ * which side of that rule a die is on is the only thing the panel is about.
+ *
+ * The dice have left the descent screen entirely: outside a fight this is
+ * the one place in the game a die is drawn.
+ */
 function pouch(): void {
   pouchRegion.replaceChildren()
   const run = ledgers.run!
-  const now = fight
-  const laid = now !== null && screen.kind === 'fight' ? casting(now.turn) : []
-  const byId = new Map(run.hand.dice.map((die) => [die.id as string, die] as const))
-
-  if (laid.length > 0) {
-    const spent = claimedDice(now!.turn)
-    for (const landed of laid) {
-      const die = byId.get(landed.die)
-      if (die === undefined) continue
-      pouchRegion.append(dieSlot(die, landed, spent.has(landed.die)))
-    }
-  } else {
-    for (const die of run.hand.dice) pouchRegion.append(dieSlot(die, null, false))
-  }
-
+  for (const die of run.hand.dice) pouchRegion.append(dieSlot(die, null, false))
+  // arts 55–56: the invitation, until the first find fills it.
   for (let n = run.hand.dice.length; n < ledgers.permanent.handSize; n++) {
     pouchRegion.append(emptySlot())
   }
-  // art. 60: and the spares — dice you own that are not in the hand. They are
-  // in the pouch region because that is what the region is (art. 67: the
-  // pouch as visible slots), and they are drawn apart from the hand because
-  // the whole decision is which side of that line a die is on.
-  if (screen.kind !== 'fight') {
-    for (const die of sparesOf(ledgers.permanent)) pouchRegion.append(spareSlot(die))
+
+  const spares = sparesOf(ledgers.permanent)
+  if (spares.length > 0) {
+    const rule = document.createElement('div')
+    rule.className = 'rule'
+    pouchRegion.append(rule)
+    for (const die of spares) pouchRegion.append(spareSlot(die))
   }
-  // art. 68: a possession's answer is its declared truth, and what you carry
-  // is a possession. It sits in the same region and answers the same way.
+
+  // art. 68: what you carry is a possession and answers the same way.
   for (const item of run.carried) pouchRegion.append(carriedSlot(item))
+
+  // art. 69: a panel that cannot do the thing it is for says so, rather than
+  // offering a verb that quietly fails. arts 63, 75: the hand a fight was
+  // opened with is the hand it is replayed with.
+  const aside = document.createElement('div')
+  aside.className = 'aside'
+  if (run.fight !== null) aside.textContent = NOTICES['swap.locked'] ?? ''
+  else if (spares.length === 0) aside.textContent = NOTICES['pouch.whole'] ?? ''
+  if (aside.textContent !== '') pouchRegion.append(aside)
+
+  pouchActs()
 }
 
 /**
- * art. 60: a die you own and are not carrying. Tapping it answers with its
- * declared truth like any possession (art. 68) and stages it as the one that
- * would come in — the swap's other half is a die in the hand.
+ * arts 60, 68: the one commitment this panel offers. It sits in the panel
+ * rather than in a shared strip because it is the panel's act — ACTS is
+ * where the *room* is played from, and a swap is not about the room.
  */
-function spareSlot(die: Die): HTMLButtonElement {
-  const el = slot(`spare${taking === die.id ? ' sel' : ''}`)
-  el.append(pips(die.faces[0]?.value ?? 1))
-  el.setAttribute('aria-label', saysDie(die))
-  el.onclick = () => {
-    settle()
-    notice = saysDie(die)
-    taking = taking === die.id ? null : die.id
-    persist()
-    paint()
-  }
-  return el
+function pouchActs(): void {
+  if (ledgers.run!.fight !== null) return
+  if (sparesOf(ledgers.permanent).length === 0) return
+  pouchRegion.append(verb('swap', doSwap))
 }
 
 function slot(className: string): HTMLButtonElement {
@@ -793,6 +915,25 @@ function emptySlot(): HTMLButtonElement {
   el.onclick = () => {
     settle()
     notice = NOTICES['pouch.empty'] ?? ''
+    paint()
+  }
+  return el
+}
+
+/**
+ * art. 60: a die you own and are not carrying. Tapping it answers with its
+ * declared truth like any possession (art. 68) and stages it as the one that
+ * would come in — the swap's other half is a die in the hand.
+ */
+function spareSlot(die: Die): HTMLButtonElement {
+  const el = slot(`spare${taking === die.id ? ' sel' : ''}`)
+  el.append(pips(die.faces[0]?.value ?? 1))
+  el.setAttribute('aria-label', saysDie(die))
+  el.onclick = () => {
+    settle()
+    notice = saysDie(die)
+    taking = taking === die.id ? null : die.id
+    persist()
     paint()
   }
   return el
@@ -987,6 +1128,9 @@ function openTheFight(door: Door): void {
   if (held !== null) {
     resume(at)
     screen = { kind: 'fight', door }
+    // art. 63: a paused fight resumed is a fight entered, and focuses the
+    // same way it did the first time.
+    focus('fight')
     ledgers = openDoor(ledgers, door)
     notice = NOTICES['fight.resumed'] ?? ''
     persist()
@@ -997,6 +1141,9 @@ function openTheFight(door: Door): void {
   phase = 'pre'
   selected = []
   screen = { kind: 'fight', door }
+  // art. 67: entering a fight focuses FIGHT. A declared transition, not an
+  // inference — the panel is where the fight is, so the thumb goes there.
+  focus('fight')
   // art. 70: opening a door is an act, and the room it stands in shows it.
   ledgers = openDoor(ledgers, door)
   notice = null
@@ -1187,6 +1334,9 @@ function wonTheFight(): void {
   ledgers = carryOut(ledgers, now)
   fight = null
   screen = { kind: 'room' }
+  // art. 67: a fight ending puts the thumb back home. FIGHT stops existing,
+  // so leaving it focused would be a tab pointing at nothing.
+  focus(HOME)
   // Winning opens the door, and the door commits the next room (art. 35).
   walk(here.door, NOTICES['fight.won'] ?? null)
 }
@@ -1208,6 +1358,9 @@ function runFromTheFight(): void {
   )
   fight = null
   screen = { kind: 'room' }
+  // art. 63: running leaves the fight where it is and leaves its panel with
+  // it. Re-entering the door force-focuses FIGHT again (`openTheFight`).
+  focus(HOME)
   bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
   chosen = doors(bands)[0] ?? null
   notice = NOTICES['fight.fled'] ?? ''
@@ -1227,6 +1380,7 @@ function died(cause: string = endLineOf(fight?.horror.id ?? '')): void {
   fight = null
   refused = false
   screen = { kind: 'dead' }
+  focus(HOME)
   notice = null
   persist()
   paint()

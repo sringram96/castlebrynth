@@ -87,7 +87,28 @@ export interface RunLedger {
    * discards (art. 63) — and cleared only by winning or dying.
    */
   readonly fight: FightSave | null
+  /**
+   * arts 67, 75: which panel of the tray the thumb is on.
+   *
+   * Focus is interaction, and interaction is state — a player who was
+   * reading the pouch when the phone locked is reading the pouch when it
+   * wakes. It rides the vault like everything else, and it moves only by a
+   * tap on a tab or by one of the declared transitions (`focused`), never by
+   * an inference about what the shell thinks you probably want.
+   */
+  readonly panel: Panel
 }
+
+/**
+ * art. 67 (amended): the panels the tray can be showing. `fight` exists only
+ * while a fight does; the map is a socket with no panel behind it, so it is
+ * deliberately not in this union — a disabled tab is legal, pixels are not
+ * (arts 31, 85).
+ */
+export type Panel = 'acts' | 'pouch' | 'fight'
+
+/** art. 67: where the thumb starts, and where a finished fight puts it back. */
+export const HOME: Panel = 'acts'
 
 /**
  * art. 11: the permanent survives — dice, signature, keepsakes, knowledge,
@@ -300,6 +321,7 @@ export function wake(permanent: PermanentLedger, seed: Seed, depth = 1): Ledgers
     did: [],
     window: null,
     fight: null,
+    panel: HOME,
   } as unknown as RunLedger
   return { run, permanent }
 }
@@ -573,6 +595,18 @@ export function fighting(run: RunLedger, fight: FightSave | null): RunLedger {
   return { ...run, fight }
 }
 
+/**
+ * arts 67, 75: the thumb moves to a panel, and the move is written down.
+ *
+ * Every caller of this is a *declared* transition — a tap on a tab, a fight
+ * opening, a fight ending. Nothing infers focus from the state of the world,
+ * because a focus that moves on its own is a focus the player has to keep
+ * checking.
+ */
+export function focused(run: RunLedger, panel: Panel): RunLedger {
+  return run.panel === panel ? run : { ...run, panel }
+}
+
 export function wounded(run: RunLedger, health: number): RunLedger {
   return { ...run, health }
 }
@@ -605,8 +639,11 @@ export const QUARANTINE_KEY = 'castlebrynth.quarantine'
  * drift put the history graph, the instance and the deeds beside them. A
  * snapshot written before either cannot answer for them — so it is migrated
  * forward by the ladder below, never refused.
+ *
+ * 4 is the panels wave: art. 67's tray became a rail and a panel area, and
+ * art. 75 makes which panel the thumb is on state like any other.
  */
-export const VAULT_VERSION = 3
+export const VAULT_VERSION = 4
 
 // ── The migration ladder ───────────────────────────────────────────────
 
@@ -642,6 +679,28 @@ const asRaw = (value: unknown): Raw | null =>
  * the dice, the knowledge and the Book, which is what art. 11 actually
  * promises. The boot then wakes a fresh run from the permanent it kept.
  */
+/**
+ * The other shape a rung can have, and the better one when it is available:
+ * **keep everything and fill what is new.**
+ *
+ * `keepingOnlyThePermanent` is for a schema whose *run* cannot be replayed.
+ * A rung that only adds a field to the run has no such problem — the
+ * arrangement is derived from the same seed and the same choices it always
+ * was (art. 36) — so it fills the field and leaves the player exactly where
+ * they were standing. Dropping a run that did not need dropping would be a
+ * cost the ladder charged for nothing.
+ */
+function fillingTheRun(snapshot: Raw, fill: (run: Raw) => Raw): Raw {
+  const ledgers = asRaw(snapshot.ledgers)
+  const permanent = ledgers === null ? null : asRaw(ledgers.permanent)
+  if (permanent === null) throw new Error('no permanent ledger to migrate')
+  const run = asRaw(ledgers?.run)
+  return {
+    ...snapshot,
+    ledgers: { permanent, run: run === null ? null : fill({ ...run }) },
+  }
+}
+
 function keepingOnlyThePermanent(snapshot: Raw, fill: (permanent: Raw) => Raw): Raw {
   const ledgers = asRaw(snapshot.ledgers)
   const permanent = ledgers === null ? null : asRaw(ledgers.permanent)
@@ -693,6 +752,16 @@ export const MIGRATIONS: readonly Migration[] = [
         met: permanent.met ?? [],
         memories: permanent.memories ?? [],
       })),
+  },
+  /**
+   * 3 → 4. The panels wave put art. 67's panel focus on the run (art. 75).
+   * Nothing about the *arrangement* moved, so this rung keeps the run where
+   * it is standing and fills the one new field — a player mid-descent does
+   * not lose a descent to a tray change.
+   */
+  {
+    from: 3,
+    up: (snapshot) => fillingTheRun(snapshot, (run) => ({ ...run, panel: run.panel ?? HOME })),
   },
 ]
 

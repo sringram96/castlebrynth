@@ -14,11 +14,23 @@ skeleton playtest.
     rules/voice.md and bound by this article instead.
 
 ## The tray
-67. SETTLED — The tray is anatomy, not a menu. Fixed regions, always
-    in the same places: vitals (health, armor); the pouch as visible
-    slots, empty slots included — hand size is a stat you can see;
-    the act strip; the card's glyph (art. 74). Nothing else ever
-    appears in the tray.
+67. SETTLED (amended by the tray stand-up of 2026-08-05) — The tray is
+    anatomy, not a menu. It is a **persistent rail** and a **panel
+    area** beneath it.
+
+    The **rail** never changes: vitals (health, armor) and the tabs.
+    The **panels** are ACTS — home, where the room is played from,
+    holding the verbs looking has summoned (art. 68) and the door
+    commits; POUCH — the pouch as visible slots, empty slots included,
+    because hand size is a stat you can see, and the surface art. 60's
+    swap is made on; and FIGHT, which exists only while a fight does
+    (art. 92). Nothing else ever appears in the tray.
+
+    The original article's fixed regions are not repealed, only
+    relocated: a region still lives in exactly one place and never
+    moves. What changed is that the tray stopped showing every region
+    at once — the dice on screen during exploration read as a fight
+    that was always happening.
 
 ## Look, then take
 68. SETTLED (ruled) — A tap investigates; an act commits. Tapping
@@ -61,6 +73,37 @@ skeleton playtest.
 75. SETTLED — Interaction is state. A half-made selection, a
     half-read scene, a half-spent turn all survive the lock screen
     (art. 36 applied to the fingertip).
+
+## Panels & focus (ratified 2026-08-05)
+90. SETTLED (ruled) — Tabs are taps. A tab bar spends nothing from
+    art. 76's budget: it is the vocabulary the game already has, used
+    on a new surface, so it needs no admission. A tab is a **label**
+    and not a control — it names a place and commits nothing — so
+    art. 66 does not govern it and this article does instead: one or
+    two words, a place rather than an action.
+
+    **The slide is a named option.** Swiping between panels was
+    weighed at the same stand-up and not admitted. It remains eligible
+    under art. 76 and may be proposed at its own stand-up; until then
+    nothing may be built that forecloses it, and nothing may be built
+    that assumes it.
+91. SETTLED (ruled) — Panel focus is state. Which panel the thumb is
+    on survives the lock screen and rides the vault, exactly as art. 75
+    requires of a half-made selection — a player reading the pouch when
+    the phone locks is reading the pouch when it wakes.
+
+    **Transitions are declared events, never inferences.** Entering a
+    fight focuses FIGHT; a fight ending focuses ACTS; a tap on a tab
+    focuses what it names. Nothing else moves focus. A focus that moves
+    on its own is a focus the player has to keep checking, which is the
+    opposite of anatomy.
+92. SETTLED (ruled) — The map is a socket. A tab may stand for a panel
+    that does not exist, drawn plainly disabled, so that an absence
+    reads as a decision rather than as an oversight. Behind this one
+    there is nothing and there may be nothing: art. 31 bans the road
+    ahead and art. 85 parks the trail behind. **A disabled tab is
+    legal; pixels behind it are not.** Filling it requires amending
+    those articles, not this one.
 
 ## The interaction budget
 76. SETTLED (ruled) — No interaction type is banned, and none enters

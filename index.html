@@ -84,14 +84,43 @@
          always in this order, whatever the moment holds. */
       #tray { flex: 0 0 auto; border-top: 1px solid var(--line); padding: 8px 10px 12px;
         display: flex; flex-direction: column; gap: 8px; }
+      /* art. 67: the rail. Two rows that are always there and always the
+         same — what your body is, and where the thumb can go. */
+      #rail { display: flex; flex-direction: column; gap: 6px; }
+      #tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); }
+      #tabs button { font: inherit; color: var(--dim); background: none; border: none;
+        border-bottom: 2px solid transparent; padding: 5px 12px 6px; letter-spacing: .06em;
+        text-transform: lowercase; }
+      #tabs button.on { color: var(--ink); border-bottom-color: var(--gold); }
+      /* arts 31, 85: a socket, and it says so. It is not a button that fails
+         — it is a place where a thing is not. */
+      #tabs button[disabled] { color: #4a453d; border-bottom-color: transparent; opacity: .55; }
+      #panels { padding-top: 8px; }
+      .panel { display: none; }
+      .panel.on { display: block; }
       #vitals { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px;
         min-height: 24px; font-size: .85em; color: var(--dim); }
       #vitals b { font-weight: normal; color: var(--ink); }
       #vitals .glyph { margin-left: auto; font: inherit; color: var(--ink);
         background: var(--raised); border: 1px solid var(--line); width: 34px; height: 30px;
         cursor: pointer; line-height: 1; }
-      #pouch { display: flex; flex-wrap: wrap; gap: 6px; min-height: 46px; align-items: center; }
-      #acts { display: flex; flex-wrap: wrap; gap: 6px; min-height: 42px; align-items: center; }
+      #pouch.on, #fight.on { display: flex; flex-wrap: wrap; gap: 6px; min-height: 46px;
+        align-items: center; }
+      #acts.on { display: flex; flex-wrap: wrap; gap: 6px; min-height: 42px; align-items: center; }
+      /* art. 30: no battle screen — the world band is still the room. What
+         changes mode is the tray, so the fight panel gets its own ground:
+         darker, ruled off, and lit along the top edge. */
+      #fight { background: #14120f; margin: -8px -10px -12px; padding: 8px 10px 12px;
+        border-top: 1px solid var(--gold); box-shadow: inset 0 14px 22px -18px #000; }
+      #fight .totals { flex: 1 0 100%; display: flex; flex-wrap: wrap; gap: 4px 12px;
+        color: var(--dim); font-size: .82em; align-items: center; margin-bottom: 2px; }
+      #fight .totals b { font-weight: normal; color: var(--ink); }
+      #fight .totals .glyph { margin-left: auto; font: inherit; color: var(--ink);
+        background: none; border: 1px solid var(--line); border-radius: 3px;
+        padding: 1px 7px; }
+      /* The line a panel says when it has something to explain (art. 69). */
+      .panel .aside { flex: 1 0 100%; color: var(--dim); font-size: .82em; margin-top: 2px; }
+      .panel .rule { flex: 1 0 100%; height: 1px; background: var(--line); margin: 2px 0; }
 
       button { font: inherit; background: var(--raised); color: var(--ink);
         border: 1px solid #55504a; padding: 9px 12px; min-height: 42px; cursor: pointer; }
@@ -145,11 +174,21 @@
         <div id="crown"></div>
         <div id="sheet"></div>
       </main>
-      <!-- art. 67: fixed regions, always in the same places. -->
+      <!--
+        art. 67 (amended): the tray is a persistent rail and a panel area.
+        The rail never changes; the panels swap under it. The map tab is a
+        socket with nothing behind it (arts 31, 85) — there is no #map.
+      -->
       <div id="tray">
-        <div id="vitals"></div>
-        <div id="pouch"></div>
-        <div id="acts"></div>
+        <div id="rail">
+          <div id="vitals"></div>
+          <div id="tabs"></div>
+        </div>
+        <div id="panels">
+          <div id="acts" class="panel"></div>
+          <div id="pouch" class="panel"></div>
+          <div id="fight" class="panel"></div>
+        </div>
       </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
