@@ -200,7 +200,7 @@ timed (art. 1), so the tap buys a strip that holds still. If flight ever
 wants to be instant again, the fix is a fixed slot on the rail rather
 than a verb back in the shifting strip.
 
-## A door is a hole now (art. 97, built)
+## A door is a hole now, and the room ends (arts 96–97, built)
 
 The playtest screenshot showed three small outlined boxes hovering at the
 end of a corridor. Art. 97 was written about exactly that, and the article
@@ -239,12 +239,53 @@ spaced the holes correctly and let the architraves touch, which read as one
 wide barrier — the same failure as one thing cut in half. Doors give up
 width rather than overlap.
 
-**What this is not.** These are thresholds standing in a tube, not holes in
-a wall, because art. 96 is not built — an ordinary room still has no far
-wall, so what is between two doorways is the mouth's darkness rather than
-stone. That is the reason three doors need real gaps to read as three. The
-chamber is the follow-on, and it is what will make a door a hole in
-something.
+**And the room ends, so the hole has something to be a hole in (art. 96).**
+The first cut of this shipped thresholds standing in a tube: correct
+grammar, correct height, and still a frame hanging in fog, because what lay
+between two doorways was the mouth's darkness rather than stone. A door is
+a hole and a hole needs a wall.
+
+The chamber is built. `RoomShape` gains one optional fourth number — `back`,
+the depth its far wall stands at — and the cast gains one more plane, which
+is all art. 96 ever claimed it would take: every ray reaches the back at the
+same depth, so it wins wherever it is nearer than the four. Everything else
+came free, exactly as the article says. The contour pass inks the new
+corners without being told. The fog dims the wall because it stands inside
+it. The light lifts it. The masonry answers for it — the same grammar,
+coursed across `x` where a side wall courses along `z`, so the courses line
+up where the two meet and the corner reads as a corner rather than a change
+of material.
+
+A threshold's depth is now the wall's depth and is never authored beside
+it, so a door cannot drift off the wall it is a hole in.
+
+**One room stays a tube: the Crossing.** Its plate is the reference and it
+wins ties about the box, so `WAKE` is untouched and still renders as itself
+byte for byte. The room takes the chamber's shape while keeping the plate's
+props and light — because the alternative was doors that float, and no room
+gets an exemption from art. 97. The cost is honest and worth writing down:
+the wake plate's shaft of light was composed against a mouth, and it now
+stands between the camera and the far wall's doors. The doors read *through*
+it rather than beside it. Art. 105 says supporting things stand aside from
+the hero and the hero here is the shaft, so the Crossing wants a composition
+pass — the doors moved off the shaft's axis, or the shaft narrowed. It is
+the one room in the depth whose picture was authored before there was a wall
+in it.
+
+Making the Crossing a tube and staging its way on as the mouth was tried and
+reverted. It reads beautifully and it costs a choice: a tube can show one
+dark end, not three, so the Crossing would have to deal one door — and
+`gen.drift.test.ts` measured what that does, dropping a committed policy's
+lock rate from over 0.7 to 0.667. The room that opens every run is where
+the drift's tally starts, and taking a choice out of it weakens art. 77
+measurably. The wall is cheaper than the choice.
+
+**A prop that marched past the wall now stops at it.** `reach()` answers
+with the nearer of the mouth's cutoff and the far wall, because anything
+laid beyond `zBack` paints floor onto stone — the runnel, the ash banks, the
+standing water, the bone drifts, the seep's third leak, the stair's flights
+and the tally's last groups all ran four to nine world units past where the
+room now ends.
 
 Art. 106's stir is not built either: a doorway's darkness should move in
 the bottom two steps of its ramp, and doing that needs art. 109's one
@@ -274,6 +315,7 @@ What the amendment settles, in the order a renderer would need it:
   one room at different sizes. This amends art. 14 — a chamber authors
   its far wall's depth, the only fourth number — and art. 16, whose mouth
   is now what a room has *instead of* a far wall rather than always.
+  **Built**, chamber only: the junction's wide side apertures are not.
 - **A door is a hole, not a thing** (art. 97). Taller than wide, standing
   on the floor, recessed honestly, framed, dark in the room's own
   darkness. A fixed grammar learned once and read forever, and the reason

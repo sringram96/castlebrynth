@@ -35,7 +35,7 @@ const TINT_FLOOR = 0.15
  * as dots (art. 17, better served).
  */
 export function castBox(view: View, look: Look, surfaces: SurfaceShaders): Cast {
-  const { frame, shape, f, eye, zMouth, config } = view
+  const { frame, shape, f, eye, zMouth, zBack, config } = view
   const { width: W, height: H, cx: CX, cy: CY } = frame
   const { palette, light, air } = look
   const target = framebuffer(W, H)
@@ -83,6 +83,13 @@ export function castBox(view: View, look: Look, surfaces: SurfaceShaders): Cast 
         z = zF
         s = Surface.Floor
       }
+      // art. 96: one more plane, and the same first-hit cast. A chamber ends
+      // in a wall standing inside the fog — every ray reaches it at the same
+      // depth, so it wins wherever it is nearer than the four.
+      if (zBack < z) {
+        z = zBack
+        s = Surface.Back
+      }
 
       if (z >= zMouth || s === Surface.Mouth) {
         // art. 16: past the cutoff, structural near-black with a breath.
@@ -101,6 +108,11 @@ export function castBox(view: View, look: Look, surfaces: SurfaceShaders): Cast 
       if (s === Surface.WallLeft || s === Surface.WallRight) {
         const height = (dy * z) / f + eye
         step = surfaces.wall(s === Surface.WallLeft ? -1 : 1, z, height)
+        ramp = wallRamp
+      } else if (s === Surface.Back) {
+        // The far wall takes the wall's own ramp: it is the same stone, seen
+        // end-on rather than along (art. 93 — one school, four surfaces).
+        step = surfaces.back((dx * z) / f, (dy * z) / f + eye)
         ramp = wallRamp
       } else if (s === Surface.Ceiling) {
         step = surfaces.ceiling(z, (dx * z) / f)

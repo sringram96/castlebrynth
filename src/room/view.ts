@@ -13,6 +13,17 @@ export interface RoomShape {
   readonly width: number
   /** Ceiling height above the eye, in world units. */
   readonly ceiling: number
+  /**
+   * art. 96: where the room ends, if it ends. A **chamber** authors the
+   * depth of its far wall — the only fourth number, and it says where the
+   * room stops rather than how wide it is. Left out, the room is a **tube**:
+   * no far wall, and the mouth is the way on (art. 16).
+   *
+   * Shape sits above proportion. The three dials make a room bigger or
+   * smaller; this is what makes it a place you stand in rather than one you
+   * pass through.
+   */
+  readonly back?: number
 }
 
 /**
@@ -75,6 +86,12 @@ export interface View {
   /** The cutoff: past this is the mouth (art. 16). */
   readonly zMouth: number
   /**
+   * art. 96: where the far wall stands, or Infinity in a tube. A chamber's
+   * wall stands *inside* the fog — the room ends, which is what makes it a
+   * place — so past this depth there is nothing to cast.
+   */
+  readonly zBack: number
+  /**
    * Y is up: the floor sits at -eye, the ceiling at +ceiling.
    * sx = cx + f·X/z, sy = cy − f·Y/z.
    */
@@ -94,6 +111,7 @@ export function viewOf(shape: RoomShape, config: RenderConfig): View {
     eye: config.eye,
     z0,
     zMouth,
+    zBack: shape.back ?? Infinity,
     project(X: number, Y: number, z: number): Projected {
       return { x: frame.cx + (f * X) / z, y: frame.cy - (f * Y) / z, scale: f / z }
     },

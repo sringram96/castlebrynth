@@ -74,6 +74,12 @@ export interface SurfaceShaders {
   wall(side: -1 | 1, z: number, height: number): number
   ceiling(z: number, x: number): number
   floor(z: number, x: number): number
+  /**
+   * art. 96: the far wall of a chamber, across the end of the room. `x` runs
+   * across it and `height` up it — the same two questions a side wall
+   * answers, asked of the plane the room stops at.
+   */
+  back(x: number, height: number): number
 }
 
 /** Which surface a pixel first hit. Also the contour pass's alphabet. */
@@ -83,6 +89,8 @@ export const Surface = {
   WallRight: 2,
   Ceiling: 3,
   Floor: 4,
+  /** art. 96: the wall a chamber ends in. A tube never has one. */
+  Back: 5,
 } as const
 export type SurfaceId = (typeof Surface)[keyof typeof Surface]
 

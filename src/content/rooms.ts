@@ -104,11 +104,22 @@ const room = (s: string): RoomId => s as RoomId
 export const CROSSING = room('room.crossing')
 export const WARDEN = room('room.warden')
 
-/** art. 14: the box is three authored numbers, and no more. */
-const CORRIDOR = { lens: 93, width: 11, ceiling: 7 } as const
-const LOW = { lens: 88, width: 9, ceiling: 5 } as const
-const CHAMBER = { lens: 96, width: 12, ceiling: 8 } as const
-const HALL = { lens: 100, width: 14, ceiling: 9 } as const
+/**
+ * art. 14 as amended: three authored numbers for the proportions, and a
+ * shape. `back` is the shape — art. 96's chamber, the depth its far wall
+ * stands at, which says where the room stops and nothing about how wide it
+ * is. A room without one is a tube and ends in the mouth.
+ *
+ * Every room in this depth is a chamber, and the reason is art. 97. A door
+ * is a hole, and a hole needs something to be a hole *in*: a threshold
+ * standing at the end of a tube is a frame hanging in fog, which is a thing
+ * and not a way out. The wall is what makes the door read, and it is worth
+ * more than the endlessness the tube was buying.
+ */
+const CORRIDOR = { lens: 93, width: 11, ceiling: 7, back: 40 } as const
+const LOW = { lens: 88, width: 9, ceiling: 5, back: 34 } as const
+const CHAMBER = { lens: 96, width: 12, ceiling: 8, back: 43 } as const
+const HALL = { lens: 100, width: 14, ceiling: 9, back: 47 } as const
 
 /** Which of the four boxes a room is, for the marks that derive from it. */
 type ShapeKind = 'corridor' | 'low' | 'chamber' | 'hall'
@@ -137,8 +148,6 @@ const FLOOR = -RENDER.eye
  * height rather than being asked for.
  */
 interface DoorPlan {
-  /** How far off the door stands. */
-  readonly z: number
   /** How tall, in world units, floor to lintel. */
   readonly high: number
   /** The widest a single door here may be; art. 97 narrows it if it must. */
@@ -146,10 +155,19 @@ interface DoorPlan {
 }
 
 const DOOR_PLAN: Readonly<Record<ShapeKind, DoorPlan>> = {
-  corridor: { z: 33, high: 17, wide: 7.6 },
-  low: { z: 29, high: 14, wide: 6.6 },
-  chamber: { z: 35, high: 17.5, wide: 8 },
-  hall: { z: 37, high: 19, wide: 9 },
+  corridor: { high: 17, wide: 7.6 },
+  low: { high: 14, wide: 6.6 },
+  chamber: { high: 17.5, wide: 8 },
+  hall: { high: 19, wide: 9 },
+}
+
+/**
+ * art. 97: a door is a hole, so its depth is the wall's depth and is never
+ * authored beside it. A threshold standing anywhere else is a frame in mid
+ * air, which is the thing the article refuses.
+ */
+function doorDepth(kind: ShapeKind): number {
+  return SHAPES[kind].back ?? DOOR_PLAN[kind].high * 2
 }
 
 /** How much room the doors leave themselves against the walls. */
@@ -185,10 +203,28 @@ export function doorMarks(kind: ShapeKind, count: number): readonly WorldMark[] 
   return Array.from({ length: n }, (_, i) => ({
     X: -span / 2 + slot * (i + 0.5),
     Y: FLOOR,
-    z: plan.z,
+    z: doorDepth(kind),
     width,
     height: plan.high,
   }))
+}
+
+/** art. 37: the Warden's door, which is the one door its hall ever offers. */
+const WARDEN_DOOR = doorMarks('hall', 1)[0]!
+
+/**
+ * art. 97: the lock lives *on* the frame, so the thing that answers for it
+ * sits where the frame is — beside the aperture and a little above centre,
+ * which is where `threshold` paints it.
+ */
+function lockOn(door: WorldMark): WorldMark {
+  return {
+    X: door.X + door.width / 2 + 0.7,
+    Y: door.Y + door.height * 0.42,
+    z: door.z,
+    width: 2.4,
+    height: 2.6,
+  }
 }
 
 /** Where a room's door stands when nothing has said how many there are. */
@@ -450,8 +486,10 @@ const AUTHORED: readonly Authored[] = [
     dressing: () => [],
     tappables: [
       // The lock is a small thing on a large one, and both answer (art. 69).
-      ['warden.lock', { X: 0, Y: -7.4, z: 38, width: 2.4, height: 2.6 }],
-      ['warden.door', { X: 0, Y: FLOOR, z: 38, width: 8, height: 9.6 }],
+      // Both derive from where the threshold actually stands, so neither can
+      // drift off the door when the shape changes under them (art. 68).
+      ['warden.lock', lockOn(WARDEN_DOOR)],
+      ['warden.door', WARDEN_DOOR],
     ],
     // The Warden's door ends the depth. Nothing stands in front of it.
     teeth: NEVER,
@@ -475,6 +513,12 @@ const AUTHORED: readonly Authored[] = [
  * an authored room is a way on whether or not the chain has said so.
  */
 function thresholds(one: Authored, state: SceneState): readonly Prop[] {
+  // art. 96: a tube has no far wall, so it has nothing for a door to be a
+  // hole in — its way on is the mouth. Painting a threshold there would put a
+  // frame in mid air, which is the thing art. 97 refuses, so this refuses it
+  // instead of drawing it. Nothing declares a tube today; the guard is here
+  // so that the day something does, it fails visibly rather than floating.
+  if (SHAPES[one.kind].back === undefined) return []
   const ways: readonly DoorState[] =
     state.doors.length > 0 ? state.doors : [{ at: 0, open: false, locked: false, ends: false }]
   const marks = doorMarks(one.kind, ways.length)
@@ -511,9 +555,14 @@ function contentOf(one: Authored): RoomContent {
     kind: one.kind,
     shape,
     scene: (state) => {
-      const base =
-        one.plate ??
-        plainScene(one.id, one.school, shape, () => one.dressing(one.school, state))
+      // The reference plate keeps its props, its light and its palette, and
+      // takes the room's shape. WAKE is authored as a tube and stays one
+      // wherever it is rendered as itself — it still wins ties about the box
+      // — but the room the Crossing *is* ends in a wall like every other,
+      // because its doors are holes and a hole needs a wall (arts 96, 97).
+      const base = one.plate
+        ? { ...one.plate, shape }
+        : plainScene(one.id, one.school, shape, () => one.dressing(one.school, state))
       // art. 97: every door the room offers is a threshold, and every
       // threshold is drawn. This is the room's, not the dressing's — the
       // grammar never varies between rooms, so no room gets to author it.

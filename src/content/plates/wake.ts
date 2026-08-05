@@ -126,6 +126,29 @@ export function masonry(school: School, shape: RoomShape, eye: number): SurfaceS
       if (hash(s, (x * 2) | 0) < 9) step -= STONE.defect
       return step
     },
+    // art. 96: the far wall is the same masonry, coursed the same way and
+    // laid across the end instead of along the sides. It runs on `x` where a
+    // side wall runs on `z`, so the courses line up where the two meet and
+    // the corner reads as a corner rather than as a change of material.
+    back(x, height) {
+      const course = Math.floor(height / COURSE)
+      const offset = ((course % 2) * BRICK) / 2
+      const u = x + offset + 40
+      const b = Math.floor(u / BRICK)
+      const fu = u / BRICK - b
+      const fv = height / COURSE - course
+      if (fv < 0.1 || fu < 0.075) return base.wall - STONE.seam
+      const id = b * 13 + course * 7 + 211
+      let step = base.wall + STONE.tone[hash(id, 3) % 4]!
+      if (hash(b * 5, course * 3 + id) < 9) step += STONE.alt
+      if (hash(id, (fv * 9) | 0) < 3) step -= STONE.defect
+      if (height < 0.3 * tall && hash(id, b) < 24) step -= STONE.damp
+      if (height < 0.45 * tall && hash(id * 3, course) < 7) {
+        step -= hash(b, id) < 40 ? STONE.moss : STONE.moss2
+      }
+      if (hash(id, 1) < 7 && fv > 0.5 && fu > 0.8) step -= STONE.defect
+      return step
+    },
   }
 }
 

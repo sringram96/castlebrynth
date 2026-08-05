@@ -27,9 +27,17 @@ function pixel(view: View): (n: number) => number {
   return (n) => (n * view.config.grid) / AUTHORED_GRID
 }
 
-/** How deep a room reads before the mouth swallows it. */
+/**
+ * How deep a room reads before it stops — the mouth swallowing it in a tube
+ * (art. 16), or the far wall in a chamber (art. 96), whichever comes first.
+ *
+ * A prop that marches past the far wall paints floor onto stone: the cast
+ * ends the room at `zBack`, so anything laid beyond it lands on a surface
+ * that is nearer than the depth it was drawn for. Every prop that runs away
+ * from the camera asks this rather than the cutoff.
+ */
 function reach(view: View): number {
-  return view.zMouth * 0.94
+  return Math.min(view.zMouth * 0.94, view.zBack - 0.6)
 }
 
 // ── The wet passage ────────────────────────────────────────────────────
@@ -74,7 +82,7 @@ export function seep(school: School): Prop {
       for (const [X, z] of [
         [-shape.width + 1.5, 16],
         [shape.width - 1.5, 27],
-        [-shape.width + 2.5, 44],
+        [-shape.width + 2.5, Math.min(44, reach(b.view))],
       ] as const) {
         const top = b.project(X, shape.ceiling, z)
         const drop = Math.max(g(4), b.view.f / z / 1.4)
@@ -281,7 +289,8 @@ export function stairHead(school: School): Prop {
       const { eye } = b.view
       const g = pixel(b.view)
       let drop = 0
-      for (let z = 20; z < 46; z += 1.6) {
+      const last = Math.min(46, reach(b.view))
+      for (let z = 20; z < last; z += 1.6) {
         // Each flight steps down, and each starts a little off the last.
         const skew = ((z / 8) | 0) % 2 === 0 ? -1.1 : 1.1
         const left = b.project(skew - 3.2, -eye - drop, z)
@@ -458,7 +467,8 @@ export function tallyMarks(school: School): Prop {
       const { shape, eye } = b.view
       const g = pixel(b.view)
       let group = 0
-      for (let z = 8; z < 44; z += 1.1) {
+      const last = Math.min(44, reach(b.view))
+      for (let z = 8; z < last; z += 1.1) {
         const at = group % 5
         // The gate across each finished group of five.
         const top = b.project(shape.width, -eye + 4.4, z)
@@ -479,7 +489,7 @@ export function tallyMarks(school: School): Prop {
           }
         }
         // The last group stops one short.
-        if (z > 40 && at >= 3) break
+        if (z > last - 4 && at >= 3) break
         group++
       }
     },
