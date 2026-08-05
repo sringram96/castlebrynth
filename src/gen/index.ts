@@ -30,6 +30,7 @@ import type {
   Grammar,
   InstanceId,
   KeyId,
+  MercyPlan,
   RegionId,
   RoomTemplate,
   RoomType,
@@ -52,6 +53,7 @@ export type {
   Grammar,
   InstanceId,
   KeyId,
+  MercyPlan,
   Region,
   RegionId,
   RoomTemplate,
@@ -200,6 +202,39 @@ export function deal(
     return { template: chosen, region }
   }
 
+  /**
+   * arts 37, 40: a room type the depth owes and has not paid yet, if this
+   * step is inside its band. The depth may owe several; the first unpaid one
+   * whose band covers this step is the one dealt.
+   */
+  const owedMercy = (step: number): MercyPlan | null =>
+    plan.mercies.find(
+      (one) =>
+        step >= one.band[0] &&
+        step <= one.band[1] &&
+        !nodes.some((node) => node.type === one.type),
+    ) ?? null
+
+  /**
+   * The mercy, dealt out of the neutral pool (art. 77) so that no lean of the
+   * drift can steer a run away from it. The chance rises as the band closes
+   * and reaches certainty at its last step, exactly as art. 80's key does —
+   * the same shape of promise, kept about a room instead of an item.
+   */
+  const mercyAt = (step: number): { template: RoomTemplate; region: RegionId | null } | null => {
+    const owed = owedMercy(step)
+    if (owed === null) return null
+    const pool = poolRooms(plan, null)
+      .map((id) => templates.get(id))
+      .filter((held): held is RoomTemplate => held !== undefined && held.type === owed.type)
+    if (pool.length === 0) return null
+    const lot = lotAt(seed, depth, taken, step, SALT.mercy)
+    const chances = owed.band[1] - step + 1
+    if (chances > 1 && lot.next() >= 1 / chances) return null
+    const chosen = pick(pool, () => 1, lot) ?? pool[0]
+    return chosen === undefined ? null : { template: chosen, region: null }
+  }
+
   // ── What stands in the room ──────────────────────────────────────────
 
   const placedAlready = (): Set<string> => {
@@ -311,7 +346,12 @@ export function deal(
   const dealAt = (step: number, announces: RegionId | null): ChainNode => {
     const last = step >= plan.length - 1
     const fixed = step === 0 ? anchor('crossing') : last ? anchor('warden') : null
-    const drawn = fixed === null ? chooseRoom(step) : { template: fixed, region: null }
+    // The anchors first (art. 37), then what the depth owes (art. 40), then
+    // the ordinary weighted draw.
+    const drawn =
+      fixed !== null
+        ? { template: fixed, region: null }
+        : (mercyAt(step) ?? chooseRoom(step))
     const template = drawn.template
     const fills = fillSockets(step, template)
     return {

@@ -39,9 +39,10 @@ export type { EncounterId, InstanceId } from '../state/index.js'
 
 /**
  * art. 83: what a socket will take. A socket is not a slot for anything —
- * a horror does not stand where a boon lies.
+ * a horror does not stand where a boon lies, and neither of them stands
+ * where a mercy is offered (art. 40).
  */
-export type EncounterKind = 'horror' | 'boon'
+export type EncounterKind = 'horror' | 'boon' | 'mercy'
 
 /** art. 83, axis one: bound to a room, or floating into sockets. */
 export type Binding = 'bound' | 'floating'
@@ -123,6 +124,27 @@ export interface DepthLock {
 }
 
 /**
+ * arts 37, 40: a room type the depth owes, dealt from the neutral pool
+ * inside a band of steps.
+ *
+ * The soft type-weights (art. 39) lean; they do not promise. A mercy has to
+ * be promised — a depth that deals no Sanctum is a depth with no healing in
+ * it — so this is the room-shaped twin of art. 80's just-in-time key: the
+ * dealer knows it owes one, and pays inside the band, with certainty at the
+ * band's last step.
+ *
+ * The band is content's to set and content's to keep honest: art. 78 hands
+ * the rest of the depth to the locked region, so a band that reached past
+ * `lockAt` would be asking the dealer to deal a neutral room after the lock.
+ * Keep `band[1]` below `lockAt`.
+ */
+export interface MercyPlan {
+  readonly type: RoomType
+  /** The first and last step it may be dealt at, both inclusive. */
+  readonly band: readonly [number, number]
+}
+
+/**
  * One depth, as content authors it. arts 77–81: how many regions there are,
  * how long the depth is, and when the lock is forced are all knobs here and
  * nowhere in the engine.
@@ -139,6 +161,8 @@ export interface DepthPlan {
   /** art. 39: this depth's tendencies — quiet shallow, teeth deep. */
   readonly tendencies: Readonly<Record<RoomType, number>>
   readonly locks: readonly DepthLock[]
+  /** arts 37, 40: the room types this depth owes, and where they may fall. */
+  readonly mercies: readonly MercyPlan[]
 }
 
 export interface Catalog {

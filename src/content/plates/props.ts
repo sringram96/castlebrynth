@@ -484,6 +484,188 @@ export function tallyMarks(school: School): Prop {
   }
 }
 
+// ── The font ───────────────────────────────────────────────────────────
+
+/**
+ * Three shallow steps down into a floor that holds a hand's depth of water.
+ * The room's own prop, and only the room's: what stands *in* the font is
+ * whatever fills its mercy socket, and it brings its own pixels (art. 83).
+ */
+export function fontSteps(school: School): Prop {
+  return {
+    name: 'the steps',
+    z: 15,
+    paint(b: Brush): void {
+      const { eye } = b.view
+      const g = pixel(b.view)
+      /** The pool, cut square into the floor: half-width, ends, and depth. */
+      const half = 4.2
+      const near = 13
+      const far = 25
+      const deep = 1.6
+
+      // What lies at the bottom of it. Still, and dark: the light in this
+      // room is what the basin holds, not what the floor does.
+      for (let z = near; z < far; z += 0.25) {
+        const left = b.project(-half, -eye - deep, z)
+        const right = b.project(half, -eye - deep, z)
+        const y = Math.round(left.y)
+        for (let x = left.x; x < right.x; x++) {
+          b.px(school.damp, x, y)
+          if (b.dither(x, y, 4)) b.px(school.accent[0]!, x, y)
+          if (b.hash(x | 0, y * 7) < 2) b.px(school.accent[1]!, x, y)
+        }
+      }
+      // The sides it is cut into, inked at the lip, so it reads as a hole in
+      // the floor and not as a patch of colour on it.
+      for (let z = near; z < far; z += 0.25) {
+        for (const side of [-1, 1] as const) {
+          const lip = b.project(side * half, -eye, z)
+          const bed = b.project(side * half, -eye - deep, z)
+          for (let y = lip.y; y < bed.y; y++) {
+            b.px(b.dither(lip.x, y, 5) ? school.grime : school.brickAlt, lip.x, y)
+          }
+          b.px(school.edge, lip.x, lip.y)
+        }
+      }
+      // The far end of the cut, so it closes rather than running into the mouth.
+      const backLip = b.project(0, -eye, far)
+      const backBed = b.project(0, -eye - deep, far)
+      const backHalf = (b.view.f * half) / far
+      for (let x = backLip.x - backHalf; x < backLip.x + backHalf; x++) {
+        for (let y = backLip.y; y < backBed.y; y++) {
+          b.px(b.dither(x, y, 4) ? school.grime : school.brickAlt, x, y)
+        }
+        b.px(school.edge, x, backLip.y)
+      }
+      // And three treads down the near side. Each one narrower than the one
+      // above it, and each one worn pale in the middle.
+      for (let n = 0; n < 3; n++) {
+        const y = -eye - (deep * (n + 1)) / 3
+        const w = half - 0.4 - n * 0.55
+        const z = near - 1.9 + n * 0.6
+        const left = b.project(-w, y, z)
+        const right = b.project(w, y, z)
+        const row = Math.round(left.y)
+        for (let x = left.x; x < right.x; x++) {
+          const across = 1 - Math.abs(x - (left.x + right.x) / 2) / ((right.x - left.x) / 2 || 1)
+          // Worn pale down the middle, where the knees go.
+          b.px(b.dither(x, row, 2 + across * 9) ? school.brickAlt : school.flag[3]!, x, row)
+        }
+        for (let x = left.x; x < right.x; x++) b.px(school.edge, x, row + g(1))
+        b.px(school.bone[0]!, left.x, row)
+        b.px(school.bone[0]!, right.x - g(1), row)
+      }
+    },
+  }
+}
+
+/**
+ * The basin: copper on a plinth, standing where the room keeps its mercy
+ * socket. art. 70 — once the breath is taken it is drawn empty and tipped,
+ * because prose confirms and pixels prove.
+ */
+export function stillBasin(school: School, mark: WorldMark, spent: boolean): Prop {
+  return {
+    name: spent ? 'the empty basin' : 'the basin',
+    z: mark.z,
+    paint(b: Brush): void {
+      const g = pixel(b.view)
+      const foot = b.project(mark.X, mark.Y, mark.z)
+      const half = (b.view.f * mark.width) / mark.z / 2
+      const tall = (b.view.f * mark.height) / mark.z
+      /** The lip of the bowl, how deep the bowl is, and the stem under it. */
+      const rim = foot.y - tall * 0.62
+      const cup = Math.max(g(3), tall * 0.24)
+      const stem = Math.max(g(1), half * 0.18)
+      // A spent basin is dry rather than gone: dull copper, and no light.
+      const metal = spent ? school.iron : school.coin
+      const shade = spent ? school.grime : school.brickAlt
+
+      // The foot it stands on.
+      b.rect(shade, foot.x - half * 0.46, foot.y - g(2), half * 0.92, g(2))
+      b.rect(school.edge, foot.x - half * 0.46, foot.y - g(1), half * 0.92, g(1))
+
+      // The stem.
+      for (let y = rim + cup; y < foot.y - g(2); y++) {
+        for (let x = foot.x - stem; x < foot.x + stem; x++) {
+          b.px(b.dither(x, y, 5) ? school.grime : shade, x, y)
+        }
+        b.px(school.edge, foot.x - stem, y)
+        b.px(school.edge, foot.x + stem, y)
+      }
+
+      // The bowl: wide at the lip, narrowing to the stem.
+      for (let y = rim; y < rim + cup; y++) {
+        const down = (y - rim) / (cup || 1)
+        const w = half * (1 - 0.74 * down)
+        for (let x = foot.x - w; x < foot.x + w; x++) {
+          b.px(b.dither(x, y, 3 + 9 * (1 - down)) ? metal : school.iron, x, y)
+        }
+        b.px(school.edge, foot.x - w, y)
+        b.px(school.edge, foot.x + w, y)
+      }
+
+      if (spent) {
+        // Nothing in it. The inside is the dark the room is made of, and the
+        // tidemark is the only trace of what stood here (art. 70).
+        for (let x = foot.x - half + g(1); x < foot.x + half - g(1); x++) {
+          b.px(school.hollow, x, rim)
+          if (b.dither(x, rim + g(1), 6)) b.px(school.bone[0]!, x, rim + g(1))
+        }
+        b.px(school.edge, foot.x - half, rim)
+        b.px(school.edge, foot.x + half - g(1), rim)
+        return
+      }
+      // Full to the lip, and the one thing in this room with any light in it.
+      for (let x = foot.x - half + g(1); x < foot.x + half - g(1); x++) {
+        b.px(school.accent[2]!, x, rim)
+        if (b.hash(x | 0, 17) < 34) b.px(school.accent[3]!, x, rim - g(1))
+        b.px(b.dither(x, rim + g(1), 7) ? school.accent[1]! : school.accent[0]!, x, rim + g(1))
+      }
+    },
+  }
+}
+
+/**
+ * The Savior, standing in a room that is not its own (art. 83). A seated
+ * figure with its hands open — the one shape in the depth that is not
+ * between you and the door.
+ */
+export function theMender(school: School, mark: WorldMark): Prop {
+  return {
+    name: 'the mender',
+    z: mark.z,
+    paint(b: Brush): void {
+      const g = pixel(b.view)
+      const foot = b.project(mark.X, mark.Y, mark.z)
+      const half = (b.view.f * mark.width) / mark.z / 2
+      const tall = (b.view.f * mark.height) / mark.z * 0.72
+      const top = foot.y - tall
+
+      for (let y = top; y < foot.y; y++) {
+        const down = (y - top) / (tall || 1)
+        // Narrow at the head, wide where it is sitting.
+        const w = half * (0.2 + 0.62 * down * down)
+        for (let x = foot.x - w; x < foot.x + w; x++) {
+          const across = 1 - Math.abs(x - foot.x) / (w || 1)
+          b.px(b.dither(x, y, 3 + across * 9) ? school.slat[1]! : school.hollow, x, y)
+        }
+        b.px(school.edge, foot.x - w, y)
+        b.px(school.edge, foot.x + w, y)
+      }
+      // The hands, open, at the height a kneeling person's would meet.
+      const hands = top + tall * 0.62
+      for (const side of [-1, 1] as const) {
+        b.rect(school.bone[1]!, foot.x + side * half * 0.4, hands, Math.max(1, g(2)), Math.max(1, g(2)))
+      }
+      // And the one lit thing between them.
+      b.px(school.accent[3]!, foot.x, hands)
+      b.px(school.accent[2]!, foot.x, hands + g(1))
+    },
+  }
+}
+
 // ── What stands in a socket (art. 83) ──────────────────────────────────
 
 /**

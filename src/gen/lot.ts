@@ -79,6 +79,7 @@ export const SALT = {
   fills: 4,
   key: 5,
   lock: 6,
+  mercy: 7,
 } as const
 
 /** A seeded shuffle. Fisher–Yates, so the same seed deals the same hand. */

@@ -1,7 +1,7 @@
 /**
  * The labyrinth, as data (arts 9, 31, 37, 77–83).
  *
- * Thirteen hand-authored rooms: two fixed anchors, two in the neutral pool,
+ * Fourteen hand-authored rooms: two fixed anchors, three in the neutral pool,
  * and three each in the drowned, the burnt and the ossuary. `src/gen` deals
  * them lazily under the drift; this file is what it deals from.
  *
@@ -41,6 +41,7 @@ import {
   ENCOUNTERS,
   IRON_KEY,
   OSSUARY,
+  SAVIOR_CHANCE,
   WARDEN_KEY,
   WARDEN_KEY_ITEM,
   encounterProp,
@@ -61,6 +62,7 @@ import {
   SILT,
   SLATE,
   SOOT,
+  VERDIGRIS,
   WET,
 } from './palettes.js'
 import { plainScene } from './plates/plain.js'
@@ -72,6 +74,7 @@ import {
   dragMark,
   doorway,
   dust,
+  fontSteps,
   kilnMouth,
   motes,
   pyreStack,
@@ -126,33 +129,42 @@ const DOOR_AT: Readonly<Record<ShapeKind, WorldMark>> = {
 }
 
 /**
- * art. 83: the two sockets every room in this depth declares. A far one, at
- * the end the door is at, which takes whatever comes with teeth; and a floor
- * one, near enough to reach, which takes whatever can be picked up.
+ * art. 83: the three sockets every room in this depth declares. A far one,
+ * at the end the door is at, which takes whatever comes with teeth; a floor
+ * one, near enough to reach, which takes whatever can be picked up; and —
+ * since art. 40 was ruled — a mercy one, off to the near left, which takes
+ * whatever is offered rather than taken.
  *
- * They are the same two everywhere on purpose. A socket is a place, and a
+ * They are the same three everywhere on purpose. A socket is a place, and a
  * place the player learns to look is worth more than a place they have to
  * find — art. 34's learning loop applies to furniture as well as to rooms.
+ * That the mercy socket is nearly always empty is the point of it: the room
+ * where it is not is the room you were hoping for.
  */
 export const FAR_SOCKET = 'socket.far' as SocketId
 export const FLOOR_SOCKET = 'socket.floor' as SocketId
+export const MERCY_SOCKET = 'socket.mercy' as SocketId
 
 const SOCKET_AT: Readonly<Record<ShapeKind, Readonly<Record<string, WorldMark>>>> = {
   corridor: {
     [FAR_SOCKET]: { X: 0, Y: FLOOR, z: 27, width: 5, height: 7 },
     [FLOOR_SOCKET]: { X: 6.5, Y: FLOOR + 1.5, z: 16, width: 3.4, height: 2 },
+    [MERCY_SOCKET]: { X: -6.6, Y: FLOOR, z: 19, width: 4.2, height: 6.4 },
   },
   low: {
     [FAR_SOCKET]: { X: 0, Y: FLOOR, z: 24, width: 4.4, height: 5.6 },
     [FLOOR_SOCKET]: { X: 5.4, Y: FLOOR + 1.5, z: 15, width: 3.4, height: 2 },
+    [MERCY_SOCKET]: { X: -5.2, Y: FLOOR, z: 17, width: 3.8, height: 5.2 },
   },
   chamber: {
     [FAR_SOCKET]: { X: 0, Y: FLOOR, z: 29, width: 5.5, height: 7.5 },
     [FLOOR_SOCKET]: { X: 7.2, Y: FLOOR + 1.5, z: 17, width: 3.4, height: 2 },
+    [MERCY_SOCKET]: { X: -7.2, Y: FLOOR, z: 20, width: 4.6, height: 7 },
   },
   hall: {
     [FAR_SOCKET]: { X: 0, Y: FLOOR, z: 31, width: 6.5, height: 9 },
     [FLOOR_SOCKET]: { X: 8.5, Y: FLOOR + 1.5, z: 19, width: 3.4, height: 2 },
+    [MERCY_SOCKET]: { X: -8.6, Y: FLOOR, z: 22, width: 5, height: 8 },
   },
 }
 
@@ -178,6 +190,8 @@ const tappable = (id: string, at: WorldMark): Tappable => ({ id, noun: NOUNS[id]
 /** How often a room fills its own far socket of its own accord (art. 83). */
 const LAIR_CHANCE = 1
 const STRAY_CHANCE = 0.06
+/** Nothing ever waits in the two anchors: the Crossing opens, the door ends. */
+const NEVER = 0
 
 /** art. 70: whether a door out of this room already stands open. */
 function opened(state: SceneState): boolean {
@@ -199,6 +213,13 @@ interface Authored {
   readonly plate?: Scene
   /** How often teeth stand at the far end unasked. A lair is always a lair. */
   readonly teeth?: number
+  /**
+   * art. 40: how often a mercy is standing here of the dealer's own accord —
+   * which is the Savior's rarity, seen from the room's side. The font's is
+   * beside the point: its basin is bound, and a bound encounter takes the
+   * socket before any chance is rolled.
+   */
+  readonly mercy?: number
 }
 
 const AUTHORED: readonly Authored[] = [
@@ -218,7 +239,8 @@ const AUTHORED: readonly Authored[] = [
       ['crossing.chain', { X: -9.8, Y: 0, z: 12, width: 2, height: 8 }],
     ],
     // The Crossing opens every run (art. 37). Nothing waits in it.
-    teeth: 0,
+    teeth: NEVER,
+    mercy: NEVER,
   },
   {
     id: 'room.trove.alcove',
@@ -235,6 +257,24 @@ const AUTHORED: readonly Authored[] = [
     kind: 'corridor',
     dressing: (school, state, at) => [stairHead(school), doorway(school, opened(state), at)],
     tappables: [['stair.tread', { X: 0, Y: FLOOR, z: 24, width: 7, height: 2.4 }]],
+  },
+  /**
+   * arts 37, 40: the Sanctum, and the neutral pool's third room. A place, not
+   * a being — what heals here is bound to the room and is here every time the
+   * room is (`enc.basin`), which is exactly what makes it a place. It says
+   * nothing about its basin; the basin says its own words (art. 83).
+   */
+  {
+    id: 'room.sanctum.font',
+    type: 'sanctum',
+    school: VERDIGRIS,
+    kind: 'low',
+    dressing: (school, state, at) => [fontSteps(school), doorway(school, opened(state), at)],
+    tappables: [['font.step', { X: 0, Y: FLOOR - 1.2, z: 15, width: 8, height: 2.4 }]],
+    // Nothing waits in a font, and nothing floats into it: its mercy socket
+    // is spoken for by the thing bound to it.
+    teeth: NEVER,
+    mercy: NEVER,
   },
   {
     id: 'room.passage.drip',
@@ -331,7 +371,8 @@ const AUTHORED: readonly Authored[] = [
       ['warden.door', { X: 0, Y: FLOOR, z: 38, width: 8, height: 9.6 }],
     ],
     // The Warden's door ends the depth. Nothing stands in front of it.
-    teeth: 0,
+    teeth: NEVER,
+    mercy: NEVER,
   },
 ]
 
@@ -388,6 +429,8 @@ function socketsOf(one: Authored): readonly Socket[] {
     // The only thing that goes in it this tranche is the key the lock ahead
     // demands, and the dealer puts that there because it must.
     { id: FLOOR_SOCKET, accepts: 'boon', chance: 0 },
+    // art. 40: and the mercy socket, which is the Savior's whole rarity.
+    { id: MERCY_SOCKET, accepts: 'mercy', chance: one.mercy ?? SAVIOR_CHANCE },
   ]
 }
 
@@ -426,7 +469,13 @@ export const DEPTH_ONE: DepthPlan = {
       rooms: [room('room.lair.den'), room('room.passage.bonefield'), room('room.puzzle.tally')],
     },
   ],
-  neutral: [room('room.trove.alcove'), room('room.passage.stair')],
+  neutral: [
+    room('room.trove.alcove'),
+    room('room.passage.stair'),
+    // art. 40: neutral, not regional, so the drift can lean a run anywhere
+    // it likes and the run still gets its breath (arts 77–78).
+    room('room.sanctum.font'),
+  ],
   // art. 39: the shallow leans quiet. Passages are the bread; teeth are the
   // exception the band keeps honest.
   tendencies: {
@@ -435,6 +484,9 @@ export const DEPTH_ONE: DepthPlan = {
     puzzle: 2,
     trove: 2,
     omen: 2,
+    // The font is never dealt by the ordinary draw. It arrives by the
+    // promise below and by nothing else, which is what makes the promise
+    // legible: switch `mercies` off and no run holds a Sanctum at all.
     sanctum: 0,
     merchant: 0,
     savior: 0,
@@ -444,6 +496,19 @@ export const DEPTH_ONE: DepthPlan = {
   // art. 80: the depth is committed to the Warden's lock from the first
   // room, so the key goes into the path ahead of it, wherever the path goes.
   locks: [{ at: 8, demands: [WARDEN_KEY], key: IRON_KEY }],
+  /**
+   * art. 40: every run gets one breath, and it falls in the middle of the
+   * road rather than at either end of it.
+   *
+   * The band is [2, 3] and it is bounded above by `lockAt`, not by taste:
+   * art. 78 hands every room from step 4 down to the locked region, so the
+   * neutral pool can only be dealt from before then. Steps 1–3 are the whole
+   * of that window and the font sits at the back of it — late enough that a
+   * fight is usually behind you, early enough that the depth's teeth are all
+   * still ahead. Widening it means moving `lockAt`, which is a drift
+   * question and not a mercy one.
+   */
+  mercies: [{ type: 'sanctum', band: [2, 3] }],
 }
 
 export const CATALOG: Catalog = {

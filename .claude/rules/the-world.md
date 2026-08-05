@@ -76,9 +76,14 @@ in the-thumb.md (arts 66–76).
 39. DEFAULT — Depth tendencies: soft type-weights per depth (shallow leans
     quiet, deep leans toward teeth) keep rhythm learnable without
     templates. Under the drift, tendencies weight the pools.
-40. DEFAULT — Sanctum is a place granting a small breath; Savior is a rare
-    being granting a large mercy. What each restores awaits the economy
-    ruling.
+40. DEFAULT (ruled 2026-08-05) — Sanctum is a place granting a small
+    breath; Savior is a rare being granting a large mercy. The Sanctum
+    restores half of missing health, rounded in the player's favour; the
+    Savior restores all of it. Neither charges anything: when the economy
+    lands it may add options *beside* these, never a price on them. The
+    two numbers are tuning and may be revisited; the two tiers being
+    distinct is not — a full free Sanctum makes every fight before it
+    consequence-free and leaves the Savior nothing to be.
 
 ## The drift (ratified 2026-08-04)
 77. SETTLED — Regions and the drift. A depth holds regions (how many is
