@@ -20,7 +20,14 @@
  * under art. 82 that is what has happened in *this* instance of it.
  */
 
-import type { Act, RoomBook, SceneState, SocketWords, Tappable } from '../descent/index.js'
+import type {
+  Act,
+  DoorState,
+  RoomBook,
+  SceneState,
+  SocketWords,
+  Tappable,
+} from '../descent/index.js'
 import type {
   Catalog,
   DepthPlan,
@@ -70,10 +77,8 @@ import { plainScene } from './plates/plain.js'
 import {
   alcove,
   ashBanks,
-  blackDoor,
   boneDrifts,
   dragMark,
-  doorway,
   dust,
   fontSteps,
   kilnMouth,
@@ -85,6 +90,8 @@ import {
   stairHead,
   sumpGrate,
   tallyMarks,
+  threshold,
+  framedWidth,
 } from './plates/props.js'
 import { WAKE } from './plates/wake.js'
 import { ARRIVALS, BEATS, LABELS, LOOKS, NOUNS } from './prose.js'
@@ -117,16 +124,79 @@ const SHAPES: Readonly<Record<ShapeKind, RoomShape>> = {
 const FLOOR = -RENDER.eye
 
 /**
- * Where the door stands in each shape. A door is a thing in the world like
+ * Where the doors stand in each shape. A door is a thing in the world like
  * any other (art. 68), so it has a place, and its depth is chosen per shape
  * rather than derived: art. 16's cutoff is a render number, and a door the
  * player has to squint at is not a door they can tap.
+ *
+ * The height is the number that matters. The first cut authored doors eight
+ * world units tall against an eye standing at fourteen — half-height holes
+ * that read as boxes because nothing that size is a way through a wall. A
+ * threshold is a person's height and more, so its head clears the eye by the
+ * margin a real door does, and art. 97's taller-than-wide falls out of the
+ * height rather than being asked for.
  */
+interface DoorPlan {
+  /** How far off the door stands. */
+  readonly z: number
+  /** How tall, in world units, floor to lintel. */
+  readonly high: number
+  /** The widest a single door here may be; art. 97 narrows it if it must. */
+  readonly wide: number
+}
+
+const DOOR_PLAN: Readonly<Record<ShapeKind, DoorPlan>> = {
+  corridor: { z: 33, high: 17, wide: 7.6 },
+  low: { z: 29, high: 14, wide: 6.6 },
+  chamber: { z: 35, high: 17.5, wide: 8 },
+  hall: { z: 37, high: 19, wide: 9 },
+}
+
+/** How much room the doors leave themselves against the walls. */
+const DOOR_MARGIN = 0.8
+/**
+ * The gap art. 105 keeps between two of them, in world units. It has to clear
+ * both architraves and leave wall between them: three frames that touch read
+ * as one wide barrier, which is the same failure as one thing cut in half.
+ */
+const DOOR_GAP = 1.7
+/** And never narrower than this: past it a hole stops reading as a way on. */
+const NARROWEST = 3.2
+
+/**
+ * Where each of a room's doors stands, given how many it offers (art. 31).
+ *
+ * The thumb and the paint both come through here, so a door's tap region is
+ * derived from the coordinates it is painted at rather than authored twice
+ * (art. 68). Two or three doors share the far end by slicing it, and art. 105
+ * keeps them from standing in front of one another: each takes its own slot
+ * and gives up width rather than overlap, because overlap at this scale is
+ * mush and not depth.
+ */
+export function doorMarks(kind: ShapeKind, count: number): readonly WorldMark[] {
+  const plan = DOOR_PLAN[kind]
+  const n = Math.max(1, count)
+  const span = 2 * (SHAPES[kind].width - DOOR_MARGIN)
+  const slot = span / n
+  // The widest that still leaves wall between the architraves — measured on
+  // the framed footprint, because that is what the eye reads as the thing.
+  let width = plan.wide
+  while (width > NARROWEST && framedWidth(width) + DOOR_GAP > slot) width -= 0.1
+  return Array.from({ length: n }, (_, i) => ({
+    X: -span / 2 + slot * (i + 0.5),
+    Y: FLOOR,
+    z: plan.z,
+    width,
+    height: plan.high,
+  }))
+}
+
+/** Where a room's door stands when nothing has said how many there are. */
 const DOOR_AT: Readonly<Record<ShapeKind, WorldMark>> = {
-  corridor: { X: 0, Y: FLOOR, z: 34, width: 6.5, height: 8 },
-  low: { X: 0, Y: FLOOR, z: 30, width: 5.5, height: 6.5 },
-  chamber: { X: 0, Y: FLOOR, z: 36, width: 7, height: 9 },
-  hall: { X: 0, Y: FLOOR, z: 38, width: 9, height: 11 },
+  corridor: doorMarks('corridor', 1)[0]!,
+  low: doorMarks('low', 1)[0]!,
+  chamber: doorMarks('chamber', 1)[0]!,
+  hall: doorMarks('hall', 1)[0]!,
 }
 
 /**
@@ -182,6 +252,12 @@ export interface RoomContent {
   readonly acts: readonly Act[]
   /** Where this room's door stands, for the thumb and for the paint. */
   readonly door: WorldMark
+  /**
+   * arts 31, 68, 97: where each of this room's doors stands, given how many
+   * it offers. The thumb asks the same question the paint does and gets the
+   * same answer, so a tap region can never drift off the door it is for.
+   */
+  doorMarks(count: number): readonly WorldMark[]
   /** art. 83: where this room keeps each of its sockets. */
   readonly sockets: Readonly<Record<string, WorldMark>>
 }
@@ -194,11 +270,6 @@ const STRAY_CHANCE = 0.06
 /** Nothing ever waits in the two anchors: the Crossing opens, the door ends. */
 const NEVER = 0
 
-/** art. 70: whether a door out of this room already stands open. */
-function opened(state: SceneState): boolean {
-  return state.opened.length > 0
-}
-
 /** One room, as authored. The scene is assembled from it below. */
 interface Authored {
   readonly id: string
@@ -206,7 +277,7 @@ interface Authored {
   readonly school: School
   readonly kind: ShapeKind
   /** The room's own props — never the sockets' (art. 83). */
-  readonly dressing: (school: School, state: SceneState, at: WorldMark) => readonly Prop[]
+  readonly dressing: (school: School, state: SceneState) => readonly Prop[]
   readonly tappables: readonly (readonly [string, WorldMark])[]
   /** The room's own acts. The skeleton's one act now belongs to a socket. */
   readonly acts?: readonly Act[]
@@ -259,7 +330,7 @@ const AUTHORED: readonly Authored[] = [
     type: 'trove',
     school: OCHRE,
     kind: 'low',
-    dressing: (school, state, at) => [alcove(school), dust(school), doorway(school, opened(state), at)],
+    dressing: (school) => [alcove(school), dust(school)],
     tappables: [['alcove.dust', { X: 7.2, Y: FLOOR, z: 22.5, width: 3.4, height: 1.6 }]],
   },
   {
@@ -267,7 +338,7 @@ const AUTHORED: readonly Authored[] = [
     type: 'passage',
     school: GRANITE,
     kind: 'corridor',
-    dressing: (school, state, at) => [stairHead(school), doorway(school, opened(state), at)],
+    dressing: (school) => [stairHead(school)],
     tappables: [['stair.tread', { X: 0, Y: FLOOR, z: 24, width: 7, height: 2.4 }]],
   },
   /**
@@ -281,7 +352,7 @@ const AUTHORED: readonly Authored[] = [
     type: 'sanctum',
     school: VERDIGRIS,
     kind: 'low',
-    dressing: (school, state, at) => [fontSteps(school), doorway(school, opened(state), at)],
+    dressing: (school) => [fontSteps(school)],
     tappables: [['font.step', { X: 0, Y: FLOOR - 1.2, z: 15, width: 8, height: 2.4 }]],
     // Nothing waits in a font, and nothing floats into it: its mercy socket
     // is spoken for by the thing bound to it. Nobody died here either — it
@@ -295,10 +366,9 @@ const AUTHORED: readonly Authored[] = [
     type: 'passage',
     school: WET,
     kind: 'corridor',
-    dressing: (school, state, at) => [
+    dressing: (school) => [
       runnel(school),
       seep(school),
-      doorway(school, opened(state), at),
     ],
     tappables: [['drip.water', { X: 0, Y: FLOOR, z: 11, width: 6, height: 2.2 }]],
   },
@@ -307,7 +377,7 @@ const AUTHORED: readonly Authored[] = [
     type: 'lair',
     school: BRINE,
     kind: 'chamber',
-    dressing: (school, state, at) => [standingWater(school), doorway(school, opened(state), at)],
+    dressing: (school) => [standingWater(school)],
     tappables: [['cistern.water', { X: 0, Y: FLOOR, z: 13, width: 12, height: 2.4 }]],
     teeth: LAIR_CHANCE,
   },
@@ -316,7 +386,7 @@ const AUTHORED: readonly Authored[] = [
     type: 'trove',
     school: SILT,
     kind: 'low',
-    dressing: (school, state, at) => [sumpGrate(school), doorway(school, opened(state), at)],
+    dressing: (school) => [sumpGrate(school)],
     tappables: [['sump.grate', { X: 0, Y: FLOOR, z: 24, width: 5, height: 2 }]],
   },
   {
@@ -324,10 +394,9 @@ const AUTHORED: readonly Authored[] = [
     type: 'passage',
     school: ASH,
     kind: 'corridor',
-    dressing: (school, state, at) => [
+    dressing: (school) => [
       ashBanks(school),
       motes(school),
-      doorway(school, opened(state), at),
     ],
     tappables: [['ash.ash', { X: -8.5, Y: FLOOR, z: 15, width: 5, height: 2 }]],
   },
@@ -336,7 +405,7 @@ const AUTHORED: readonly Authored[] = [
     type: 'lair',
     school: EMBER,
     kind: 'chamber',
-    dressing: (school, state, at) => [kilnMouth(school), doorway(school, opened(state), at)],
+    dressing: (school) => [kilnMouth(school)],
     tappables: [['kiln.mouth', { X: -12, Y: FLOOR + 2, z: 19, width: 3, height: 7 }]],
     teeth: LAIR_CHANCE,
   },
@@ -345,7 +414,7 @@ const AUTHORED: readonly Authored[] = [
     type: 'omen',
     school: SOOT,
     kind: 'chamber',
-    dressing: (school, state, at) => [pyreStack(school), doorway(school, opened(state), at)],
+    dressing: (school) => [pyreStack(school)],
     tappables: [['pyre.timber', { X: 0, Y: FLOOR + 2, z: 21, width: 5.5, height: 4.5 }]],
   },
   {
@@ -353,7 +422,7 @@ const AUTHORED: readonly Authored[] = [
     type: 'lair',
     school: NOIR,
     kind: 'low',
-    dressing: (school, state, at) => [dragMark(school), doorway(school, opened(state), at)],
+    dressing: (school) => [dragMark(school)],
     tappables: [['den.drag', { X: -3, Y: FLOOR, z: 18, width: 9, height: 2 }]],
     teeth: LAIR_CHANCE,
   },
@@ -362,7 +431,7 @@ const AUTHORED: readonly Authored[] = [
     type: 'passage',
     school: CHALK,
     kind: 'corridor',
-    dressing: (school, state, at) => [boneDrifts(school), doorway(school, opened(state), at)],
+    dressing: (school) => [boneDrifts(school)],
     tappables: [['bonefield.bone', { X: 8.5, Y: FLOOR, z: 15, width: 5, height: 2 }]],
   },
   {
@@ -370,7 +439,7 @@ const AUTHORED: readonly Authored[] = [
     type: 'puzzle',
     school: SLATE,
     kind: 'low',
-    dressing: (school, state, at) => [tallyMarks(school), doorway(school, opened(state), at)],
+    dressing: (school) => [tallyMarks(school)],
     tappables: [['tally.marks', { X: 8.6, Y: FLOOR + 3, z: 20, width: 2.4, height: 4 }]],
   },
   {
@@ -378,7 +447,7 @@ const AUTHORED: readonly Authored[] = [
     type: 'warden',
     school: IRON,
     kind: 'hall',
-    dressing: (school, _state, at) => [blackDoor(school, at)],
+    dressing: () => [],
     tappables: [
       // The lock is a small thing on a large one, and both answer (art. 69).
       ['warden.lock', { X: 0, Y: -7.4, z: 38, width: 2.4, height: 2.6 }],
@@ -396,6 +465,30 @@ const AUTHORED: readonly Authored[] = [
  * room does not know what these are and does not have to — it declares the
  * places, and the encounters bring their own pixels.
  */
+/**
+ * art. 97: the room's thresholds, one per door offered. A room that ends in
+ * one door and a crossroads that offers three are the same grammar at
+ * different widths — which is the article's point, and why this lives here
+ * rather than in any room's dressing.
+ *
+ * A room with no doors dealt yet paints the one it must have: the far end of
+ * an authored room is a way on whether or not the chain has said so.
+ */
+function thresholds(one: Authored, state: SceneState): readonly Prop[] {
+  const ways: readonly DoorState[] =
+    state.doors.length > 0 ? state.doors : [{ at: 0, open: false, locked: false, ends: false }]
+  const marks = doorMarks(one.kind, ways.length)
+  // art. 21: the school is the room's, so one drawing serves the drowned and
+  // the burnt as one threshold in two keys (art. 100).
+  return ways.map((door, i) =>
+    threshold(one.school, marks[i]!, {
+      open: door.open,
+      locked: door.locked,
+      warden: door.ends,
+    }),
+  )
+}
+
 function socketProps(one: Authored, state: SceneState): readonly Prop[] {
   const marks = SOCKET_AT[one.kind]
   return state.fills.flatMap((fill) =>
@@ -420,8 +513,12 @@ function contentOf(one: Authored): RoomContent {
     scene: (state) => {
       const base =
         one.plate ??
-        plainScene(one.id, one.school, shape, () => one.dressing(one.school, state, door))
-      const laid = socketProps(one, state)
+        plainScene(one.id, one.school, shape, () => one.dressing(one.school, state))
+      // art. 97: every door the room offers is a threshold, and every
+      // threshold is drawn. This is the room's, not the dressing's — the
+      // grammar never varies between rooms, so no room gets to author it.
+      const ways = thresholds(one, state)
+      const laid = [...ways, ...socketProps(one, state)]
       if (laid.length === 0) return base
       // art. 19: painted near over far, so the list is declared far to near.
       return {
@@ -432,6 +529,7 @@ function contentOf(one: Authored): RoomContent {
     tappables: one.tappables.map(([id, at]) => tappable(id, at)),
     acts: one.acts ?? [],
     door,
+    doorMarks: (count) => doorMarks(one.kind, count),
     sockets: SOCKET_AT[one.kind],
   }
 }

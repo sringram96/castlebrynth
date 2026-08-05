@@ -6,8 +6,11 @@ import {
   GRID,
   IRON_KEY,
   LABELS,
+  RENDER,
   ROOMS,
   ROOM_BOOK,
+  THINNEST,
+  framedWidth,
   atGrid,
   roomContent,
 } from '../src/content/index.js'
@@ -40,6 +43,7 @@ function bare(room: RoomId): SceneState {
     opened: [],
     horror: null,
     fills: [],
+    doors: [],
   }
 }
 
@@ -214,10 +218,69 @@ describe('the world remembers — art. 70 (prose confirms, pixels prove)', () =>
 
   it('leaves an opened door standing open', () => {
     const room = 'room.trove.alcove' as RoomId
-    const shut = bare(room)
-    const open: SceneState = { ...shut, opened: [`${shut.instance}→0`] }
+    const bareRoom = bare(room)
+    const way = { at: 0, open: false, locked: false, ends: false }
+    const shut: SceneState = { ...bareRoom, doors: [way] }
+    const open: SceneState = {
+      ...shut,
+      opened: [`${shut.instance}→0`],
+      doors: [{ ...way, open: true }],
+    }
     expect(sceneKey(open)).not.toBe(sceneKey(shut))
     expect(fnv(pixelsOf(open))).not.toBe(fnv(pixelsOf(shut)))
+  })
+
+  it('draws every door it offers, and each one in its own state (arts 31, 97)', () => {
+    const room = 'room.trove.alcove' as RoomId
+    const ways = (n: number, open = -1): SceneState => ({
+      ...bare(room),
+      doors: Array.from({ length: n }, (_, at) => ({
+        at,
+        open: at === open,
+        locked: false,
+        ends: false,
+      })),
+    })
+    const named = (state: SceneState): readonly string[] => {
+      const scene = roomContent(room).scene(state)
+      return scene.props(viewOf(scene.shape, CONFIG)).map((prop) => prop.name)
+    }
+    // The defect this fixes: three doors offered, one door drawn, and two tap
+    // regions standing over nothing at all.
+    for (const n of [1, 2, 3]) {
+      expect(named(ways(n)).filter((name) => name === 'the door')).toHaveLength(n)
+    }
+    // And a door's state is its own: opening the middle one of three is not
+    // the same room as opening the first (art. 70, per door).
+    expect(fnv(pixelsOf(ways(3, 1)))).not.toBe(fnv(pixelsOf(ways(3, 0))))
+    expect(fnv(pixelsOf(ways(3, 1)))).not.toBe(fnv(pixelsOf(ways(3))))
+  })
+
+  it('keeps the threshold grammar whatever the room asks for (art. 97)', () => {
+    for (const held of ROOMS) {
+      for (const count of [1, 2, 3]) {
+        const marks = held.doorMarks(count)
+        expect(marks, held.id as string).toHaveLength(count)
+        for (const mark of marks) {
+          // Taller than wide, always — wider-than-tall reads as furniture.
+          expect(Math.min(mark.width, mark.height * THINNEST), held.id as string).toBeLessThan(
+            mark.height,
+          )
+          // Standing on the floor: a thing that floats is a thing.
+          expect(mark.Y, held.id as string).toBe(-RENDER.eye)
+        }
+        // art. 105: no door stands in front of another, and the footprint
+        // that has to clear is the architrave's — two frames that touch read
+        // as one wide barrier however far apart their holes are.
+        const sorted = [...marks].sort((one, other) => one.X - other.X)
+        for (let i = 1; i < sorted.length; i++) {
+          const gap = sorted[i]!.X - sorted[i - 1]!.X
+          expect(gap, held.id as string).toBeGreaterThan(
+            (framedWidth(sorted[i]!.width) + framedWidth(sorted[i - 1]!.width)) / 2,
+          )
+        }
+      }
+    }
   })
 
   it('keeps a wounded horror wounded in the frame key, as it always did', () => {

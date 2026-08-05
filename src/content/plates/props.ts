@@ -17,7 +17,9 @@
  */
 
 import type { Brush, Prop, View, WorldMark } from '../../room/index.js'
+import { mix } from '../../room/index.js'
 import type { School } from '../palettes.js'
+import { lookOf } from '../palettes.js'
 import { AUTHORED_GRID } from '../render.js'
 
 /** An authored pixel, on whatever grid the dial is set to (art. 23). */
@@ -698,96 +700,190 @@ export function lurker(school: School, mark: WorldMark, tall: boolean): Prop {
   }
 }
 
-// ── The door at the far end ────────────────────────────────────────────
+// ── The threshold (art. 97) ────────────────────────────────────────────
 
 /**
- * The door every ordinary room ends in. art. 70: an opened door stands open
- * — the slab is gone and what is left is the hollow behind it, with the jamb
- * still inked. Prose confirms; pixels prove.
+ * art. 97: a door is a hole, not a thing. The playtest read the old door as a
+ * chest and was right to — it was a filled dark rectangle standing on the
+ * floor, which is what a chest is. The grammar that fixes it never varies
+ * between rooms, so the frame is learned once and read for the rest of the
+ * game:
+ *
+ * - taller than wide, always (`THINNEST` enforces it here, whatever a mark
+ *   asks for), because wider-than-tall reads as furniture;
+ * - standing on the floor, interrupting the floor line, because a thing that
+ *   floats is a thing;
+ * - recessed, and honestly — the reveal is the aperture projected twice, at
+ *   the wall and at the plane `RECESS` behind it, so the jambs narrow by the
+ *   same perspective as everything else and the darkness has depth;
+ * - framed, an architrave standing `PROUD` of the wall, which nothing that is
+ *   not a way out may wear;
+ * - dark inside, in the room's own darkness — the bottom of the wall's own
+ *   ramp, tinted by the air (arts 94, 97).
+ *
+ * State varies and the grammar does not: open, shut, locked with the lock on
+ * the frame, and the Warden's, which is the same hole with black iron in it.
  */
-export function doorway(school: School, open: boolean, mark: WorldMark): Prop {
+export interface ThresholdState {
+  /** art. 70: an opened door stands open, and the way on is what shows. */
+  readonly open: boolean
+  /** art. 97: locked with the lock *on* the frame, never inside it. */
+  readonly locked: boolean
+  /** art. 37: the Warden's, which is iron and does not open in this depth. */
+  readonly warden: boolean
+}
+
+/** The widest a threshold may be, as a fraction of its height (art. 97). */
+export const THINNEST = 0.52
+
+/** How far the reveal goes back, and how far the architrave stands proud. */
+const RECESS = 2.2
+const PROUD = 0.6
+/**
+ * The architrave's width, as a fraction of the aperture's — so a narrow door
+ * in a room offering three wears a narrow frame rather than a frame wider
+ * than its own hole.
+ */
+const JAMB = 0.2
+/** And never thinner than this, or the frame stops reading at depth. */
+const JAMB_LEAST = 0.55
+
+/**
+ * How much room a threshold actually takes: the hole plus the frame around
+ * it. art. 105 spaces things by their footprint, and a threshold's footprint
+ * is the architrave — two frames that touch read as one wide barrier however
+ * far apart their apertures are.
+ */
+export function framedWidth(width: number): number {
+  return width + 2 * Math.max(JAMB_LEAST, width * JAMB)
+}
+
+/** A world rectangle standing on the floor, projected at a depth. */
+function aperture(
+  b: Brush,
+  mark: WorldMark,
+  half: number,
+  high: number,
+  z: number,
+): { x0: number; x1: number; y0: number; y1: number } {
+  const top = b.project(mark.X - half, mark.Y + high, z)
+  const foot = b.project(mark.X + half, mark.Y, z)
+  return { x0: top.x, x1: foot.x, y0: top.y, y1: foot.y }
+}
+
+export function threshold(school: School, mark: WorldMark, state: ThresholdState): Prop {
   return {
-    name: 'the door',
+    name: state.warden ? 'the black door' : 'the door',
     z: mark.z,
     paint(b: Brush): void {
       const g = pixel(b.view)
-      const foot = b.project(mark.X, mark.Y, mark.z)
-      const half = (b.view.f * mark.width) / mark.z / 2
-      const tall = (b.view.f * mark.height) / mark.z
-      const x0 = foot.x - half
-      const x1 = foot.x + half
-      const y0 = foot.y - tall
-      const y1 = foot.y
+      const look = lookOf(school)
+      const wall = look.ramps.wall
+      // art. 97: the room's own darkness, which is the bottom of the wall's
+      // ramp with the air's tint in it — never one shared black hole.
+      const inside = mix(wall[0] ?? school.hollow, look.air.tint, 0.45)
+      const reveal = [
+        mix(wall[1] ?? school.hollow, look.air.tint, 0.3),
+        mix(wall[2] ?? school.grime, look.air.tint, 0.22),
+      ] as const
 
-      for (let y = y0; y < y1; y++) {
-        for (let x = x0; x < x1; x++) {
-          if (open) {
-            // Nothing behind it but the going-on, breathing (art. 16).
-            b.px(b.dither(x, y, 3) ? school.breath : school.hollow, x, y)
-          } else {
+      // Taller than wide, always — whatever the mark asked for.
+      const high = mark.height
+      const half = Math.min(mark.width, high * THINNEST) / 2
+
+      const jamb = Math.max(JAMB_LEAST, half * 2 * JAMB)
+      const near = aperture(b, mark, half, high, mark.z)
+      const back = aperture(b, mark, half, high, mark.z + RECESS)
+      const arch = aperture(b, mark, half + jamb, high + jamb, mark.z - PROUD)
+
+      // ── The architrave, standing proud of the wall ────────────────────
+      // Nothing that is not a way out may wear one (art. 97), so this ring is
+      // the whole of what says "way out" before a word is read — which means
+      // it has to read in every school. Its stone comes off the light end of
+      // the room's own wall ramp rather than off a named tone, so a frame is
+      // proud in the drowned and the burnt alike (arts 94, 100).
+      const face = wall[wall.length - 3] ?? school.brickAlt
+      const turn = wall[wall.length - 5] ?? school.grime
+      for (let y = arch.y0; y < arch.y1; y++) {
+        for (let x = arch.x0; x < arch.x1; x++) {
+          if (x > near.x0 && x < near.x1 && y > near.y0) continue
+          b.px(b.hash(x | 0, (y / 2) | 0) < 26 ? turn : face, x, y)
+        }
+      }
+      // Its own outline, and the inner edge where it meets the hole.
+      for (let y = arch.y0; y < arch.y1; y++) {
+        b.px(school.edge, arch.x0, y)
+        b.px(school.edge, arch.x1 - g(1), y)
+      }
+      for (let x = arch.x0; x < arch.x1; x++) b.px(school.edge, x, arch.y0)
+      // The lintel catches what light there is; the sill it stands on is inked
+      // so the threshold interrupts the floor line rather than hovering on it.
+      for (let x = arch.x0; x < arch.x1; x++) b.px(school.bone[0]!, x, arch.y0 + g(1))
+      for (let x = arch.x0; x < arch.x1; x++) b.px(school.edge, x, arch.y1 - g(1))
+
+      // ── The hole, and the reveal going back into it ───────────────────
+      for (let y = near.y0; y < near.y1; y++) {
+        for (let x = near.x0; x < near.x1; x++) {
+          const deep = x > back.x0 && x < back.x1 && y > back.y0 && y < back.y1
+          if (deep) continue
+          // A jamb, the soffit, or the sill: each face turned a different way,
+          // so each takes a different step (art. 103's read, on a small solid).
+          const side = x <= back.x0 || x >= back.x1
+          b.px(b.dither(x, y, side ? 7 : 4) ? reveal[0] : reveal[1], x, y)
+        }
+      }
+
+      if (state.open) {
+        // art. 70: an opened door stands open, and what is behind it is the
+        // going-on — this room's darkness, breathing (art. 16).
+        for (let y = back.y0; y < back.y1; y++) {
+          for (let x = back.x0; x < back.x1; x++) {
+            b.px(b.dither(x, y, 3) ? school.breath : inside, x, y)
+          }
+        }
+      } else if (state.warden) {
+        // Black iron, three bands, no seam. Not the same object as a door.
+        for (let y = back.y0; y < back.y1; y++) {
+          for (let x = back.x0; x < back.x1; x++) {
+            b.px(b.hash(x | 0, y | 0) < 6 ? school.grime : school.iron, x, y)
+          }
+        }
+        const tall = back.y1 - back.y0
+        for (const at of [0.22, 0.52, 0.82]) {
+          const y = back.y0 + tall * at
+          b.rect(school.brickAlt, back.x0, y, back.x1 - back.x0, g(2))
+          for (let x = back.x0 + g(2); x < back.x1; x += g(6)) b.px(school.bone[0]!, x, y)
+        }
+      } else {
+        // A leaf, set back inside the frame. The grain runs with the boards.
+        for (let y = back.y0; y < back.y1; y++) {
+          for (let x = back.x0; x < back.x1; x++) {
             const grain = b.hash(x | 0, (y / 3) | 0)
             b.px(grain < 8 ? school.grime : school.slat[grain % 4]!, x, y)
           }
         }
-      }
-      // The jamb, and the lintel above it.
-      for (let y = y0; y < y1; y++) {
-        b.px(school.edge, x0, y)
-        b.px(school.edge, x1 - g(1), y)
-      }
-      for (let x = x0; x < x1; x++) b.px(open ? school.edge : school.brickAlt, x, y0)
-      if (!open) {
         // A seam down the middle, and the ring you would pull.
-        for (let y = y0 + g(2); y < y1; y++) b.px(school.edge, (x0 + x1) / 2, y)
-        b.rect(school.iron, (x0 + x1) / 2 + g(2), (y0 + y1) / 2, g(3), g(1))
+        const mid = (back.x0 + back.x1) / 2
+        for (let y = back.y0 + g(2); y < back.y1; y++) b.px(school.edge, mid, y)
+        b.rect(school.iron, mid + g(2), (back.y0 + back.y1) / 2, g(3), g(1))
       }
-    },
-  }
-}
 
-/**
- * The Warden's door: black iron, one lock, and no seam. It is not the same
- * object as an ordinary door and does not open in this depth.
- */
-export function blackDoor(school: School, mark: WorldMark): Prop {
-  return {
-    name: 'the black door',
-    z: mark.z,
-    paint(b: Brush): void {
-      const g = pixel(b.view)
-      const foot = b.project(mark.X, mark.Y, mark.z)
-      const half = (b.view.f * mark.width) / mark.z / 2
-      const tall = (b.view.f * mark.height) / mark.z
-      const x0 = foot.x - half
-      const x1 = foot.x + half
-      const y0 = foot.y - tall
-      const y1 = foot.y
+      // Where the hole is cut, inked — the one line that says it is a hole
+      // and not a panel hung on the wall (art. 18 applied to a thing).
+      for (let y = near.y0; y < near.y1; y++) {
+        b.px(school.edge, near.x0, y)
+        b.px(school.edge, near.x1 - g(1), y)
+      }
+      for (let x = near.x0; x < near.x1; x++) b.px(school.edge, x, near.y0)
 
-      for (let y = y0; y < y1; y++) {
-        for (let x = x0; x < x1; x++) {
-          b.px(b.hash(x | 0, y | 0) < 6 ? school.grime : school.iron, x, y)
-        }
-      }
-      // Three bands across it, and the rivets in them.
-      for (const at of [0.22, 0.52, 0.82]) {
-        const y = y0 + tall * at
-        b.rect(school.brickAlt, x0, y, x1 - x0, g(2))
-        for (let x = x0 + g(2); x < x1; x += g(6)) b.px(school.bone[0]!, x, y)
-      }
-      for (let y = y0; y < y1; y++) {
-        b.px(school.edge, x0, y)
-        b.px(school.edge, x1 - g(1), y)
-      }
-      for (let x = x0; x < x1; x++) b.px(school.edge, x, y0)
-
-      // The lock: one keyhole, cut for three teeth.
-      const cx = (x0 + x1) / 2
-      const cy = y0 + tall * 0.62
-      b.rect(school.brickAlt, cx - g(4), cy - g(5), g(9), g(11))
-      b.rect(school.edge, cx - g(3), cy - g(4), g(7), g(9))
-      b.rect(school.hollow, cx - g(1), cy - g(2), g(3), g(6))
-      b.px(school.accent[2]!, cx - g(1), cy - g(2))
-      b.px(school.accent[1]!, cx, cy + g(2))
+      // ── The lock, on the frame (art. 97) ─────────────────────────────
+      if (!state.locked) return
+      const plate = arch.x1 - Math.max(g(2), (arch.x1 - near.x1) / 2)
+      const at = near.y0 + (near.y1 - near.y0) * 0.58
+      b.rect(school.iron, plate - g(2), at - g(3), g(5), g(7))
+      b.rect(school.edge, plate - g(1), at - g(2), g(3), g(5))
+      b.px(school.coin, plate, at - g(1))
+      b.px(school.accent[2]!, plate, at + g(1))
     },
   }
 }

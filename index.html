@@ -50,7 +50,12 @@
       /* art. 6: everything ever clickable is always clickable — so a thing
          that answers shows, faintly, that it will. */
       #marks button.lit { border-color: rgba(217, 179, 106, .22); }
-      #marks button.door { border-color: rgba(217, 179, 106, .3); }
+      /* art. 97: a door is drawn as a door — framed, recessed, standing on
+         the floor — so it needs no box around it to say so. The outlined
+         rectangle the playtest read as a chest was this border. Only the
+         door the thumb has picked wears one, and that is a pick and not a
+         doorway. */
+      #marks button.door { border-color: transparent; }
       #marks button.door.chosen { border-color: rgba(217, 179, 106, .7); }
 
       /* art. 57: the horror, its health and its next attack, at the top —

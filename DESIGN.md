@@ -94,7 +94,7 @@ blind doors → the room behind it is dealt on the spot → keep choosing → a
 region locks and the depth announces where you have arrived → the rest of
 the depth deals from that region and its encounters wake → the Warden's
 door, refused without the key and terse with it. `npm test` is green: 31
-files, 281 tests.
+files, 283 tests.
 
 **And the tray became a rail and panels.** The playtest found two
 immersion breaks, and the tray stand-up of 2026-08-05 ruled on both. The
@@ -199,6 +199,57 @@ acts tab, then Run — where it used to be one. Art. 41 says FLEE is always
 timed (art. 1), so the tap buys a strip that holds still. If flight ever
 wants to be instant again, the fix is a fixed slot on the rail rather
 than a verb back in the shifting strip.
+
+## A door is a hole now (art. 97, built)
+
+The playtest screenshot showed three small outlined boxes hovering at the
+end of a corridor. Art. 97 was written about exactly that, and the article
+turned out to be describing three separate defects:
+
+- **Two of the three doors had no pixels at all.** The room painted one
+  doorway at its single authored mark while the shell laid out up to three
+  tap regions beside it, so a crossroads was one drawn door and two empty
+  outlines. Doors now come from `SceneState.doors` — one threshold drawn
+  per door offered, each in its own state — and `doorMarks(count)` is the
+  single place both the paint and the thumb ask where they stand (art. 68).
+- **They were half-height.** Doors were authored eight world units tall
+  against an eye standing at fourteen. Nothing that size is a way through a
+  wall, so the eye read the nearest thing it could: a chest. A threshold is
+  now seventeen units in a corridor — a head's clearance over the eye — and
+  art. 97's taller-than-wide falls out of the height instead of being asked
+  for. `THINNEST` enforces it whatever a mark requests.
+- **The box was the UI.** The gold rectangle was the tap region's CSS
+  border, drawn identically over doors and over anything else tappable. A
+  door that is drawn as a door needs no box to say so, so the border is
+  gone; only the door the thumb has *picked* wears one, and that outline is
+  a pick rather than a doorway.
+
+What replaced them is the grammar, in one function no room may override:
+architrave standing proud of the wall, aperture recessed to a plane set
+back behind it, jambs and soffit and sill shaded by their own faces, the
+inside at the bottom of the room's own wall ramp tinted by its air, and the
+lock — when a door wants a key — on the frame rather than in the hole.
+The frame's stone comes off the light end of the wall's ramp rather than a
+named tone, so it reads proud in the drowned and the burnt alike (art. 100:
+one drawing, two keys).
+
+Two doors and three doors share the far end by slicing it, and art. 105 is
+enforced on the **framed** footprint rather than the aperture: the first cut
+spaced the holes correctly and let the architraves touch, which read as one
+wide barrier — the same failure as one thing cut in half. Doors give up
+width rather than overlap.
+
+**What this is not.** These are thresholds standing in a tube, not holes in
+a wall, because art. 96 is not built — an ordinary room still has no far
+wall, so what is between two doorways is the mouth's darkness rather than
+stone. That is the reason three doors need real gaps to read as three. The
+chamber is the follow-on, and it is what will make a door a hole in
+something.
+
+Art. 106's stir is not built either: a doorway's darkness should move in
+the bottom two steps of its ramp, and doing that needs art. 109's one
+clock and art. 110's overlay repaint. A per-thing timer would have been the
+wrong shape, so the thresholds are still.
 
 ## The look is law now (arts 93–112)
 

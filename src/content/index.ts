@@ -25,8 +25,6 @@ export { BARE, plainScene } from './plates/plain.js'
 export {
   alcove,
   ashBanks,
-  blackDoor,
-  doorway,
   dragMark,
   dust,
   fontSteps,
@@ -36,7 +34,10 @@ export {
   stillBasin,
   theKey,
   theMender,
+  threshold,
 } from './plates/props.js'
+export type { ThresholdState } from './plates/props.js'
+export { THINNEST, framedWidth } from './plates/props.js'
 export {
   PLAIN_POUCH,
   PLAIN_BONE,

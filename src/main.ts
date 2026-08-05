@@ -354,12 +354,10 @@ function layMarks(base: RenderedRoom, content: RoomContent): void {
 
   if (screen.kind !== 'fight') {
     const ahead = doors(bands)
-    ahead.forEach((door, i) => {
-      // art. 31 will one day put two or three doors in a room; when it does,
-      // they stand apart rather than on top of each other.
-      const spread = (i - (ahead.length - 1) / 2) * content.door.width * 1.4
-      place({ ...content.door, X: content.door.X + spread }, doorMark(door))
-    })
+    // art. 68: the region that answers for a door is the door's own place, so
+    // it comes from the same call the paint came from (art. 97's marks).
+    const where = content.doorMarks(ahead.length)
+    ahead.forEach((door, i) => place(where[i] ?? content.door, doorMark(door)))
   }
 
   // arts 6 and 69: the small thing sits on the large thing it is part of, or
