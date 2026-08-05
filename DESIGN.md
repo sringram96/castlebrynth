@@ -102,7 +102,10 @@ of the lock it opens (art. 80). And a room now has a **template** and an
 **instance** (art. 82): rooms repeat within a run, knowledge keys on
 what you recognise, and scene state keys on where you stand.
 
-**And the depth now heals.** Art. 40 named a Sanctum and a Savior and left
+**And the depth heals — half as lethal, not solved.** A bare player now
+finishes depth one about a third of the time rather than a fifth; the
+numbers and the model behind them are in Debt, below.
+Art. 40 named a Sanctum and a Savior and left
 what each restores to the economy; the economy is still parked, and healing
 never needed it — only numbers. The ruling of 2026-08-05 sets them: **the
 Sanctum restores half of missing health, the Savior all of it, and neither
@@ -284,19 +287,46 @@ Named, not hidden. Each of these is a task, not an accident.
   run's pre-lock rooms may come from a pool the change cannot reach.
   Whether the neutral pool should mirror the regions' shape or stay
   deliberately quiet is a content question nobody has ruled on.
-- **~~A whole depth is very hard to survive.~~** Reduced, not closed, by
-  this wave. Art. 40 is ruled and both its tiers are built, so a depth is
+- **A whole depth is still hard to survive — but half as hard.** Reduced,
+  not closed. Art. 40 is ruled and both its tiers are built, so a depth is
   no longer a one-way ratchet down: **every** run holds one Sanctum, at
   step 2 or 3, restoring half of what is missing for free; and about a
   fifth of runs also hold the Savior, restoring all of it. Against the
   drift's ~2.5 fights a run that is roughly one fight's worth of body
-  handed back, guaranteed, plus a rarer full reset. A careful bare-pouch
-  run now reaches the Warden's door alive rather than usually not. What
-  it is **not** is a solved economy: the breath lands early, so a run
-  that takes its fights late still spends the back half of the depth with
-  whatever it has left, and there is nothing to carry, buy or drink
-  between the font and the door. The Loot stream is the other half of
-  that answer and this wave was not asked to be it.
+  handed back, guaranteed, plus a rarer full reset.
+
+  **Measured, so the claim is not a feeling.** A bare-pouch player who
+  keeps the biggest set, recasts, and then claims greedily — the same
+  model `lots.fairness` uses for one fight, run over a whole depth for
+  2000 seeds under three door policies — finishes depth one:
+
+  | | before this wave | font dealt, breath refused | after |
+  | --- | --- | --- | --- |
+  | first door | 0.195 | 0.246 | 0.355 |
+  | last door | 0.191 | 0.239 | 0.357 |
+  | coin flip | 0.199 | 0.245 | 0.359 |
+
+  So: **survival roughly doubles, and a depth is still lost more often
+  than it is won.** Say it plainly — this did not make depth one
+  survivable, it made it survivable *sometimes*. About a third of the
+  gain is not the mercy at all but the font displacing a room that could
+  have had teeth in it; the breath itself is the other two thirds.
+
+  And that is the number for a player who claims *well*. Driving the real
+  shell in a browser with a crude thumb — biggest set, then the first
+  claim that is offered — finished one run in eighteen. The gap between
+  0.36 and 0.06 is the duel's skill ceiling, not the depth's, and it is
+  the strongest argument on this list that the fights are where the
+  difficulty actually lives.
+
+  What this wave is **not** is a solved economy. The breath lands early
+  by construction (the band is fenced by art. 78 — see the knobs below),
+  so a run that takes its fights late still spends the back half of the
+  depth on whatever it has left, and there is nothing to carry, buy or
+  drink between the font and the door. The Loot stream is the other half
+  of that answer and this wave was not asked to be it. If one more knob
+  had to move first, it is the Savior's rarity or a second mercy band —
+  both content, neither ruled.
 - **New: three mercy knobs, and one of them is fenced by another law.**
   All three live in content. `SANCTUM_BREATH` (0.5) and `SAVIOR_MERCY`
   (1) are the two shares in `src/content/encounters.ts`; `SAVIOR_CHANCE`
