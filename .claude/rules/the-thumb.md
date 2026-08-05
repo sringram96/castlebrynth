@@ -20,11 +20,25 @@ skeleton playtest.
 
     The **rail** never changes: vitals (health, armor) and the tabs.
     The **panels** are ACTS — home, where the room is played from,
-    holding the verbs looking has summoned (art. 68) and the door
-    commits; POUCH — the pouch as visible slots, empty slots included,
-    because hand size is a stat you can see, and the surface art. 60's
-    swap is made on; and FIGHT, which exists only while a fight does
-    (art. 92). Nothing else ever appears in the tray.
+    holding the verbs looking has summoned (art. 68), the door commits,
+    and whatever you carry that is not the duel; POUCH — the pouch as
+    visible slots, empty slots included, because hand size is a stat you
+    can see, and the surface art. 60's swap is made on; and FIGHT.
+    Nothing else ever appears in the tray.
+
+    **FIGHT is not a tab** (amended 2026-08-05). It is what the panel
+    area *becomes* while a fight is on — the ground the tray sits on
+    rather than one of the places you can go — so it carries everything
+    the duel needs and takes no room on the rail. A fight puts you there
+    without your having to find it (art. 91), and a tab is somewhere you
+    step aside to: pressing the tab you are already on steps back.
+
+    Two things follow, and both are the article rather than the layout.
+    **The dice of a turn live only in FIGHT** — the hand as it lies is
+    the duel's, and no other panel draws it. **ACTS is not the duel**:
+    the room is still there during a fight (art. 30), so a summoned verb
+    is still yours to press, but the doors are not, because the door you
+    are standing at *is* the fight.
 
     The original article's fixed regions are not repealed, only
     relocated: a region still lives in exactly one place and never

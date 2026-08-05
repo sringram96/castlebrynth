@@ -555,12 +555,19 @@ function tray(): void {
   panels()
 }
 
-/** Which panel the thumb is on, clamped to one that exists right now. */
+/**
+ * Which panel the thumb is on, clamped to one that exists right now.
+ *
+ * art. 67: FIGHT is not a tab. It is what the panel area *becomes* while a
+ * fight is on — the ground the tray sits on rather than one of the places
+ * you can go — so it is never in the tab bar, and a fight puts you there
+ * without your having to find it.
+ *
+ * A save left on FIGHT by a fight that ended in another session lands home
+ * instead, because a panel with nothing in it is not a place either.
+ */
 function panelNow(): Panel {
   const held = ledgers.run?.panel ?? HOME
-  // FIGHT exists only during a fight (art. 67). A save that was left on it —
-  // a fight that ended in another session — lands on home rather than on a
-  // panel with nothing in it.
   if (held === 'fight' && !inAFight()) return HOME
   return held
 }
@@ -593,7 +600,11 @@ function tabs(): void {
     el.setAttribute('aria-pressed', String(panel === on))
     el.onclick = () => {
       settle()
-      focus(panel)
+      // art. 67: during a fight the duel is the ground the tray sits on, so
+      // a tab is somewhere you *step aside to*. Pressing the one you are
+      // already on steps back — which is how you return to a fight that has
+      // no tab of its own.
+      focus(panel === on && inAFight() ? 'fight' : panel)
       notice = null
       persist()
       paint()
@@ -602,7 +613,6 @@ function tabs(): void {
   }
   tab('acts', 'acts')
   tab('pouch', 'pouch')
-  if (inAFight()) tab('fight', 'fight')
   // arts 31, 85: the map is a socket and stays one. A disabled tab is legal;
   // pixels behind it are not, so there is no panel to focus and no handler to
   // press. It is here to say that the road ahead is a thing the game has
@@ -970,7 +980,10 @@ function acts(): void {
     case 'room':
       return roomActs()
     case 'fight':
-      return fightActs()
+      // art. 67: the fight's own verbs belong to the fight's own panel, and
+      // they are rendered there (`theFightPanel`). What ACTS holds during a
+      // fight is what ACTS is for — the things you do that are not the duel.
+      return actsInAFight()
     case 'dead':
       return actStrip.append(
         verb('descend', () => { screen = { kind: 'room' }; notice = null; persist(); paint() }),
@@ -1048,6 +1061,26 @@ function doSwap(): void {
   notice = NOTICES['swap.done'] ?? ''
   persist()
   paint()
+}
+
+/**
+ * art. 67: what ACTS is for during a fight — the things that are not the
+ * duel. The room is still there (art. 30: no battle screen), so a verb
+ * looking summoned is still yours to press; the doors are not, because the
+ * door you are standing at *is* the fight.
+ *
+ * It is nearly always empty today. The spells and consumables that will fill
+ * it are later waves; what matters now is that the panel exists, says so,
+ * and is not where the dice live.
+ */
+function actsInAFight(): void {
+  const offers = bands.tray.flatMap((offer) => (offer.kind === 'act' ? [offer.act] : []))
+  for (const one of offers) actStrip.append(verb(one.id, () => doAct(one)))
+  if (offers.length > 0) return
+  const aside = document.createElement('div')
+  aside.className = 'aside'
+  aside.textContent = NOTICES['acts.infight'] ?? ''
+  actStrip.append(aside)
 }
 
 function doAct(one: Act): void {
@@ -1218,6 +1251,11 @@ function settle(): void {
   if (resolving !== null) settleTurn()
 }
 
+/**
+ * art. 67: everything the duel needs, in the duel's own panel — roll, keep,
+ * recast, claim, end the turn, run. The bug this replaces put them in ACTS,
+ * so a fight force-focused a panel you then had to leave in order to play.
+ */
 function fightActs(): void {
   const now = fight
   if (now === null) return
@@ -1227,7 +1265,7 @@ function fightActs(): void {
   const lots = turnLots(ledgers.run!.seed, ledgers.run!.at.step, now.turnNumber)
 
   if (phase === 'pre') {
-    actStrip.append(
+    fightPanel.append(
       verb('roll', () => {
         fight = withTurn(now, cast(now.turn, lots(1)))
         phase = 'keep'
@@ -1241,7 +1279,7 @@ function fightActs(): void {
   }
 
   if (phase === 'keep') {
-    actStrip.append(
+    fightPanel.append(
       verb(
         'recast',
         () => {
@@ -1270,7 +1308,7 @@ function fightActs(): void {
     made.dice.some((one) => selected.includes(one.die)),
   )
   if (line !== null) {
-    actStrip.append(
+    fightPanel.append(
       verb('claim', () => {
         fight = withTurn(now, claim(now.turn, selected, line, LADDER, goods()))
         selected = []
@@ -1281,7 +1319,7 @@ function fightActs(): void {
     )
   }
   if (takingBack) {
-    actStrip.append(
+    fightPanel.append(
       verb('take-back', () => {
         let turn = now.turn
         for (const made of now.turn.claims) {
@@ -1294,7 +1332,7 @@ function fightActs(): void {
       }),
     )
   }
-  actStrip.append(verb('end-turn', endTurn), verb('run', runFromTheFight))
+  fightPanel.append(verb('end-turn', endTurn), verb('run', runFromTheFight))
 }
 
 /**

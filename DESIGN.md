@@ -132,6 +132,17 @@ tray: darker ground, ruled off, lit along its top edge, with art. 57's
 running totals and the card's glyph pinned in its header and the hand
 under them.
 
+**And FIGHT is not a tab.** The first cut of this shipped with a real
+bug: the duel's verbs were rendered into ACTS, so a fight force-focused a
+panel you then had to *leave* in order to roll. Fixing that made the
+shape obvious — the fight is not one of the places you can go, it is what
+the panel area becomes while a fight is on. It carries everything the
+duel needs, takes no room on the rail, and you return to it by pressing
+the tab you are already on: a tab is somewhere you step aside to. The
+dice of a turn are drawn in FIGHT and nowhere else; ACTS keeps the room's
+summoned verbs, which is where spells and consumables will sit, and says
+so when it is empty rather than going blank.
+
 **The vault carried all of it.** `VAULT_VERSION` went 3 → 4 → 5 in one
 wave, and both rungs are the *good* kind: nothing about the arrangement
 moved, so they fill the new field and leave the run standing where it

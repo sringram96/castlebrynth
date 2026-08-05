@@ -277,6 +277,9 @@ export const NOTICES: Readonly<Record<string, string>> = {
   'pouch.empty': 'Nothing is in this slot yet.',
   // art. 69: the pouch panel says what is true of it rather than going quiet.
   'pouch.whole': 'Everything you own is in your hand.',
+  // art. 69: the acts panel during a fight. It says what it holds rather
+  // than going blank, and it never instructs (art. 66's other half).
+  'acts.infight': 'Nothing here but the room, and the room is waiting.',
   // art. 72: claim offers match the exact selection, so a selection that
   // fits nothing says why. The shape must be exactly what is chosen — a
   // full house is the five, never the five and one more.
@@ -414,7 +417,6 @@ export const VERBS: Readonly<Record<string, string>> = {
 export const TABS: Readonly<Record<string, string>> = {
   acts: 'acts',
   pouch: 'pouch',
-  fight: 'fight',
   // arts 31, 85: a socket, named so that the absence reads as a decision
   // rather than as something nobody got to.
   map: 'map',
