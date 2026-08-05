@@ -2,7 +2,7 @@
 A first-person, forward-only descent in the browser: computed parallax
 rooms, blind chains, poker-dice duels, death as the progression system.
 Users: README.md. The shape and current cut: DESIGN.md. The fantasy:
-`reference/GAME.md`. The law: `.claude/rules/` — 76 numbered articles,
+`reference/GAME.md`. The law: `.claude/rules/` — 92 numbered articles,
 cited as "art. N". Where a rule conflicts with GAME.md, the rule wins.
 
 ## Get it running
