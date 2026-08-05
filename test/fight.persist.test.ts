@@ -1,18 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import {
-  BARE_BODY,
-  CATALOG,
-  GRAMMAR,
-  HAND_SIZE,
-  LADDER,
-  PLAIN_POUCH,
-  ROOM_BOOK,
-  THE_GNAWING,
-  horrorById,
-} from '../src/content/index.js'
+import { LADDER, ROOM_BOOK, THE_GNAWING, horrorById } from '../src/content/index.js'
 import { enterRoom } from '../src/descent/index.js'
-import { deal } from '../src/gen/index.js'
 import {
   openFightDoor,
   pausedAt,
@@ -34,9 +23,9 @@ import {
   unspent,
   withTurn,
 } from '../src/lots/index.js'
-import type { FightPhase, Ledgers, RoomId, Vault } from '../src/state/index.js'
-import { firstPermanent, load, save, wake } from '../src/state/index.js'
-import { seedOf } from './helpers.js'
+import type { FightPhase, InstanceId, Ledgers, Vault } from '../src/state/index.js'
+import { load, save } from '../src/state/index.js'
+import { atAFight } from './drift.js'
 
 /**
  * art. 75 — a half-spent turn survives the lock screen — and art. 63 — a
@@ -59,18 +48,15 @@ function killable(): { vault: Vault; kill: () => Vault } {
   return { vault: open(written), kill: () => open(new Map(written)) }
 }
 
+/**
+ * A run standing at a fight-door. art. 83 floated the horrors into sockets,
+ * so where the fight is depends on the seed and on the choices — the walk
+ * finds it rather than the catalog naming it.
+ */
 function atTheLair(seed: number) {
-  const ledgers = wake(firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY), seedOf(seed))
-  const chain = deal(seedOf(seed), 1, CATALOG, GRAMMAR)
-  const lair = chain.nodes.find((node) => node.type === 'lair')!
-  const step = chain.nodes.findIndex((node) => node.room === lair.room)
-  // The fight is fought at the lair's door, so the run stands in the lair.
-  const stood: Ledgers = {
-    ...ledgers,
-    run: { ...ledgers.run!, at: { room: lair.room, step, beat: 0 } },
-  }
-  void enterRoom(stood, chain, ROOM_BOOK, lair.room)
-  return { ledgers: stood, room: lair.room as RoomId, step, door: lair.doors[0]! }
+  const { ledgers, chain, node, door } = atAFight(seed)
+  void enterRoom(ledgers, chain, ROOM_BOOK, node.instance)
+  return { ledgers, room: node.instance, step: node.step, door }
 }
 
 function lotsFor(ledgers: Ledgers, fight: Fight) {
@@ -103,7 +89,7 @@ function shapeOfFight(fight: Fight, phase: FightPhase, selected: readonly DieId[
 function roundTrip(
   ledgers: Ledgers,
   fight: Fight,
-  room: RoomId,
+  room: InstanceId,
   phase: FightPhase,
   selected: readonly DieId[],
 ) {

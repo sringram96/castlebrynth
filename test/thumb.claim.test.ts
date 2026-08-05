@@ -1,17 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import {
-  ALL_RIDERS,
-  BARE_BODY,
-  CATALOG,
-  GRAMMAR,
-  HAND_SIZE,
-  LADDER,
-  NOTICES,
-  PLAIN_POUCH,
-  THE_GNAWING,
-} from '../src/content/index.js'
-import { deal, lotFrom } from '../src/gen/index.js'
+import { ALL_RIDERS, LADDER, NOTICES, THE_GNAWING } from '../src/content/index.js'
+import { lotFrom } from '../src/gen/index.js'
 import type { DieId, Fight, Goods, Line, Lot, Value } from '../src/lots/index.js'
 import {
   advanceFight,
@@ -29,7 +19,7 @@ import {
   withTurn,
 } from '../src/lots/index.js'
 import { openFightDoor } from '../src/hinge/index.js'
-import { firstPermanent, wake } from '../src/state/index.js'
+import { atAFight } from './drift.js'
 import { seedOf, turnOf } from './helpers.js'
 
 /**
@@ -134,9 +124,8 @@ function thumb(opened: Fight, lot: Lot) {
 
 /** The fight-door of the dealt chain, opened the way the shell opens it. */
 function atTheFightDoor() {
-  const ledgers = wake(firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY), seedOf(4))
-  const chain = deal(seedOf(4), 1, CATALOG, GRAMMAR)
-  const door = chain.nodes.find((node) => node.type === 'lair')!.doors[0]!
+  // art. 83: the fight is wherever this run's choices put teeth.
+  const { ledgers, door } = atAFight(4)
   return openFightDoor(ledgers, { door, horror: THE_GNAWING }, GOODS)
 }
 

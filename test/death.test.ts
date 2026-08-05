@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   BARE_BODY,
   CATALOG,
+  CROSSING,
   GRAMMAR,
   HAND_SIZE,
   PLAIN_POUCH,
@@ -11,7 +12,7 @@ import {
   WARDEN,
 } from '../src/content/index.js'
 import { act, chooseDoor, doors, enterRoom } from '../src/descent/index.js'
-import { deal } from '../src/gen/index.js'
+import { deal, hereIn } from '../src/gen/index.js'
 import { routeDeath } from '../src/hinge/index.js'
 import type { Clue, ClueId, RoomId, Vault } from '../src/state/index.js'
 import {
@@ -25,7 +26,7 @@ import {
   snapshot,
   wake,
 } from '../src/state/index.js'
-import { seedOf } from './helpers.js'
+import { DEALER, seedOf } from './drift.js'
 
 /**
  * Death is the progression system (arts 11, 32). The run burns, one line
@@ -43,7 +44,7 @@ function killable(): { vault: Vault; kill: () => Vault } {
 
 const CLUE: Clue = {
   id: 'clue.gnawing.bellow' as ClueId,
-  about: 'room.lair.gnawing' as RoomId,
+  about: 'room.lair.den' as RoomId,
 }
 
 describe('death — art. 32 (every death reseeds), art. 11 (the permanent survives)', () => {
@@ -52,14 +53,24 @@ describe('death — art. 32 (every death reseeds), art. 11 (the permanent surviv
     const ledgers = wake(permanent, seedOf(31))
     const chain = deal(seedOf(31), 1, CATALOG, GRAMMAR)
 
-    // Get somewhere, take something, learn something.
-    const bands = enterRoom(ledgers, chain, ROOM_BOOK, chain.start)
-    const walked = chooseDoor(ledgers, chain, ROOM_BOOK, doors(bands)[0]!)
-    const trove = chain.nodes.find((node) => node.type === 'trove')!
-    const taking = enterRoom(walked, chain, ROOM_BOOK, trove.room).tray.flatMap((offer) =>
-      offer.kind === 'act' ? [offer.act] : [],
-    )
-    const carrying = act(walked, taking[0]!)
+    // Get somewhere, take something, learn something. art. 80 puts the one
+    // required thing somewhere in the path, so walk until it is underfoot.
+    let here = { ledgers, chain }
+    let taking: readonly { readonly id: string }[] = []
+    for (let n = 0; n < 12; n++) {
+      const node = hereIn(here.chain)!
+      const bands = enterRoom(here.ledgers, here.chain, ROOM_BOOK, node.instance)
+      const acts = bands.tray.flatMap((offer) => (offer.kind === 'act' ? [offer.act] : []))
+      if (acts.length > 0) {
+        here = { ...here, ledgers: act(here.ledgers, acts[0]!) }
+        taking = acts
+        break
+      }
+      const walked = chooseDoor(here.ledgers, here.chain, ROOM_BOOK, doors(bands)[0]!, DEALER)
+      here = { ledgers: walked.ledgers, chain: walked.chain }
+    }
+    expect(taking.length).toBeGreaterThan(0)
+    const carrying = here.ledgers
     const knowing = {
       ...carrying,
       permanent: collect(learn(carrying.permanent, CLUE), THE_OSSUARY),
@@ -70,7 +81,15 @@ describe('death — art. 32 (every death reseeds), art. 11 (the permanent surviv
 
     // The run burned: nothing carried, back at the Crossing, whole again.
     expect(woken.run!.carried).toEqual([])
-    expect(woken.run!.at).toEqual({ room: chain.start, step: 0, beat: 0 })
+    expect(woken.run!.at).toEqual({
+      room: CROSSING,
+      instance: chain.start,
+      step: 0,
+      beat: 0,
+    })
+    // art. 36: the history burns with the run, so the next one is not this
+    // one replayed from halfway down.
+    expect(woken.run!.history.taken).toEqual([])
     expect(woken.run!.health).toBe(BARE_BODY.health)
     expect(woken.run!.seed).not.toBe(knowing.run!.seed)
 
@@ -82,16 +101,25 @@ describe('death — art. 32 (every death reseeds), art. 11 (the permanent surviv
     ])
   })
 
-  it('reseeds the chain, so the arrangement is not the one that killed you (art. 32)', () => {
+  it('reseeds the run, so the arrangement is not the one that killed you (art. 32)', () => {
     const permanent = firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY)
     const first = wake(permanent, seedOf(31))
     const woken = routeDeath(first, 'end.gnawing')
-    const before = deal(first.run!.seed, 1, CATALOG, GRAMMAR)
-    const after = deal(woken.run!.seed, 1, CATALOG, GRAMMAR)
+    const before = deal(first.run!.seed, 1, CATALOG, GRAMMAR, { taken: [0, 0, 0, 0] })
+    const after = deal(woken.run!.seed, 1, CATALOG, GRAMMAR, { taken: [0, 0, 0, 0] })
     expect(after.seed).not.toBe(before.seed)
+    // The same choices off a new seed are a different road entirely.
+    expect(after.nodes.map((node) => node.room)).not.toEqual(
+      before.nodes.map((node) => node.room),
+    )
     // Anchors never move, whatever the seed does (art. 37).
     expect(after.start).toBe(before.start)
-    expect(after.nodes.at(-1)!.room).toBe(WARDEN)
+    expect(after.nodes[0]!.room).toBe(CROSSING)
+    // And the Warden still ends it, wherever the drift takes the run.
+    const finished = deal(woken.run!.seed, 1, CATALOG, GRAMMAR, {
+      taken: [0, 0, 0, 0, 0, 0, 0, 0],
+    })
+    expect(finished.nodes.at(-1)!.room).toBe(WARDEN)
   })
 
   it('leaves the permanent intact and the run virgin across a reload (arts 11, 36)', () => {

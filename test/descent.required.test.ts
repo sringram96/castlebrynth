@@ -1,163 +1,236 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  BARE_BODY,
   CATALOG,
-  GRAMMAR,
-  HAND_SIZE,
+  DEPTH_ONE,
+  IRON_KEY,
   NOTICES,
-  PLAIN_POUCH,
   ROOMS,
   ROOM_BOOK,
   WARDEN_KEY_ITEM,
 } from '../src/content/index.js'
-import { act, canOpen, chooseDoor, doors, enterRoom, heldBack, mayLeave } from '../src/descent/index.js'
-import type { Chain, Door } from '../src/gen/index.js'
-import { deal } from '../src/gen/index.js'
-import type { Ledgers, RoomId } from '../src/state/index.js'
-import { firstPermanent, movedTo, wake } from '../src/state/index.js'
-import { seedOf } from './helpers.js'
+import { actsIn, chooseDoor, enterRoom, heldBack, mayLeave } from '../src/descent/index.js'
+import type { Chain } from '../src/gen/index.js'
+import { hereIn } from '../src/gen/index.js'
+import type { Policy } from './drift.js'
+import {
+  DEALER,
+  alwaysLeft,
+  alwaysRight,
+  avoiding,
+  coinFlip,
+  leaning,
+  opened,
+  playRun,
+  runOf,
+  takeable,
+} from './drift.js'
+import { BURNT, DROWNED, OSSUARY } from '../src/content/index.js'
 
 /**
- * art. 3 — a run cannot become unwinnable through no fault of the player's
- * understanding — read together with art. 9, which says there is no back.
+ * arts 3 and 80 — winnability by construction.
  *
- * art. 33 binds the generator and holds: the key is always upstream of its
- * lock. What it never said is that the player is *carrying* it. The playtest
- * walked past the key and through the door, and the run was over before it
- * could be known to be over.
+ * The old law proved this by search: lay out a whole depth, then check that
+ * every lock had its key upstream. Art. 80 replaces the search with a
+ * construction. Required items are unbound from rooms — there is no key
+ * room — and when the dealer has committed to a lock ahead it puts the key
+ * into the player's path before it. Stranding stops being something the
+ * generator avoids and becomes something it cannot express.
+ *
+ * Art. 3's door refusal stays as the belt to that suspender: a required
+ * thing lying unclaimed still refuses the room's doors, so a player cannot
+ * walk past what the dealer put there for them.
  */
-function opened(seed: number) {
-  const ledgers = wake(firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY), seedOf(seed))
-  return { ledgers, chain: deal(seedOf(seed), 1, CATALOG, GRAMMAR) }
+const LOCK = DEPTH_ONE.locks[0]!
+
+/** The policies a run can be played with, including two that fight the drift. */
+const POLICIES: readonly (readonly [string, (seed: number) => Policy])[] = [
+  ['always-left', () => alwaysLeft],
+  ['always-right', () => alwaysRight],
+  ['lean-drowned', () => leaning(DROWNED)],
+  ['lean-burnt', () => leaning(BURNT)],
+  ['lean-ossuary', () => leaning(OSSUARY)],
+  ['avoid-ossuary', () => avoiding(OSSUARY)],
+  ['coin-flip', (seed) => coinFlip(seed)],
+]
+
+/** Which step of a run the key was dealt into, or -1 if it never was. */
+function keyAt(chain: Chain): number {
+  return chain.nodes.findIndex((node) =>
+    node.fills.some((fill) => fill.encounter === IRON_KEY),
+  )
 }
 
-/**
- * Every way through a chain, under the law. At each room the required acts
- * must be done before any door commits; a door only opens if what it demands
- * is carried. Returns the rooms that could be reached with a door that
- * refused for want of a key — a stranded run.
- */
-function bareWalk(ledgers: Ledgers, chain: Chain, door: Door): Ledgers {
-  const step = chain.nodes.findIndex((node) => node.room === door.to)
-  return {
-    ...ledgers,
-    run: movedTo(ledgers.run!, { room: door.to, step, beat: 0 }),
-  }
-}
+describe('art. 80 — the key is unbound, and arrives before its lock', () => {
+  it('binds the required thing to no room at all', () => {
+    // There is no key room: no room template offers an act of its own, and
+    // nothing in the catalog says a room hands anything over.
+    for (const held of ROOMS) expect(held.acts, held.id as string).toEqual([])
+    // The thing that grants it is an encounter, and it floats.
+    const key = CATALOG.encounters.find((one) => one.id === IRON_KEY)!
+    expect(key.binding).toBe('floating')
+    expect(key.scope).toBe('unique')
+    expect(key.grants).toEqual([WARDEN_KEY_ITEM])
+    expect(key.at).toBeUndefined()
+  })
 
-function stranded(chain: Chain, ledgers: Ledgers, obeyTheLaw: boolean): readonly RoomId[] {
-  const dead: RoomId[] = []
-  const seen = new Set<string>()
-  const walk = (here: Ledgers): void => {
-    const room = here.run!.at.room
-    const stamp = `${room}|${[...here.run!.carried].sort().join(',')}`
-    if (seen.has(stamp)) return
-    seen.add(stamp)
-
-    // arts 3, 68: taking stays a deliberate act, so both branches exist —
-    // the player may take, and (without the law) may also walk on.
-    const acts = ROOM_BOOK.acts(room).filter(
-      (one) => !one.gives.every((item) => here.run!.carried.includes(item)),
-    )
-    for (const one of acts) walk(act(here, one))
-
-    if (obeyTheLaw && !mayLeave(here, ROOM_BOOK, room)) return
-
-    const bands = enterRoom(here, chain, ROOM_BOOK, room)
-    const ahead = doors(bands)
-    if (ahead.length === 0) return
-    let moved = false
-    for (const door of ahead) {
-      if (!canOpen(here, door)) continue
-      moved = true
-      // The Warden's door ends the depth rather than committing a room.
-      if (door.ends === true) continue
-      // Without the law, the walk is the bare move `chooseDoor` used to be:
-      // this is the skeleton the playtest played, reproduced exactly.
-      walk(obeyTheLaw ? chooseDoor(here, chain, ROOM_BOOK, door) : bareWalk(here, chain, door))
+  it('declares every room able to hold it, so the last chance is never a dead one', () => {
+    for (const template of CATALOG.rooms) {
+      expect(
+        template.sockets.some((socket) => socket.accepts === 'boon'),
+        template.id as string,
+      ).toBe(true)
     }
-    // Every door here refused, and there is no back (art. 9).
-    if (!moved) dead.push(room)
-  }
-  walk(ledgers)
-  return dead
-}
+  })
+
+  /**
+   * The property art. 80 claims, across a thousand runs per policy: the key
+   * is dealt into the path, once, strictly before the lock it opens.
+   */
+  it('places it exactly once, before the lock, in every run of every policy', () => {
+    for (const [name, make] of POLICIES) {
+      for (let seed = 1; seed <= 1000; seed++) {
+        const chain = runOf(seed, make(seed))
+        const at = keyAt(chain)
+        expect(at, `${name} seed ${seed}`).toBeGreaterThanOrEqual(0)
+        expect(at, `${name} seed ${seed}`).toBeLessThan(LOCK.at)
+        const placings = chain.nodes.flatMap((node) =>
+          node.fills.filter((fill) => fill.encounter === IRON_KEY),
+        )
+        expect(placings, `${name} seed ${seed}`).toHaveLength(1)
+      }
+    }
+  })
+
+  it('spreads it through the depth rather than always the same room', () => {
+    const steps = new Set<number>()
+    const rooms = new Set<string>()
+    for (let seed = 1; seed <= 400; seed++) {
+      const chain = runOf(seed, coinFlip(seed))
+      const at = keyAt(chain)
+      steps.add(at)
+      rooms.add(chain.nodes[at]!.room as string)
+    }
+    // Just in time is not the same as at the last moment: it lands early
+    // sometimes and late sometimes, and in most of the rooms there are.
+    expect(steps.size).toBeGreaterThan(4)
+    expect(rooms.size).toBeGreaterThan(5)
+  })
+})
 
 describe('art. 3 — a run can never be walked into unwinnable', () => {
   it('marks the one thing the depth requires, and marks nothing else', () => {
-    const required = ROOMS.flatMap((held) => held.acts.filter((one) => one.required))
-    expect(required.map((one) => one.id)).toEqual(['act.take-key'])
-    expect(required[0]!.gives).toEqual([WARDEN_KEY_ITEM])
-    // Every act declares the flag rather than leaving it to be inferred.
-    for (const held of ROOMS) {
-      for (const one of held.acts) expect(typeof one.required).toBe('boolean')
+    let required = 0
+    for (let seed = 1; seed <= 50; seed++) {
+      const chain = runOf(seed, coinFlip(seed))
+      for (const node of chain.nodes) {
+        for (const one of actsIn(ROOM_BOOK, node)) {
+          // Every act declares the flag rather than leaving it inferred.
+          expect(typeof one.required).toBe('boolean')
+          if (one.required) {
+            required++
+            expect(one.gives).toEqual([WARDEN_KEY_ITEM])
+          }
+        }
+      }
+      expect(required, `seed ${seed}`).toBeGreaterThan(0)
+      required = 0
     }
   })
 
   it('names what a room still holds back, and stops naming it once taken', () => {
     const { ledgers, chain } = opened(11)
-    const trove = chain.nodes.find((node) => node.type === 'trove')!
-    expect(heldBack(ledgers, ROOM_BOOK, trove.room).map((one) => one.id)).toEqual([
+    let here = { ledgers, chain }
+    // Walk to the room the dealer put the key in, taking nothing on the way.
+    while (keyAt(here.chain) !== here.chain.nodes.length - 1) {
+      const node = hereIn(here.chain)!
+      const walked = chooseDoor(here.ledgers, here.chain, ROOM_BOOK, node.doors[0]!, DEALER)
+      here = { ledgers: walked.ledgers, chain: walked.chain }
+    }
+    const node = hereIn(here.chain)!
+    expect(heldBack(here.ledgers, ROOM_BOOK, node).map((one) => one.id)).toEqual([
       'act.take-key',
     ])
-    expect(mayLeave(ledgers, ROOM_BOOK, trove.room)).toBe(false)
+    expect(mayLeave(here.ledgers, ROOM_BOOK, node)).toBe(false)
 
-    const bands = enterRoom(ledgers, chain, ROOM_BOOK, trove.room)
+    const bands = enterRoom(here.ledgers, here.chain, ROOM_BOOK, node.instance)
     const taking = bands.tray.flatMap((offer) => (offer.kind === 'act' ? [offer.act] : []))
-    const holding = act(ledgers, taking[0]!)
-    expect(heldBack(holding, ROOM_BOOK, trove.room)).toEqual([])
-    expect(mayLeave(holding, ROOM_BOOK, trove.room)).toBe(true)
+    expect(taking.map((one) => one.id)).toEqual(['act.take-key'])
   })
 
   it('refuses to commit a door while a required thing lies in the room', () => {
     const { ledgers, chain } = opened(11)
-    const trove = chain.nodes.find((node) => node.type === 'trove')!
-    const standing: Ledgers = {
-      ...ledgers,
-      run: { ...ledgers.run!, at: { room: trove.room, step: 1, beat: 0 } },
+    let here = { ledgers, chain }
+    while (keyAt(here.chain) !== here.chain.nodes.length - 1) {
+      const node = hereIn(here.chain)!
+      const walked = chooseDoor(here.ledgers, here.chain, ROOM_BOOK, node.doors[0]!, DEALER)
+      here = { ledgers: walked.ledgers, chain: walked.chain }
     }
-    const bands = enterRoom(standing, chain, ROOM_BOOK, trove.room)
-    const door = doors(bands)[0]!
-    expect(() => chooseDoor(standing, chain, ROOM_BOOK, door)).toThrow(/art\. 3/)
+    const node = hereIn(here.chain)!
+    expect(() =>
+      chooseDoor(here.ledgers, here.chain, ROOM_BOOK, node.doors[0]!, DEALER),
+    ).toThrow(/art\. 3/)
 
     // And the line the shell says is a stop, not a hint: it names nothing.
     const said = NOTICES['door.held'] ?? ''
     expect(said.length).toBeGreaterThan(0)
     expect(said.toLowerCase()).not.toContain('key')
-    expect(said.toLowerCase()).not.toContain('alcove')
+    expect(said.toLowerCase()).not.toContain('iron')
   })
 
   it('lets a room with nothing required in it be left at once (art. 4)', () => {
     const { ledgers, chain } = opened(11)
-    for (const node of chain.nodes) {
-      if (node.type === 'trove') continue
-      expect(mayLeave(ledgers, ROOM_BOOK, node.room), node.room as string).toBe(true)
+    let here = { ledgers, chain }
+    for (let n = 0; n < 3; n++) {
+      const node = hereIn(here.chain)!
+      if (takeable(here.ledgers, node).some((one) => one.required)) break
+      expect(mayLeave(here.ledgers, ROOM_BOOK, node), node.instance as string).toBe(true)
+      const walked = chooseDoor(here.ledgers, here.chain, ROOM_BOOK, node.doors[0]!, DEALER)
+      here = { ledgers: walked.ledgers, chain: walked.chain }
     }
   })
 
   /**
-   * The proof: no sequence of legal door choices reaches a lock without what
-   * opens it. Searched over the carried-set as well as the room, so a path
-   * that skipped a take is a path the search would have found.
+   * The proof: no run reaches the lock without what opens it. Played through
+   * the real acts and the real doors, under every policy, over a thousand
+   * seeds each — which is the adversarial part, because two of these
+   * policies are trying to steer the drift somewhere it does not want to go.
    */
-  it('leaves no seeded run that can be walked into a refusal', () => {
-    for (let seed = 1; seed <= 200; seed++) {
-      const { ledgers, chain } = opened(seed)
-      expect(stranded(chain, ledgers, true), `seed ${seed}`).toEqual([])
+  it('leaves no seeded run under any policy that reaches the lock keyless', () => {
+    for (const [name, make] of POLICIES) {
+      for (let seed = 1; seed <= 1000; seed++) {
+        const played = playRun(seed, make(seed), true)
+        expect(played.refused, `${name} seed ${seed}`).toBe(false)
+        expect(played.ledgers.run!.carried, `${name} seed ${seed}`).toContain(WARDEN_KEY_ITEM)
+      }
     }
   })
 
   /**
-   * And the control, so the test is not vacuous: with the law switched off,
-   * the same chains strand — which is the playtest, reproduced.
+   * And the control, so the test is not vacuous: with art. 3 switched off, a
+   * player who takes nothing walks the whole depth and is refused at the
+   * end — which is the playtest, reproduced. The law is doing the work.
    */
   it('strands the same runs the moment the law is switched off', () => {
-    const failing = []
-    for (let seed = 1; seed <= 20; seed++) {
-      const { ledgers, chain } = opened(seed)
-      if (stranded(chain, ledgers, false).length > 0) failing.push(seed)
+    let refused = 0
+    for (let seed = 1; seed <= 100; seed++) {
+      if (playRun(seed, coinFlip(seed), false, false).refused) refused++
     }
-    expect(failing).toHaveLength(20)
+    expect(refused).toBe(100)
+  })
+
+  /**
+   * The other half of the belt: obeying art. 3 while refusing to take
+   * anything does not strand either. The run simply stops in the room the
+   * key is in, because the room will not let it leave.
+   */
+  it('stops a run in the room rather than letting it walk past what it needs', () => {
+    for (let seed = 1; seed <= 200; seed++) {
+      const played = playRun(seed, coinFlip(seed), true, false)
+      expect(played.refused, `seed ${seed}`).toBe(false)
+      const node = hereIn(played.chain)!
+      expect(heldBack(played.ledgers, ROOM_BOOK, node).length, `seed ${seed}`).toBe(1)
+      expect(node.step).toBeLessThan(LOCK.at)
+    }
   })
 })

@@ -1,8 +1,18 @@
 import { describe, expect, it } from 'vitest'
 
-import { BARE_BODY, HAND_SIZE, PLAIN_POUCH } from '../src/content/index.js'
+import {
+  BARE_BODY,
+  CATALOG,
+  GRAMMAR,
+  HAND_SIZE,
+  PLAIN_POUCH,
+  ROOM_BOOK,
+} from '../src/content/index.js'
+import { chooseDoor } from '../src/descent/index.js'
+import { deal, hereIn } from '../src/gen/index.js'
 import type { Seed, Vault } from '../src/state/index.js'
 import { firstPermanent, load, save, snapshot, wake } from '../src/state/index.js'
+import { DEALER, opened } from './drift.js'
 
 /** A vault that can be killed: what was written is all that survives. */
 function killableVault(): { vault: Vault; kill: () => Vault } {
@@ -30,6 +40,42 @@ describe('state — art. 36 (every mutation persists, boot restores exactly), ar
     const restored = load(kill())
     expect(restored).not.toBeNull()
     expect(snapshot(restored!)).toEqual(snapshot(ledgers))
+  })
+
+  /**
+   * art. 36 (amended): the history graph is the source of truth, and resume
+   * replays it. Killing the app halfway down has to come back to the same
+   * room, standing in the same instance, with the same tally behind it —
+   * because everything else about the run is derived from those choices.
+   */
+  it('replays the history graph: the same room, the same tally, after a kill', () => {
+    const { vault, kill } = killableVault()
+    let { ledgers, chain } = opened(19)
+    for (let n = 0; n < 5; n++) {
+      const node = hereIn(chain)!
+      const walked = chooseDoor(ledgers, chain, ROOM_BOOK, node.doors[0]!, DEALER)
+      ledgers = walked.ledgers
+      chain = walked.chain
+    }
+    save(ledgers, vault)
+
+    const restored = load(kill())
+    expect(restored).not.toBeNull()
+    expect(restored!.run!.history.taken).toEqual(ledgers.run!.history.taken)
+
+    // Nothing about the run was stored except the choices — the rooms come
+    // back because they are replayed, not because they were written down.
+    const replayed = deal(
+      restored!.run!.seed,
+      restored!.run!.depth,
+      CATALOG,
+      GRAMMAR,
+      restored!.run!.history,
+    )
+    expect(JSON.stringify(replayed)).toBe(JSON.stringify(chain))
+    expect(restored!.run!.at).toEqual(ledgers.run!.at)
+    expect(hereIn(replayed)!.instance).toBe(restored!.run!.at.instance)
+    expect(replayed.drift).toEqual(chain.drift)
   })
 
   it('keeps the run and the permanent apart, except through the rituals (art. 11)', () => {
