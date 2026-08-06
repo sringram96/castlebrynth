@@ -41,7 +41,7 @@ import type {
   SocketId,
 } from '../gen/index.js'
 import type { Horror } from '../lots/index.js'
-import type { ItemId, RoomId } from '../state/index.js'
+import type { Clue, ItemId, RoomId } from '../state/index.js'
 import type {
   Blink,
   Drawn,
@@ -133,6 +133,9 @@ import {
   BEARER_FRAMES,
   BELL,
   BOTTLE,
+  COVERED_BASIN,
+  OPEN_BASIN,
+  SPILLED_BASIN,
   BRAZIER,
   BRAZIER_FRAMES,
   CAGE,
@@ -155,6 +158,9 @@ import {
   WATCHER_DARK,
 } from './plates/bestiary.js'
 import { WAKE, masonry, wakeProps } from './plates/wake.js'
+import { CLUES, ECHOES, KNOWS, REFUSALS, marked } from './marks.js'
+import { THE_OSSUARY } from './items.js'
+import { saysLook } from './says.js'
 import { ARRIVALS, BEATS, END_LINES, LABELS, LOOKS, NOUNS, VERBS } from './prose.js'
 import { MOTION, RENDER } from './render.js'
 
@@ -435,6 +441,107 @@ const UNLOCK: Act = {
   unlocks: 0,
 }
 
+// ── The priced acts (card 86, art. 119) ────────────────────────────────
+
+/**
+ * art. 119: **an act may carry a declared price, and the price is visible
+ * before the press.** This is the Descent's art. 42 — the Lots promise the
+ * intent before you commit, and these promise the cost.
+ *
+ * The three verbs are GAME.md's own, and they were named there long before
+ * anything gave an act a price: **PEER** into dark, **LISTEN** at a door or
+ * a lid, **REACH IN** where you cannot see. Each is summoned by looking
+ * (art. 68), so the tap that makes the verb exist is the tap that says what
+ * it costs — there is no order of presses in which the verb arrives first.
+ *
+ * **All three pay in knowledge** (art. 88), which is the cheapest legal
+ * payload on art. 119's return bar and the one it says should be the most
+ * common. Every clue changes what two or three later taps answer, and
+ * `test/price.test.ts` walks that rather than trusting it.
+ *
+ * **None of them is required and none of them holds a door** (art. 3): a run
+ * can never be lost by declining to gamble, and the audit walks every seed
+ * to say so. What each one *does* cost the player who declines is a flag —
+ * `refused.question` — because the labyrinth remembers a question you did
+ * not ask (art. 84 as extended).
+ */
+function priced(
+  id: string,
+  about: string,
+  health: number,
+  learns: readonly Clue[],
+): Act {
+  return {
+    id,
+    verb: VERBS[id] ?? 'Look',
+    needs: [],
+    gives: [],
+    // art. 3: nothing required sits behind a price. This is the field that
+    // says so, and `test/price.test.ts` asserts it of every priced act in
+    // the catalog rather than of these three.
+    required: false,
+    price: { health },
+    pays: ['knowledge'],
+    learns,
+    about,
+    refused: REFUSALS.question,
+  }
+}
+
+/** art. 119: into the dark under the sump's grate. */
+const PEER_INTO_THE_DROP = priced('act.peer', 'sump.grate', 1, [CLUES.drop])
+/** art. 119: into the kiln's mouth, which goes back further than the wall. */
+const REACH_INTO_THE_KILN = priced('act.reach', 'kiln.mouth', 2, [CLUES.flue])
+/** art. 119: at the covered font's cloth. Card 88's exemplar. */
+const LISTEN_AT_THE_CLOTH = priced('act.listen', 'font.cloth', 2, [CLUES.seven])
+
+// ── The covered font's fork (card 88, arts 88–89) ──────────────────────
+
+/**
+ * art. 89: **two goods, and taking one forfeits the other.**
+ *
+ * Lifting the cloth is the decision the room was built around, and the two
+ * halves are deliberately not two treasures: one is a **thing in the hand**
+ * (art. 53's counting stone) and one is a **thing known** (art. 88's
+ * knowledge good — a good with no stat at all, earning its place by
+ * changing what two later taps answer). That is the shape art. 89 calls a
+ * partition rather than a purchase, and it is what makes the fork a
+ * decision instead of a shop.
+ *
+ * The forfeiture is physical and shows in pixels (art. 70): taking the stone
+ * closes the water over the lip, and leaning the basin to read the lip puts
+ * whatever was in it on the floor. **The take costs something that is not
+ * health**, which is the last clause of card 88's bar.
+ *
+ * Both are `about` the cloth, so one tap summons both and the thumb chooses
+ * between two verbs rather than between two taps (arts 68, 89).
+ */
+const TAKE_THE_STONE: Act = {
+  id: 'act.font.stone',
+  verb: VERBS['act.font.stone'] ?? 'Take stone',
+  needs: [],
+  gives: [],
+  required: false,
+  takes: [THE_OSSUARY],
+  pays: ['object'],
+  forfeits: ['act.font.marks'],
+  about: 'font.cloth',
+  refused: REFUSALS.cloth,
+}
+
+const READ_THE_LIP: Act = {
+  id: 'act.font.marks',
+  verb: VERBS['act.font.marks'] ?? 'Read lip',
+  needs: [],
+  gives: [],
+  required: false,
+  learns: [CLUES.tally],
+  pays: ['knowledge'],
+  forfeits: ['act.font.stone'],
+  about: 'font.cloth',
+  refused: REFUSALS.cloth,
+}
+
 /**
  * art. 97: the lock lives *on* the frame, so the thing that answers for it
  * sits where the frame is — beside the aperture and a little above centre,
@@ -646,6 +753,18 @@ function blinkOf(
 /** art. 117: a room doing one small thing of its own accord. */
 function unbiddenOf(id: string, paint: Unbidden['paint']): Unbidden {
   return { id, frames: MOTION.unbidden.frames, paint }
+}
+
+/**
+ * arts 70, 89 (card 88): which of the covered font's three states the room
+ * is standing in. **Prose confirms; pixels prove** — and here the pixels
+ * prove a forfeiture as well as a take, which is what art. 89 asks of a
+ * fork. Shut, opened with the water still in it, or gone over.
+ */
+function basinShowing(done: readonly string[]): Drawn {
+  if (done.includes('act.font.marks')) return SPILLED_BASIN
+  if (done.includes('act.font.stone')) return OPEN_BASIN
+  return COVERED_BASIN
 }
 
 /** One room, as authored. The scene is assembled from it below. */
@@ -930,6 +1049,10 @@ const AUTHORED: readonly Authored[] = [
       ['sump.grate', { X: 0, Y: FLOOR, z: 24, width: 5, height: 2 }],
       ['sump.skull', { X: -7.2, Y: FLOOR, z: 11.5, width: 2.6, height: 2.9 }],
     ],
+    // art. 119: the grate has a drop under it and a gap wide enough for a
+    // head. The sump is where the depth loses what it loses, so it is the
+    // one room in it that can answer *where to* for a price.
+    acts: [PEER_INTO_THE_DROP],
   },
   {
     id: 'room.passage.ash',
@@ -1030,6 +1153,9 @@ const AUTHORED: readonly Authored[] = [
       ['kiln.mouth', { X: -12, Y: FLOOR + 2, z: 19, width: 3, height: 7 }],
       ['kiln.brazier', { X: -4.5, Y: FLOOR, z: 11, width: 4, height: 5.2 }],
     ],
+    // art. 119: the inside goes back further than the wall does, and an arm
+    // fits. The room's own look already says both of those for free.
+    acts: [REACH_INTO_THE_KILN],
     teeth: LAIR_CHANCE,
   },
   {
@@ -1341,6 +1467,72 @@ const AUTHORED: readonly Authored[] = [
     ],
     floor: 0.55,
   },
+  /**
+   * **The covered font** (card 88) — the exemplar, and the room a later
+   * author reads to learn what a priced act is supposed to feel like.
+   *
+   * The bar it sets, and DESIGN.md quotes it: **a room gives a question
+   * before it gives a reward; free looks make the question askable; the
+   * priced act sharpens the question rather than answering it; and the take
+   * costs something that is not health.**
+   *
+   * All four are in this one room. The three free looks (arts 5–6) are the
+   * cloth wet *from below*, the lip worn on the *inside*, and a floor with
+   * no ring on it — nothing says danger and everything implies it. LISTEN
+   * (art. 119) costs two and returns six small sounds and then a seventh, so
+   * the player now **knows something is wrong and does not know what**: not
+   * knowing *why* six-then-seven matters is mystery, and not knowing what
+   * LISTEN *costs* would be confusion. Horror wants the first and is ruined
+   * by the second, which is why the price is in the look and is a number.
+   *
+   * Lifting the cloth is the fork (art. 89), and its two halves are a thing
+   * in the hand against a thing known.
+   */
+  {
+    id: 'room.trove.covered-font',
+    type: 'trove',
+    school: BRINE,
+    kind: 'low',
+    // art. 99: a course at the height of the rim, and a niche across from it
+    // with nothing in it. The room was built to keep one thing, and the wall
+    // says so without a word — which is the argument for the whole tier.
+    built: {
+      left: layered(stringCourse(6.4, 0.8), niche(24, 4.2, 8.5, 3.4)),
+      right: layered(stringCourse(6.4, 0.8), crack(17, 12, 1, 61)),
+    },
+    // art. 104: one hero, and it is the basin. art. 70: what it is showing
+    // is a function of what has been done to it, so the fork's forfeiture is
+    // in the pixels before the prose has said anything about it.
+    dressing: (school, state) => [
+      thing(
+        school,
+        basinShowing(state.done),
+        { X: 0, Y: FLOOR, z: 15, width: 4.6, height: 5.4 },
+        NOUNS['font.basin'] ?? 'the basin',
+        40,
+      ),
+    ].filter((one): one is NonNullable<typeof one> => one !== null),
+    tappables: [
+      // art. 105: the cloth sits on the basin it is tied to, so its mark is
+      // the top of the basin's and the basin's is the stone under it. They
+      // are the one exception art. 6 allows — a small thing on the large
+      // thing it is part of — and it is the same shape as the Warden's lock.
+      ['font.cloth', { X: 0, Y: FLOOR + 3.9, z: 15, width: 4.6, height: 1.8 }],
+      ['font.basin', { X: 0, Y: FLOOR, z: 15, width: 4.6, height: 3.6 }],
+      ['font.dry', { X: -6.4, Y: FLOOR, z: 12, width: 5, height: 1.8 }],
+    ],
+    acts: [LISTEN_AT_THE_CLOTH, TAKE_THE_STONE, READ_THE_LIP],
+    // art. 104: nothing waits at the far end. The basin is the one thing,
+    // and a horror standing over it would be a second thing competing to be
+    // the one thing — which is the article's own test for having none.
+    //
+    // The floor and the mercy sockets are the ordinary ones, and
+    // deliberately: they stand *aside* from the hero rather than across it
+    // (art. 105), and a room that opted out of them would be a room the
+    // dealer could not put a traveler in. The exemplar is a room like the
+    // others in every way except what it asks of the player.
+    teeth: NEVER,
+  },
   {
     id: 'room.warden',
     type: 'warden',
@@ -1636,6 +1828,10 @@ export const DEPTH_ONE: DepthPlan = {
     room('room.trove.hoard'),
     room('room.puzzle.watcher'),
     room('room.trove.buried'),
+    // card 88: the exemplar is neutral, so it is a room any run can be dealt
+    // whichever way the drift leans (art. 77) — the bar a room is held to is
+    // not one region's property.
+    room('room.trove.covered-font'),
     // art. 40: neutral, not regional, so the drift can lean a run anywhere
     // it likes and the run still gets its breath (arts 77–78).
     room('room.sanctum.font'),
@@ -1812,8 +2008,15 @@ export const ROOM_BOOK: RoomBook = {
   // art. 118: and a third way, when an act about this thing exists and is
   // being withheld. The reason has nowhere else to live — the verb it would
   // have hung on is the thing that is absent.
-  look: (_id, target, carried = [], withheld = false) =>
-    LOOKS[lookKey(target, carried, withheld)] ?? LOOKS[target] ?? '',
+  // art. 119: and a fourth, which is where a price is said. The number is
+  // put into the sentence rather than written into it, so a price and the
+  // words that quote it cannot drift apart (`saysLook`).
+  // arts 10, 84: and a fifth, off what he still knows.
+  look: (_id, target, carried = [], withheld = false, price = 0, remembered = []) =>
+    saysLook(
+      LOOKS[lookKey(target, carried, withheld, price, remembered)] ?? LOOKS[target] ?? '',
+      price,
+    ),
   acts: (id) => roomContent(id).acts,
   // art. 83: the room is handed over so the thing can stand somewhere, and
   // for nothing else — every word below comes from the encounter.
@@ -1848,8 +2051,55 @@ const ANSWERS_WHEN_CARRYING: Readonly<Record<string, readonly [ItemId, string]>>
  */
 const KEPT = '.kept'
 
-function lookKey(target: string, carried: readonly ItemId[], withheld = false): string {
-  if (withheld && LOOKS[`${target}${KEPT}`] !== undefined) return `${target}${KEPT}`
+/**
+ * art. 119: the suffix a thing wears while the act about it costs something.
+ * It is a suffix for the same reason `.kept` is — a new state is a new key,
+ * and nothing in the engine has to learn a new shape.
+ */
+const PRICE = '.price'
+
+/**
+ * arts 88, 119: what a thing says once he knows something about it. A
+ * knowledge good earns its place by changing what a tap answers, and this
+ * is the key it changes it to.
+ */
+const KNOWN = '.knows'
+
+/**
+ * art. 84 (extended): and what a thing says once he has walked past one of
+ * these before. Two suffixes rather than one, because knowing a thing and
+ * having refused a thing are two different sentences and a line that had to
+ * be true of both would be true of neither.
+ */
+const AGAIN = '.again'
+
+/**
+ * Which of a thing's answers a tap gets. The order is the law's order:
+ *
+ * 1. **withheld** (art. 118) — the verb is absent and this is the only place
+ *    its reason can live, so it outranks everything.
+ * 2. **priced** (art. 119) — the verb is there and costs something, and the
+ *    price has to be read before the press.
+ * 3. **known** (art. 88) — what a clue changed.
+ * 4. **again** (art. 84) — what a refusal changed.
+ * 5. **carrying** (card 67) — the lock naming what fits.
+ *
+ * Everything with none of those falls through to its one answer, which is
+ * nearly everything (art. 69: a thing answers either way, and for most
+ * things "either way" is the same sentence).
+ */
+function lookKey(
+  target: string,
+  carried: readonly ItemId[],
+  withheld = false,
+  price = 0,
+  remembered: readonly string[] = [],
+): string {
+  const has = (suffix: string): boolean => LOOKS[`${target}${suffix}`] !== undefined
+  if (withheld && has(KEPT)) return `${target}${KEPT}`
+  if (price > 0 && has(PRICE)) return `${target}${PRICE}`
+  if (has(KNOWN) && marked(KNOWS, target, remembered)) return `${target}${KNOWN}`
+  if (has(AGAIN) && marked(ECHOES, target, remembered)) return `${target}${AGAIN}`
   const held = ANSWERS_WHEN_CARRYING[target]
   if (held === undefined) return target
   return carried.includes(held[0]) ? held[1] : target

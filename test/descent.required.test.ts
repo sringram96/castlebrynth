@@ -70,10 +70,18 @@ describe('art. 80 — the key is unbound, and arrives before its lock', () => {
     // art. 80 actually forbids is a room *granting* a required thing, so
     // that is what this asks. The key still floats and is still placed by
     // the dealer alone; the ceremony that turns it belongs to the door.
+    //
+    // Narrowed by card 88, and to the article rather than past it. This used
+    // to assert `takes` empty as well, which is a stronger claim than art. 80
+    // makes: `gives` is the run's pocket and is what a lock demands, and
+    // `takes` is the *collection* (arts 11, 49) and can never satisfy one.
+    // The covered font's fork hands over a talisman and is the first room in
+    // the depth to author a good, so the assertion that mattered — nothing a
+    // room offers is required, and nothing a room offers grants an item — is
+    // what is asked, and the one that was incidentally true is not.
     for (const held of ROOMS) {
       for (const one of held.acts) {
         expect(one.gives, `${held.id as string} / ${one.id}`).toEqual([])
-        expect(one.takes ?? [], `${held.id as string} / ${one.id}`).toEqual([])
         expect(one.required, `${held.id as string} / ${one.id}`).toBe(false)
       }
     }

@@ -202,6 +202,21 @@ export interface PermanentLedger {
    * empty: the merchant who would fill it awaits the economy ruling.
    */
   readonly memories: readonly Memory[]
+  /**
+   * art. 84 (extended 2026-08-06): **and some of what you refuse is
+   * remembered.** A flag written when a run walks out of a room leaving
+   * something it was offered — the forfeited half of a fork (art. 89), a
+   * bone left where it lay, a mercy not taken, a question not asked
+   * (art. 119).
+   *
+   * It is a small vocabulary on purpose and it is capped in content, not
+   * here: a flag that lands in two or three later moments is a refusal the
+   * labyrinth noticed, and a flag per refusal would be hundreds of branches
+   * authored for a line each. What a flag changes is what a tap answers and
+   * what a good's origin sentence says (arts 87–88) — never what is dealt,
+   * because a refusal is knowledge and knowledge is not a difficulty dial.
+   */
+  readonly declined: readonly string[]
   readonly bookOfEnds: readonly EndLine[]
   /** art. 60: hand size is a body stat, grown and shrunk. Not the constant six. */
   readonly handSize: number
@@ -526,6 +541,40 @@ export function remembers(permanent: PermanentLedger, about: EncounterId): reado
 }
 
 /**
+ * art. 84 (extended): a refusal, written down. It crosses to the permanent
+ * because a refusal outlives the run that made it — the labyrinth remembers
+ * you, and the reseed is not an amnesty (art. 11).
+ *
+ * It is idempotent by the flag. Refusing the same thing twice is refusing
+ * it, not refusing it twice: the vocabulary is small and reusable precisely
+ * so that a flag means *this has happened*, and a count would be a number
+ * nothing is authored to read.
+ */
+export function decline(permanent: PermanentLedger, flag: string): PermanentLedger {
+  if (permanent.declined.includes(flag)) return permanent
+  return { ...permanent, declined: [...permanent.declined, flag] }
+}
+
+/** art. 84: whether the labyrinth has watched this be turned down, ever. */
+export function hasDeclined(permanent: PermanentLedger, flag: string): boolean {
+  return permanent.declined.includes(flag)
+}
+
+/**
+ * arts 10, 84: **what he still knows**, as marks — the clues learned and the
+ * refusals written, in one list.
+ *
+ * They are one list because they are one thing to a thing being looked at: a
+ * bone walked past once is a bone recognised, and so is a drop already put a
+ * head into. Nothing that deals, rolls or scores reads this; it reaches the
+ * player through what a tap answers (arts 88, 119) and through nothing else,
+ * which is what keeps a refusal from being a difficulty dial.
+ */
+export function knownMarks(permanent: PermanentLedger): readonly string[] {
+  return [...permanent.known.map((clue) => clue.id as string), ...permanent.declined]
+}
+
+/**
  * A die, a keepsake, or a wearable crosses from the run to the permanent —
  * the collection survives death (arts 11, 49). Not to be confused with the
  * turn's *keep*, which only holds dice between castings (art. 41).
@@ -705,6 +754,8 @@ export function firstPermanent(pouch: Pouch, handSize: number, body: Body): Perm
     known: [],
     met: [],
     memories: [],
+    // art. 84 (extended): nothing has been turned down yet.
+    declined: [],
     bookOfEnds: [THE_SCRAWL],
     handSize,
     body,
@@ -875,8 +926,10 @@ export const QUARANTINE_KEY = 'castlebrynth.quarantine'
  * so rather than left holding an id with no words behind it. 10 is the
  * company wave: a paused fight now carries what a bind took off it and what
  * a bleed is still taking (art. 65), and neither can be derived from a seed.
+ * 11 is the descent wave: art. 84 extended to refusals, so the permanent
+ * carries what a player has turned down as well as who they have met.
  */
-export const VAULT_VERSION = 10
+export const VAULT_VERSION = 11
 
 // ── The migration ladder ───────────────────────────────────────────────
 
@@ -1111,6 +1164,21 @@ export const MIGRATIONS: readonly Migration[] = [
         if (held === null) return { ...run, fight: run.fight ?? null }
         return { ...run, fight: { ...held, bound: held.bound ?? [], bleed: held.bleed ?? null } }
       }),
+  },
+  /**
+   * 10 → 11. The descent wave extends art. 84 to refusals. A v10 permanent
+   * was kept by a game that never asked what a player walked past, so the
+   * honest answer for it is that nothing has been turned down — which is a
+   * fact about the schema and not a lie about the player. Nothing about the
+   * arrangement moves, so no descent is lost to it.
+   */
+  {
+    from: 10,
+    up: (snapshot) =>
+      fillingThePermanent(snapshot, (permanent) => ({
+        ...permanent,
+        declined: Array.isArray(permanent.declined) ? permanent.declined : [],
+      })),
   },
 ]
 

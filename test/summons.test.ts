@@ -161,7 +161,7 @@ describe('art. 68 — the summons rides the vault', () => {
     // is the company wave — a paused fight now carries what a bind took and
     // what a bleed is taking (art. 65). All of them are the filling kind —
     // nothing about the arrangement moves — so no descent was lost to any.
-    expect(VAULT_VERSION).toBe(10)
+    expect(VAULT_VERSION).toBe(11)
     expect(MIGRATIONS.map((one) => one.from).sort((a, b) => a - b)).toEqual(
       Array.from({ length: VAULT_VERSION - 1 }, (_, at) => at + 1),
     )

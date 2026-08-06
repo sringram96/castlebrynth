@@ -29,12 +29,24 @@ import type {
 const NO_GOODS: Goods = { talismans: [], riders: [] }
 
 /** art. 63: a fresh card at the door, every time. */
+/**
+ * `yourHealthMax` defaults to what you walked in with, which is right for
+ * the demo fixtures and wrong for a run: a body's ceiling is a stat
+ * (art. 60), not the number it happened to be standing at. The descent wave
+ * surfaced it — a run that had paid a priced act's price (art. 119) entered
+ * a fight with its ceiling quietly clamped to its current health, so a leech
+ * rider could not heal it back to whole and a *resumed* fight (which
+ * restores `run.healthMax`) disagreed with a fresh one about the same body.
+ * `openFightDoor` passes the run's own ceiling; everything with no run
+ * behind it keeps the old default.
+ */
 export function openFight(
   horror: Horror,
   hand: Hand,
   yourHealth: number,
   armor: Armor,
   goods: Goods = NO_GOODS,
+  yourHealthMax: number = yourHealth,
 ): Fight {
   const card: Card = freshCard()
   const intent = horror.intentFor(1)
@@ -42,7 +54,7 @@ export function openFight(
     horror,
     horrorHealth: horror.health,
     yourHealth,
-    yourHealthMax: yourHealth,
+    yourHealthMax,
     armor,
     card,
     // art. 65: nothing is running in you at the door. A bleed is something a

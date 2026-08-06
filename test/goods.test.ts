@@ -30,14 +30,20 @@ import { coinFlip, playRun } from './drift.js'
  * close the door it says it closes.
  */
 
-/** Every good an actual walk of this seed could have picked up. */
+/**
+ * Every good an actual walk of this seed could have picked up.
+ *
+ * It asks the *acts* rather than the fills, because card 88 made a room able
+ * to author one: the covered font's fork hands over a talisman from the
+ * room itself, and a count that only read sockets would have said a run
+ * carried something nothing offered it. `actsIn` is the same list the tray
+ * builds from, so this cannot drift off what a thumb can actually reach.
+ */
 function offeredIn(chain: Chain): readonly string[] {
   const found: string[] = []
   for (const node of chain.nodes) {
-    for (const fill of node.fills) {
-      for (const who of [fill.encounter, ...(fill.orElse === undefined ? [] : [fill.orElse])]) {
-        for (const good of leftBy(who)) found.push(good.id as string)
-      }
+    for (const one of actsIn(ROOM_BOOK, node)) {
+      for (const good of one.takes ?? []) found.push(good.id as string)
     }
   }
   return found
@@ -104,10 +110,49 @@ describe('cards 19–20 — the goods are found rather than fixtured', () => {
     expect(sawBoth).toBeGreaterThan(0)
   })
 
-  it('never deals one good twice in a run — every good is unique (art. 83)', () => {
+  /**
+   * art. 83's scope axis, asked of the dealer: a good that floats into a
+   * socket is `unique` and is never *dealt* twice in one run.
+   *
+   * It is asked of the fills rather than of the acts, and card 88 is why.
+   * A room may author a good now, and art. 82 lets a run be dealt the same
+   * room twice — so the covered font's counting stone can be *offered* by
+   * two instances of one room, which is a fact about the arrangement and
+   * not about the dealer's scopes. What may never happen is collecting it
+   * twice, and that is the test below.
+   */
+  it('never deals one socketed good twice in a run — every good is unique (art. 83)', () => {
     for (let seed = 1; seed <= 200; seed++) {
-      const offered = offeredIn(greedyRun(seed).chain)
+      const offered: string[] = []
+      for (const node of greedyRun(seed).chain.nodes) {
+        for (const fill of node.fills) {
+          for (const who of [fill.encounter, ...(fill.orElse === undefined ? [] : [fill.orElse])]) {
+            for (const good of leftBy(who)) offered.push(good.id as string)
+          }
+        }
+      }
       expect(new Set(offered).size, `seed ${seed}`).toBe(offered.length)
+    }
+  })
+
+  /**
+   * arts 82, 118 (card 88): **and no run walks out holding one good twice.**
+   *
+   * `collect` is idempotent by id, so a second take was always a silent
+   * no-op — which is exactly the dead press art. 118 bans, and it became
+   * reachable the moment a room could author a good. The strip does not
+   * offer an act whose whole payload is already on the ledger, so a second
+   * covered font in one run has nothing under its cloth to press for.
+   */
+  it('never lets a greedy run collect one good twice (arts 82, 118)', () => {
+    for (let seed = 1; seed <= 200; seed++) {
+      const { permanent } = greedyRun(seed).ledgers
+      const carried = [
+        ...permanent.pouch.dice.map((die) => die.id as string),
+        ...permanent.keepsakes.map((kept) => kept.id as string),
+        ...permanent.wearables.map((worn) => worn.id as string),
+      ]
+      expect(new Set(carried).size, `seed ${seed}`).toBe(carried.length)
     }
   })
 

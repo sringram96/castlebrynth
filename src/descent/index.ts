@@ -28,10 +28,12 @@ import type { RegionId } from '../gen/index.js'
 import type { Good } from '../lots/index.js'
 import type { WorldMark } from '../room/index.js'
 import type {
+  Clue,
   EncounterId,
   InstanceId,
   ItemId,
   Ledgers,
+  PermanentLedger,
   RoomId,
   RunLedger,
 } from '../state/index.js'
@@ -40,9 +42,11 @@ import {
   atBeat,
   carrying,
   collect,
+  decline,
   deedKey,
   didHere,
   hasLooked,
+  learn,
   movedTo,
   openedDoor,
   // `remember` is taken here by the candle you are on; the ritual this
@@ -97,6 +101,34 @@ export interface Tappable {
 export type Offer =
   | { readonly kind: 'act'; readonly act: Act }
   | { readonly kind: 'door'; readonly door: Door }
+
+/**
+ * art. 119: **what a press costs.** The Lots promise the intent before you
+ * commit; the Descent promises the price. Every field is content's — the
+ * engine knows only that a price comes out of the body and stops short of
+ * the last of it, because a run ends to a horror, to the Warden or to a
+ * door, never to a question.
+ *
+ * One kind ships. A new kind — a spoiled thing, a window closing (art. 4) —
+ * comes here and says so, and the acceptance test in `test/price.test.ts`
+ * walks whatever this interface declares rather than a list somebody has to
+ * remember to extend.
+ */
+export interface Price {
+  /** What the press takes out of the body. Zero is not a price. */
+  readonly health: number
+}
+
+/**
+ * art. 119's **return bar**, declared so it can be tested rather than
+ * trusted. Every priced act returns at least one of these, and *lose four
+ * health and receive ordinary loot* is not on the list.
+ *
+ * `knowledge` is art. 88's payload and the cheapest legal one, so it should
+ * be the most common: an act that sharpens a question is worth more than one
+ * that answers it.
+ */
+export type Payload = 'knowledge' | 'leverage' | 'relationship' | 'change' | 'object'
 
 /** art. 7: outcomes, not clicks, are gated — on an item, a clue, an event. */
 export interface Act {
@@ -180,6 +212,45 @@ export interface Act {
    * can regress to a passive check without deleting this field.
    */
   readonly unlocks?: number
+  /**
+   * art. 119: what this press costs, if it costs anything. Absent on nearly
+   * every act, which is the point of the ones it is not absent on.
+   *
+   * The price reaches the player through the *thing's look* and never
+   * through the verb (art. 66 gives a verb two words), so a priced act is
+   * also always an act `about` something: there is no way to be offered one
+   * without having tapped the thing it is about (art. 68), and that tap is
+   * where the number is said.
+   */
+  readonly price?: Price
+  /**
+   * art. 119's return bar. A priced act declares what it pays in, and
+   * `test/price.test.ts` holds it to actually paying it — a `knowledge`
+   * claim with no clue behind it is a failing test rather than a
+   * disappointment.
+   */
+  readonly pays?: readonly Payload[]
+  /**
+   * arts 10, 88: what doing this puts on the permanent ledger as knowledge.
+   * A clue keys on a thing and never on a place, so it survives death and
+   * the reseed (art. 34) — which is the whole of why knowledge is a payload
+   * worth paying health for.
+   */
+  readonly learns?: readonly Clue[]
+  /**
+   * art. 84 (extended): the flag the *not* doing of this writes.
+   *
+   * It is on the act rather than on the thing because what is refused is the
+   * offer, and the offer is the verb. It is written when the run walks out
+   * of the room with this act undone (`chooseDoor`) and when a fork forfeits
+   * it (art. 89), and it is written to the permanent, because a refusal
+   * outlives the run that made it.
+   *
+   * Absent on most acts. The vocabulary is small and reusable by design: a
+   * flag lands in two or three later moments, and content shares one flag
+   * across the acts that mean the same refusal.
+   */
+  readonly refused?: string
 }
 
 /**
@@ -216,12 +287,34 @@ export interface RoomBook {
    * cannot drink — the look is where the reason lives, because a withheld
    * verb has nowhere to put one. Content authors the second sentence under
    * its own key; the engine only says which of the two states it is in.
+   *
+   * art. 119 (`price`): and a fourth. When the act about this thing costs
+   * something, **the look is where the price is said** — the verb is two
+   * words (art. 66) and cannot carry a number, and art. 68 abolished the
+   * button that could. It is the tap that summons the verb, so there is no
+   * order of presses in which the verb arrives before its price.
+   *
+   * It is the *number* rather than a flag, and for the reason art. 42 gives
+   * about an intent: a price the player cannot count is a price they cannot
+   * weigh. Content puts it in the sentence; the engine works it out and
+   * never writes a word of it. Zero means no act about this thing is being
+   * offered at a price.
+   *
+   * arts 10, 84 (`remembered`): and a fifth, which is not about this room at
+   * all — **what he still knows.** The clues on the permanent ledger and the
+   * refusals written beside them, in one list, because they are one thing to
+   * a thing being looked at: a bone you walked past once is a bone you
+   * recognise, and so is a drop you have already put your head into. The
+   * engine hands the marks over and reads nothing out of them; which things
+   * care is content's business, exactly as it is for the pocket.
    */
   look(
     room: RoomId,
     target: string,
     carried?: readonly ItemId[],
     withheld?: boolean,
+    price?: number,
+    remembered?: readonly string[],
   ): string
   acts(room: RoomId): readonly Act[]
   /**
@@ -505,10 +598,43 @@ export function afforded(run: RunLedger | null, one: Act): boolean {
  * Everything else moves by definition — a take puts something in your hand,
  * a lock turns — so the default is true and each new kind of cannot has to
  * come here and say so.
+ *
+ * **The second kind of cannot, and the descent wave found it** (card 88). A
+ * good is collected by id and the ritual is idempotent (`collect`); a clue
+ * is learned by id and so is that. So an act whose *whole* payload is
+ * already on the permanent ledger is a press that spends a deed, charges a
+ * price and changes nothing — which is precisely the shape art. 118 bans,
+ * and it was reachable the moment a room could author a good, because
+ * art. 82 lets a run deal the same room twice.
+ *
+ * It reaches across runs on purpose, and that is arts 10 and 11 rather than
+ * an oversight: knowledge survives death, so a man who has already put his
+ * ear to one of these knows what he would learn and does not pay for it
+ * again. The thing's look is where that is said (art. 118's second clause).
+ * An act with no payload at all — the Warden's `Unlock` — is untouched,
+ * because there is nothing of it to have spent.
  */
 export function moves(ledgers: Ledgers, one: Act): boolean {
   if (one.heals !== undefined) return breathFor(ledgers, one) > 0
-  return true
+  return unspent(ledgers, one)
+}
+
+/** Whether any of what this act pays out is still new to the permanent. */
+function unspent(ledgers: Ledgers, one: Act): boolean {
+  const takes = one.takes ?? []
+  const learns = one.learns ?? []
+  if (takes.length === 0 && learns.length === 0) return true
+  const permanent = ledgers.permanent
+  const held = new Set<string>([
+    ...permanent.pouch.dice.map((die) => die.id as string),
+    ...permanent.keepsakes.map((kept) => kept.id as string),
+    ...permanent.wearables.map((worn) => worn.id as string),
+  ])
+  const known = new Set<string>(permanent.known.map((clue) => clue.id as string))
+  return (
+    takes.some((good) => !held.has(good.id as string)) ||
+    learns.some((clue) => !known.has(clue.id as string))
+  )
 }
 
 /**
@@ -533,6 +659,87 @@ export function withholding(
       afforded(run, one) &&
       !moves(ledgers, one),
   )
+}
+
+/**
+ * art. 119: **what a press about this thing would cost, right now.** Zero
+ * when nothing about it is priced, which is nearly everything.
+ *
+ * It is the mirror of `withholding`, and the two are exclusive by
+ * construction: a withheld act is one the strip is not offering, and this
+ * one asks only about acts it is. It reads `offering` rather than `actsIn`
+ * for exactly that reason — a price quoted for a verb that is not there is
+ * a threat the game has no way to carry out.
+ */
+export function priceAt(
+  ledgers: Ledgers,
+  book: RoomBook,
+  node: ChainNode,
+  target: string,
+): number {
+  let most = 0
+  for (const one of offering(ledgers, book, node)) {
+    if (one.about !== target || one.price === undefined) continue
+    most = Math.max(most, priceOf(ledgers, one))
+  }
+  return most
+}
+
+/**
+ * art. 119: what this act would take out of the body as things stand.
+ *
+ * **A price is never the run.** It stops at one point of health, because a
+ * press made out of curiosity may cost a player something and may not cost
+ * them everything — a run ends to a horror, to the Warden or to a door, and
+ * never to a question. The clamp lives here rather than in each priced act
+ * so that no content can author its way past it.
+ */
+export function priceOf(ledgers: Ledgers, chosen: Act): number {
+  const run = ledgers.run
+  if (run === null || chosen.price === undefined) return 0
+  return Math.max(0, Math.min(chosen.price.health, run.health - 1))
+}
+
+/**
+ * art. 84 (extended): **what this room would remember you turning down**, if
+ * you walked out of it now.
+ *
+ * An act carries the flag its own refusal writes (`Act.refused`); this is
+ * every such flag whose act is still undone here.
+ *
+ * **A refusal is turning down an offer**, and the three filters are what
+ * make that true rather than approximately true. `summoned` is deliberately
+ * *not* one of them: a thing the player never looked at is a thing they
+ * walked past, which is the strongest refusal there is. But `afforded` is
+ * (art. 7 — you cannot decline a thing you were never able to take) and so
+ * is `moves` (art. 118 — a mercy a whole body cannot drink is not offered at
+ * all, so walking away from it declines nothing). Without the last one every
+ * healthy run walking past a Mender was recorded as having turned down a
+ * mercy it was never shown.
+ */
+export function refusalsIn(
+  ledgers: Ledgers,
+  book: RoomBook,
+  node: ChainNode,
+): readonly string[] {
+  const run = ledgers.run
+  const flags = actsIn(book, node)
+    .filter(
+      (one) =>
+        one.refused !== undefined &&
+        !done(run, node.instance, one) &&
+        afforded(run, one) &&
+        moves(ledgers, one),
+    )
+    .map((one) => one.refused as string)
+  return [...new Set(flags)]
+}
+
+/** art. 84: the flags written down, on the ledger that survives the run. */
+function declining(permanent: PermanentLedger, flags: readonly string[]): PermanentLedger {
+  let held = permanent
+  for (const flag of flags) held = decline(held, flag)
+  return held
 }
 
 /** art. 82: done *here*. Two alcoves each hold their own key. */
@@ -562,8 +769,14 @@ export function look(
   target: Tappable,
   carried: readonly ItemId[] = [],
   withheld = false,
+  price = 0,
+  remembered: readonly string[] = [],
 ): Beat {
-  return { text: book.look(bands.room, target.id, carried, withheld), index: -1, last: true }
+  return {
+    text: book.look(bands.room, target.id, carried, withheld, price, remembered),
+    index: -1,
+    last: true,
+  }
 }
 
 /**
@@ -617,8 +830,17 @@ export function breathFor(ledgers: Ledgers, chosen: Act): number {
   return breathOf(run.health, run.healthMax, chosen.heals)
 }
 
-/** Acting is not tapping: it has gates and consequences (art. 7). */
-export function act(ledgers: Ledgers, chosen: Act): Ledgers {
+/**
+ * Acting is not tapping: it has gates and consequences (art. 7) — and,
+ * under art. 119, a price.
+ *
+ * `among` is the room's acts, and it is what art. 89's forfeiture needs in
+ * order to write art. 84's flag: `forfeits` holds act *ids*, and the flag
+ * lives on the act. A caller that hands over nothing gets the old behaviour
+ * exactly — the deeds are still written, and the refusal is simply not
+ * noticed, which is what happens today for every act that has no flag.
+ */
+export function act(ledgers: Ledgers, chosen: Act, among: readonly Act[] = []): Ledgers {
   const run = ledgers.run
   if (run === null) return ledgers
   if (!chosen.needs.every((item) => run.carried.includes(item))) return ledgers
@@ -641,21 +863,50 @@ export function act(ledgers: Ledgers, chosen: Act): Ledgers {
   // anything can offer it again.
   for (const lost of chosen.forfeits ?? []) moved = didHere(moved, run.at.instance, lost)
   for (const item of chosen.gives) moved = carrying(moved, item)
-  // art. 40: the breath is the run's, so it burns with the run (art. 11).
-  if (breath > 0) moved = wounded(moved, Math.min(run.healthMax, run.health + breath))
+  /**
+   * art. 40's breath and art. 119's price move the same number, so the
+   * number is settled once. No act ships as both, and the arithmetic is
+   * written so that one could be without the second write silently
+   * discarding the first.
+   */
+  const price = priceOf(ledgers, chosen)
+  const health = Math.min(run.healthMax, run.health + breath) - price
+  if (health !== run.health) moved = wounded(moved, health)
   // art. 84: and the mark it leaves is not, so it crosses by the ritual.
   let permanent =
     chosen.remembers === undefined
       ? ledgers.permanent
       : markMemory(ledgers.permanent, chosen.remembers, chosen.id)
+  // arts 10, 88: knowledge is a key and lives on the permanent, so what a
+  // priced act pays in survives the death that spends the run it was bought
+  // in. That is the whole of why it is worth health.
+  for (const clue of chosen.learns ?? []) permanent = learn(permanent, clue)
+  // arts 84, 89: the half of a fork you did not take is a thing you turned
+  // down, and the labyrinth writes it down in the same breath as the take.
+  const lost = new Set(chosen.forfeits ?? [])
+  permanent = declining(
+    permanent,
+    among
+      .filter((one) => lost.has(one.id) && one.refused !== undefined)
+      .map((one) => one.refused as string),
+  )
   // arts 11, 86: the collection survives death, so a good crosses the ledgers
   // by the named ritual rather than by an assignment.
-  for (const good of chosen.takes ?? []) permanent = collect(permanent, good)
+  //
+  // art. 60: and only a *good* re-arms the run. The hand never moves inside
+  // a descent, so `tookIntoRun` is asked about the collection changing and
+  // not about the permanent changing — a clue learned or a refusal written
+  // is permanent state that has no business rebuilding a hand.
+  const collected = ((): PermanentLedger => {
+    let held = permanent
+    for (const good of chosen.takes ?? []) held = collect(held, good)
+    return held
+  })()
   // arts 47, 55–56: and a found thing is worth something now. The bone goes
   // into the slot art. 55 left open, and a plate found here blocks from the
   // next blow rather than from the next waking.
-  if (permanent !== ledgers.permanent) moved = tookIntoRun(moved, permanent)
-  return { run: moved, permanent }
+  if (collected !== permanent) moved = tookIntoRun(moved, collected)
+  return { run: moved, permanent: collected }
 }
 
 /** art. 31: the road ahead is only ever the doors in front of you. */
@@ -833,7 +1084,11 @@ export function chooseDoor(
   }
   return {
     ledgers: {
-      ...ledgers,
+      // art. 84 (extended): walking out is the moment a refusal becomes one.
+      // Everything the room offered and the run did not take is written down
+      // here, because forward is forever (art. 9) — the door closing behind
+      // you is exactly what makes leaving it a decision rather than a delay.
+      permanent: declining(ledgers.permanent, refusalsIn(ledgers, book, here)),
       run: movedTo(marked, {
         room: arrived.room,
         instance: arrived.instance,

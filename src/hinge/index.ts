@@ -63,7 +63,10 @@ export function openFightDoor(
 ): Fight {
   const run = ledgers.run
   if (run === null) throw new Error('no run to fight with')
-  return openFight(door.horror, run.hand, run.health, run.armor, goods)
+  // art. 60: the ceiling is the body's, not the number the body happens to
+  // be standing at — and it is what `resume` restores, so passing it here is
+  // what makes a fresh fight and a resumed one agree.
+  return openFight(door.horror, run.hand, run.health, run.armor, goods, run.healthMax)
 }
 
 /**
