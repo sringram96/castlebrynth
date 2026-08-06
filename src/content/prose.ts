@@ -490,6 +490,10 @@ export const READOUT: Readonly<Record<string, string>> = {
   unused: 'unused',
   // art. 86: what the cost faces on your own dice will charge this turn.
   cost: 'cost',
+  // art. 65: what a bleed will take at the top of the next turn, and who
+  // took a die out of your hand.
+  bleeding: 'bleeding',
+  bound: 'bound by',
   showing: 'showing',
   faces: 'faces',
   spent: 'spent in',

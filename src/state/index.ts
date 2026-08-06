@@ -13,6 +13,7 @@
 
 import type {
   Armor,
+  Bleeding,
   Card,
   Die,
   DieId,
@@ -358,6 +359,14 @@ export interface FightSave {
    */
   readonly kept: readonly DieId[]
   readonly castingsSpent: number
+  /**
+   * art. 65 (`bind`): the dice this turn opened without. It cannot be
+   * derived — it is what the *last* intent did — and the replay casts from
+   * it, so a resume finds the same short hand on the same table.
+   */
+  readonly bound: readonly DieId[]
+  /** art. 65 (`bleed`): what is still running in you, and for how long. */
+  readonly bleed: Bleeding | null
   /** art. 63: the card belongs to the fight, so a resume finds it as spent. */
   readonly card: Card
   /** art. 45: claims already made this turn, each holding its own dice. */
@@ -819,9 +828,11 @@ export const QUARANTINE_KEY = 'castlebrynth.quarantine'
  * summons (art. 68): what a run has looked at decides what it may do. 6 is
  * the threshold, which needs to know whether a run was ever begun. 7 is
  * art. 116's preferences, which are permanent state because a player who
- * dies has not changed their mind about motion.
+ * dies has not changed their mind about motion. 8 is the company wave: a
+ * paused fight now carries what a bind took off it and what a bleed is
+ * still taking (art. 65), and neither can be derived from a seed.
  */
-export const VAULT_VERSION = 7
+export const VAULT_VERSION = 8
 
 // ── The migration ladder ───────────────────────────────────────────────
 
@@ -997,6 +1008,22 @@ export const MIGRATIONS: readonly Migration[] = [
         ...permanent,
         prefs: permanent.prefs ?? PLAIN_PREFS,
       })),
+  },
+  /**
+   * 7 → 8. The company wave's effect kinds (art. 65). A v7 fight was fought
+   * against intents that could not bind a die or open a bleed, so the honest
+   * answer for one paused mid-turn is that nothing is bound and nothing is
+   * running — which is exactly what it was. The arrangement does not move,
+   * so nobody loses a descent, and a run with no fight in it is untouched.
+   */
+  {
+    from: 7,
+    up: (snapshot) =>
+      fillingTheRun(snapshot, (run) => {
+        const held = asRaw(run.fight)
+        if (held === null) return { ...run, fight: run.fight ?? null }
+        return { ...run, fight: { ...held, bound: held.bound ?? [], bleed: held.bleed ?? null } }
+      }),
   },
 ]
 

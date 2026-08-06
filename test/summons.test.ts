@@ -156,9 +156,11 @@ describe('art. 68 — the summons rides the vault', () => {
   it('keeps the ladder gapless to the version this wave writes', () => {
     // Bumped by the threshold wave: 6 for the run's `descending` (the front
     // door may only offer Continue for a run that was begun) and 7 for
-    // art. 116's preferences. Both rungs are the filling kind — nothing
-    // about the arrangement moves — so no descent was lost to either.
-    expect(VAULT_VERSION).toBe(7)
+    // art. 116's preferences. 8 is the company wave — a paused fight now
+    // carries what a bind took and what a bleed is taking (art. 65). Every
+    // rung is the filling kind: nothing about the arrangement moves, so no
+    // descent was lost to any of them.
+    expect(VAULT_VERSION).toBe(8)
     expect(MIGRATIONS.map((one) => one.from).sort((a, b) => a - b)).toEqual(
       Array.from({ length: VAULT_VERSION - 1 }, (_, at) => at + 1),
     )

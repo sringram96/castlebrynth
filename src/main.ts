@@ -40,6 +40,7 @@ import {
   itemLabel,
   roomContent,
   type RoomContent,
+  saysBound,
   saysClaim,
   saysDie,
   saysIntent,
@@ -919,6 +920,13 @@ function theFightPanel(): void {
   )
   const priced = pricedNow()
   if (priced > 0) totals.append(reading(READOUT.cost ?? '', `${priced}`))
+  // art. 57: everything visible, and art. 65: a bleed is a number the plan
+  // has to be made against. What it will take at the top of the next turn,
+  // after armor — the fight's own armor, because corrosion is something an
+  // *intent* does and a bleed is not this turn's intent.
+  if (now.bleed !== null) {
+    totals.append(reading(READOUT.bleeding ?? '', `${Math.max(0, now.bleed.amount - now.armor)}`))
+  }
   const offer = claimOffer()
   if (offer !== null) totals.append(reading('', offer))
   totals.append(cardGlyph())
@@ -926,8 +934,14 @@ function theFightPanel(): void {
 
   // The hand, as it lies. art. 72's four states are the die slot's business
   // and have not moved.
+  //
+  // art. 65 (`bind`): a bound die is not on the table — it never landed —
+  // so it is drawn from the hand instead, shut, at the end of the row. The
+  // hole in the hand is the whole of what the effect does, and a hole you
+  // cannot see is a number in a log.
   const laid = casting(now.turn)
   const byId = new Map(ledgers.run!.hand.dice.map((die) => [die.id as string, die] as const))
+  const heldFast = new Set<string>(now.turn.bound)
   if (laid.length > 0) {
     const spent = claimedDice(now.turn)
     for (const landed of laid) {
@@ -936,9 +950,33 @@ function theFightPanel(): void {
       fightPanel.append(dieSlot(die, landed, spent.has(landed.die)))
     }
   } else {
-    for (const die of ledgers.run!.hand.dice) fightPanel.append(dieSlot(die, null, false))
+    for (const die of ledgers.run!.hand.dice) {
+      if (heldFast.has(die.id as string)) continue
+      fightPanel.append(dieSlot(die, null, false))
+    }
+  }
+  for (const id of now.turn.bound) {
+    const die = byId.get(id as string)
+    if (die !== undefined) fightPanel.append(boundSlot(die, now.horror.id))
   }
   fightActs()
+}
+
+/**
+ * art. 65 (`bind`), arts 68–69: a die somebody else is holding. It answers
+ * with its own truth and with who is holding it, and it commits nothing —
+ * there is nothing to commit, which is the point of it.
+ */
+function boundSlot(die: Die, horror: string): HTMLButtonElement {
+  const el = slot('die bound')
+  el.append(pips(die.faces[0]?.value ?? 1))
+  el.setAttribute('aria-label', saysBound(die, horror))
+  el.onclick = () => {
+    settle()
+    notice = saysBound(die, horror)
+    paint()
+  }
+  return el
 }
 
 /**

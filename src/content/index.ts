@@ -141,6 +141,7 @@ export {
   intentChip,
   itemLabel,
   originOf,
+  saysBound,
   saysClaim,
   saysDie,
   saysGood,

@@ -17,10 +17,11 @@
  * **At the door** — `openFight(horror, hand, health, armor, goods)`. The
  * card is fresh here and nowhere else (art. 63).
  *
- * **The turn** — `openTurn(hand, intent, card)` states the intent before a
- * die is thrown (art. 42); `cast(turn, lot)`; `keep(turn, dice)`;
+ * **The turn** — `openTurn(hand, intent, card, bound)` states the intent
+ * before a die is thrown (art. 42); `cast(turn, lot)`; `keep(turn, dice)`;
  * `recast(turn, lot)` — exactly one, by art. 41. `casting(turn)` is the
- * dice as they lie.
+ * dice as they lie, and `castable(turn)` is the hand a bind has left you
+ * (art. 65).
  *
  * **The claims** — `claimable(turn, dice, ladder)` says which lines a
  * selection could take (arts 63–64); `claim(turn, dice, line, ladder,
@@ -40,6 +41,8 @@
 
 export type {
   Armor,
+  BindRule,
+  Bleeding,
   BondId,
   Card,
   Casting,
@@ -81,6 +84,7 @@ export {
   CASTINGS_ALLOWED,
   assembleHand,
   cast,
+  castable,
   casting,
   castingsLeft,
   inspect,
@@ -131,6 +135,14 @@ export {
   woundedBy,
 } from './goods.js'
 
-export { armorAgainst, attack, decide, everyDieClaimed } from './resolve.js'
+export {
+  armorAgainst,
+  attack,
+  bindsFrom,
+  bleedFrom,
+  decide,
+  everyDieClaimed,
+  hungerFrom,
+} from './resolve.js'
 
 export { advanceFight, openFight, outcomeOf, withTurn } from './fight.js'

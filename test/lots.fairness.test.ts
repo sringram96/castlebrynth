@@ -2,15 +2,19 @@ import { describe, expect, it } from 'vitest'
 
 import {
   BARE_BODY,
+  GNAWING_ESCALATION,
+  GNAWING_HEALTH,
+  GNAWING_SCRIPT,
   HAND_SIZE,
   LADDER,
   PLAIN_POUCH,
   RUSTED_PLATE,
   THE_GNAWING,
   THE_CAREFUL,
+  scriptedHorror,
 } from '../src/content/index.js'
 import { lotFrom } from '../src/gen/index.js'
-import type { Armor, Fight, Line, Turn } from '../src/lots/index.js'
+import type { Armor, Fight, Hand, Horror, Intent, IntentEffect, Line, Turn } from '../src/lots/index.js'
 import {
   advanceFight,
   assembleHand,
@@ -97,18 +101,38 @@ function keepSensibly(turn: Turn): Turn {
 const BARE_HAND = assembleHand(PLAIN_POUCH, HAND_SIZE)
 const FOUND_HAND = assembleHand({ dice: [...PLAIN_POUCH.dice, THE_CAREFUL] }, HAND_SIZE)
 
-function winRate(armor: Armor, runs: number, hand = BARE_HAND): number {
+/**
+ * One horror, one hand, one way of playing, `runs` seeds — how often the
+ * player walks out. Every measurement in this file is this function with a
+ * different argument, so two numbers beside each other always mean the same
+ * thing.
+ */
+export function winRateOf(
+  horror: Horror,
+  hand: Hand,
+  armor: Armor,
+  runs: number,
+  play: (turn: Turn) => Turn = claimGreedily,
+): number {
   let wins = 0
   for (let seed = 0; seed < runs; seed++) {
     const lot = lotFrom(seed as unknown as Seed)
-    let fight: Fight = openFight(THE_GNAWING, hand, BARE_BODY.health, armor)
-    while (fight.outcome === 'fighting') {
-      const turn = claimGreedily(recast(keepSensibly(cast(fight.turn, lot)), lot))
+    let fight: Fight = openFight(horror, hand, BARE_BODY.health, armor)
+    // art. 65: a horror that heals what it is not hit for can in principle
+    // outlast a player who never claims. The guard is the test's, not the
+    // game's — a real turn always ends.
+    let guard = 0
+    while (fight.outcome === 'fighting' && guard++ < 300) {
+      const turn = play(recast(keepSensibly(cast(fight.turn, lot)), lot))
       fight = advanceFight(withTurn(fight, turn), decide(turn, 'end-turn', fight.armor))
     }
     if (fight.outcome === 'won') wins++
   }
   return wins / runs
+}
+
+function winRate(armor: Armor, runs: number, hand = BARE_HAND): number {
+  return winRateOf(THE_GNAWING, hand, armor, runs)
 }
 
 describe('lots — is it fair? (art. 33, and the arithmetic agent)', () => {
@@ -147,5 +171,132 @@ describe('lots — is it fair? (art. 33, and the arithmetic agent)', () => {
     const plated = winRate(RUSTED_PLATE.armor, 400)
     const found = winRate(BARE_BODY.armor, 400, FOUND_HAND)
     expect(found).toBeGreaterThan(plated)
+  })
+})
+
+// ── The new effect kinds, one at a time (card 30, art. 65) ─────────────
+
+/**
+ * The probe: the Gnawing's own health, script length, amounts and
+ * escalation, with **every effect stripped**, so that adding exactly one
+ * back measures that one and nothing else. It is not a horror anybody
+ * fights — it is a control, and it is the only honest way to say what a
+ * kind is worth.
+ */
+const PLAIN_SCRIPT: readonly Intent[] = GNAWING_SCRIPT.map((one) => ({
+  verb: one.verb,
+  amount: one.amount,
+}))
+
+const CONTROL: Horror = scriptedHorror(
+  'horror.probe',
+  GNAWING_HEALTH,
+  PLAIN_SCRIPT,
+  GNAWING_ESCALATION,
+)
+
+/** The same probe with one effect on its second intent, and nothing else. */
+function probe(effect: IntentEffect): Horror {
+  return scriptedHorror(
+    'horror.probe',
+    GNAWING_HEALTH,
+    PLAIN_SCRIPT.map((one, at) => (at === 1 ? { ...one, effect } : one)),
+    GNAWING_ESCALATION,
+  )
+}
+
+/**
+ * The turtle: a thumb that only spends a line on a claim worth having, and
+ * ends the turn on anything less. It is the player `hunger` exists to
+ * price, and it is why that kind cannot be measured against the greedy
+ * model at all — the greedy model never hesitates.
+ */
+function claimIfWorth(floor: number): (turn: Turn) => Turn {
+  return (start) => {
+    const free = unused(start).map((landed) => landed.die)
+    let best: { dice: readonly string[]; line: Line; score: number } | null = null
+    for (let mask = 1; mask < 1 << free.length; mask++) {
+      const chosen = free.filter((_, i) => (mask >> i) & 1)
+      for (const line of claimable(start, chosen, LADDER)) {
+        const score = attack(claim(start, chosen, line, LADDER))
+        if (best === null || score > best.score) best = { dice: chosen, line, score }
+      }
+    }
+    if (best === null || best.score < floor) return start
+    return claim(start, best.dice as never, best.line, LADDER)
+  }
+}
+
+const RUNS = 400
+
+describe('lots — the new effect kinds move the number, and stay inside the band', () => {
+  /**
+   * The band this file already holds: a bare five is a fight and not a
+   * formality (above 0.15), and the sixth bone takes a run past a coin
+   * flip. A kind that pushes either side of that out is over budget.
+   */
+  const inBand = (bare: number, found: number, what: string): void => {
+    expect(bare, `${what} bare`).toBeGreaterThan(0.15)
+    expect(found, `${what} found`).toBeGreaterThan(0.5)
+  }
+
+  it('prices bind against the hand: one die fewer is worth about a tenth', () => {
+    const control = winRateOf(CONTROL, BARE_HAND, BARE_BODY.armor, RUNS)
+    const bound = probe({ kind: 'bind', rule: 'highest' })
+    const bare = winRateOf(bound, BARE_HAND, BARE_BODY.armor, RUNS)
+    const found = winRateOf(bound, FOUND_HAND, BARE_BODY.armor, RUNS)
+    expect(bare).toBeLessThan(control)
+    inBand(bare, found, 'bind')
+  })
+
+  it('prices bleed against time, once it is big enough to cost a turn', () => {
+    const control = winRateOf(CONTROL, BARE_HAND, BARE_BODY.armor, RUNS)
+    const bleeding = probe({ kind: 'bleed', amount: 4, turns: 3 })
+    const bare = winRateOf(bleeding, BARE_HAND, BARE_BODY.armor, RUNS)
+    const found = winRateOf(bleeding, FOUND_HAND, BARE_BODY.armor, RUNS)
+    expect(bare).toBeLessThan(control)
+    inBand(bare, found, 'bleed')
+  })
+
+  /**
+   * A finding worth keeping rather than smoothing over: at a body of 26
+   * against this script the player dies on the fourth intent whatever
+   * happens, so a bleed that does not cost a whole turn does not move the
+   * win rate at all. Three is invisible here and four is worth a fifth of
+   * the fight. The step is a property of the body's size, not of the
+   * effect, and it is why the shipped bleeds are authored at four.
+   */
+  it('shows the step: a bleed under a turn’s worth of health moves nothing', () => {
+    const control = winRateOf(CONTROL, BARE_HAND, BARE_BODY.armor, RUNS)
+    const small = winRateOf(
+      probe({ kind: 'bleed', amount: 3, turns: 3 }),
+      BARE_HAND,
+      BARE_BODY.armor,
+      RUNS,
+    )
+    expect(small).toBe(control)
+  })
+
+  it('charges hunger for hesitation only, and for nothing else', () => {
+    const feeding = probe({ kind: 'hunger', amount: 12 })
+    // A thumb that always claims is never charged. Exactly, not nearly:
+    // art. 46 keeps the floor spendable, so the greedy player never once
+    // ends a turn with nothing landed.
+    expect(winRateOf(feeding, BARE_HAND, BARE_BODY.armor, RUNS)).toBe(
+      winRateOf(CONTROL, BARE_HAND, BARE_BODY.armor, RUNS),
+    )
+
+    // And a thumb that holds out for a big claim is. The turtle is the
+    // player this kind exists for, and against it the number moves.
+    const turtle = claimIfWorth(40)
+    const control = winRateOf(CONTROL, BARE_HAND, BARE_BODY.armor, RUNS, turtle)
+    const bare = winRateOf(feeding, BARE_HAND, BARE_BODY.armor, RUNS, turtle)
+    const found = winRateOf(feeding, FOUND_HAND, BARE_BODY.armor, RUNS, turtle)
+    expect(bare).toBeLessThan(control)
+    // The turtle is already a worse player than the greedy one, so the band
+    // this is held to is the turtle's own: hunger must not be the thing that
+    // makes turtling unplayable, only the thing that makes it cost.
+    expect(bare).toBeGreaterThan(0.1)
+    expect(found).toBeGreaterThan(0.5)
   })
 })
