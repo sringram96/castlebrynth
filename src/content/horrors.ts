@@ -167,12 +167,54 @@ export const THE_KINDLED: Horror = scriptedHorror(
   KINDLED_ESCALATION,
 )
 
+/**
+ * THE WARDEN — the keeper the door was built for (card 31, art. 37 as
+ * amended 2026-08-06).
+ *
+ * It stands in no socket. It is not dealt, not weighted and not floated:
+ * there is one hall, so it is unique by construction, and it does not exist
+ * until the key turns. Everything else about it is content like any other
+ * horror's.
+ *
+ * **Its script is the depth's exam.** Every effect kind the depth has to
+ * teach is in it — seal, curse and corrode from the Gnawing's school, bind,
+ * bleed and hunger from the region uniques — so a player who learned the
+ * depth reads every intent on sight, and a player who skipped every fight
+ * meets six strangers at once. That is the whole design of it: the fight is
+ * a question about the run behind it.
+ *
+ * Numbers above the Gnawing's and escalation steeper, because the loop
+ * coming round is what a long fight at the bottom of a depth should be
+ * afraid of.
+ */
+export const WARDEN_SCRIPT: readonly Intent[] = [
+  { verb: 'JUDGE', amount: 9, effect: { kind: 'seal', lines: PAIRISH } },
+  { verb: 'BIND', amount: 8, effect: { kind: 'bind', rule: 'highest' } },
+  { verb: 'TITHE', amount: 7, effect: { kind: 'curse', value: 6 } },
+  { verb: 'FLENSE', amount: 5, effect: { kind: 'bleed', amount: 4, turns: 3 } },
+  { verb: 'STRIP', amount: 12, effect: { kind: 'corrode' } },
+  { verb: 'WAIT', amount: 4, effect: { kind: 'hunger', amount: 16 } },
+  { verb: 'KEEP', amount: 18 },
+]
+
+export const WARDEN_ESCALATION = 5
+
+export const WARDEN_HEALTH = 168
+
+export const THE_WARDEN: Horror = scriptedHorror(
+  'horror.warden',
+  WARDEN_HEALTH,
+  WARDEN_SCRIPT,
+  WARDEN_ESCALATION,
+)
+
 /** Every horror the depth can deal, for restoring a fight by identity. */
 export const HORRORS: readonly Horror[] = [
   THE_GNAWING,
   THE_MARROW,
   THE_SILT_MOTHER,
   THE_KINDLED,
+  THE_WARDEN,
 ]
 
 /**
@@ -186,6 +228,7 @@ export const HORROR_SCRIPTS: readonly (readonly Intent[])[] = [
   MARROW_SCRIPT,
   SILT_MOTHER_SCRIPT,
   KINDLED_SCRIPT,
+  WARDEN_SCRIPT,
 ]
 
 export function horrorById(id: string): Horror | null {
@@ -201,6 +244,7 @@ const END_LINE_OF: Readonly<Record<string, string>> = {
   'horror.marrow': 'end.marrow',
   'horror.silt-mother': 'end.silt-mother',
   'horror.kindled': 'end.kindled',
+  'horror.warden': 'end.warden.keeper',
 }
 
 export function endLineOf(id: string): string {

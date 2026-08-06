@@ -74,6 +74,15 @@ export const MARROW = who('enc.marrow')
  */
 export const SILT_MOTHER = who('enc.silt-mother')
 export const KINDLED = who('enc.kindled')
+/**
+ * art. 37 (as amended 2026-08-06), card 31: the keeper the door was built
+ * for. It is deliberately **not** in `ENCOUNTERS` — it stands in no socket,
+ * is never dealt and is never weighted, because there is one hall and that
+ * is what makes it unique. The id exists so that art. 84 can remember
+ * meeting it, and for nothing else.
+ */
+export const WARDEN_KEEPER = who('enc.warden')
+
 export const IRON_KEY = who('enc.iron-key')
 export const BASIN = who('enc.basin')
 export const MENDER = who('enc.mender')
@@ -329,6 +338,24 @@ export const LEAVES_A_GOOD: readonly EncounterId[] = Object.keys(LEFT_BY) as Enc
 /** What this encounter leaves, if it leaves anything (arts 86–87). */
 export function leftBy(who: EncounterId): readonly Good[] {
   return LEFT_BY[who as string] ?? []
+}
+
+/**
+ * art. 84: which encounter a horror *is*, so that fighting one is meeting
+ * it. Most horrors are met by standing in the room with them (`meetings`);
+ * the Warden stands in no room until the key turns, so it is met by the
+ * only thing that ever puts it in front of you.
+ */
+const MET_BY: Readonly<Record<string, EncounterId>> = {
+  'horror.gnawing': GNAWING,
+  'horror.marrow': MARROW,
+  'horror.silt-mother': SILT_MOTHER,
+  'horror.kindled': KINDLED,
+  'horror.warden': WARDEN_KEEPER,
+}
+
+export function encounterOfHorror(id: string): EncounterId | null {
+  return MET_BY[id] ?? null
 }
 
 /** Which act picks up what an encounter left. One per encounter, by id. */

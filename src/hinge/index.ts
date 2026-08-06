@@ -67,13 +67,24 @@ export function openFightDoor(
 }
 
 /**
+ * What a horror looks like coming at you, as a function of how far in it
+ * has come. Content may hand one over (art. 100: a thing meant to be
+ * recognised is drawn once, by hand); what it hands over is a `Prop`, so
+ * this module still knows nothing about drawings, ramps or schools.
+ */
+export type ComingCloser = (fight: Fight, closeness: number) => Prop
+
+/**
  * art. 28: the advance is a motion that matters, so it never undoes itself.
  * art. 1: any pulse in presentation is skin — the caller may hand it a
  * closeness of 1 at any moment and the end state is settled and the same.
+ *
+ * art. 26's first tier is the default body: a mass, deliberately basic and
+ * improved over time. A horror that has been drawn brings its own.
  */
-export function advance(fight: Fight, closeness = 1): Advance {
+export function advance(fight: Fight, closeness = 1, body: ComingCloser = horrorProp): Advance {
   const settled = fight.outcome === 'fighting' ? Math.min(1, Math.max(0, closeness)) : 0
-  return { closeness: settled, prop: horrorProp(fight, settled) }
+  return { closeness: settled, prop: body(fight, settled) }
 }
 
 /**

@@ -3,25 +3,37 @@ import { describe, expect, it } from 'vitest'
 import {
   BARE_BODY,
   CATALOG,
+  END_LINES,
   GRAMMAR,
   HAND_SIZE,
   LEAVES_A_GOOD,
+  LOOKS,
   ORIGINS,
   PLAIN_POUCH,
   ROOM_BOOK,
   SOCKET_BEATS,
+  THE_WARDEN,
+  WARDEN,
+  WARDEN_KEEPER,
+  WARDEN_KEY_ITEM,
+  encounterOfHorror,
+  endLineOf,
+  horrorIn,
   leftBy,
   lostId,
   saysDie,
   takeActId,
 } from '../src/content/index.js'
-import type { Act } from '../src/descent/index.js'
+import type { Act, Bands } from '../src/descent/index.js'
 import {
   act,
   actsIn,
   beatsIn,
   chooseDoor,
+  enterRoom,
+  look,
   mayLeave,
+  opens,
   sceneStateOf,
 } from '../src/descent/index.js'
 import type { Chain, ChainNode } from '../src/gen/index.js'
@@ -149,6 +161,20 @@ function firstFork(): { ledgers: Ledgers; chain: Chain; node: ChainNode } {
   throw new Error('no run in six hundred put a fork in the road')
 }
 
+/**
+ * A run walked to the bottom, standing in the hall with everything looked
+ * at and nothing pressed. It stops short of the lock on purpose — the press
+ * is what the last leg of the walk is about.
+ */
+function atTheWardensDoor(): { ledgers: Ledgers; chain: Chain; node: ChainNode } {
+  const at = walkUntil(1, (node) => node.room === WARDEN)
+  if (at === null) throw new Error('the first road did not reach the bottom')
+  return { ...at, ledgers: standing(at.ledgers, at.node) }
+}
+
+const verbsIn = (bands: Bands): readonly string[] =>
+  bands.tray.flatMap((offer) => (offer.kind === 'act' ? [offer.act.verb] : []))
+
 describe('the walk — five bones, a traveler, a fork, and a death', () => {
   it('wakes with five dice and one empty slot (arts 55, 60)', () => {
     const ledgers = wake(firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY), seedOf(1))
@@ -254,6 +280,59 @@ describe('the walk — five bones, a traveler, a fork, and a death', () => {
     // And the next descent goes down with a full hand of six (art. 60).
     expect(woken.run!.hand.dice).toHaveLength(HAND_SIZE)
     void node
+  })
+
+  /**
+   * The company wave's leg of the walk (cards 67, 31), and the last one:
+   * carry the key to the bottom, look at the lock, turn it, meet the thing
+   * the door was built for, lose to it, and confirm that the two things
+   * art. 11 promises survive — the line in the Book and the face you have
+   * now seen — come back off disk.
+   */
+  it('turns the key, meets the Warden, and dies to it', () => {
+    const found = atTheWardensDoor()
+    const door = found.node.doors[0]!
+
+    // art. 80 put the key in the path, and it is on you. It opens nothing.
+    expect(found.ledgers.run!.carried).toContain(WARDEN_KEY_ITEM)
+    expect(opens(found.ledgers, ROOM_BOOK, found.node, door)).toBe(false)
+
+    // art. 69: the lock answers, and it answers differently for a hand with
+    // the key in it. That answer is what summons the verb (art. 68).
+    const bands = enterRoom(found.ledgers, found.chain, ROOM_BOOK, found.node.instance)
+    const lock = bands.tappables.find((one) => one.id === 'warden.lock')!
+    expect(look(ROOM_BOOK, bands, lock, found.ledgers.run!.carried).text).toBe(
+      LOOKS['warden.lock.fits'],
+    )
+    const unlock = actsIn(ROOM_BOOK, found.node).find((one) => one.id === 'act.unlock')!
+    expect(verbsIn(bands)).toContain(unlock.verb)
+
+    // The press. The deed is written, and the door gives at last.
+    const turned = act(found.ledgers, unlock)
+    expect(opens(turned, ROOM_BOOK, found.node, door)).toBe(true)
+
+    // card 31: and turning it is what wakes the keeper.
+    const keeper = horrorIn(found.node)!
+    expect(keeper.id).toBe(THE_WARDEN.id)
+    const met = { ...turned, permanent: meet(turned.permanent, encounterOfHorror(keeper.id)!) }
+    expect(hasMet(met.permanent, WARDEN_KEEPER)).toBe(true)
+
+    // A bare five at the bottom of a depth loses to it, which is the point
+    // of it. The Book takes the keeper's own line and not the door's.
+    const dead = routeDeath(met, endLineOf(keeper.id))
+    expect(dead.permanent.bookOfEnds.at(-1)).toMatchObject({ cause: 'end.warden.keeper' })
+    expect(END_LINES['end.warden.keeper']).toBeDefined()
+
+    // arts 11, 84: and both of them come back off disk.
+    const vault = memoryVault()
+    save(dead, vault)
+    const restored = load(vault)
+    expect(restored).not.toBeNull()
+    expect(restored!.permanent.bookOfEnds.at(-1)?.cause).toBe('end.warden.keeper')
+    expect(hasMet(restored!.permanent, WARDEN_KEEPER)).toBe(true)
+    // The run burned with it — a fresh road, nothing carried (arts 11, 32).
+    expect(restored!.run!.carried).toEqual([])
+    expect(restored!.run!.history.taken).toEqual([])
   })
 
   it('survives the vault too — the bone and the meeting come back off disk', () => {

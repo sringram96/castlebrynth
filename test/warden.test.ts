@@ -1,13 +1,64 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  BARE_BODY,
+  CATALOG,
+  END_LINES,
+  GNAWING_ESCALATION,
+  GNAWING_HEALTH,
   LOOKS,
   NOTICES,
   ROOM_BOOK,
+  HAND_SIZE,
+  PLAIN_POUCH,
+  THE_CAREFUL,
+  THE_GNAWING,
+  THE_KINDLED,
+  THE_MARROW,
+  THE_PUSHER,
+  THE_RUNNER,
+  THE_SILT_MOTHER,
+  THE_WARDEN,
+  RUSTED_PLATE,
   VERBS,
   WARDEN,
+  WARDEN_DOWN,
+  WARDEN_ESCALATION,
+  WARDEN_HEALTH,
+  WARDEN_KEEPER,
   WARDEN_KEY_ITEM,
+  WARDEN_SCRIPT,
+  advanceBodyOf,
+  encounterOfHorror,
+  endLineOf,
+  horrorById,
+  horrorIn,
+  horrorOf,
+  keeperStanding,
+  lintVoice,
 } from '../src/content/index.js'
+import type { Horror } from '../src/lots/index.js'
+import {
+  advanceFight,
+  cast,
+  decide,
+  withTurn,
+} from '../src/lots/index.js'
+import {
+  advance,
+  carryOut,
+  openFightDoor,
+  pausedAt,
+  routeDeath,
+  routeFlight,
+  saveFight,
+  turnLots,
+} from '../src/hinge/index.js'
+import { didHere, finish, hasMet, meet } from '../src/state/index.js'
+import { claimGreedily, keepSensibly, winRateOf } from './policy.js'
+import { playDepth } from './depth.js'
+import { assembleHand } from '../src/lots/index.js'
+import { recast } from '../src/lots/index.js'
 import type { Act, Bands } from '../src/descent/index.js'
 import {
   actsIn,
@@ -30,7 +81,7 @@ import type { Chain, ChainNode } from '../src/gen/index.js'
 import { hereIn } from '../src/gen/index.js'
 import type { Ledgers } from '../src/state/index.js'
 import { movedTo } from '../src/state/index.js'
-import { DEALER, lookAround, opened, takeable } from './drift.js'
+import { DEALER, alwaysLeft, coinFlip, lookAround, opened, runOf, takeable } from './drift.js'
 
 /**
  * **The key is turned** (card 67, arts 68, 70, 82, 97).
@@ -48,8 +99,11 @@ import { DEALER, lookAround, opened, takeable } from './drift.js'
  */
 
 /** A run walked all the way down to the hall, by whatever road works. */
-function atTheDoor(seed = 1): { ledgers: Ledgers; chain: Chain; node: ChainNode } {
-  let { ledgers, chain } = opened(seed)
+function atTheDoor(
+  seed = 1,
+  carrying: Parameters<typeof opened>[1] = {},
+): { ledgers: Ledgers; chain: Chain; node: ChainNode } {
+  let { ledgers, chain } = opened(seed, carrying)
   for (;;) {
     const node = hereIn(chain)
     if (node === null) throw new Error(`seed ${seed} dealt no room`)
@@ -69,8 +123,11 @@ function atTheDoor(seed = 1): { ledgers: Ledgers; chain: Chain; node: ChainNode 
 }
 
 /** The same, with the run *standing* in the hall, as the shell stands in one. */
-function inTheHall(seed = 1): { ledgers: Ledgers; chain: Chain; node: ChainNode } {
-  const found = atTheDoor(seed)
+function inTheHall(
+  seed = 1,
+  carrying: Parameters<typeof opened>[1] = {},
+): { ledgers: Ledgers; chain: Chain; node: ChainNode } {
+  const found = atTheDoor(seed, carrying)
   return {
     ...found,
     ledgers: {
@@ -279,6 +336,257 @@ describe('card 67 — the gate is doing the work (the control)', () => {
     const empty: Ledgers = { ...ledgers, run: { ...ledgers.run!, carried: [] } }
     expect(stranded(empty, ROOM_BOOK, node)).toBe(true)
     expect(NOTICES['door.locked']).toBeDefined()
+  })
+})
+
+// ── The Warden (card 31, art. 37 as amended 2026-08-06) ────────────────
+
+/** The beat, driven through the same calls the shell makes, in order. */
+function theBeat(seed = 1) {
+  const { ledgers, chain, node } = inTheHall(seed)
+  const door = node.doors[0]!
+  const turned = act(ledgers, unlockOf(node))
+  const keeper = horrorIn(node)!
+  return { ledgers, chain, node, door, turned, keeper }
+}
+
+/** One fight, played to whatever end, the way `test/depth.ts` plays one. */
+function fightThrough(ledgers: Ledgers, node: ChainNode, door: typeof node.doors[number], keeper: Horror) {
+  let fight = openFightDoor(ledgers, { door, horror: keeper })
+  let guard = 0
+  while (fight.outcome === 'fighting' && guard++ < 300) {
+    const lots = turnLots(ledgers.run!.seed, node.step, fight.turnNumber)
+    const turn = claimGreedily(recast(keepSensibly(cast(fight.turn, lots(1))), lots(2)))
+    fight = advanceFight(withTurn(fight, turn), decide(turn, 'end-turn', fight.armor))
+  }
+  return fight
+}
+
+describe('card 31 — the Warden is the keeper the door was built for', () => {
+  it('does not exist until the key turns: an empty hall, and a lock (the straw default)', () => {
+    const { ledgers, chain, node } = inTheHall()
+    // Nothing stands in the hall's sockets — it deals none — and the only
+    // thing the room offers is the lock and the door (arts 37, 104).
+    expect(node.fills).toEqual([])
+    expect(horrorOf(node.fills)).toBeNull()
+    const bands = enterRoom(ledgers, chain, ROOM_BOOK, node.instance)
+    expect(bands.tappables.map((one) => one.id).sort()).toEqual(['warden.door', 'warden.lock'])
+    // And nobody has met it, because there has been nothing to meet.
+    expect(hasMet(ledgers.permanent, WARDEN_KEEPER)).toBe(false)
+  })
+
+  it('stands in no socket, is dealt by nothing, and is unique by construction', () => {
+    // art. 83's machinery never sees it: it is in no catalog, at no weight,
+    // in no region, and there is one hall.
+    expect(CATALOG.encounters.some((one) => one.horror === 'horror.warden')).toBe(false)
+    expect(CATALOG.encounters.some((one) => one.id === WARDEN_KEEPER)).toBe(false)
+    for (let seed = 1; seed <= 30; seed++) {
+      const halls = runOf(seed, alwaysLeft).nodes.filter((one) => one.type === 'warden')
+      expect(halls.length, `seed ${seed}`).toBeLessThanOrEqual(1)
+    }
+    // And the room the engine asks is the room, not its sockets.
+    expect(horrorIn({ type: 'warden', fills: [] })?.id).toBe(THE_WARDEN.id)
+    expect(horrorIn({ type: 'passage', fills: [] })).toBeNull()
+  })
+
+  it('wakes on the turn of the key, and the hall answers in one line', () => {
+    const { turned, node, door, keeper } = theBeat()
+    expect(turnedHere(turned, ROOM_BOOK, node, door)).toBe(true)
+    expect(keeper.id).toBe(THE_WARDEN.id)
+    const said = NOTICES['warden.wakes'] ?? ''
+    expect(said.length).toBeGreaterThan(0)
+    expect(lintVoice(said, 'beat')).toEqual([])
+  })
+
+  it('arrives at the near depth, in a body of its own (arts 30, 100)', () => {
+    const { turned, node, door, keeper } = theBeat()
+    const fight = openFightDoor(turned, { door, horror: keeper })
+    const drawn = advanceBodyOf(keeper.id)
+    expect(drawn).not.toBeNull()
+    // art. 28: the advance never undoes itself, and art. 1 lets the caller
+    // hand it a settled 1 at any moment.
+    const staged = advance(fight, 1, (_, close) => drawn!(close))
+    expect(staged.closeness).toBe(1)
+    expect(typeof staged.prop.paint).toBe('function')
+    // It comes down the hall: nearer at the lens than at the far wall.
+    expect(drawn!(1).z).toBeLessThan(drawn!(0).z)
+    // Every other horror keeps the hinge's own mass (art. 26's first tier).
+    expect(advanceBodyOf('horror.gnawing')).toBeNull()
+  })
+
+  it('sets the depth’s exam: every effect kind the depth has to teach', () => {
+    const kinds = new Set(
+      WARDEN_SCRIPT.flatMap((one) => (one.effect === undefined ? [] : [one.effect.kind as string])),
+    )
+    expect([...kinds].sort()).toEqual(['bind', 'bleed', 'corrode', 'curse', 'hunger', 'seal'])
+    // Above the Gnawing's, and steeper.
+    expect(WARDEN_HEALTH).toBeGreaterThan(GNAWING_HEALTH)
+    expect(WARDEN_ESCALATION).toBeGreaterThan(GNAWING_ESCALATION)
+  })
+
+  it('is met by fighting it, and the meeting is knowledge (art. 84)', () => {
+    const { turned } = theBeat()
+    const who = encounterOfHorror('horror.warden')!
+    expect(who).toBe(WARDEN_KEEPER)
+    const met = { ...turned, permanent: meet(turned.permanent, who) }
+    expect(hasMet(met.permanent, WARDEN_KEEPER)).toBe(true)
+    // And it survives the death it probably caused (arts 11, 84).
+    expect(hasMet(routeDeath(met, endLineOf('horror.warden')).permanent, WARDEN_KEEPER)).toBe(true)
+  })
+
+  it('writes its own line when it wins, and it is not the door’s line', () => {
+    expect(endLineOf('horror.warden')).toBe('end.warden.keeper')
+    expect(END_LINES['end.warden.keeper']).toBeDefined()
+    expect(END_LINES['end.warden.keeper']).not.toBe(END_LINES['end.warden'])
+  })
+
+  it('pauses like any door-fight when you run, and the key stays turned (arts 41, 63)', () => {
+    const { turned, node, door, keeper } = theBeat()
+    const fight = openFightDoor(turned, { door, horror: keeper })
+    const played = withTurn(fight, cast(fight.turn, turnLots(turned.run!.seed, node.step, 1)(1)))
+    const fled = advanceFight(played, decide(played.turn, 'flee', played.armor))
+    expect(fled.outcome).toBe('fled')
+
+    const away = routeFlight(turned, saveFight(fled, node.instance, 'pre', [], true, false))
+    // The deed stands: running is a retreat from the keeper, not from the
+    // lock, and the lock does not shut behind you.
+    expect(turnedHere(away, ROOM_BOOK, node, door)).toBe(true)
+    expect(opens(away, ROOM_BOOK, node, door)).toBe(true)
+    // And the fight is where you left it, so coming back resumes (art. 63).
+    const held = pausedAt(away, node.instance)
+    expect(held).not.toBeNull()
+    expect(held!.horror).toBe(THE_WARDEN.id)
+    expect(horrorById(held!.horror)).not.toBeNull()
+  })
+
+  /**
+   * art. 71: no press may lie about where it takes you, and the last door
+   * means three different journeys across one run. The shell reads this
+   * predicate for the word it puts on the strip, so the three states are
+   * asserted here rather than reimplemented there.
+   */
+  it('is a fight while it stands, and a way down only once it is not', () => {
+    const { ledgers, node } = inTheHall()
+    const door = node.doors[0]!
+    const deeds = (held: Ledgers) => sceneStateOf(held, ROOM_BOOK, node).done
+
+    // Locked: the hall is empty, and there is nothing to press but the lock.
+    expect(keeperStanding(door, node, false, deeds(ledgers))).toBe(false)
+
+    // Turned: the keeper is up, and the door is a fight-door.
+    const turned = act(ledgers, unlockOf(node))
+    expect(keeperStanding(door, node, true, deeds(turned))).toBe(true)
+
+    // Run out of it and come back: the deed stands, so it is still a fight.
+    // This is the one that matters — the door would otherwise have offered
+    // Descend to somebody who fled, which is a press that lies.
+    const away = routeFlight(turned, saveFight(
+      openFightDoor(turned, { door, horror: horrorIn(node)! }),
+      node.instance,
+      'pre',
+      [],
+      true,
+      false,
+    ))
+    expect(keeperStanding(door, node, true, deeds(away))).toBe(true)
+
+    // Down: and only now is it a way on.
+    const beaten = { ...turned, run: didHere(turned.run!, node.instance, WARDEN_DOWN) }
+    expect(keeperStanding(door, node, true, deeds(beaten))).toBe(false)
+
+    // And no ordinary door is ever any of this.
+    for (const other of runOf(1, alwaysLeft).nodes.flatMap((one) => one.doors)) {
+      if (other.ends === true) continue
+      expect(keeperStanding(other, node, true, deeds(turned))).toBe(false)
+    }
+  })
+
+  it('gives the depth up only when it goes down (the whole beat, headless)', () => {
+    // A hand that can actually do it: art. 86's answer to the bottom of a
+    // depth is who you have found, and this is a run that found two.
+    const carrying = { dice: [THE_PUSHER, THE_RUNNER], worn: [RUSTED_PLATE] }
+    let won: Ledgers | null = null
+    for (let seed = 1; seed <= 20 && won === null; seed++) {
+      const { ledgers, chain, node } = inTheHall(seed, carrying)
+      const door = node.doors[0]!
+      // 1. The key turns. 2. The keeper is standing.
+      let after = act(ledgers, unlockOf(node))
+      const keeper = horrorIn(node)!
+      // 3. The fight opens, and it is the room with the thing come close.
+      const fight = fightThrough(after, node, door, keeper)
+      if (fight.outcome !== 'won') continue
+      after = carryOut(after, fight)
+      // 4. Beating it writes the deed, and the door is a way down at last.
+      after = { ...after, run: didHere(after.run!, node.instance, WARDEN_DOWN) }
+      expect(after.run!.did).toContain(`${node.instance}|${WARDEN_DOWN}`)
+      expect(opens(after, ROOM_BOOK, node, door)).toBe(true)
+      // 5. And the run finishes as it always did — one line, a fresh waking.
+      const finished = finish(after, 'end.warden')
+      expect(finished.bookOfEnds.at(-1)).toMatchObject({ cause: 'end.warden' })
+      won = after
+      void chain
+    }
+    expect(won, 'no taught run in twenty beat the keeper').not.toBeNull()
+  })
+})
+
+describe('card 31 — tuned so a taught run with a build wins', () => {
+  /**
+   * The bar the card set, measured the same way everything else is
+   * (`test/depth.ts`, the whole-depth model). A **taught** run is what
+   * art. 86 says a build is — who you have found — so it is two travelers'
+   * bones and the plate off a third.
+   */
+  const RUNS = 300
+  const TAUGHT = { dice: [THE_PUSHER, THE_RUNNER], worn: [RUSTED_PLATE] }
+
+  const walked = (carrying: Parameters<typeof playDepth>[2]) => {
+    let reached = 0
+    let finished = 0
+    for (let seed = 1; seed <= RUNS; seed++) {
+      const played = playDepth(seed, coinFlip(seed), carrying)
+      if (played.reachedTheDoor) reached++
+      if (played.outcome === 'finished') finished++
+    }
+    return { reached: reached / RUNS, finished: finished / RUNS }
+  }
+
+  it('lets a taught run take the depth about half the time', () => {
+    const taught = walked(TAUGHT)
+    // It gets to the bottom nearly always, and beats the keeper about half
+    // of those. A boss the taught run loses to more often than not is a
+    // wall; one it beats every time is a door with extra steps.
+    expect(taught.reached).toBeGreaterThan(0.7)
+    expect(taught.finished).toBeGreaterThan(0.35)
+    expect(taught.finished).toBeLessThan(0.75)
+  })
+
+  it('leaves a first waking able to do it, and not expecting to', () => {
+    const bare = walked({})
+    // art. 55: the start is bare, and the bottom of a depth is what that
+    // costs. Winnable — the loop closes — and rare.
+    expect(bare.finished).toBeGreaterThan(0)
+    expect(bare.finished).toBeLessThan(0.15)
+    // And the difference is the build, not the road: a bare run reaches the
+    // door about as often as it ever did; what it cannot do is what waits
+    // behind it.
+    expect(bare.reached).toBeGreaterThan(0.15)
+  })
+
+  it('is the hardest thing in the depth, at every hand it is measured with', () => {
+    // Otherwise it is a boss in name only (art. 37 as amended).
+    for (const [hand, armor] of [
+      [assembleHand(PLAIN_POUCH, HAND_SIZE), BARE_BODY.armor],
+      [assembleHand({ dice: [...PLAIN_POUCH.dice, THE_CAREFUL] }, HAND_SIZE), BARE_BODY.armor],
+      [assembleHand({ dice: [...PLAIN_POUCH.dice, THE_CAREFUL] }, HAND_SIZE), RUSTED_PLATE.armor],
+    ] as const) {
+      const keeper = winRateOf(THE_WARDEN, hand, armor, 200)
+      for (const other of [THE_GNAWING, THE_MARROW, THE_SILT_MOTHER, THE_KINDLED]) {
+        expect(keeper, `${other.id} vs the keeper`).toBeLessThan(
+          winRateOf(other, hand, armor, 200),
+        )
+      }
+    }
   })
 })
 

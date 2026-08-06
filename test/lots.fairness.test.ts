@@ -12,11 +12,9 @@ import {
   THE_CAREFUL,
   scriptedHorror,
 } from '../src/content/index.js'
-import { lotFrom } from '../src/gen/index.js'
-import type { Armor, Fight, Hand, Horror, Intent, IntentEffect, Turn } from '../src/lots/index.js'
-import { advanceFight, assembleHand, cast, decide, openFight, recast, withTurn } from '../src/lots/index.js'
-import type { Seed } from '../src/state/index.js'
-import { claimGreedily, claimIfWorth, keepSensibly } from './policy.js'
+import type { Armor, Hand, Horror, Intent, IntentEffect } from '../src/lots/index.js'
+import { assembleHand } from '../src/lots/index.js'
+import { claimIfWorth, winRateOf } from './policy.js'
 
 /**
  * Is it fair? — restated for the five-die start (arts 55, 86).
@@ -44,36 +42,6 @@ import { claimGreedily, claimIfWorth, keepSensibly } from './policy.js'
 /** art. 55: the bare hand. art. 86: the same hand, one traveler's bone on. */
 const BARE_HAND = assembleHand(PLAIN_POUCH, HAND_SIZE)
 const FOUND_HAND = assembleHand({ dice: [...PLAIN_POUCH.dice, THE_CAREFUL] }, HAND_SIZE)
-
-/**
- * One horror, one hand, one way of playing, `runs` seeds — how often the
- * player walks out. Every measurement in this file is this function with a
- * different argument, so two numbers beside each other always mean the same
- * thing.
- */
-export function winRateOf(
-  horror: Horror,
-  hand: Hand,
-  armor: Armor,
-  runs: number,
-  play: (turn: Turn) => Turn = claimGreedily,
-): number {
-  let wins = 0
-  for (let seed = 0; seed < runs; seed++) {
-    const lot = lotFrom(seed as unknown as Seed)
-    let fight: Fight = openFight(horror, hand, BARE_BODY.health, armor)
-    // art. 65: a horror that heals what it is not hit for can in principle
-    // outlast a player who never claims. The guard is the test's, not the
-    // game's — a real turn always ends.
-    let guard = 0
-    while (fight.outcome === 'fighting' && guard++ < 300) {
-      const turn = play(recast(keepSensibly(cast(fight.turn, lot)), lot))
-      fight = advanceFight(withTurn(fight, turn), decide(turn, 'end-turn', fight.armor))
-    }
-    if (fight.outcome === 'won') wins++
-  }
-  return wins / runs
-}
 
 function winRate(armor: Armor, runs: number, hand = BARE_HAND): number {
   return winRateOf(THE_GNAWING, hand, armor, runs)

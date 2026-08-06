@@ -10,9 +10,24 @@
  * Nothing here is content. It plays the ladder well rather than perfectly.
  */
 
-import { LADDER } from '../src/content/index.js'
-import type { Line, Turn } from '../src/lots/index.js'
-import { attack, casting, claim, claimable, keep, unused } from '../src/lots/index.js'
+import { BARE_BODY, LADDER } from '../src/content/index.js'
+import { lotFrom } from '../src/gen/index.js'
+import type { Armor, Fight, Hand, Horror, Line, Turn } from '../src/lots/index.js'
+import {
+  advanceFight,
+  attack,
+  cast,
+  casting,
+  claim,
+  claimable,
+  decide,
+  keep,
+  openFight,
+  recast,
+  unused,
+  withTurn,
+} from '../src/lots/index.js'
+import type { Seed } from '../src/state/index.js'
 
 /** Every subset of the free dice, best-scoring claim first, until dry. */
 export function claimGreedily(start: Turn): Turn {
@@ -76,4 +91,36 @@ export function keepSensibly(turn: Turn): Turn {
     turn,
     laid.filter((landed) => landed.face.value === bestValue).map((landed) => landed.die),
   )
+}
+
+/**
+ * One horror, one hand, one way of playing, `runs` seeds — how often the
+ * player walks out of that one fight at full health.
+ *
+ * Every per-horror number in DESIGN.md is this function with a different
+ * argument, so two numbers beside each other always mean the same thing.
+ * What it cannot answer is what a *depth* costs; `test/depth.ts` does that.
+ */
+export function winRateOf(
+  horror: Horror,
+  hand: Hand,
+  armor: Armor,
+  runs: number,
+  play: (turn: Turn) => Turn = claimGreedily,
+): number {
+  let wins = 0
+  for (let seed = 0; seed < runs; seed++) {
+    const lot = lotFrom(seed as unknown as Seed)
+    let fight: Fight = openFight(horror, hand, BARE_BODY.health, armor)
+    // art. 65: a horror that heals what it is not hit for can in principle
+    // outlast a player who never claims. The guard is the test's, not the
+    // game's — a real turn always ends.
+    let guard = 0
+    while (fight.outcome === 'fighting' && guard++ < 300) {
+      const turn = play(recast(keepSensibly(cast(fight.turn, lot)), lot))
+      fight = advanceFight(withTurn(fight, turn), decide(turn, 'end-turn', fight.armor))
+    }
+    if (fight.outcome === 'won') wins++
+  }
+  return wins / runs
 }

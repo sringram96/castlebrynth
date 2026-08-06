@@ -15,12 +15,12 @@
  * Nothing here is content. The policies stand in for thumbs.
  */
 
-import { ROOM_BOOK, horrorOf } from '../src/content/index.js'
+import { ROOM_BOOK, horrorIn, horrorOf } from '../src/content/index.js'
 import { act, chooseDoor, opens } from '../src/descent/index.js'
 import type { Chain, ChainNode, Door } from '../src/gen/index.js'
 import { hereIn } from '../src/gen/index.js'
 import { carryOut, openFightDoor, turnLots } from '../src/hinge/index.js'
-import type { Fight, Goods, Horror } from '../src/lots/index.js'
+import type { Die, Fight, Goods, Horror, Wearable } from '../src/lots/index.js'
 import { advanceFight, cast, decide, recast, withTurn } from '../src/lots/index.js'
 import type { EncounterId, Ledgers } from '../src/state/index.js'
 import { DEALER, greet, lookAround, opened, takeable, type Policy } from './drift.js'
@@ -28,11 +28,25 @@ import { claimGreedily, keepSensibly } from './policy.js'
 
 const NO_GOODS: Goods = { talismans: [], riders: [] }
 
+/** What a player wakes with — a pouch earlier runs grew, and what they wear. */
+export interface Carrying {
+  readonly dice?: readonly Die[]
+  readonly worn?: readonly Wearable[]
+}
+
 /** How a run ended. `stuck` is a chain that offered nowhere to go. */
 export type DepthOutcome = 'finished' | 'died' | 'refused' | 'stuck'
 
 export interface DepthReport {
   readonly outcome: DepthOutcome
+  /**
+   * Whether the run got to the last room alive.
+   *
+   * Before the Warden was a being this was the same question as `finished`,
+   * and it is the like-for-like number for anything measuring what the road
+   * costs rather than what the keeper does (card 29 against card 31).
+   */
+  readonly reachedTheDoor: boolean
   /** How far down the run got, in rooms dealt. */
   readonly step: number
   readonly fights: number
@@ -65,14 +79,15 @@ function fightItOut(
   return { ledgers: carryOut(ledgers, fight), won: fight.outcome === 'won' }
 }
 
-export function playDepth(seed: number, policy: Policy): DepthReport {
-  let { ledgers, chain } = opened(seed)
+export function playDepth(seed: number, policy: Policy, carrying: Carrying = {}): DepthReport {
+  let { ledgers, chain } = opened(seed, carrying)
   ledgers = greet(ledgers, chain)
   let fights = 0
   const fought: string[] = []
 
   const report = (outcome: DepthOutcome, node: ChainNode | null): DepthReport => ({
     outcome,
+    reachedTheDoor: node?.type === 'warden',
     step: node?.step ?? 0,
     fights,
     fought,
@@ -109,7 +124,18 @@ export function playDepth(seed: number, policy: Policy): DepthReport {
       // art. 3, and card 67: the last door refuses what it is not given —
       // and, now, what has not been turned. The walk has already pressed
       // every act the room offered, so a run holding the key has turned it.
-      return report(opens(ledgers, ROOM_BOOK, node, door) ? 'finished' : 'refused', node)
+      if (!opens(ledgers, ROOM_BOOK, node, door)) return report('refused', node)
+      // card 31: and turning it wakes the keeper. A depth is finished by
+      // beating the thing the door was built for, not by opening the door.
+      const keeper = horrorIn(node)
+      if (keeper !== null) {
+        fights++
+        fought.push(keeper.id)
+        const out = fightItOut(ledgers, node, door, keeper)
+        ledgers = out.ledgers
+        if (!out.won) return report('died', node)
+      }
+      return report('finished', node)
     }
 
     const walked = chooseDoor(ledgers, chain, ROOM_BOOK, door, DEALER)

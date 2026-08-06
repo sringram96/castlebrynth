@@ -126,7 +126,12 @@ describe('card 29 — every region gets its unique (arts 78, 83)', () => {
 
 describe('card 29 — a locked region is a different depth, not a worse one', () => {
   /**
-   * Survival over a whole depth, by how the thumb walks (`test/depth.ts`).
+   * Survival **down to the last door**, by how the thumb walks
+   * (`test/depth.ts`). Deliberately not "finished": card 31 put a keeper
+   * behind that door, and what this card is measuring is what a region's
+   * road costs, not what its boss does. Before the Warden was a being the
+   * two questions were the same one, so this is the like-for-like number.
+   *
    * The band is wide on purpose: it is a tripwire under the tuning, not an
    * opinion about it. What it is actually guarding is the failure the card
    * named — *a region that became a death sentence* — so the floor matters
@@ -135,7 +140,7 @@ describe('card 29 — a locked region is a different depth, not a worse one', ()
   const rateOf = (policy: (seed: number) => Policy): number => {
     let out = 0
     for (let seed = 1; seed <= DEEP_RUNS; seed++) {
-      if (playDepth(seed, policy(seed)).outcome === 'finished') out++
+      if (playDepth(seed, policy(seed)).reachedTheDoor) out++
     }
     return out / DEEP_RUNS
   }

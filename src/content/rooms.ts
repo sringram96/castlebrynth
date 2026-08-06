@@ -31,6 +31,7 @@ import type {
 import type {
   Catalog,
   DepthPlan,
+  Door,
   Fill,
   Grammar,
   KeyId,
@@ -56,7 +57,7 @@ import {
   fillProps,
   fillWords,
 } from './encounters.js'
-import { horrorById } from './horrors.js'
+import { THE_WARDEN, horrorById } from './horrors.js'
 import type { School } from './palettes.js'
 import {
   sandOf,
@@ -92,6 +93,7 @@ import {
   alcove,
   ashBanks,
   boneDrifts,
+  comingCloser,
   dragMark,
   dust,
   fontSteps,
@@ -126,6 +128,7 @@ import {
   STATUE,
   THRONE,
   URN,
+  WARDEN_KEEPER as WARDEN_KEEPER_BODY,
   WATCHER,
 } from './plates/bestiary.js'
 import { WAKE, masonry, wakeProps } from './plates/wake.js'
@@ -1399,6 +1402,83 @@ export function horrorOf(fills: readonly Fill[]): Horror | null {
     if (one?.kind === 'horror' && one.horror !== undefined) return horrorById(one.horror)
   }
   return null
+}
+
+/**
+ * arts 30, 37 (as amended 2026-08-06): the same question, asked of a room
+ * rather than of its sockets — because the last one has a keeper that
+ * stands in no socket.
+ *
+ * The Warden is not dealt, so nothing about the drift, the weights or the
+ * scopes reaches it: it is in the hall because the hall is what it keeps.
+ * Everything the engine then does with it is what it does with any horror.
+ */
+export function horrorIn(node: { readonly type: RoomType; readonly fills: readonly Fill[] }): Horror | null {
+  return horrorOf(node.fills) ?? (node.type === 'warden' ? THE_WARDEN : null)
+}
+
+/**
+ * card 31: the deed a beaten keeper leaves.
+ *
+ * It is a deed and not an act — nothing presses it — written against the
+ * instance like every other (art. 82). It is what the hall reads to know
+ * whether its door is still a fight or is a way down at last, and it lives
+ * in content because it is the Warden's, not the engine's.
+ */
+export const WARDEN_DOWN = 'deed.warden-down'
+
+/**
+ * card 31: whether the keeper this door was built for is still standing.
+ *
+ * Three states and one predicate, because the door's verb is a different
+ * word in each of them and art. 71 says no press may lie about where it
+ * takes you. Nothing until the key turns — the hall is empty and the lock
+ * is what answers — a **fight** while the keeper is up, including after you
+ * have run out of it (art. 63: coming back resumes), and a way **down**
+ * once the deed says it is beaten.
+ *
+ * It takes the deeds rather than a ledger so that it stays a fact about the
+ * room: the shell reads it, the tests read it, and neither of them has to
+ * reimplement it.
+ */
+export function keeperStanding(
+  door: Door,
+  node: { readonly type: RoomType; readonly fills: readonly Fill[] },
+  turned: boolean,
+  done: readonly string[],
+): boolean {
+  if (door.ends !== true) return false
+  if (horrorIn(node) === null) return false
+  return turned && !done.includes(WARDEN_DOWN)
+}
+
+/**
+ * arts 30, 100 (card 31): how the Warden comes down its hall.
+ *
+ * Wider and taller than the aperture it steps out of — the door plans a
+ * hall's threshold at nine world units by nineteen, and this is thirteen by
+ * twenty-four — so art. 30's advance is done by a thing that was always too
+ * big for the room. It walks from the far wall to the lens at world
+ * coordinates, so the growing is the projector's and not a sprite's
+ * (art. 15).
+ *
+ * Every other horror keeps the mass the hinge draws by default (art. 26's
+ * first tier). This is the one thing in the depth the game has decided the
+ * player must recognise before it is in the lens.
+ */
+const WARDEN_COMING = comingCloser(IRON, WARDEN_KEEPER_BODY, 'the keeper', {
+  wide: 13,
+  high: 24,
+  from: 38,
+  to: 11,
+})
+
+/**
+ * The body a horror advances with, if it has one drawn. `null` is the
+ * ordinary answer, and the hinge's own mass is what it means.
+ */
+export function advanceBodyOf(horror: string): ((closeness: number) => Prop) | null {
+  return horror === 'horror.warden' ? WARDEN_COMING : null
 }
 
 /**

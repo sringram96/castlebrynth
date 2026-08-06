@@ -22,7 +22,8 @@ import { act, actsIn, chooseDoor, mayLeave, opens, tappablesIn } from '../src/de
 import type { Catalog, Chain, ChainNode, Door, Grammar, RegionId } from '../src/gen/index.js'
 import { NO_HISTORY, deal, dealerOf, hereIn, lotFrom, meetings } from '../src/gen/index.js'
 import type { Ledgers, RunHistory, Seed } from '../src/state/index.js'
-import { firstPermanent, lookedAt, meet, movedTo, tookDoor, wake } from '../src/state/index.js'
+import { collect, firstPermanent, lookedAt, meet, movedTo, tookDoor, wake } from '../src/state/index.js'
+import type { Die, Wearable } from '../src/lots/index.js'
 
 export const DEALER = dealerOf(CATALOG, GRAMMAR)
 export const seedOf = (n: number): Seed => n as unknown as Seed
@@ -126,9 +127,25 @@ export function reportOf(chain: Chain): Report {
 
 // ── Walking with a run on the ledger, for art. 3 ───────────────────────
 
-/** A fresh run at the Crossing, and the chain as dealt for it. */
-export function opened(seed: number): { ledgers: Ledgers; chain: Chain } {
-  const ledgers = wake(firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY), seedOf(seed))
+/**
+ * A fresh run at the Crossing, and the chain as dealt for it.
+ *
+ * `carrying` is what the player wakes with — a pouch grown by earlier runs,
+ * and the wearables off them. Empty is a first waking (art. 55), which is
+ * what almost every test wants; the exception is the measurement that asks
+ * what a *taught* run's odds are, and that one has to be able to say so.
+ */
+export function opened(
+  seed: number,
+  carrying: { readonly dice?: readonly Die[]; readonly worn?: readonly Wearable[] } = {},
+): { ledgers: Ledgers; chain: Chain } {
+  let permanent = firstPermanent(
+    { dice: [...(carrying.dice ?? []), ...PLAIN_POUCH.dice] },
+    HAND_SIZE,
+    BARE_BODY,
+  )
+  for (const wearable of carrying.worn ?? []) permanent = collect(permanent, wearable)
+  const ledgers = wake(permanent, seedOf(seed))
   return { ledgers, chain: deal(seedOf(seed), 1, CATALOG, GRAMMAR, ledgers.run!.history) }
 }
 

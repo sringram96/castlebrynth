@@ -340,7 +340,10 @@ export const END_LINES: Readonly<Record<string, string>> = {
   'end.marrow': 'The Marrow closes over you. The scratching starts again behind it.',
   'end.silt-mother': 'The Silt Mother puts a hand on your chest, and the water comes up over it.',
   'end.kindled': 'The Kindled takes hold of you, and what is left of it goes out.',
-  'end.warden': 'The Warden stands aside. The stair keeps going down.',
+  // card 31, art. 37 as amended: the Warden is a being, so the line for
+  // going through its door is the line for having got past it.
+  'end.warden': 'The Warden goes down, and stays down. The stair keeps going.',
+  'end.warden.keeper': 'The Warden takes the key back out of the lock, and sets you down beside its door.',
   'end.kept': 'The door does not open, and the corridor behind you is stone.',
 }
 
@@ -367,6 +370,15 @@ export const INTENT_SAYS: Readonly<Record<string, string>> = {
   GAPE: 'It opens. Any turn of yours that claims nothing puts some of it back.',
   CHAR: 'It lays a hand flat on you.',
   GUTTER: 'It draws the fire back in, and swings.',
+  // card 31: the depth's exam. Every kind it has taught, said in the same
+  // plain words the room that taught it used (art. 73).
+  JUDGE: 'It reads you. Pair-shaped lines are shut this turn.',
+  BIND: 'It takes your highest bone off the table. That die does not cast next turn.',
+  TITHE: 'It counts your sixes as owed. Sixes count as nothing this turn.',
+  FLENSE: 'It opens a long cut. That cut takes a little at the start of each of your next three turns.',
+  STRIP: 'It goes through your armor. Your armor does nothing this turn.',
+  WAIT: 'It waits. A turn of yours that claims nothing gives it back some of its own.',
+  KEEP: 'It brings the whole door down on you.',
 }
 
 /** The lines the shell says at the seams of a run. */
@@ -381,6 +393,10 @@ export const NOTICES: Readonly<Record<string, string>> = {
   // than on the door, so every future lock gets its own sentence and none of
   // them has to be written in the shell.
   'answer.act.unlock': 'The key goes in and the wards give, one after another. The lock hangs open.',
+  // card 31: what the hall answers with when the lock it was built around
+  // is turned. One candle: the key, and the thing the door was for.
+  'warden.wakes':
+    'The wards give, one after another, and the lock hangs open. At the far end of the hall something that has been standing there the whole time takes a step.',
   // art. 40: what the breath answers with. The poetry is the response to the
   // button, never the button (art. 66).
   'mercy.breath': 'The cold of it goes through you, and some of what is open closes.',
@@ -467,6 +483,7 @@ export const LABELS: Readonly<Record<string, string>> = {
   'horror.marrow': 'the marrow',
   'horror.silt-mother': 'the silt mother',
   'horror.kindled': 'the kindled',
+  'horror.warden': 'the warden',
   'room.crossing': 'the crossing',
   'room.trove.alcove': 'the alcove',
   'room.passage.stair': 'the stair',
