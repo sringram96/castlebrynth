@@ -20,6 +20,7 @@ import {
   BARE_BODY,
   CATALOG,
   CROSSING,
+  END_LINES,
   GATE,
   GRAMMAR,
   GRID,
@@ -671,6 +672,19 @@ function cardLines(): void {
   }
 }
 
+/**
+ * art. 11: the Book of Ends, read.
+ *
+ * A line is the **ending's own sentence** and then its numbers. It used to be
+ * the numbers alone, which is a receipt rather than a record — the sentences
+ * were authored for this sheet and had never reached it.
+ *
+ * The reason wave's line is drawn by exactly this code and no other: it is
+ * one line among the lines, in the same class, at the top because it is the
+ * oldest. What marks it out is that it has no seed and no depth — nothing
+ * here dealt that run — and that its sentence is the only one in the Book
+ * with no *you* in it. Content, never styling.
+ */
 function bookLines(): void {
   const lines = ledgers.permanent.bookOfEnds
   if (lines.length === 0) {
@@ -684,9 +698,13 @@ function bookLines(): void {
     const div = document.createElement('div')
     div.className = 'line open'
     const left = document.createElement('span')
-    left.textContent = `${n + 1} · ${READOUT.depth} ${line.depth}`
+    left.textContent = `${n + 1} · ${END_LINES[line.cause] ?? line.cause}`
     const right = document.createElement('span')
-    right.textContent = `${READOUT.seed} ${line.seed}`
+    const unknown = READOUT.unknown ?? ''
+    right.className = 'tag'
+    right.textContent = `${READOUT.depth} ${line.depth ?? unknown} · ${READOUT.seed} ${
+      line.seed ?? unknown
+    }`
     div.append(left, right)
     sheetBand.append(div)
   }

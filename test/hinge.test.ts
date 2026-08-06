@@ -122,8 +122,10 @@ describe('hinge — art. 30 (no battle screen), arts 11 and 32 (death routes on)
   it('routes a death to a fresh waking, reseeded, with the Book one line longer', () => {
     const { ledgers } = atTheLair()
     const woken = routeDeath(ledgers, 'end.gnawing')
-    expect(woken.permanent.bookOfEnds).toHaveLength(1)
-    expect(woken.permanent.bookOfEnds[0]).toMatchObject({ cause: 'end.gnawing', depth: 1 })
+    // The line that was already there (art. 11, the reason wave), and yours
+    // written under it.
+    expect(woken.permanent.bookOfEnds).toHaveLength(2)
+    expect(woken.permanent.bookOfEnds[1]).toMatchObject({ cause: 'end.gnawing', depth: 1 })
     expect(woken.run!.seed).not.toBe(ledgers.run!.seed)
     expect(woken.run!.health).toBe(BARE_BODY.health)
     expect(woken.run!.carried).toEqual([])

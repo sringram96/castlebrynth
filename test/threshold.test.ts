@@ -121,7 +121,8 @@ describe('the threshold — a waking is not a descent', () => {
   it('is not in flight again after an ending, because the ending wakes a new one', () => {
     const started = { ...fresh(), run: descending(fresh().run!) }
     const permanent = die(started, 'end.abandoned')
-    expect(permanent.bookOfEnds).toHaveLength(1)
+    // The opening line, and the abandoned run's under it.
+    expect(permanent.bookOfEnds).toHaveLength(2)
     expect(inFlight(wake(permanent, SEED))).toBe(false)
   })
 
@@ -205,7 +206,7 @@ describe('art. 116 — a setting changes how the game is shown, never what is tr
     const ledgers = fresh()
     save({ ...ledgers, permanent: preferring(ledgers.permanent, { reducedMotion: true }) }, vault)
     expect(load(vault)!.permanent.prefs.reducedMotion).toBe(true)
-    expect(VAULT_VERSION).toBe(7)
+    expect(VAULT_VERSION).toBe(8)
   })
 })
 

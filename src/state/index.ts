@@ -306,12 +306,45 @@ export interface RunHistory {
   readonly taken: readonly number[]
 }
 
-/** One line per death, and a different line for the Warden's door. */
+/**
+ * One line per death, and a different line for the Warden's door.
+ *
+ * **The seed and the depth may be unknown** (the reason wave). Every line
+ * this vault writes has both, because it dealt the run behind it — but the
+ * Book does not open empty (`FIRST_END`), and the one line that is already in
+ * it belongs to a descent nothing here dealt. `null` is that fact stated
+ * rather than a number invented to fill a column, and it is the only thing
+ * that separates the two kinds of line: the reader prints what it is given.
+ */
 export interface EndLine {
-  readonly seed: Seed
-  readonly depth: number
+  readonly seed: Seed | null
+  readonly depth: number | null
   readonly cause: string
 }
+
+/**
+ * art. 11 (the reason wave, straw ruling pending veto): **the Book of Ends is
+ * not empty at the first waking.** One line already stands in it, and it is
+ * not yours.
+ *
+ * It is the cheapest sentence in the game that makes the Book mean something
+ * before the player has died once — the record you spend the game adding
+ * yourself to was open before you got here. The line says what happened
+ * (`end.gone`, authored in content like every other ending) and nothing else:
+ * no seed, because nothing here dealt that run, and no depth, because nobody
+ * came back to say how far it went.
+ *
+ * The cause id lives in the engine for the reason `CROSSING` does — the state
+ * layer has to be able to name a fixed anchor it seeds, and the *words* for
+ * it are still content's alone (`END_LINES` in src/content/prose.ts). Nothing
+ * here says anything out loud.
+ *
+ * There is deliberately **no is-it-this-one predicate**. Nothing in the game
+ * may treat the line specially: the reader draws it with the code that draws
+ * every other line, and what marks it out is that it has no numbers and a
+ * sentence with nobody in it.
+ */
+export const FIRST_END: EndLine = { seed: null, depth: null, cause: 'end.gone' }
 
 export interface RoomVisit {
   /** art. 82: the template — what you recognise, and what knowledge keys on. */
@@ -646,7 +679,15 @@ function withEnding(ledgers: Ledgers, cause: string): PermanentLedger {
   return { ...ledgers.permanent, bookOfEnds: [...ledgers.permanent.bookOfEnds, line] }
 }
 
-/** A first waking: the pouch of plain bones, nothing known yet (art. 55). */
+/**
+ * A first waking: the pouch of plain bones, nothing known yet (art. 55).
+ *
+ * The Book is the one thing that is not empty. `FIRST_END` is standing in it
+ * before the player has done anything at all, which is the whole of the straw
+ * ruling — and it is seeded here rather than by the shell so that there is no
+ * "new game" path where it could be forgotten (`erase` boots through here
+ * too).
+ */
 export function firstPermanent(pouch: Pouch, handSize: number, body: Body): PermanentLedger {
   return {
     pouch,
@@ -656,7 +697,7 @@ export function firstPermanent(pouch: Pouch, handSize: number, body: Body): Perm
     known: [],
     met: [],
     memories: [],
-    bookOfEnds: [],
+    bookOfEnds: [FIRST_END],
     handSize,
     body,
     prefs: PLAIN_PREFS,
@@ -819,9 +860,11 @@ export const QUARANTINE_KEY = 'castlebrynth.quarantine'
  * summons (art. 68): what a run has looked at decides what it may do. 6 is
  * the threshold, which needs to know whether a run was ever begun. 7 is
  * art. 116's preferences, which are permanent state because a player who
- * dies has not changed their mind about motion.
+ * dies has not changed their mind about motion. 8 is the reason wave: the
+ * Book does not open empty, and a Book that opened empty before gets the
+ * line it was always missing, above its own.
  */
-export const VAULT_VERSION = 7
+export const VAULT_VERSION = 8
 
 // ── The migration ladder ───────────────────────────────────────────────
 
@@ -997,6 +1040,28 @@ export const MIGRATIONS: readonly Migration[] = [
         ...permanent,
         prefs: permanent.prefs ?? PLAIN_PREFS,
       })),
+  },
+  /**
+   * 7 → 8. The reason wave: the Book of Ends is not empty at the first
+   * waking, and a player who is already collecting endings gets the premise
+   * too. `FIRST_END` goes in **above** their own lines, because it is an
+   * ending that happens before any of theirs and the sheet reads oldest
+   * first — and nothing of theirs moves, so the rung costs them nothing.
+   *
+   * It is idempotent by the cause, not by position: a Book that somehow
+   * already holds the line keeps the one it has rather than growing a second
+   * copy of it.
+   */
+  {
+    from: 7,
+    up: (snapshot) =>
+      fillingThePermanent(snapshot, (permanent) => {
+        const lines = Array.isArray(permanent.bookOfEnds) ? permanent.bookOfEnds : []
+        const already = lines.some(
+          (line) => asRaw(line)?.cause === FIRST_END.cause,
+        )
+        return { ...permanent, bookOfEnds: already ? lines : [FIRST_END, ...lines] }
+      }),
   },
 ]
 
