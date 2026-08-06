@@ -7,7 +7,7 @@ novel a candle at a time; the labyrinth is a blind chain of hand-authored
 rooms, procedurally rearranged every run; fights are poker-dice duels
 against horrors whose intents are always shown; death burns the run and
 keeps the knowledge. `reference/GAME.md` is the fantasy. The binding law is in
-`.claude/rules/` — 115 numbered articles; tasks cite them as "art. N".
+`.claude/rules/` — 116 numbered articles; tasks cite them as "art. N".
 
 ## Components
 - **src/state** — the two ledgers (run / permanent) behind named rituals;
@@ -60,7 +60,11 @@ all state client-side.
   (rules/voice.md, the-thumb.md)
 - **The tray is anatomy, not a menu** — fixed regions, plain imperative
   verbs, things tapped where they stand, and every act that changes state
-  changing the scene. (arts 66–76)
+  changing the scene. A decision of its own gets a screen instead: the
+  choosing, the threshold, the settings. (arts 66–76, 90–92, 116)
+- **A setting shows the game differently and never makes it different** —
+  presentation only, permanent rather than run state, and the vault as text
+  the player can carry off. (art. 116)
 
 ## The cut: phase 0 — "the skeleton walks", then reads
 One complete loop: wake → descend a generated chain → fight → die
@@ -95,8 +99,249 @@ is a playable loop in a portrait browser: wake → open one of one to three
 blind doors → the room behind it is dealt on the spot → keep choosing → a
 region locks and the depth announces where you have arrived → the rest of
 the depth deals from that region and its encounters wake → the Warden's
-door, refused without the key and terse with it. `npm test` is green: 31
-files, 287 tests.
+door, refused without the key and terse with it. `npm test` is green: 33
+files, 321 tests.
+
+## The threshold wave (arts 96, 99, 104–105, 116)
+
+Two jobs. The look wave's named debts — the junction, and re-authoring the
+first fourteen rooms against the bestiary — and then the **front door**,
+which the game had never had: it booted straight into wherever you were, so
+there was no way to begin again on purpose, no home for settings, and
+nowhere the Book of Ends could be read outside an ending.
+
+### The junction is geometry (art. 96)
+
+A chamber whose side apertures are wide and full-height, where **a door is a
+direction you turn rather than an item you pick**. The labyrinth has lefts
+and rights now, which is the other half of the playtest's "everything is a
+hallway".
+
+The hole is **cast, not painted**, for the reason art. 102 gives about
+masses: an opening painted on a side wall would run flat across the frame
+instead of receding, would agree in size with nothing else in the room, and
+could not hide what stands behind it. Cast, all three stop being true. It is
+one plane taken away and two put in behind it — a ray whose wall hit falls
+in the aperture meets the wall across the turn's far end, or, where the
+sight line runs out of the turn first, the dark it goes on into, which is
+art. 16's mouth and needed no second vocabulary. The floor and the ceiling
+run on into the turn by themselves and art. 18's contour inks the hole
+without anybody drawing it.
+
+The far wall is **excluded** for a ray that went through a turn. A plane is
+infinite and a wall is not, and letting one through a hole would stand it
+outside the room — the one place where taking a plane away is not enough on
+its own.
+
+**A junction opens the ways it actually has.** One door is a corner, two are
+a left and a right, three put the way straight on between them. Casting a
+second aperture for a door the chain never dealt would be pixels promising
+something the thumb cannot press, which is art. 97's defect from the other
+side. The architrave is a **wall feature** (art. 99), so a turn is framed
+the way art. 97 requires without anything being painted in screen space;
+a junction's lefts and rights get no threshold prop at all, and the middle
+of three gets one because that one is a hole in a wall you are looking at.
+
+**A junction's hero is its turns** (art. 104). The choice is the one thing
+in it, so nothing else is placed to compete: its sockets and its props all
+stand this side of the openings.
+
+`masonry` states its coursing once now and asks it along three axes — the
+side walls, the far wall, and a turn's jamb, which deliberately does not
+take the far wall's features. The refactor is byte-identical.
+
+### The shapes, by region
+
+| region | shapes it deals |
+| --- | --- |
+| drowned | **junction** (the wet passage), chamber, low, vault |
+| burnt | **junction** (the pyre), corridor, chamber, low |
+| ossuary | **junction** (the den), low, low, chamber |
+| neutral | **junction** (the stair), low, low, great, open, chamber, hall, hall |
+
+Four junctions, one per region and one neutral, and no two regions deal the
+same mix — art. 77 as extended by the look wave, which makes the mix of
+shapes part of what a region *is*. The bonefield moved from a corridor to a
+low room to keep the ossuary's mix its own.
+
+### The fourteen, re-authored (arts 99, 104)
+
+Every room in the depth has architecture on its walls now, and every one of
+the first fourteen that lacked a hero has one: **coins** in the alcove, a
+**skull** in the sump, the **lantern-bearer** in the ash, an **urn** in the
+bonefield (the one new drawing), a **bell** in the tally, a **cage** in the
+cistern, a **brazier** in the kiln. The rooms that already had a hero keep
+it — the Crossing's shaft, the font's bound basin, the Warden's black door,
+and a lair's own horror.
+
+The alcove's alcove is a **niche** now, which is what art. 99 says an alcove
+is: architecture on the wall plane, receding with the wall, rather than a
+rectangle painted on it.
+
+### The wake plate's composition debt (PR #44)
+
+The shaft was composed against a mouth, and once the Crossing ended in a
+wall its doors stood behind it and read *through* it. **The fix belongs to
+the room and not to the plate**: `WAKE` rendered as itself is a tube with no
+doors in it, where a shaft down the middle is the right composition and
+always was, so the defect appeared when the shape changed under it and the
+shape is where it is answered. `wakeProps` takes an offset and the Crossing
+passes one.
+
+Stated honestly: the shaft's **dense core** is clear of all three doors at
+every door count, and its outer skirt still reaches the leftmost of three.
+That skirt is a scattered field of motes (art. 101) rather than an object,
+and art. 105 governs objects — a door reads through a sprinkle of motes and
+did not read through the column.
+
+### The thumb can reach everything (arts 68, 69, 105)
+
+A new test asks art. 105 of the *thumb* rather than of the eye, and it found
+three real defects — one of them mine.
+
+The shell lays a tap region over every thing at the coordinates it is
+painted at, so two things that overlap are two things where one cannot be
+pressed. **A thing nobody can tap is a thing that does not answer**, which
+is art. 69 as well as art. 105. The kiln's new brazier sat straight under
+the floor socket and was unreachable; the sewer's mercy socket stood exactly
+where the caps stand; the watcher's mercy socket lay across the middle of
+the watcher. The last two predate this wave and had never been noticed
+because the Savior is rare enough that nothing had ever been dealt into
+either socket.
+
+Art. 6's exception is real and is named in the test rather than derived: the
+small thing sits on the large thing *it is part of*, which is the Warden's
+lock on the Warden's door and nothing else in the game.
+
+### The threshold (card 61)
+
+The front door. **A screen, not a panel** — the choosing screen established
+the shape: a decision of its own gets a screen, with no tabs, because there
+is nowhere else to be until it is answered. It does not touch the tray, and
+it is a **room, cast the way any room is cast** (`GATE`), with the verbs
+where verbs go and the word band carrying its line. Not a main menu with a
+logo over it.
+
+It offers **only what is true**, which is art. 71 applied to a front door —
+no press may lie about where it takes you:
+
+- **Continue**, only when a run is in flight. It restores the run and its
+  panel focus exactly, mid-fight included, and it does that by *stopping
+  holding* what boot already restored rather than rebuilding anything.
+- **Descend**, only when there is none. It calls the routing that already
+  exists, so a pouch that has outgrown the hand goes to the choosing screen
+  and there is one statement of that rule.
+- **The Book**, when the permanent holds one, through the reader that
+  already exists behind art. 74's glyph.
+- **Settings.**
+
+**A waking is not a descent**, and that distinction is state rather than an
+inference. `wake` deals a labyrinth on a first install, after a death, after
+the Warden's door and after an abandonment — every one of those is a run
+nobody has chosen to take. `descending` is set by the one press that chooses
+to, because a fact the shell has to work out from four other fields is a
+fact it can work out wrongly (art. 91's reasoning, applied to a second kind
+of state).
+
+**Abandoning is possible and never quiet.** Its own verb, never the same
+button as Descend, and what it costs is stated before the press that pays
+it. It writes its line in the Book on purpose: an ending a player could take
+without it being written down is a record they could scrub by walking away
+from the runs that went badly.
+
+**Straw default, flagged for veto.** Boot lands on the threshold *always* —
+cold, or standing in the middle of a fight — and Continue is one press back
+to exactly where you were. The cost is one press per reload; the gain is a
+front door you never have to go and find. If this is vetoed, the
+alternative is booting into the run with the threshold reachable from
+somewhere, and that needs its own ruling about where.
+
+Two shell defects fell out of building it, both in the choosing screen's
+path and both fixed. Focus moved to POUCH to draw the choosing screen and
+never moved back, so a run opened with the tray on the pouch — a focus moved
+by inference, which is exactly what art. 91 bans; the choosing screen is a
+screen and moves no focus now. And the act strip kept the dead run's verbs
+behind it, hidden rather than emptied.
+
+### Settings, and art. 116 (card 62)
+
+**A setting may change how the game is presented. It may never change what
+is true.** No difficulty, no arithmetic, no drift weighting, no rarity, no
+palette override that defeats art. 114 — anything that would make two
+players' Books incomparable is not a setting. Where a setting would fix
+something, the fix belongs in the thing: a ramp without enough contrast is
+corrected in the ramp, where it helps everybody.
+
+**Preferences are permanent state**, because a player who dies has not
+changed their mind about motion. `VAULT_VERSION` goes 5 → 6 → 7 and both
+rungs are the `fillingTheRun`/`fillingThePermanent` kind: nothing about the
+arrangement moves, so **no descent is lost to a settings screen or to a
+front door**. The v5 rung answers the one question it can answer without
+guessing — a run that has taken a door was begun, and a run standing at the
+Crossing with an empty history was not.
+
+**Reduced motion is the test of whether art. 107 was honest, and art. 107
+passes.** The game has exactly two motions today: the horror's advance and
+the resolve beat, both one-shots. With the setting on they resolve at once
+to their settled states, and those states are the whole truth — the horror
+stands at the near depth, the turn lands. Nothing turned out to be legible
+only while moving. Walked a full depth with it on, fight included: nothing
+became unreadable and nothing went silent. Art. 106's stir is still unbuilt,
+so there is no loop yet to stop; when there is, this is the setting it
+answers to.
+
+Determinism holds by construction rather than by care: **a preference is not
+an input to the renderer**, which takes a scene and a configuration and
+nothing else. There is a test standing guard over that.
+
+**The vault is the player's.** Export is the bytes on the shelf, not a fresh
+serialisation of what the shell happens to be holding — an export that
+differs from the save is an export nobody can trust. Import is **refused
+rather than half-applied**: the text is walked up the ladder in a scratch
+vault first, and one this build cannot read never touches the shelf.
+
+The wipe moved here from the foot of the Book, because section 5 puts it
+beside export and two doors to one destructive act is one too many. It is
+still two presses with the loss stated between them, and the last copy of
+what is about to go is in a box on the same screen.
+
+**Card 32's quarantine debt is closed.** A snapshot this build could not
+read has been sitting in the vault with nothing able to show it to anybody;
+the settings screen shows it, so it can be copied out and brought back into
+a later build through the same box. Bringing a snapshot in clears the
+quarantine, because the set-aside bytes belonged to what was just replaced
+and keeping them would quarantine the *next* failure behind another
+install's.
+
+### The phone pass — **not done** (card 60)
+
+`blendAbove` is **still a guess at a fifth**, verified on nothing but a
+desktop panel, exactly as the look wave left it. This wave could not settle
+it: art. 95 says the threshold must be settled on a phone, at real
+brightness, in a dark room, because a desktop panel cannot show the thing
+being decided — and there was no phone. Nothing was changed in its place and
+no number was invented, because a value settled on the wrong panel is worse
+than a value openly marked as a guess. **The card is still open and the
+number in `render.ts` should still be treated as unverified.**
+
+### Still open after this wave
+
+- **The phone pass** (above).
+- **Art. 106's stir**, and the motion budget generally. Thresholds are meant
+  to move in the bottom two steps of their ramp; nothing loops yet, which
+  is why reduced motion had only two one-shots to answer for.
+- **A junction's turns have no state.** They are directions and never
+  leaves, so there is nothing to open, lock or board — and today no lock
+  ever falls on one, because the only lock in the game is the Warden's and
+  the Warden's hall is not a junction. The day a junction needs a sealed
+  exit is a Blocked question, not a guess.
+- **Settings are reachable from the threshold and nowhere else.** A player
+  who wants reduced motion mid-descent reloads, sets it, and presses
+  Continue — which costs nothing and loses nothing, but is worth saying out
+  loud.
+- **`CLAUDE.md` still says 115 articles.** The wave's permission covered
+  `.claude/rules/the-thumb.md` and `AGENTS.md` only, and both are updated;
+  the third index is a one-line follow-up under normal freeze.
 
 **And the tray became a rail and panels.** The playtest found two
 immersion breaks, and the tray stand-up of 2026-08-05 ruled on both. The

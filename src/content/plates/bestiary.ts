@@ -338,3 +338,25 @@ export const BELL: Drawn = drawn([
   '..+++.+++..',
   '.....+.....',
 ])
+
+/**
+ * An urn. Somebody was put in it, and the lid is off — which is the whole
+ * of what a bonefield has to say about the people banked against its walls.
+ */
+export const URN: Drawn = drawn([
+  '..66666666..',
+  '.6777777776.',
+  '..44444444..',
+  '...555555...',
+  '..55666655..',
+  '.5566666655.',
+  '.5666666665.',
+  '.5666666665.',
+  '.5566666655.',
+  '..5566665...',
+  '...555555...',
+  '....5555....',
+  '...555555...',
+  '..66666666..',
+  '..44444444..',
+])

@@ -109,6 +109,23 @@ export interface RunLedger {
    * (art. 70).
    */
   readonly looked: readonly string[]
+  /**
+   * Whether this run has actually been *begun*.
+   *
+   * The threshold is the game's front door, and Continue may only be offered
+   * for a run that is in flight — art. 71 says no press may lie about where
+   * it takes you, and a Continue that walks a fresh waking into the Crossing
+   * is a Descend wearing the wrong word.
+   *
+   * A waking is not a descent. `wake` makes a run out of the permanent, and
+   * that happens on a first install, after a death, after the Warden's door
+   * and after a run is abandoned — every one of which is a run the player
+   * has not yet chosen to take. This is set by the one press that chooses
+   * to, and it is state rather than an inference for exactly art. 91's
+   * reason: a fact the shell has to work out from four other fields is a
+   * fact it can work out wrongly.
+   */
+  readonly descending: boolean
 }
 
 /**
@@ -189,7 +206,40 @@ export interface PermanentLedger {
   readonly handSize: number
   /** arts 47, 55: the bare body you wake with. Content declares both numbers. */
   readonly body: Body
+  /**
+   * art. 116: how the game is presented to this player.
+   *
+   * Preferences are **permanent state, not run state** — they survive a
+   * death, because a player who dies has not changed their mind about
+   * motion. They live beside the Book for the same reason the Book does:
+   * they are about the person and not about the run.
+   *
+   * Nothing in here may change what is *true*. That is the whole of the
+   * article, and it is why this sits on the ledger and still cannot be
+   * reached by the dealer, the ladder or the lots.
+   */
+  readonly prefs: Preferences
 }
+
+/**
+ * art. 116: a setting may change how the game is presented. It may never
+ * change what is true — no difficulty, no arithmetic, no drift weighting, no
+ * rarity — so anything that would make two players' Books incomparable is
+ * not a setting and does not belong in this interface.
+ */
+export interface Preferences {
+  /**
+   * art. 107, tested: loops stop, the blink does not fire, and one-shots
+   * resolve at once to their settled state. Art. 107 already requires that
+   * settled state to be the whole truth, so nothing is lost by skipping the
+   * frames — and anything that turns out to be legible only while moving is
+   * a bug in the thing, not a reason to weaken this.
+   */
+  readonly reducedMotion: boolean
+}
+
+/** What a player who has said nothing gets. */
+export const PLAIN_PREFS: Preferences = { reducedMotion: false }
 
 /**
  * The body stats a waking starts from. arts 47 and 60 make both of these
@@ -372,6 +422,9 @@ export function wake(permanent: PermanentLedger, seed: Seed, depth = 1): Ledgers
     fight: null,
     panel: HOME,
     looked: [],
+    // A waking is not a descent: the labyrinth is dealt and standing there,
+    // and nobody has gone down into it yet.
+    descending: false,
   } as unknown as RunLedger
   return { run, permanent }
 }
@@ -606,7 +659,22 @@ export function firstPermanent(pouch: Pouch, handSize: number, body: Body): Perm
     bookOfEnds: [],
     handSize,
     body,
+    prefs: PLAIN_PREFS,
   } as unknown as PermanentLedger
+}
+
+/**
+ * art. 116: a preference changed, on the ledger that survives a death.
+ *
+ * It is a ritual in the sense art. 11 means — it touches the permanent — but
+ * it is the one that touches nothing else: a preference cannot reach the
+ * run, and there is deliberately no path from here to one.
+ */
+export function preferring(
+  permanent: PermanentLedger,
+  change: Partial<Preferences>,
+): PermanentLedger {
+  return { ...permanent, prefs: { ...permanent.prefs, ...change } }
 }
 
 // ── Moving through a run ───────────────────────────────────────────────
@@ -689,6 +757,23 @@ export function focused(run: RunLedger, panel: Panel): RunLedger {
   return run.panel === panel ? run : { ...run, panel }
 }
 
+/**
+ * The run is taken. One press does this, and it is the press at the
+ * threshold that says Descend — so Continue can be offered for exactly the
+ * runs it is true of, and for no others.
+ */
+export function descending(run: RunLedger): RunLedger {
+  return run.descending ? run : { ...run, descending: true }
+}
+
+/**
+ * Whether there is a run to come back to. `wake` deals a labyrinth and
+ * nobody has gone into it; this is the question the front door asks.
+ */
+export function inFlight(ledgers: Ledgers): boolean {
+  return ledgers.run !== null && ledgers.run.descending
+}
+
 export function wounded(run: RunLedger, health: number): RunLedger {
   return { ...run, health }
 }
@@ -731,9 +816,12 @@ export const QUARANTINE_KEY = 'castlebrynth.quarantine'
  *
  * 4 is the panels wave: art. 67's tray became a rail and a panel area, and
  * art. 75 makes which panel the thumb is on state like any other. 5 is the
- * summons (art. 68): what a run has looked at decides what it may do.
+ * summons (art. 68): what a run has looked at decides what it may do. 6 is
+ * the threshold, which needs to know whether a run was ever begun. 7 is
+ * art. 116's preferences, which are permanent state because a player who
+ * dies has not changed their mind about motion.
  */
-export const VAULT_VERSION = 5
+export const VAULT_VERSION = 7
 
 // ── The migration ladder ───────────────────────────────────────────────
 
@@ -789,6 +877,19 @@ function fillingTheRun(snapshot: Raw, fill: (run: Raw) => Raw): Raw {
     ...snapshot,
     ledgers: { permanent, run: run === null ? null : fill({ ...run }) },
   }
+}
+
+/**
+ * The same shape as `fillingTheRun`, on the other ledger: a rung that only
+ * adds a field to the *permanent* has no reason to touch the run at all, so
+ * the player keeps the descent they were standing in.
+ */
+function fillingThePermanent(snapshot: Raw, fill: (permanent: Raw) => Raw): Raw {
+  const ledgers = asRaw(snapshot.ledgers)
+  const permanent = ledgers === null ? null : asRaw(ledgers.permanent)
+  if (permanent === null) throw new Error('no permanent ledger to migrate')
+  const run = ledgers?.run === undefined ? null : asRaw(ledgers.run)
+  return { ...snapshot, ledgers: { run, permanent: fill({ ...permanent }) } }
 }
 
 function keepingOnlyThePermanent(snapshot: Raw, fill: (permanent: Raw) => Raw): Raw {
@@ -862,6 +963,40 @@ export const MIGRATIONS: readonly Migration[] = [
   {
     from: 4,
     up: (snapshot) => fillingTheRun(snapshot, (run) => ({ ...run, looked: run.looked ?? [] })),
+  },
+  /**
+   * 5 → 6. The threshold wave put the front door in front of the game, and
+   * Continue may only be offered for a run in flight. A v5 snapshot never
+   * recorded whether its run had been begun, so the rung answers from the
+   * one thing that cannot be wrong about it: a run that has taken a door has
+   * been begun, and a run standing at the Crossing with an empty history has
+   * not. Nothing about the arrangement moves, so nobody loses a descent to a
+   * front door.
+   */
+  {
+    from: 5,
+    up: (snapshot) =>
+      fillingTheRun(snapshot, (run) => ({
+        ...run,
+        descending:
+          run.descending ??
+          (Array.isArray((run.history as { taken?: unknown } | undefined)?.taken) &&
+            ((run.history as { taken: readonly unknown[] }).taken.length > 0)),
+      })),
+  },
+  /**
+   * 6 → 7. art. 116's preferences. A player from before the settings screen
+   * has expressed none, so they get the plain ones — and because a
+   * preference cannot change what is true, filling them in changes nothing
+   * about the run standing in the labyrinth or the Book behind it.
+   */
+  {
+    from: 6,
+    up: (snapshot) =>
+      fillingThePermanent(snapshot, (permanent) => ({
+        ...permanent,
+        prefs: permanent.prefs ?? PLAIN_PREFS,
+      })),
   },
 ]
 
@@ -994,6 +1129,48 @@ export function erase(vault: Vault): void {
 /** What was set aside because it could not be read, if anything. */
 export function quarantined(vault: Vault): string | null {
   return vault.read(QUARANTINE_KEY)
+}
+
+/**
+ * art. 116: the vault as text, so a player can take it with them.
+ *
+ * The bytes are the ones on the shelf, not a re-serialisation of what the
+ * shell happens to be holding — an export that quietly differs from the
+ * save is an export nobody can trust. `null` means there is nothing to take.
+ */
+export function exported(vault: Vault): string | null {
+  return vault.read(VAULT_KEY)
+}
+
+/**
+ * A snapshot read back in. It is checked before it is written, and refused
+ * rather than half-applied: `load` walks the ladder and a text this build
+ * cannot walk is a text that never touches the shelf.
+ *
+ * True when it landed. False means nothing was written and the vault is
+ * exactly as it was, which is the only safe answer to bytes nobody can read.
+ */
+export function importable(text: string): boolean {
+  const kept = new Map<string, string>()
+  const scratch: Vault = {
+    read: (key) => kept.get(key) ?? null,
+    write: (key, value) => void kept.set(key, value),
+    forget: (key) => void kept.delete(key),
+  }
+  scratch.write(VAULT_KEY, text)
+  // A quarantine written into the scratch vault is the tell: `load` sets one
+  // aside exactly when it could not read what it found.
+  return load(scratch) !== null && scratch.read(QUARANTINE_KEY) === null
+}
+
+export function importSnapshot(vault: Vault, text: string): boolean {
+  if (!importable(text)) return false
+  vault.write(VAULT_KEY, text)
+  // Whatever this build could not read before has nothing to do with what
+  // was just brought in, and leaving it would quarantine the *next* failure
+  // behind bytes from another install (`load` keeps only the first).
+  vault.forget(QUARANTINE_KEY)
+  return true
 }
 
 /** The vault a browser has. The URL is the whole install. */

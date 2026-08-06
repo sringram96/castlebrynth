@@ -92,8 +92,14 @@ describe('art. 91 — the vault carries the new field forward', () => {
   })
 
   it('keeps the ladder gapless up to the current version', () => {
-    expect(VAULT_VERSION).toBe(5)
-    expect(MIGRATIONS.map((one) => one.from).sort((a, b) => a - b)).toEqual([1, 2, 3, 4])
+    // Bumped by the threshold wave: 6 for the run's `descending` (the front
+    // door may only offer Continue for a run that was begun) and 7 for
+    // art. 116's preferences. Both rungs are the filling kind — nothing
+    // about the arrangement moves — so no descent was lost to either.
+    expect(VAULT_VERSION).toBe(7)
+    expect(MIGRATIONS.map((one) => one.from).sort((a, b) => a - b)).toEqual(
+      Array.from({ length: VAULT_VERSION - 1 }, (_, at) => at + 1),
+    )
   })
 })
 

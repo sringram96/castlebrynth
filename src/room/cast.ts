@@ -54,6 +54,35 @@ export function castBox(
   const breathY = config.grid * config.breath.y
   const atStation = stationAt(view, light.station)
   const open = shape.open === true
+  const turnLeft = shape.turns?.left
+  const turnRight = shape.turns?.right
+
+  /**
+   * art. 96: one side wall, and the hole art. 96 puts in it.
+   *
+   * `d` is how fast the ray runs toward this wall — positive when it is
+   * going that way at all. Where the wall is whole the answer is the plane
+   * it always was. Where the ray meets the aperture the wall is simply not
+   * there, and what the ray meets instead is the turn: the wall across its
+   * far end, or — if the sight line runs out of the turn before that wall
+   * does — the dark it goes on into, which is art. 16's mouth and needs no
+   * second vocabulary.
+   */
+  const sideWall = (
+    d: number,
+    halfWidth: number,
+    turn: { readonly from: number; readonly to: number; readonly throat: number } | undefined,
+  ): { z: number; surface: number; through: boolean } => {
+    if (d <= 0.01) return { z: FAR, surface: Surface.Mouth, through: false }
+    const zWall = (f * halfWidth) / d
+    if (turn === undefined || zWall < turn.from || zWall > turn.to) {
+      return { z: zWall, surface: Surface.Mouth, through: false }
+    }
+    const zOut = (f * (halfWidth + turn.throat)) / d
+    return zOut <= turn.to
+      ? { z: zOut, surface: Surface.Mouth, through: true }
+      : { z: turn.to, surface: Surface.Turn, through: true }
+  }
 
   const wallRamp = packRamp(look.ramps.wall)
   const floorRamp = packRamp(look.ramps.floor)
@@ -183,20 +212,23 @@ export function castBox(
       }
 
       // First-hit depth against each of the four planes.
-      const zR = dx > 0.01 ? (f * shape.width) / dx : FAR
-      const zL = dx < -0.01 ? (f * -shape.width) / dx : FAR
+      // art. 96: and a side wall may have a hole in it. `sideWall` answers
+      // for the whole of that wall, hole and all — the same first-hit cast
+      // with a plane taken away and two put in behind it.
+      const right = sideWall(dx, shape.width, turnRight)
+      const left = sideWall(-dx, shape.width, turnLeft)
       const zC = dy > 0.01 ? (f * shape.ceiling) / dy : FAR
       const zF = dy < -0.01 ? (f * eye) / -dy : FAR
 
       let z = FAR
       let s: number = Surface.Mouth
-      if (zL > 0 && zL < z) {
-        z = zL
-        s = Surface.WallLeft
+      if (left.z > 0 && left.z < z) {
+        z = left.z
+        s = left.through ? left.surface : Surface.WallLeft
       }
-      if (zR > 0 && zR < z) {
-        z = zR
-        s = Surface.WallRight
+      if (right.z > 0 && right.z < z) {
+        z = right.z
+        s = right.through ? right.surface : Surface.WallRight
       }
       if (zC > 0 && zC < z) {
         z = zC
@@ -209,7 +241,11 @@ export function castBox(
       // art. 96: one more plane, and the same first-hit cast. A chamber ends
       // in a wall standing inside the fog — every ray reaches it at the same
       // depth, so it wins wherever it is nearer than the four.
-      if (zBack < z) {
+      //
+      // Unless the ray went through a turn, in which case the far wall is
+      // behind the turn and outside the room: a plane is infinite and a wall
+      // is not, and the hole is what makes the difference show.
+      if (!left.through && !right.through && zBack < z) {
         z = zBack
         s = Surface.Back
       }
@@ -234,6 +270,13 @@ export function castBox(
       let ramp: Int32Array
       if (s === Surface.WallLeft || s === Surface.WallRight) {
         step = surfaces.wall(s === Surface.WallLeft ? -1 : 1, z, atY + eye)
+        ramp = wallRamp
+      } else if (s === Surface.Turn) {
+        // art. 96: the wall a turn ends in. It runs across the sight line
+        // like the far wall does, so it answers the same two questions —
+        // and it takes the wall's ramp, because it is the same stone seen
+        // through a hole rather than along a corridor.
+        step = (surfaces.jamb ?? surfaces.back)(atX, atY + eye)
         ramp = wallRamp
       } else if (s === Surface.Back) {
         // The far wall takes the wall's own ramp: it is the same stone, seen

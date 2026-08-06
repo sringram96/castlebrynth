@@ -20,6 +20,7 @@ import {
   BARE_BODY,
   CATALOG,
   CROSSING,
+  GATE,
   GRAMMAR,
   GRID,
   HAND_SIZE,
@@ -105,7 +106,9 @@ import type { FightPhase, InstanceId, ItemId, Ledgers, Panel, Seed } from './sta
 import {
   HOME,
   browserVault,
+  descending,
   erase,
+  inFlight,
   panelAfter,
   finish,
   focused,
@@ -119,6 +122,16 @@ import {
   tookIntoRun,
   wake,
 } from './state/index.js'
+import {
+  exported,
+  importSnapshot,
+  preferring,
+  quarantined,
+} from './state/index.js'
+import type { AtTheDoor } from './shell/screens/threshold.js'
+import { doorActs, doorWord } from './shell/screens/threshold.js'
+import type { SettingsActs, SettingsView } from './shell/screens/settings.js'
+import { settingsPanel, settingsWord } from './shell/screens/settings.js'
 import type { Framebuffer, RenderedRoom, WorldMark } from './room/index.js'
 import { fillScale, markRect, overpaint, present, renderRoom } from './room/index.js'
 
@@ -145,6 +158,24 @@ function must<T extends HTMLElement>(id: string): T {
 // ── Where we are ───────────────────────────────────────────────────────
 
 type Screen =
+  /**
+   * The front door (card 61). Boot lands here always — cold, or standing in
+   * the middle of a fight — and Continue is one press back to exactly where
+   * you were, focus and all. The cost is one press per reload; the gain is a
+   * front door you never have to go and find, and somewhere for the Book and
+   * the settings to live that is not inside a run.
+   *
+   * **Straw default, pending veto.** The alternative is booting into the run
+   * with the threshold reachable from somewhere, and that needs its own
+   * ruling about where.
+   */
+  | { readonly kind: 'threshold' }
+  /**
+   * art. 116 (card 62). A screen of its own for the reason the other two
+   * are: there is nowhere else to be until you leave it. It stands on the
+   * threshold's room, because it is a thing you do at the door.
+   */
+  | { readonly kind: 'settings' }
   | { readonly kind: 'room' }
   /**
    * art. 60: the hand is assembled from the pouch **for the descent**, so
@@ -170,13 +201,20 @@ let ledgers: Ledgers
 let chain: Chain
 let bands: Bands
 let screen: Screen
+/**
+ * Where Continue goes. Boot works out the screen the run was left on — a
+ * room, or the fight it was standing in the middle of — and then lands on
+ * the threshold instead, holding it. So the front door costs a press and
+ * loses nothing (arts 75, 91).
+ */
+let resumed: Screen = { kind: 'room' }
+/** Set while the door is asking whether the run should really be given up. */
+let abandoning = false
 let notice: string | null = null
 /** Set when a door has already refused you here, so the room can say so. */
 let refused = false
 /** art. 74: the card and the Book live behind glyphs, never mid-screen. */
 let sheet: 'card' | 'book' | null = null
-/** Set while the Book is asking whether everything should really go. */
-let asking = false
 /** Which door the thumb has sensed. Sensing and going are two acts (art. 71). */
 let chosen: Door | null = null
 /**
@@ -258,6 +296,12 @@ function boot(): void {
     // case that could go stale (a save on FIGHT with no fight left).
     if (fight !== null) screen = { kind: 'fight', door: gate }
   }
+  // The front door. Everything above has already put the run back exactly as
+  // it stood, so Continue is one press and restores nothing further — it
+  // only stops holding it (art. 75).
+  resumed = screen
+  screen = { kind: 'threshold' }
+  abandoning = false
   persist()
   paint()
 }
@@ -296,7 +340,37 @@ function frameHeight(): number {
   return Math.max(120, Math.round((GRID * worldBand.clientHeight) / worldBand.clientWidth))
 }
 
+/** Whether the thumb is at the front door rather than inside the labyrinth. */
+function atTheDoor(): boolean {
+  return screen.kind === 'threshold' || screen.kind === 'settings'
+}
+
+/**
+ * art. 116: whether this player has asked for the world to hold still.
+ *
+ * It is read straight off the permanent every time rather than mirrored into
+ * a local, so there is one statement of it and nothing that can go stale
+ * across a wipe, an import or a death.
+ */
+function stillness(): boolean {
+  return ledgers.permanent.prefs.reducedMotion
+}
+
 function world(): void {
+  // The threshold is a room, cast the way any room is cast (art. 21). What
+  // it is not is a menu with a picture behind it, so it goes through the
+  // same renderer and the same cache as everything else.
+  if (atTheDoor()) {
+    markLayer.replaceChildren()
+    const stamp = `gate:${frameHeight()}`
+    let plate = painted.get(stamp)
+    if (plate === undefined) {
+      plate = renderRoom(GATE, atGrid(GRID, frameHeight()))
+      painted.set(stamp, plate)
+    }
+    show(plate.frame)
+    return
+  }
   const node = here()
   const content = roomContent(node.room)
   const state = sceneStateOf(ledgers, ROOM_BOOK, node)
@@ -435,6 +509,12 @@ function say(): void {
   }
   wordBand.classList.remove('faded')
   clearTimeout(fadeTimer)
+  // art. 29: presentation fades and knowledge does not, so the fade stays
+  // whatever the setting says — art. 116 governs how a thing is shown, and
+  // the word band's settled state is faded either way. What reduced motion
+  // takes off it is the transition, which is a class on the root and not a
+  // branch here.
+  document.documentElement.classList.toggle('still', stillness())
   fadeTimer = setTimeout(() => wordBand.classList.add('faded'), 4000) as unknown as number
 }
 
@@ -454,6 +534,10 @@ wordBand.onclick = () => {
 
 function wordOf(): string {
   switch (screen.kind) {
+    case 'threshold':
+      return doorWord(atTheDoorNow())
+    case 'settings':
+      return settingsWord(theSettings())
     // art. 60: an ending that has a question behind it says so. The line is
     // the same ending plus what is true of the pouch — never an instruction
     // (art. 66); the verb on the strip is the thing that tells you to press.
@@ -514,42 +598,18 @@ function drawSheet(): void {
   title.textContent = NOTICES[sheet === 'card' ? 'card.title' : 'book.title'] ?? ''
   sheetBand.append(title)
   if (sheet === 'card') cardLines()
-  else if (asking) askToForget()
   else bookLines()
-  if (asking) {
-    // art. 71: an irreversible act goes through a plain verb you pressed —
-    // and this one, which is the only act in the game that destroys
-    // anything, goes through two of them with the loss stated between.
-    sheetBand.append(
-      row(
-        verb('forget.all', () => forgetEverything()),
-        verb('keep', () => { asking = false; paint() }),
-      ),
-    )
-    return
-  }
+  // art. 116, and the reason the Book's own `Forget` is gone: wiping is a
+  // presentation-free act about everything the vault holds, and section 5
+  // puts it beside export — a player about to lose their Book should be one
+  // press from keeping a copy of it. Two doors to one destructive act is one
+  // too many, so the sheet is a reader again and nothing else.
   sheetBand.append(
     row(
-      ...(sheet === 'card'
-        ? [verb('book', () => { sheet = 'book'; paint() })]
-        : [verb('forget', () => { asking = true; paint() })]),
+      ...(sheet === 'card' ? [verb('book', () => { sheet = 'book'; paint() })] : []),
       verb('close', () => { sheet = null; paint() }),
     ),
   )
-}
-
-/**
- * What is about to be lost, stated plainly and once. The Book is the record
- * of everything the labyrinth remembers about you (art. 84), so it is where
- * the act that ends that record belongs — behind the persistent glyph
- * (art. 74), never on the tray, which is anatomy and holds only what the
- * moment offers (art. 67).
- */
-function askToForget(): void {
-  const said = document.createElement('div')
-  said.className = 'line open'
-  said.textContent = NOTICES['forget.asked'] ?? ''
-  sheetBand.append(said)
 }
 
 /**
@@ -558,10 +618,15 @@ function askToForget(): void {
  * path to keep in step with the ordinary one, because a second path is a
  * second thing to get wrong.
  */
-function forgetEverything(): void {
-  // Whatever pulse was running has nothing left to settle *into* — the
-  // ledgers it would have written are about to stop existing — so the timers
-  // are stopped rather than settled (art. 1's end state is the fresh waking).
+/**
+ * Everything the shell is holding, put down.
+ *
+ * Whatever pulse was running has nothing left to settle *into* — the ledgers
+ * it would have written are about to be replaced — so the timers are stopped
+ * rather than settled, and art. 1's end state is whatever the boot after
+ * this lands on.
+ */
+function settleEverything(): void {
   clearTimeout(advanceTimer)
   clearTimeout(resolveTimer)
   clearTimeout(fadeTimer)
@@ -571,13 +636,17 @@ function forgetEverything(): void {
   selected = []
   advanced = false
   closeness = 1
-  asking = false
+  wiping = false
   sheet = null
   chosen = null
   picked = []
   refused = false
+  abandoning = false
   painted.clear()
+}
 
+function forgetEverything(): void {
+  settleEverything()
   erase(vault)
   // No separate "new game" path: `boot` already knows how to start from a
   // vault with nothing in it, because that is what a new install is. A
@@ -698,8 +767,10 @@ function tabs(): void {
     }
     tabBar.append(el)
   }
-  // art. 60: while the choice is being made there is nowhere else to be.
-  if (screen.kind === 'choosing') return
+  // art. 60: while the choice is being made there is nowhere else to be —
+  // and the same is true at the front door, which is a screen for the same
+  // reason. Neither of them touches the tray.
+  if (screen.kind === 'choosing' || atTheDoor()) return
   tab('acts', 'acts')
   // art. 67: the pouch is shut during a fight. The hand a fight was opened
   // with is the hand it is replayed with (arts 63, 75), so there is nothing
@@ -718,10 +789,27 @@ function tabs(): void {
 }
 
 function panels(): void {
+  // A screen takes the whole panel area: there is nowhere else to be until
+  // it is answered, so ACTS is the only thing under it and the other two are
+  // shut (art. 67).
+  if (atTheDoor()) {
+    fightPanel.classList.remove('on')
+    // art. 116's screen is a sheet of settings rather than a strip of verbs,
+    // so it takes the panel area the pouch and the choosing screen take.
+    const settling = screen.kind === 'settings'
+    pouchRegion.classList.toggle('on', settling)
+    actStrip.classList.toggle('on', !settling)
+    if (settling) return settingsPanel(pouchRegion, theSettings(), SETTINGS_ACTS, verb)
+    return acts()
+  }
   // art. 60: the choosing screen takes the whole panel area. It is not a
   // panel you can tab to — it is what the tray is until the choice is made.
   if (screen.kind === 'choosing') {
     actStrip.classList.remove('on')
+    // And emptied, not merely hidden: the strip it was showing belonged to
+    // the room the run ended in, and a hidden verb is still a verb the
+    // thumb can reach if anything ever unhides it.
+    actStrip.replaceChildren()
     fightPanel.classList.remove('on')
     pouchRegion.classList.add('on')
     pouchRegion.replaceChildren()
@@ -770,6 +858,10 @@ function reading(label: string, value: string): HTMLSpanElement {
  */
 function vitals(): void {
   vitalsRegion.replaceChildren()
+  // The rail is the body's numbers, and at the front door there is no body
+  // in the labyrinth to have any (art. 67: the tray holds what the moment
+  // offers, and this moment offers a door).
+  if (atTheDoor()) return
   const run = ledgers.run!
   const now = fight
   // art. 67 (amended): the rail is the body and nothing else. The turn's
@@ -1069,6 +1161,8 @@ function carriedSlot(item: ItemId): HTMLButtonElement {
 function acts(): void {
   actStrip.replaceChildren()
   switch (screen.kind) {
+    case 'threshold':
+      return doorActs(actStrip, atTheDoorNow(), DOOR_ACTS, verb)
     case 'room':
       return roomActs()
     case 'fight':
@@ -1228,16 +1322,176 @@ function commitChoice(): void {
   paint()
 }
 
+// ── The threshold (card 61) ────────────────────────────────────────────
+
+/** What is true at the door, as the screen needs it. */
+function atTheDoorNow(): AtTheDoor {
+  return {
+    inFlight: inFlight(ledgers),
+    hasBook: ledgers.permanent.bookOfEnds.length > 0,
+    abandoning,
+  }
+}
+
+/**
+ * The four presses. Every one of them is here rather than in the screen,
+ * which knows what is true and nothing about what to do with it.
+ */
+const DOOR_ACTS = {
+  /**
+   * art. 75: the run and its panel focus, exactly as they stood — including
+   * mid-fight. Boot already restored all of it, so this stops holding it
+   * rather than rebuilding it, and there is nothing to get wrong.
+   */
+  resume(): void {
+    screen = resumed
+    notice = null
+    paint()
+  },
+  descend(): void {
+    beginDescent()
+  },
+  arm(): void {
+    abandoning = true
+    notice = null
+    paint()
+  },
+  abandon(): void {
+    abandonTheRun()
+  },
+  keep(): void {
+    abandoning = false
+    notice = null
+    paint()
+  },
+  read(): void {
+    sheet = 'book'
+    paint()
+  },
+  settings(): void {
+    wiping = false
+    imported = null
+    screen = { kind: 'settings' }
+    notice = null
+    paint()
+  },
+}
+
+// ── Settings (card 62, art. 116) ───────────────────────────────────────
+
+/** Set while the settings screen is asking whether everything should go. */
+let wiping = false
+/** What the last import said, so the screen can say it too (art. 69). */
+let imported: 'took' | 'refused' | null = null
+
+function theSettings(): SettingsView {
+  return {
+    prefs: ledgers.permanent.prefs,
+    snapshot: exported(vault),
+    quarantine: quarantined(vault),
+    wiping,
+    imported,
+  }
+}
+
+const SETTINGS_ACTS: SettingsActs = {
+  /**
+   * art. 116: a presentation knob, and nothing else moves with it. It is
+   * written to the permanent at once, because a preference that only lands
+   * at the next save is a preference that can be lost to a lock screen.
+   */
+  prefer(change): void {
+    ledgers = { ...ledgers, permanent: preferring(ledgers.permanent, change) }
+    imported = null
+    persist()
+    paint()
+  },
+  arm(): void {
+    wiping = true
+    paint()
+  },
+  wipe(): void {
+    wiping = false
+    forgetEverything()
+  },
+  keep(): void {
+    wiping = false
+    paint()
+  },
+  /**
+   * A snapshot brought back in. It is refused rather than half-applied — a
+   * text this build cannot walk up the ladder never touches the shelf — and
+   * a text that lands reboots the shell off it, because everything the shell
+   * is holding came from the bytes that were just replaced.
+   */
+  bring(text): void {
+    if (text.length === 0 || !importSnapshot(vault, text)) {
+      imported = 'refused'
+      return paint()
+    }
+    settleEverything()
+    boot()
+    screen = { kind: 'settings' }
+    imported = 'took'
+    paint()
+  },
+  leave(): void {
+    screen = { kind: 'threshold' }
+    imported = null
+    notice = null
+    paint()
+  },
+}
+
+/**
+ * Giving up a run. It is an ending like any other — the run burns and the
+ * permanent survives (art. 11) — so it writes its line in the Book and
+ * reseeds (art. 32), and the door is left offering Descend rather than
+ * quietly starting the next run for you.
+ *
+ * The Book takes the line on purpose. The Book of Ends is the record of
+ * every ending, and an ending a player could take without it being written
+ * down is a record they can scrub by walking away from the runs that went
+ * badly.
+ */
+function abandonTheRun(): void {
+  clearTimeout(advanceTimer)
+  clearTimeout(resolveTimer)
+  resolving = null
+  fight = null
+  phase = 'pre'
+  selected = []
+  advanced = false
+  ledgers = routeDeath(ledgers, 'end.abandoned')
+  chain = deal(ledgers.run!.seed, ledgers.run!.depth, CATALOG, GRAMMAR, ledgers.run!.history)
+  bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
+  chosen = doors(bands)[0] ?? null
+  greet()
+  refused = false
+  abandoning = false
+  resumed = { kind: 'room' }
+  screen = { kind: 'threshold' }
+  notice = NOTICES['gate.abandoned'] ?? null
+  persist()
+  paint()
+}
+
 /**
  * art. 60: a descent begins by asking which dice come down, when there is
  * anything to ask. A pouch that fits the hand asks nothing and the player
  * walks straight in.
  */
 function beginDescent(): void {
+  // The run is taken, and that is state rather than something inferred
+  // later — Continue may only ever be offered for a run this press began.
+  ledgers = { ...ledgers, run: descending(ledgers.run!) }
   if (mustChoose(ledgers.permanent)) {
     picked = ledgers.run!.hand.dice.map((die) => die.id)
+    // art. 91: the choosing screen is a screen and not a panel, so it moves
+    // no focus. The first cut focused POUCH to draw itself there and never
+    // moved it back, which left the tray on the pouch when the run opened —
+    // a focus moved by inference, which is exactly what the article bans.
     screen = { kind: 'choosing' }
-    focus('pouch')
   } else {
     screen = { kind: 'room' }
   }
@@ -1374,6 +1628,15 @@ function beginAdvance(): void {
   clearTimeout(advanceTimer)
   advanced = false
   closeness = 0
+  // art. 116: with the world held still, a one-shot resolves at once to its
+  // settled state. art. 107 already says that settled state is the whole
+  // truth and a player who missed the motion missed nothing — so this is the
+  // test of whether art. 107 was honest, and the advance passes it: the
+  // horror stands at the near depth either way.
+  if (stillness()) {
+    closeness = 1
+    return settleAdvance()
+  }
   const step = (): void => {
     closeness = Math.min(1, closeness + 0.1)
     world()
@@ -1481,6 +1744,11 @@ function endTurn(): void {
   if (now === null) return
   resolving = decide(now.turn, 'end-turn', now.armor, goods())
   selected = []
+  // art. 116: the resolve is a beat of presentation and nothing else — no
+  // decision waits on it (art. 1) — so with the world held still it is
+  // skipped and the turn lands. What the dimming would have shown is what
+  // the next paint shows anyway.
+  if (stillness()) return settleTurn()
   paint()
   resolveTimer = setTimeout(settleTurn, 700) as unknown as number
 }

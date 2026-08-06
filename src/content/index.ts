@@ -20,6 +20,7 @@ export {
   shadingOf,
 } from './palettes.js'
 export { WAKE, masonry } from './plates/wake.js'
+export { GATE } from './plates/gate.js'
 export type { Dressing } from './plates/plain.js'
 export { BARE, plainScene } from './plates/plain.js'
 export {

@@ -85,6 +85,7 @@ import {
   niche,
   pilasters,
   stringCourse,
+  turnFrame,
 } from './plates/features.js'
 import { plainScene } from './plates/plain.js'
 import {
@@ -108,6 +109,7 @@ import {
   framedWidth,
 } from './plates/props.js'
 import {
+  BEARER,
   BELL,
   BOTTLE,
   BRAZIER,
@@ -123,9 +125,10 @@ import {
   SKULL,
   STATUE,
   THRONE,
+  URN,
   WATCHER,
 } from './plates/bestiary.js'
-import { WAKE } from './plates/wake.js'
+import { WAKE, masonry, wakeProps } from './plates/wake.js'
 import { ARRIVALS, BEATS, LABELS, LOOKS, NOUNS } from './prose.js'
 import { RENDER } from './render.js'
 
@@ -158,9 +161,33 @@ const GREAT = { lens: 104, width: 17, ceiling: 13, back: 58 } as const
 const VAULT = { lens: 84, width: 8, ceiling: 4, back: 27 } as const
 /** art. 96: the open — no walls, no ceiling, and the sky instead. */
 const OPEN = { lens: 100, width: 40, ceiling: 40, open: true } as const
+/**
+ * art. 96: the junction — a chamber whose side apertures are wide and
+ * full-height, and the room where the labyrinth finally has lefts and
+ * rights. It is deliberately shorter than a chamber: a room that ends soon
+ * and opens sideways is a place you turn in, where the same proportions
+ * ending far away would read as a corridor with dents in it.
+ */
+const JUNCTION = { lens: 96, width: 12, ceiling: 8, back: 34 } as const
 
-/** Which of the four boxes a room is, for the marks that derive from it. */
-type ShapeKind = 'corridor' | 'low' | 'chamber' | 'hall' | 'great' | 'vault' | 'open'
+/**
+ * Where a junction's turns stand. `from` and `to` say how much of the wall
+ * is gone; `throat` is how far the turn runs before there is nothing left
+ * to see, which is why the outer edge of each opening is dark and the inner
+ * edge is the wall the turn ends in (art. 96).
+ */
+const TURN = { from: 14, to: 26, throat: 7 } as const
+
+/** Which of the boxes a room is, for the marks that derive from it. */
+type ShapeKind =
+  | 'corridor'
+  | 'low'
+  | 'chamber'
+  | 'hall'
+  | 'great'
+  | 'vault'
+  | 'open'
+  | 'junction'
 
 const SHAPES: Readonly<Record<ShapeKind, RoomShape>> = {
   corridor: CORRIDOR,
@@ -170,6 +197,50 @@ const SHAPES: Readonly<Record<ShapeKind, RoomShape>> = {
   great: GREAT,
   vault: VAULT,
   open: OPEN,
+  junction: { ...JUNCTION, turns: { left: TURN } },
+}
+
+/**
+ * arts 70, 96: a junction opens the ways it actually has.
+ *
+ * The turns are the exits, so a room that offers one way on has one hole in
+ * it and a room that offers two has two. Casting a second aperture for a
+ * door the chain never dealt would be pixels promising something the thumb
+ * cannot press, which is the same defect art. 97 was written about from the
+ * other side — a tap region standing over nothing.
+ *
+ * One door is a corner: you turn left, and that is the whole of the choice.
+ * Three is a left, a right, and the way straight on, which is the only time
+ * a junction wears an ordinary threshold as well.
+ */
+function shapeFor(kind: ShapeKind, doors: number): RoomShape {
+  if (kind !== 'junction') return SHAPES[kind]
+  return { ...JUNCTION, turns: doors >= 2 ? { left: TURN, right: TURN } : { left: TURN } }
+}
+
+/**
+ * arts 68, 96: where a turn stands, for the thumb.
+ *
+ * A turn is not a billboard — it is a hole in a wall running away from the
+ * camera — so the rectangle that answers for it is derived from where that
+ * hole actually lands on the frame rather than authored beside it. The two
+ * ends of the aperture project to `f·W/from` and `f·W/to`; this is the
+ * world mark whose projection is exactly that span, which is what keeps the
+ * region over the hole at every lens and every dial (arts 22–23).
+ */
+function turnMark(side: -1 | 1, shape: { readonly width: number; readonly ceiling: number }): WorldMark {
+  const mid = (TURN.from + TURN.to) / 2
+  const near = 1 / TURN.from
+  const far = 1 / TURN.to
+  return {
+    X: side * mid * shape.width * ((near + far) / 2),
+    Y: FLOOR,
+    z: mid,
+    width: mid * shape.width * (near - far),
+    // Full-height: floor to ceiling, which is what makes it a way through
+    // the wall rather than a niche in it (art. 96).
+    height: RENDER.eye + shape.ceiling,
+  }
 }
 
 /**
@@ -182,6 +253,15 @@ const FIRE = '#ffb14a'
 
 /** The floor, in the world's own units — everything stands on it. */
 const FLOOR = -RENDER.eye
+
+/**
+ * art. 105: how far off the centre line the Crossing's shaft of light
+ * stands, so its doors read *beside* it rather than through it. Far enough
+ * that the leftmost of three thresholds is clear of the pool, and no
+ * further: the shaft is still the room's hero and a hero pushed into the
+ * corner is a hero nobody looks at.
+ */
+const SHAFT_ASIDE = -7.4
 
 /**
  * Where the doors stand in each shape. A door is a thing in the world like
@@ -210,6 +290,9 @@ const DOOR_PLAN: Readonly<Record<ShapeKind, DoorPlan>> = {
   hall: { high: 19, wide: 9 },
   great: { high: 24, wide: 11 },
   vault: { high: 10.5, wide: 4.6 },
+  // art. 96: only ever used for the way *straight on*, when a junction
+  // offers one. Its lefts and rights are holes and not doors.
+  junction: { high: 17.5, wide: 8 },
   // art. 96: an open room's way on is a gap in nothing, so its threshold
   // stands free on the ground and is the one place a frame is the whole wall.
   open: { high: 20, wide: 8.5 },
@@ -251,6 +334,26 @@ const NARROWEST = 2.2
 export function doorMarks(kind: ShapeKind, count: number): readonly WorldMark[] {
   const plan = DOOR_PLAN[kind]
   const n = Math.max(1, count)
+  // art. 96: a junction deals directions. One way on is a corner, two are a
+  // left and a right, and three put the way straight on between them — so
+  // the middle of three is the only threshold a junction ever wears, and the
+  // outer two are the holes themselves.
+  if (kind === 'junction') {
+    const left = turnMark(-1, JUNCTION)
+    const right = turnMark(1, JUNCTION)
+    if (n === 1) return [left]
+    if (n === 2) return [left, right]
+    return [left, ...backWallMarks(kind, n - 2), right]
+  }
+  return backWallMarks(kind, n)
+}
+
+/**
+ * The doors that are holes in the wall at the end of the room — which is
+ * every door in the game except a junction's turns.
+ */
+function backWallMarks(kind: ShapeKind, n: number): readonly WorldMark[] {
+  const plan = DOOR_PLAN[kind]
   const span = SHAPES[kind].open === true ? 26 : 2 * (SHAPES[kind].width - DOOR_MARGIN)
   const slot = span / n
   // A narrow room's doors need a proportionally narrower gap: the law is
@@ -297,6 +400,7 @@ const DOOR_AT: Readonly<Record<ShapeKind, WorldMark>> = {
   great: doorMarks('great', 1)[0]!,
   vault: doorMarks('vault', 1)[0]!,
   open: doorMarks('open', 1)[0]!,
+  junction: doorMarks('junction', 1)[0]!,
 }
 
 /**
@@ -335,7 +439,10 @@ const SOCKET_AT: Readonly<Record<ShapeKind, Readonly<Record<string, WorldMark>>>
   hall: {
     [FAR_SOCKET]: { X: 0, Y: FLOOR, z: 31, width: 6.5, height: 9 },
     [FLOOR_SOCKET]: { X: 8.5, Y: FLOOR + 1.5, z: 19, width: 3.4, height: 2 },
-    [MERCY_SOCKET]: { X: -8.6, Y: FLOOR, z: 22, width: 5, height: 8 },
+    // Brought forward from 22 by the threshold wave: it stood across the
+    // middle of the watcher, so anything dealt into it covered the room's
+    // one thing and the neck stopped answering (arts 69, 104–105).
+    [MERCY_SOCKET]: { X: -9.5, Y: FLOOR, z: 15, width: 5, height: 8 },
   },
   great: {
     [FAR_SOCKET]: { X: 0, Y: FLOOR, z: 40, width: 8, height: 11 },
@@ -345,12 +452,26 @@ const SOCKET_AT: Readonly<Record<ShapeKind, Readonly<Record<string, WorldMark>>>
   vault: {
     [FAR_SOCKET]: { X: 0, Y: FLOOR, z: 19, width: 3.6, height: 4.6 },
     [FLOOR_SOCKET]: { X: 5, Y: FLOOR + 1.2, z: 14, width: 3, height: 1.8 },
-    [MERCY_SOCKET]: { X: -5, Y: FLOOR, z: 16, width: 3.2, height: 4.2 },
+    // Moved back from 16 by the threshold wave: it stood exactly where the
+    // sewer's caps stand, so anything the dealer put in it covered the
+    // middle of them and the caps stopped answering (arts 69, 105). Nothing
+    // has ever been dealt into it — the Savior is that rare — which is
+    // precisely why nobody had run into it.
+    [MERCY_SOCKET]: { X: -5, Y: FLOOR, z: 21, width: 3.2, height: 4.2 },
   },
   open: {
     [FAR_SOCKET]: { X: 0, Y: FLOOR, z: 26, width: 7, height: 9.5 },
     [FLOOR_SOCKET]: { X: 9, Y: FLOOR + 1.5, z: 17, width: 3.4, height: 2 },
     [MERCY_SOCKET]: { X: -10, Y: FLOOR, z: 21, width: 5, height: 8 },
+  },
+  // art. 105: a junction's things stand *this* side of its turns. Anything
+  // placed level with an opening is a thing standing in a doorway, and the
+  // one order a room resolves in puts the exits before the things in it
+  // (art. 104).
+  junction: {
+    [FAR_SOCKET]: { X: 0, Y: FLOOR, z: 30, width: 5.5, height: 7.5 },
+    [FLOOR_SOCKET]: { X: 6.8, Y: FLOOR + 1.5, z: 11.5, width: 3.4, height: 2 },
+    [MERCY_SOCKET]: { X: -6.8, Y: FLOOR, z: 12, width: 4.4, height: 6.8 },
   },
 }
 
@@ -430,12 +551,37 @@ const AUTHORED: readonly Authored[] = [
     type: 'crossing',
     school: MUTED,
     kind: 'corridor',
-    // The reference plate, unchanged: it wins ties about intent, and the
-    // room parity test measures it byte for byte.
-    plate: WAKE,
+    /**
+     * The reference plate — with its shaft moved aside, and only here.
+     *
+     * PR #44 recorded the debt and art. 105 is what it owes: the shaft was
+     * composed against a mouth, and once the Crossing ended in a wall its
+     * doors stood *behind* it and read through it. Supporting things stand
+     * aside from the hero, never across it — and here the shaft is the hero
+     * and the doors are the exits, which a room resolves *before* the one
+     * thing in it (art. 104).
+     *
+     * The fix belongs to the room and not to the plate. `WAKE` rendered as
+     * itself is a tube with no doors in it, where a shaft down the middle is
+     * the right composition and always was; the defect appeared when the
+     * shape changed under it, so the shape is where it is answered. The
+     * reference still wins ties about intent, and the golden plate does not
+     * move.
+     */
+    plate: { ...WAKE, props: wakeProps(SHAFT_ASIDE) },
+    built: {
+      // art. 99: the corridor you wake in is ribbed, and the stone behind
+      // you is unbroken — so the crack is on the wall the chain hangs from,
+      // where it is the first thing the room admits about itself.
+      left: layered(crack(20, 15, 1, 23), pilasters(11, 1.9, 3)),
+      right: stringCourse(9.5, 0.85),
+      back: stringCourse(9.5, 0.85),
+    },
     dressing: () => [],
     tappables: [
-      ['crossing.grate', { X: 0, Y: 4, z: 17.7, width: 7.5, height: 4 }],
+      // art. 68: the region answers for the thing where the thing stands, so
+      // the grate's mark moves with the shaft rather than staying behind.
+      ['crossing.grate', { X: SHAFT_ASIDE, Y: 4, z: 17.7, width: 7.5, height: 4 }],
       ['crossing.bones', { X: -1, Y: FLOOR, z: 13.8, width: 17, height: 2.4 }],
       ['crossing.traveler', { X: 10.4, Y: FLOOR, z: 22.4, width: 5, height: 3.2 }],
       ['crossing.chain', { X: -9.8, Y: 0, z: 12, width: 2, height: 8 }],
@@ -453,14 +599,36 @@ const AUTHORED: readonly Authored[] = [
     type: 'trove',
     school: OCHRE,
     kind: 'low',
-    dressing: (school) => [alcove(school), dust(school)],
-    tappables: [['alcove.dust', { X: 7.2, Y: FLOOR, z: 22.5, width: 3.4, height: 1.6 }]],
+    // art. 99: the alcove *is* architecture, so it is a recess cut into the
+    // wall plane and not a thing painted on it — which is the difference
+    // between a hole that recedes with the wall and a rectangle that does
+    // not. A second, smaller one further along says the room was built for
+    // keeping things in, and both of them are empty now.
+    built: {
+      right: layered(niche(21, 4.5, 12.5, 6.5), niche(30, 5, 10, 3.6)),
+      left: stringCourse(8.6, 0.8),
+    },
+    dressing: (school) => [
+      dust(school),
+      // art. 104: the one thing, at a size that reads, and nearer the camera
+      // at the frame's edge so it stands aside from the exits (art. 105).
+      thing(school, COINS, { X: -7.2, Y: FLOOR, z: 11.5, width: 3.8, height: 2 }, 'the coins'),
+    ].filter((one): one is NonNullable<typeof one> => one !== null),
+    tappables: [
+      ['alcove.dust', { X: 7.2, Y: FLOOR, z: 22.5, width: 3.4, height: 1.6 }],
+      ['alcove.coins', { X: -7.2, Y: FLOOR, z: 11.5, width: 3.8, height: 2 }],
+    ],
   },
   {
     id: 'room.passage.stair',
     type: 'passage',
     school: GRANITE,
-    kind: 'corridor',
+    kind: 'junction',
+    // art. 99: a course at landing height, and the stone cracked above it
+    // where the flights stopped lining up. It is on the wall the room ends
+    // in, because a junction's side walls are mostly hole and what little of
+    // them is left belongs to the architraves (arts 96–97).
+    built: { back: layered(stringCourse(10.5, 0.8), crack(5.5, 15, 1, 31)) },
     dressing: (school) => [stairHead(school)],
     tappables: [['stair.tread', { X: 0, Y: FLOOR, z: 24, width: 7, height: 2.4 }]],
   },
@@ -475,6 +643,16 @@ const AUTHORED: readonly Authored[] = [
     type: 'sanctum',
     school: VERDIGRIS,
     kind: 'low',
+    // art. 99: a blind arcade round the water at the height a person kneels,
+    // and a course above it. This is the one room in the depth that was
+    // *built* to be come to, and the architecture is where that is said —
+    // art. 104's one thing here is the basin bound to its mercy socket, so
+    // the walls carry the room and nothing else stands in it (art. 83).
+    built: {
+      left: layered(stringCourse(10, 0.7), blindArcade(6.5, 3.6, 0.5, 6.2)),
+      right: layered(stringCourse(10, 0.7), blindArcade(6.5, 3.6, 0.5, 6.2, 3.2)),
+      back: stringCourse(10, 0.7),
+    },
     dressing: (school) => [fontSteps(school)],
     tappables: [['font.step', { X: 0, Y: FLOOR - 1.2, z: 15, width: 8, height: 2.4 }]],
     // Nothing waits in a font, and nothing floats into it: its mercy socket
@@ -488,7 +666,10 @@ const AUTHORED: readonly Authored[] = [
     id: 'room.passage.drip',
     type: 'passage',
     school: WET,
-    kind: 'corridor',
+    kind: 'junction',
+    // art. 99: the water comes in through the wall the room ends in, and it
+    // has been coming in long enough to have opened it.
+    built: { back: layered(crack(-4, 18, 0, 47), stringCourse(4.5, 0.7)) },
     dressing: (school) => [
       runnel(school),
       seep(school),
@@ -500,8 +681,24 @@ const AUTHORED: readonly Authored[] = [
     type: 'lair',
     school: BRINE,
     kind: 'chamber',
-    dressing: (school) => [standingWater(school)],
-    tappables: [['cistern.water', { X: 0, Y: FLOOR, z: 13, width: 12, height: 2.4 }]],
+    // art. 99: a tank, so it is coursed round at the height the water once
+    // stood and arcaded above it — and the arcade wears no architrave, so
+    // nothing in it can be taken for a way out (art. 97).
+    built: {
+      left: layered(stringCourse(5.5, 0.9), blindArcade(9, 5, 7, 14)),
+      right: layered(stringCourse(5.5, 0.9), blindArcade(9, 5, 7, 14, 4.5)),
+      back: stringCourse(5.5, 0.9),
+    },
+    dressing: (school) => [
+      standingWater(school),
+      // art. 104: the cage is the one thing, and it stands off to the side
+      // of whatever the far socket puts at the end of the room (art. 105).
+      thing(school, CAGE, { X: -8.4, Y: FLOOR, z: 15, width: 4.4, height: 5 }, 'the cage'),
+    ].filter((one): one is NonNullable<typeof one> => one !== null),
+    tappables: [
+      ['cistern.water', { X: 0, Y: FLOOR, z: 13, width: 12, height: 2.4 }],
+      ['cistern.cage', { X: -8.4, Y: FLOOR, z: 15, width: 4.4, height: 5 }],
+    ],
     teeth: LAIR_CHANCE,
   },
   {
@@ -509,34 +706,89 @@ const AUTHORED: readonly Authored[] = [
     type: 'trove',
     school: SILT,
     kind: 'low',
-    dressing: (school) => [sumpGrate(school)],
-    tappables: [['sump.grate', { X: 0, Y: FLOOR, z: 24, width: 5, height: 2 }]],
+    // art. 99: a tidemark, coursed — the silt line the beats name, cut into
+    // the wall rather than painted along it — and a way out somebody closed
+    // when the depth started losing things down here.
+    built: {
+      left: layered(brickedUp(19, 7, 11), stringCourse(4.2, 0.6)),
+      right: layered(crack(24, 14, 1, 53), stringCourse(4.2, 0.6)),
+    },
+    dressing: (school) => [
+      sumpGrate(school),
+      thing(school, SKULL, { X: -7.2, Y: FLOOR, z: 11.5, width: 2.6, height: 2.9 }, 'the skull'),
+    ].filter((one): one is NonNullable<typeof one> => one !== null),
+    tappables: [
+      ['sump.grate', { X: 0, Y: FLOOR, z: 24, width: 5, height: 2 }],
+      ['sump.skull', { X: -7.2, Y: FLOOR, z: 11.5, width: 2.6, height: 2.9 }],
+    ],
   },
   {
     id: 'room.passage.ash',
     type: 'passage',
     school: ASH,
     kind: 'corridor',
+    // art. 99: pilasters the ash has climbed, and a course above the reach
+    // of it, so the wall says where the ash has got to without a word.
+    built: {
+      left: layered(stringCourse(12, 0.9), pilasters(9.5, 2.2, 2)),
+      right: layered(stringCourse(12, 0.9), pilasters(9.5, 2.2, 6.5)),
+    },
     dressing: (school) => [
       ashBanks(school),
       motes(school),
+      // art. 104: somebody else is down here, and their lantern is the only
+      // light in the room that is not the room's (art. 100's `*`).
+      thing(
+        school,
+        BEARER,
+        { X: 8.4, Y: FLOOR, z: 14, width: 4.4, height: 6.2 },
+        'the lantern-bearer',
+        40,
+        FIRE,
+      ),
+    ].filter((one): one is NonNullable<typeof one> => one !== null),
+    tappables: [
+      ['ash.ash', { X: -8.5, Y: FLOOR, z: 15, width: 5, height: 2 }],
+      ['ash.bearer', { X: 8.4, Y: FLOOR, z: 14, width: 4.4, height: 6.2 }],
     ],
-    tappables: [['ash.ash', { X: -8.5, Y: FLOOR, z: 15, width: 5, height: 2 }]],
   },
   {
     id: 'room.lair.kiln',
     type: 'lair',
     school: EMBER,
     kind: 'chamber',
-    dressing: (school) => [kilnMouth(school)],
-    tappables: [['kiln.mouth', { X: -12, Y: FLOOR + 2, z: 19, width: 3, height: 7 }]],
+    // art. 99: the kiln is not the only thing that was fired here. The
+    // arches down the right are bricked flues, and the left wall has gone
+    // where the heat was worst.
+    built: {
+      left: layered(crack(22, 20, 2, 67), stringCourse(13, 0.8)),
+      right: blindArcade(10, 4.2, 0.5, 7, 4),
+    },
+    dressing: (school) => [
+      kilnMouth(school),
+      thing(
+        school,
+        BRAZIER,
+        { X: -4.5, Y: FLOOR, z: 11, width: 4, height: 5.2 },
+        'the brazier',
+        44,
+        FIRE,
+      ),
+    ].filter((one): one is NonNullable<typeof one> => one !== null),
+    tappables: [
+      ['kiln.mouth', { X: -12, Y: FLOOR + 2, z: 19, width: 3, height: 7 }],
+      ['kiln.brazier', { X: -4.5, Y: FLOOR, z: 11, width: 4, height: 5.2 }],
+    ],
     teeth: LAIR_CHANCE,
   },
   {
     id: 'room.omen.pyre',
     type: 'omen',
     school: SOOT,
-    kind: 'chamber',
+    kind: 'junction',
+    // art. 99: the soot climbs the wall the room ends in, and stops at a
+    // course somebody laid before any of this.
+    built: { back: layered(stringCourse(9, 0.9), niche(0, 11, 16, 4.2)) },
     dressing: (school) => [pyreStack(school)],
     tappables: [['pyre.timber', { X: 0, Y: FLOOR + 2, z: 21, width: 5.5, height: 4.5 }]],
   },
@@ -544,7 +796,10 @@ const AUTHORED: readonly Authored[] = [
     id: 'room.lair.den',
     type: 'lair',
     school: NOIR,
-    kind: 'low',
+    kind: 'junction',
+    // art. 96: the drag mark turns at the corner, and now there is a corner
+    // for it to turn at. The wall it ends in has been gone over.
+    built: { back: crack(2, 19, 0, 83) },
     dressing: (school) => [dragMark(school)],
     tappables: [['den.drag', { X: -3, Y: FLOOR, z: 18, width: 9, height: 2 }]],
     teeth: LAIR_CHANCE,
@@ -553,17 +808,43 @@ const AUTHORED: readonly Authored[] = [
     id: 'room.passage.bonefield',
     type: 'passage',
     school: CHALK,
-    kind: 'corridor',
-    dressing: (school) => [boneDrifts(school)],
-    tappables: [['bonefield.bone', { X: 8.5, Y: FLOOR, z: 15, width: 5, height: 2 }]],
+    kind: 'low',
+    // art. 99: loculi, which is what a wall of a bonefield is — three
+    // shelves cut for people, and nothing on any of them now.
+    built: {
+      right: layered(niche(13, 3.5, 6.5, 4.4), niche(21, 3.5, 6.5, 4.4), niche(29, 3.5, 6.5, 4.4)),
+      left: layered(stringCourse(7.5, 0.7), pilasters(8, 1.7, 1)),
+    },
+    dressing: (school) => [
+      boneDrifts(school),
+      thing(school, URN, { X: -7.2, Y: FLOOR, z: 11.5, width: 3, height: 3.7 }, 'the urn'),
+    ].filter((one): one is NonNullable<typeof one> => one !== null),
+    tappables: [
+      ['bonefield.bone', { X: 8.5, Y: FLOOR, z: 15, width: 5, height: 2 }],
+      ['bonefield.urn', { X: -7.2, Y: FLOOR, z: 11.5, width: 3, height: 3.7 }],
+    ],
   },
   {
     id: 'room.puzzle.tally',
     type: 'puzzle',
     school: SLATE,
     kind: 'low',
-    dressing: (school) => [tallyMarks(school)],
-    tappables: [['tally.marks', { X: 8.6, Y: FLOOR + 3, z: 20, width: 2.4, height: 4 }]],
+    // art. 99: the tally is cut into the right-hand wall, so the wall gets a
+    // course to cut it under and the left gets the crack that says how long
+    // whoever cut it was down here.
+    built: {
+      right: stringCourse(7.8, 0.7),
+      left: layered(crack(16, 13, 1, 97), crack(26, 15, 3, 41)),
+    },
+    dressing: (school) => [
+      tallyMarks(school),
+      // art. 104: it was rung for something, and it is hung too low to ring.
+      thing(school, BELL, { X: -7.2, Y: FLOOR + 5.4, z: 12, width: 2.9, height: 3.2 }, 'the bell'),
+    ].filter((one): one is NonNullable<typeof one> => one !== null),
+    tappables: [
+      ['tally.marks', { X: 8.6, Y: FLOOR + 3, z: 20, width: 2.4, height: 4 }],
+      ['tally.bell', { X: -7.2, Y: FLOOR + 5.4, z: 12, width: 2.9, height: 3.2 }],
+    ],
   },
   {
     id: 'room.hall.throne',
@@ -634,11 +915,11 @@ const AUTHORED: readonly Authored[] = [
       right: pilasters(9, 1.8, 3),
     },
     dressing: (school) => [
-      thing(school, CAGE, { X: -8.8, Y: FLOOR, z: 27, width: 4.6, height: 5.2 }, 'the cage'),
+      thing(school, CAGE, { X: -8.8, Y: FLOOR, z: 15, width: 4.6, height: 5.2 }, 'the cage'),
       thing(school, CHOIR, { X: 8.6, Y: FLOOR, z: 24, width: 7.5, height: 9.5 }, 'the choir', 50),
     ].filter((one): one is NonNullable<typeof one> => one !== null),
     tappables: [
-      ['choir.cage', { X: -8.8, Y: FLOOR, z: 27, width: 4.6, height: 5.2 }],
+      ['choir.cage', { X: -8.8, Y: FLOOR, z: 15, width: 4.6, height: 5.2 }],
       ['choir.faces', { X: 8.6, Y: FLOOR, z: 24, width: 7.5, height: 9.5 }],
     ],
     teeth: LAIR_CHANCE,
@@ -648,6 +929,13 @@ const AUTHORED: readonly Authored[] = [
     type: 'trove',
     school: OCHRE,
     kind: 'chamber',
+    // art. 99: the lantern the beats name burns *in* something, and a niche
+    // is what that is — architecture on the wall plane, so the recess
+    // recedes with the wall instead of sitting on it.
+    built: {
+      left: layered(niche(19, 4.5, 9.5, 4.2), stringCourse(12, 0.8)),
+      right: layered(crack(20, 15, 1, 29), stringCourse(12, 0.8)),
+    },
     dressing: (school) => [
       thing(school, COINS, { X: 1.5, Y: FLOOR, z: 16, width: 5, height: 2.6 }, 'the coins'),
       thing(school, LANTERN, { X: -6.5, Y: FLOOR + 5.5, z: 19, width: 2.2, height: 2.4 }, 'the lantern', 46, FIRE),
@@ -686,6 +974,12 @@ const AUTHORED: readonly Authored[] = [
     type: 'lair',
     school: SOOT,
     kind: 'low',
+    // art. 99: the scoring does not stop at the floor. Both walls are opened
+    // low down, at the height of whatever made it.
+    built: {
+      left: layered(crack(14, 6.5, 0, 71), crack(25, 5.5, 0, 19)),
+      right: crack(20, 7, 0, 37),
+    },
     dressing: (school) => [
       dragMark(school),
       thing(school, MANY, { X: -1, Y: FLOOR, z: 17, width: 10, height: 6.6 }, 'the many', 46),
@@ -737,6 +1031,15 @@ const AUTHORED: readonly Authored[] = [
     type: 'warden',
     school: IRON,
     kind: 'hall',
+    // art. 99: the depth's one piece of ceremony. Pilasters down both walls
+    // on a wide pitch and a course at the height of the door's top band, so
+    // the hall reads as built for the door rather than as a room that
+    // happens to have one at the end of it.
+    built: {
+      left: layered(stringCourse(19, 1.2), pilasters(13, 2.6, 4)),
+      right: layered(stringCourse(19, 1.2), pilasters(13, 2.6, 4)),
+      back: stringCourse(19, 1.2),
+    },
     dressing: () => [],
     tappables: [
       // The lock is a small thing on a large one, and both answer (art. 69).
@@ -773,18 +1076,39 @@ function thresholds(one: Authored, state: SceneState): readonly Prop[] {
   // instead of drawing it. Nothing declares a tube today; the guard is here
   // so that the day something does, it fails visibly rather than floating.
   if (SHAPES[one.kind].back === undefined && SHAPES[one.kind].open !== true) return []
-  const ways: readonly DoorState[] =
-    state.doors.length > 0 ? state.doors : [{ at: 0, open: false, locked: false, ends: false }]
+  const ways = waysOf(state)
   const marks = doorMarks(one.kind, ways.length)
   // art. 21: the school is the room's, so one drawing serves the drowned and
   // the burnt as one threshold in two keys (art. 100).
-  return ways.map((door, i) =>
-    threshold(one.school, marks[i]!, {
-      open: door.open,
-      locked: door.locked,
-      warden: door.ends,
-    }),
+  return ways.flatMap((door, i) =>
+    // art. 96: a junction's lefts and rights are not thresholds. They are
+    // holes cast into the walls, and painting a frame over them in screen
+    // space would run flat across the frame instead of receding — the same
+    // failure art. 102 refused for masses. What the wall says about a turn is
+    // the architrave, and that is a feature on the wall plane (art. 99).
+    isTurn(one.kind, i, ways.length)
+      ? []
+      : [
+          threshold(one.school, marks[i]!, {
+            open: door.open,
+            locked: door.locked,
+            warden: door.ends,
+          }),
+        ],
   )
+}
+
+/** The doors a room is standing with, or the one every authored room has. */
+function waysOf(state: SceneState): readonly DoorState[] {
+  return state.doors.length > 0
+    ? state.doors
+    : [{ at: 0, open: false, locked: false, ends: false }]
+}
+
+/** art. 96: whether this door of this room is a direction rather than a door. */
+function isTurn(kind: ShapeKind, at: number, count: number): boolean {
+  if (kind !== 'junction') return false
+  return at === 0 || (count >= 2 && at === count - 1)
 }
 
 function socketProps(one: Authored, state: SceneState): readonly Prop[] {
@@ -799,30 +1123,64 @@ function socketProps(one: Authored, state: SceneState): readonly Prop[] {
   )
 }
 
+/**
+ * arts 97, 99: what this room's walls carry, with a junction's architraves
+ * laid over whatever else it authored.
+ *
+ * The frame answers first, because an architrave stands proud of everything
+ * on the wall around it — a string course that ran across a doorway's jamb
+ * would be a course the mason laid through a door.
+ */
+function builtOn(one: Authored, shape: RoomShape): NonNullable<Authored['built']> {
+  const built = one.built ?? {}
+  if (one.kind !== 'junction') return built
+  const frame = turnFrame(TURN.from, TURN.to)
+  return {
+    ...built,
+    ...(shape.turns?.left === undefined
+      ? {}
+      : { left: built.left === undefined ? frame : layered(frame, built.left) }),
+    ...(shape.turns?.right === undefined
+      ? {}
+      : { right: built.right === undefined ? frame : layered(frame, built.right) }),
+  }
+}
+
 function contentOf(one: Authored): RoomContent {
-  const shape = SHAPES[one.kind]
   const door = DOOR_AT[one.kind]
   return {
     id: room(one.id),
     type: one.type,
     school: one.school,
     kind: one.kind,
-    shape,
+    shape: SHAPES[one.kind],
     scene: (state) => {
+      // art. 96: a junction opens the ways it actually has, so its box is a
+      // function of how many doors the chain dealt it. Every other room's
+      // box is the same box whatever it offers.
+      const shape = shapeFor(one.kind, waysOf(state).length)
       // The reference plate keeps its props, its light and its palette, and
       // takes the room's shape. WAKE is authored as a tube and stays one
       // wherever it is rendered as itself — it still wins ties about the box
       // — but the room the Crossing *is* ends in a wall like every other,
       // because its doors are holes and a hole needs a wall (arts 96, 97).
       const base = one.plate
-        ? { ...one.plate, shape }
+        ? {
+            ...one.plate,
+            shape,
+            // art. 99: a plate is a room like any other, so its walls carry
+            // architecture like any other. The shaders are rebuilt rather
+            // than the plate's reused, because a feature is a question about
+            // the wall plane and the plate's shaders never had one.
+            surfaces: masonry(one.school, shape, RENDER.eye, one.built ?? {}),
+          }
         : plainScene(
             one.id,
             one.school,
             shape,
             () => one.dressing(one.school, state),
             one.buried?.(one.school, shape),
-            one.built ?? {},
+            builtOn(one, shape),
           )
       // art. 97: every door the room offers is a threshold, and every
       // threshold is drawn. This is the room's, not the dressing's — the

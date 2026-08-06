@@ -118,30 +118,45 @@ export function masonry(
 ): SurfaceShaders {
   const tall = eye + shape.ceiling
   const base = shadingOf(school).base
+
+  /**
+   * One statement of the coursing, because a side wall, the far wall and a
+   * turn's jamb are the same stone asked about along three different axes.
+   * `along` runs the plane, `salt` is what keeps one plane's cells from
+   * repeating another's, and `cut` is art. 99's architecture — which answers
+   * last, so it can cut through the grammar, and never over a seam, because
+   * a seam is where two stones meet and a feature does not move that.
+   */
+  const coursed = (
+    along: number,
+    height: number,
+    salt: number,
+    cut?: (step: number) => number | null,
+  ): number => {
+    const course = Math.floor(height / COURSE)
+    const offset = ((course % 2) * BRICK) / 2
+    const u = along + offset
+    const b = Math.floor(u / BRICK)
+    const fu = u / BRICK - b
+    const fv = height / COURSE - course
+    if (fv < 0.1 || fu < 0.075) return base.wall - STONE.seam
+    const id = b * 13 + course * 7 + salt
+    let step = base.wall + STONE.tone[hash(id, 3) % 4]!
+    if (hash(b * 5, course * 3 + id) < 9) step += STONE.alt
+    if (hash(id, (fv * 9) | 0) < 3) step -= STONE.defect
+    if (height < 0.3 * tall && hash(id, b) < 24) step -= STONE.damp
+    if (height < 0.45 * tall && hash(id * 3, course) < 7) {
+      step -= hash(b, id) < 40 ? STONE.moss : STONE.moss2
+    }
+    // a broken corner, once in a while
+    if (hash(id, 1) < 7 && fv > 0.5 && fu > 0.8) step -= STONE.defect
+    return cut?.(step) ?? step
+  }
+
   return {
     wall(side, z, height) {
-      const course = Math.floor(height / COURSE)
-      const offset = ((course % 2) * BRICK) / 2
-      const u = z + offset
-      const b = Math.floor(u / BRICK)
-      const fu = u / BRICK - b
-      const fv = height / COURSE - course
-      if (fv < 0.1 || fu < 0.075) return base.wall - STONE.seam
-      const id = b * 13 + course * 7 + (side > 0 ? 101 : 0)
-      let step = base.wall + STONE.tone[hash(id, 3) % 4]!
-      if (hash(b * 5, course * 3 + id) < 9) step += STONE.alt
-      if (hash(id, (fv * 9) | 0) < 3) step -= STONE.defect
-      if (height < 0.3 * tall && hash(id, b) < 24) step -= STONE.damp
-      if (height < 0.45 * tall && hash(id * 3, course) < 7) {
-        step -= hash(b, id) < 40 ? STONE.moss : STONE.moss2
-      }
-      // a broken corner, once in a while
-      if (hash(id, 1) < 7 && fv > 0.5 && fu > 0.8) step -= STONE.defect
-      // art. 99: and then the architecture, at world coordinates on this
-      // plane. It answers last so it can cut through the grammar, and it
-      // answers a step like everything else so the light finds it honestly.
-      const cut = (side < 0 ? features.left : features.right)?.(z, height, step)
-      return cut ?? step
+      const feature = side < 0 ? features.left : features.right
+      return coursed(z, height, side > 0 ? 101 : 0, (step) => feature?.(z, height, step) ?? null)
     },
     floor(z, x) {
       const fz = Math.floor(z / FLAG_LENGTH)
@@ -170,29 +185,32 @@ export function masonry(
     // side wall runs on `z`, so the courses line up where the two meet and
     // the corner reads as a corner rather than as a change of material.
     back(x, height) {
-      const course = Math.floor(height / COURSE)
-      const offset = ((course % 2) * BRICK) / 2
-      const u = x + offset + 40
-      const b = Math.floor(u / BRICK)
-      const fu = u / BRICK - b
-      const fv = height / COURSE - course
-      if (fv < 0.1 || fu < 0.075) return base.wall - STONE.seam
-      const id = b * 13 + course * 7 + 211
-      let step = base.wall + STONE.tone[hash(id, 3) % 4]!
-      if (hash(b * 5, course * 3 + id) < 9) step += STONE.alt
-      if (hash(id, (fv * 9) | 0) < 3) step -= STONE.defect
-      if (height < 0.3 * tall && hash(id, b) < 24) step -= STONE.damp
-      if (height < 0.45 * tall && hash(id * 3, course) < 7) {
-        step -= hash(b, id) < 40 ? STONE.moss : STONE.moss2
-      }
-      if (hash(id, 1) < 7 && fv > 0.5 && fu > 0.8) step -= STONE.defect
-      const cut = features.back?.(x, height, step)
-      return cut ?? step
+      return coursed(x + 40, height, 211, (step) => features.back?.(x, height, step) ?? null)
+    },
+    // art. 96: the wall a junction's turn ends in. The same masonry, coursed
+    // across like the far wall's — and deliberately without the far wall's
+    // features on it, because a bricked-up doorway authored for the end of
+    // the room has no business appearing round the corner as well.
+    jamb(x, height) {
+      return coursed(x + 40, height, 307)
     },
   }
 }
 
-function props(view: View): readonly Prop[] {
+/**
+ * The plate's props, with the shaft standing where the room asks.
+ *
+ * art. 105: the shaft is the Crossing's hero, and once the Crossing ended in
+ * a wall its doors stood behind it rather than beside it. `aside` moves the
+ * grate, the light falling from it and the pool it lands in — one number,
+ * because they are one thing — and everything else in the plate stays put.
+ * Zero is the reference, which is a tube with nothing to stand in front of.
+ */
+export function wakeProps(aside: number): (view: View) => readonly Prop[] {
+  return (view) => plateProps(view, aside)
+}
+
+function plateProps(view: View, aside: number): readonly Prop[] {
   const school = MUTED
   const { z0, f, eye, frame, shape } = view
   const halfWidth = shape.width
@@ -209,10 +227,10 @@ function props(view: View): readonly Prop[] {
     name: 'the grate',
     z: zGrate,
     paint(b) {
-      const g0 = b.project(-3.4, ceiling, zGrate + 3)
-      const g1 = b.project(3.4, ceiling, zGrate + 3)
-      const h0 = b.project(-3.4, ceiling, zGrate)
-      const h1 = b.project(3.4, ceiling, zGrate)
+      const g0 = b.project(aside - 3.4, ceiling, zGrate + 3)
+      const g1 = b.project(aside + 3.4, ceiling, zGrate + 3)
+      const h0 = b.project(aside - 3.4, ceiling, zGrate)
+      const h1 = b.project(aside + 3.4, ceiling, zGrate)
       b.rect(school.iron, g0.x, g0.y - g(1), g1.x - g0.x, h0.y - g0.y + g(2))
       for (let x = g0.x + g(2); x < g1.x - g(1); x += g(4)) {
         b.rect(BAR, x, g0.y, g(1.6), h0.y - g0.y)
@@ -220,7 +238,7 @@ function props(view: View): readonly Prop[] {
       b.rect(school.accent[1], h0.x, h0.y, h1.x - h0.x, g(1))
 
       // the light, falling
-      const floorY = b.project(-3.4, -eye, zGrate).y
+      const floorY = b.project(aside - 3.4, -eye, zGrate).y
       const topY = g0.y
       const cx = (h0.x + h1.x) / 2
       for (let y = topY; y < floorY; y++) {
@@ -236,8 +254,8 @@ function props(view: View): readonly Prop[] {
       }
 
       // the pool it lands in
-      const p0 = b.project(-4.5, -eye, zGrate - 0.5)
-      const p1 = b.project(4.5, -eye, zGrate + 4)
+      const p0 = b.project(aside - 4.5, -eye, zGrate - 0.5)
+      const p1 = b.project(aside + 4.5, -eye, zGrate + 4)
       const pcx = (p0.x + p1.x) / 2
       const pcy = (p0.y + p1.y) / 2
       const rx = (p1.x - p0.x) / 2
@@ -356,5 +374,5 @@ export const WAKE: Scene = {
   shape: SHAPE,
   look: lookOf(MUTED),
   surfaces: masonry(MUTED, SHAPE, RENDER.eye),
-  props,
+  props: wakeProps(0),
 }
