@@ -207,7 +207,7 @@ export interface PermanentLedger {
    * remembered.** A flag written when a run walks out of a room leaving
    * something it was offered — the forfeited half of a fork (art. 89), a
    * bone left where it lay, a mercy not taken, a question not asked
-   * (art. 119).
+   * (art. 120).
    *
    * It is a small vocabulary on purpose and it is capped in content, not
    * here: a flag that lands in two or three later moments is a refusal the
@@ -567,7 +567,7 @@ export function hasDeclined(permanent: PermanentLedger, flag: string): boolean {
  * They are one list because they are one thing to a thing being looked at: a
  * bone walked past once is a bone recognised, and so is a drop already put a
  * head into. Nothing that deals, rolls or scores reads this; it reaches the
- * player through what a tap answers (arts 88, 119) and through nothing else,
+ * player through what a tap answers (arts 88, 120) and through nothing else,
  * which is what keeps a refusal from being a difficulty dial.
  */
 export function knownMarks(permanent: PermanentLedger): readonly string[] {

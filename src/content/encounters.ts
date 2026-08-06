@@ -414,7 +414,7 @@ function takeAct(who: EncounterId, forfeits?: EncounterId): Act {
     // holds a door — a bone left lying is a bone missed for this run.
     required: false,
     takes: LEFT_BY[who as string] ?? [],
-    // art. 119: an object in the hand, which is the top of the return bar
+    // art. 120: an object in the hand, which is the top of the return bar
     // and the only payload in the depth that is not knowledge. Nothing here
     // is priced — these are free, and art. 4's *missed* is the whole cost.
     pays: ['object'],
@@ -447,7 +447,7 @@ const TAKE_THE_KEY: Act = {
   verb: VERBS['act.take-key'] ?? 'Take',
   needs: [],
   gives: [WARDEN_KEY_ITEM],
-  // art. 119: leverage — it is the one thing in the depth that opens
+  // art. 120: leverage — it is the one thing in the depth that opens
   // something. And it is `required`, which is exactly why art. 3 forbids it
   // ever carrying a price.
   pays: ['leverage'],
@@ -474,7 +474,7 @@ const DRINK: Act = {
   gives: [],
   required: false,
   heals: SANCTUM_BREATH,
-  // art. 119: a mercy pays in a permanent change to the body, and it pays
+  // art. 120: a mercy pays in a permanent change to the body, and it pays
   // nothing for it. The bar is about *priced* acts; this is what the bar
   // looks like at a price of zero.
   pays: ['change'],
@@ -499,7 +499,7 @@ const KNEEL: Act = {
   required: false,
   heals: SAVIOR_MERCY,
   remembers: MENDER,
-  // art. 119: the large mercy, and a relationship beside it — art. 84's
+  // art. 120: the large mercy, and a relationship beside it — art. 84's
   // memory is what makes the second meeting different from the first.
   pays: ['change', 'relationship'],
   about: 'mender.figure',

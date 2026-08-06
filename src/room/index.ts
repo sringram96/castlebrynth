@@ -44,7 +44,18 @@ export { standing } from './place.js'
 export type { Framebuffer } from './framebuffer.js'
 export { framebuffer } from './framebuffer.js'
 export type { Ramp, RampSpec } from './ramp.js'
-export { alongRamp, darkest, extend, lightest, mix, mixHSL, ramp, stepOf, turned } from './ramp.js'
+export {
+  alongRamp,
+  darkest,
+  extend,
+  lifted,
+  lightest,
+  mix,
+  mixHSL,
+  ramp,
+  stepOf,
+  turned,
+} from './ramp.js'
 export type {
   Air,
   Brush,

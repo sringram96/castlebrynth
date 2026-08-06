@@ -441,10 +441,10 @@ const UNLOCK: Act = {
   unlocks: 0,
 }
 
-// ── The priced acts (card 86, art. 119) ────────────────────────────────
+// ── The priced acts (card 86, art. 120) ────────────────────────────────
 
 /**
- * art. 119: **an act may carry a declared price, and the price is visible
+ * art. 120: **an act may carry a declared price, and the price is visible
  * before the press.** This is the Descent's art. 42 — the Lots promise the
  * intent before you commit, and these promise the cost.
  *
@@ -455,7 +455,7 @@ const UNLOCK: Act = {
  * it costs — there is no order of presses in which the verb arrives first.
  *
  * **All three pay in knowledge** (art. 88), which is the cheapest legal
- * payload on art. 119's return bar and the one it says should be the most
+ * payload on art. 120's return bar and the one it says should be the most
  * common. Every clue changes what two or three later taps answer, and
  * `test/price.test.ts` walks that rather than trusting it.
  *
@@ -488,11 +488,11 @@ function priced(
   }
 }
 
-/** art. 119: into the dark under the sump's grate. */
+/** art. 120: into the dark under the sump's grate. */
 const PEER_INTO_THE_DROP = priced('act.peer', 'sump.grate', 1, [CLUES.drop])
-/** art. 119: into the kiln's mouth, which goes back further than the wall. */
+/** art. 120: into the kiln's mouth, which goes back further than the wall. */
 const REACH_INTO_THE_KILN = priced('act.reach', 'kiln.mouth', 2, [CLUES.flue])
-/** art. 119: at the covered font's cloth. Card 88's exemplar. */
+/** art. 120: at the covered font's cloth. Card 88's exemplar. */
 const LISTEN_AT_THE_CLOTH = priced('act.listen', 'font.cloth', 2, [CLUES.seven])
 
 // ── The covered font's fork (card 88, arts 88–89) ──────────────────────
@@ -1049,7 +1049,7 @@ const AUTHORED: readonly Authored[] = [
       ['sump.grate', { X: 0, Y: FLOOR, z: 24, width: 5, height: 2 }],
       ['sump.skull', { X: -7.2, Y: FLOOR, z: 11.5, width: 2.6, height: 2.9 }],
     ],
-    // art. 119: the grate has a drop under it and a gap wide enough for a
+    // art. 120: the grate has a drop under it and a gap wide enough for a
     // head. The sump is where the depth loses what it loses, so it is the
     // one room in it that can answer *where to* for a price.
     acts: [PEER_INTO_THE_DROP],
@@ -1153,7 +1153,7 @@ const AUTHORED: readonly Authored[] = [
       ['kiln.mouth', { X: -12, Y: FLOOR + 2, z: 19, width: 3, height: 7 }],
       ['kiln.brazier', { X: -4.5, Y: FLOOR, z: 11, width: 4, height: 5.2 }],
     ],
-    // art. 119: the inside goes back further than the wall does, and an arm
+    // art. 120: the inside goes back further than the wall does, and an arm
     // fits. The room's own look already says both of those for free.
     acts: [REACH_INTO_THE_KILN],
     teeth: LAIR_CHANCE,
@@ -1479,7 +1479,7 @@ const AUTHORED: readonly Authored[] = [
    * All four are in this one room. The three free looks (arts 5–6) are the
    * cloth wet *from below*, the lip worn on the *inside*, and a floor with
    * no ring on it — nothing says danger and everything implies it. LISTEN
-   * (art. 119) costs two and returns six small sounds and then a seventh, so
+   * (art. 120) costs two and returns six small sounds and then a seventh, so
    * the player now **knows something is wrong and does not know what**: not
    * knowing *why* six-then-seven matters is mystery, and not knowing what
    * LISTEN *costs* would be confusion. Horror wants the first and is ruined
@@ -1991,7 +1991,9 @@ const WARDEN_COMING = comingCloser(IRON, WARDEN_KEEPER_BODY, 'the keeper', {
  * The body a horror advances with, if it has one drawn. `null` is the
  * ordinary answer, and the hinge's own mass is what it means.
  */
-export function advanceBodyOf(horror: string): ((closeness: number) => Prop) | null {
+export function advanceBodyOf(
+  horror: string,
+): ((closeness: number, flare?: number) => Prop) | null {
   return horror === 'horror.warden' ? WARDEN_COMING : null
 }
 
@@ -2008,7 +2010,7 @@ export const ROOM_BOOK: RoomBook = {
   // art. 118: and a third way, when an act about this thing exists and is
   // being withheld. The reason has nowhere else to live — the verb it would
   // have hung on is the thing that is absent.
-  // art. 119: and a fourth, which is where a price is said. The number is
+  // art. 120: and a fourth, which is where a price is said. The number is
   // put into the sentence rather than written into it, so a price and the
   // words that quote it cannot drift apart (`saysLook`).
   // arts 10, 84: and a fifth, off what he still knows.
@@ -2052,14 +2054,14 @@ const ANSWERS_WHEN_CARRYING: Readonly<Record<string, readonly [ItemId, string]>>
 const KEPT = '.kept'
 
 /**
- * art. 119: the suffix a thing wears while the act about it costs something.
+ * art. 120: the suffix a thing wears while the act about it costs something.
  * It is a suffix for the same reason `.kept` is — a new state is a new key,
  * and nothing in the engine has to learn a new shape.
  */
 const PRICE = '.price'
 
 /**
- * arts 88, 119: what a thing says once he knows something about it. A
+ * arts 88, 120: what a thing says once he knows something about it. A
  * knowledge good earns its place by changing what a tap answers, and this
  * is the key it changes it to.
  */
@@ -2078,7 +2080,7 @@ const AGAIN = '.again'
  *
  * 1. **withheld** (art. 118) — the verb is absent and this is the only place
  *    its reason can live, so it outranks everything.
- * 2. **priced** (art. 119) — the verb is there and costs something, and the
+ * 2. **priced** (art. 120) — the verb is there and costs something, and the
  *    price has to be read before the press.
  * 3. **known** (art. 88) — what a clue changed.
  * 4. **again** (art. 84) — what a refusal changed.

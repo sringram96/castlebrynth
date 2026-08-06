@@ -138,7 +138,7 @@ export const BEATS: Readonly<Record<string, readonly string[]>> = {
   ],
   /**
    * **The covered font** (card 88, the descent wave). The exemplar room for
-   * art. 119, and the bar the rest of the depth is held to: *a room gives a
+   * art. 120, and the bar the rest of the depth is held to: *a room gives a
    * question before it gives a reward.*
    *
    * Two candles and neither of them says anything is wrong. The room states
@@ -323,7 +323,7 @@ export const LOOKS: Readonly<Record<string, string>> = {
   'font.basin': 'Stone, waist-high. The lip is worn smooth on the inside, and only on the inside.',
   'font.dry': 'Dry all the way round the foot. A thing this full leaves a ring on the floor, and there is no ring.',
 
-  // ── What a price sounds like (art. 119) ──────────────────────────────
+  // ── What a price sounds like (art. 120) ──────────────────────────────
   //
   // The look is where the price is said, because the verb is two words
   // (art. 66) and art. 68 abolished the button that could carry a number.
@@ -337,7 +337,7 @@ export const LOOKS: Readonly<Record<string, string>> = {
   'kiln.mouth.price':
     'Brick, glazed smooth, and the inside goes back past the wall. My arm fits. {n} out of me for whatever the brick takes off it, and I would know how far back it goes.',
 
-  // ── What he knows afterwards (arts 88, 119) ──────────────────────────
+  // ── What he knows afterwards (arts 88, 120) ──────────────────────────
   //
   // A knowledge good earns its place by changing what a tap answers, and
   // this is that, enforced: every clue the depth pays out changes two or
@@ -690,6 +690,34 @@ export const EXCHANGE: Readonly<Record<string, string>> = {
 }
 
 /**
+ * art. 119: **a rider gets its own beat**, and this is what it says in it.
+ *
+ * The exchange above is the whole turn in one line, said once the dust has
+ * settled. This is the other grain: the moment a face he chose to spend does
+ * the thing it does, said alone, while the die it came off is still lit.
+ *
+ * It is the beat that teaches the pouch to a player who never opens it —
+ * art. 54 asks every power to be declared on inspect, and a player who never
+ * inspects has still just watched it happen. Which is why each of these
+ * names the *die* rather than the effect: the lesson is that this bone does
+ * this, not that some number moved.
+ *
+ * `{n}` is the rider's own number, filled by `saysFiring`. The bond has no
+ * number of its own — what the sisters do is arrive together, and the sum
+ * says the rest (art. 52).
+ */
+export const FIRING: Readonly<Record<string, string>> = {
+  'rider.leech': 'The stained face came up. {n} of what I took off it goes back into me.',
+  'rider.push': 'That was the low one. Throwing it costs me {n}.',
+  'rider.bleed': 'The bone opens something up again. {n}.',
+  // The species, for a rider that ships without a line of its own. Keyed on
+  // what it does, because that is the only thing an unnamed one declares.
+  heal: 'Something of what I took off it comes back into me. {n}.',
+  wound: 'The bone I spent takes {n} of its own.',
+  bond: 'The other one answers. They only ever counted together.',
+}
+
+/**
  * **What dying is** (card 69). Death was not an event: the turn resolved,
  * and the next thing on screen was the following run's Crossing, fully lit,
  * with the health bar full again and one lowercase line at the top.
@@ -846,7 +874,7 @@ export const NOTICES: Readonly<Record<string, string>> = {
   'answer.act.take.cord': 'Knotted at every hand of it. Somebody counted the way down in order and ran out of cord.',
   'answer.act.take.plate': 'The straps are cut, not worn through. Somebody got this off him fast, and it did not save either of them.',
   /**
-   * art. 119: **what a priced press buys.** Each of the three is knowledge
+   * art. 120: **what a priced press buys.** Each of the three is knowledge
    * (art. 88), and each answer *sharpens the question rather than answering
    * it* — which is card 88's bar, quoted in DESIGN.md and enforced here by
    * there being no sentence in any of them that says what the thing is.
@@ -1102,7 +1130,7 @@ export const VERBS: Readonly<Record<string, string>> = {
   'act.take.cord': 'Take cord',
   'act.take.plate': 'Take plate',
   /**
-   * art. 119's three, and GAME.md named all three long before anything gave
+   * art. 120's three, and GAME.md named all three long before anything gave
    * an act a price. They are plain imperatives like every other control —
    * what they *cost* is said by the thing they are about, because a verb of
    * two words cannot carry a number (arts 66, 68).

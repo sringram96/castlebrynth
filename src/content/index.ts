@@ -5,7 +5,7 @@
  * way around.
  */
 
-export { GRID, AUTHORED_GRID, AUTHORED_HEIGHT, MOTION, RENDER, atGrid } from './render.js'
+export { CASCADE, GRID, AUTHORED_GRID, AUTHORED_HEIGHT, MOTION, RENDER, atGrid } from './render.js'
 export type { School, Shading } from './palettes.js'
 export {
   ASH,
@@ -158,6 +158,7 @@ export {
   BEATS,
   DEATHS,
   EXCHANGE,
+  FIRING,
   NOUNS,
   LOOKS,
   ORIGINS,
@@ -172,7 +173,7 @@ export {
   UNBIDDEN,
   VERBS,
 } from './prose.js'
-// arts 84, 88, 119: what he still knows, and where a mark lands.
+// arts 84, 88, 120: what he still knows, and where a mark lands.
 export { CLUES, ECHOES, EVERY_CLUE, EVERY_REFUSAL, KNOWS, REFUSALS, marked } from './marks.js'
 export {
   dieLabel,
@@ -184,6 +185,8 @@ export {
   saysBound,
   saysClaim,
   saysDoor,
+  saysFiring,
+  saysLine,
   saysLook,
   saysDeath,
   saysDie,
@@ -235,6 +238,7 @@ import {
   DEATHS,
   END_LINES,
   EXCHANGE,
+  FIRING,
   INTENT_SAYS,
   LABELS,
   LOOKS,
@@ -312,7 +316,7 @@ function amendedNotice(key: string): boolean {
  *
  * The descent wave's are a **suffix rule** rather than a list, and that is
  * honest rather than convenient: `.kept`, `.price`, `.knows` and `.again`
- * are keys that did not exist before art. 118 and art. 119, so every string
+ * are keys that did not exist before art. 118 and art. 120, so every string
  * under one of them was written after the register changed. There is no
  * version of the list where somebody has to remember to add a key as well
  * as author a line.
@@ -385,6 +389,10 @@ export function everyString(): readonly Utterance[] {
       // him in live play, so both are thoughts — the `{dealt}` tokens are
       // filled by `saysExchange` and are words like any other to the lint.
       ...Object.values(EXCHANGE),
+      // art. 119: a rider gets its own beat, and what it says in it is him
+      // watching a bone he chose to spend do the thing it does. Live play,
+      // so a thought; the `{n}` is filled by `saysFiring`.
+      ...Object.values(FIRING),
       ...Object.values(DEATHS),
       // card 71: rewritten this wave — impending, and carrying both halves.
       // The `{n}` tokens are filled by `saysIntent` and are words like any

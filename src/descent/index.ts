@@ -103,7 +103,7 @@ export type Offer =
   | { readonly kind: 'door'; readonly door: Door }
 
 /**
- * art. 119: **what a press costs.** The Lots promise the intent before you
+ * art. 120: **what a press costs.** The Lots promise the intent before you
  * commit; the Descent promises the price. Every field is content's — the
  * engine knows only that a price comes out of the body and stops short of
  * the last of it, because a run ends to a horror, to the Warden or to a
@@ -120,7 +120,7 @@ export interface Price {
 }
 
 /**
- * art. 119's **return bar**, declared so it can be tested rather than
+ * art. 120's **return bar**, declared so it can be tested rather than
  * trusted. Every priced act returns at least one of these, and *lose four
  * health and receive ordinary loot* is not on the list.
  *
@@ -213,7 +213,7 @@ export interface Act {
    */
   readonly unlocks?: number
   /**
-   * art. 119: what this press costs, if it costs anything. Absent on nearly
+   * art. 120: what this press costs, if it costs anything. Absent on nearly
    * every act, which is the point of the ones it is not absent on.
    *
    * The price reaches the player through the *thing's look* and never
@@ -224,7 +224,7 @@ export interface Act {
    */
   readonly price?: Price
   /**
-   * art. 119's return bar. A priced act declares what it pays in, and
+   * art. 120's return bar. A priced act declares what it pays in, and
    * `test/price.test.ts` holds it to actually paying it — a `knowledge`
    * claim with no clue behind it is a failing test rather than a
    * disappointment.
@@ -288,7 +288,7 @@ export interface RoomBook {
    * verb has nowhere to put one. Content authors the second sentence under
    * its own key; the engine only says which of the two states it is in.
    *
-   * art. 119 (`price`): and a fourth. When the act about this thing costs
+   * art. 120 (`price`): and a fourth. When the act about this thing costs
    * something, **the look is where the price is said** — the verb is two
    * words (art. 66) and cannot carry a number, and art. 68 abolished the
    * button that could. It is the tap that summons the verb, so there is no
@@ -662,7 +662,7 @@ export function withholding(
 }
 
 /**
- * art. 119: **what a press about this thing would cost, right now.** Zero
+ * art. 120: **what a press about this thing would cost, right now.** Zero
  * when nothing about it is priced, which is nearly everything.
  *
  * It is the mirror of `withholding`, and the two are exclusive by
@@ -686,7 +686,7 @@ export function priceAt(
 }
 
 /**
- * art. 119: what this act would take out of the body as things stand.
+ * art. 120: what this act would take out of the body as things stand.
  *
  * **A price is never the run.** It stops at one point of health, because a
  * press made out of curiosity may cost a player something and may not cost
@@ -832,7 +832,7 @@ export function breathFor(ledgers: Ledgers, chosen: Act): number {
 
 /**
  * Acting is not tapping: it has gates and consequences (art. 7) — and,
- * under art. 119, a price.
+ * under art. 120, a price.
  *
  * `among` is the room's acts, and it is what art. 89's forfeiture needs in
  * order to write art. 84's flag: `forfeits` holds act *ids*, and the flag
@@ -864,7 +864,7 @@ export function act(ledgers: Ledgers, chosen: Act, among: readonly Act[] = []): 
   for (const lost of chosen.forfeits ?? []) moved = didHere(moved, run.at.instance, lost)
   for (const item of chosen.gives) moved = carrying(moved, item)
   /**
-   * art. 40's breath and art. 119's price move the same number, so the
+   * art. 40's breath and art. 120's price move the same number, so the
    * number is settled once. No act ships as both, and the arithmetic is
    * written so that one could be without the second write silently
    * discarding the first.

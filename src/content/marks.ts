@@ -1,6 +1,6 @@
 /**
  * **What he still knows** — the clues and the refusals, as data (arts 10,
- * 84, 88, 119).
+ * 84, 88, 120).
  *
  * Two vocabularies, one shape. A **clue** is what a priced act pays out in:
  * it keys on a thing and never on a place, so it survives death and the
@@ -32,7 +32,7 @@ const clue = (id: string, about: string): Clue => ({
 })
 
 /**
- * arts 88, 119: what the three priced acts pay out in. Each is pure
+ * arts 88, 120: what the three priced acts pay out in. Each is pure
  * knowledge — no stat, no item — and each earns its keep by changing what
  * two or three later taps answer, which is the article's own acceptance
  * test rather than a claim about it.
@@ -74,7 +74,7 @@ export const REFUSALS = {
   breath: 'refused.breath',
   /** Hands held open and not taken (art. 40, the being). */
   hands: 'refused.hands',
-  /** A question with a price on it, walked past (art. 119). */
+  /** A question with a price on it, walked past (art. 120). */
   question: 'refused.question',
   /** The half of the covered font's fork that stayed under the cloth. */
   cloth: 'refused.cloth',
@@ -137,7 +137,7 @@ export const ECHOES: Readonly<Record<string, readonly string[]>> = {
   // The stain, and the thing in the depth that took a little at a time.
   'leech.thing': [REFUSALS.stain],
   'crawl.legs': [REFUSALS.stain],
-  // art. 119: a question walked past. It lands on the three things that ask
+  // art. 120: a question walked past. It lands on the three things that ask
   // one, so the second one he meets knows he has done this before.
   'sump.grate': [REFUSALS.question],
   'kiln.mouth': [REFUSALS.question],

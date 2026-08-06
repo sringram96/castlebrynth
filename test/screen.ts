@@ -164,7 +164,7 @@ export function shellAt(seed: number): Shell {
         target,
         ledgers.run?.carried ?? [],
         withholding(ledgers, ROOM_BOOK, node(), target.id),
-        // art. 119: and the price, which the tap that summons the verb is
+        // art. 120: and the price, which the tap that summons the verb is
         // the tap that says.
         priceAt(ledgers, ROOM_BOOK, node(), target.id),
         // arts 10, 84: and what he still knows.

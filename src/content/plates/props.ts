@@ -17,7 +17,7 @@
  */
 
 import type { Brush, Drawn, Prop, View, WorldMark } from '../../room/index.js'
-import { Surface, mix, standing } from '../../room/index.js'
+import { Surface, lifted, mix, standing } from '../../room/index.js'
 import type { School } from '../palettes.js'
 import { alongSteps, lookOf } from '../palettes.js'
 import { AUTHORED_GRID, RENDER } from '../render.js'
@@ -764,23 +764,38 @@ export function lurker(school: School, mark: WorldMark, tall: boolean): Prop {
  * aperture behind it *is* larger than the aperture behind it — which is
  * art. 30's advance done by something that was always too big for the room.
  */
+/**
+ * art. 119 §3: how far up its own ramp a struck thing jumps. Tuning, and it
+ * lives here because a flash is a fact about a drawing rather than about
+ * the timeline that fires it.
+ */
+const FLASH_STEPS = 14
+
+/** art. 119 §3: how far past the lens the telegraph's swell may bring it. */
+const OVERSHOOT = 0.12
+
 export function comingCloser(
   school: School,
   art: Drawn,
   name: string,
   size: { readonly wide: number; readonly high: number; readonly from: number; readonly to: number },
   glow?: string,
-): (closeness: number) => Prop {
+): (closeness: number, flare?: number) => Prop {
   const look = lookOf(school)
-  return (closeness) => {
-    const near = Math.min(1, Math.max(0, closeness))
+  return (closeness, flare = 0) => {
+    // art. 119 §3: past one is the telegraph's swell, and it swells by
+    // coming *nearer* — so the growing is the projector's, like everything
+    // else in the room (art. 15), and not a sprite being scaled up.
+    const near = Math.min(1 + OVERSHOOT, Math.max(0, closeness))
     const z = size.from + (size.to - size.from) * near
     const standingThere = standing(
       {
         name,
         at: { X: 0, Y: -RENDER.eye, z, width: size.wide, height: size.high },
         art,
-        ramp: look.ramps.wall,
+        // art. 119 §3: the flash is the same drawing read further up the
+        // same ramp — no new colours, only a step it already owns.
+        ramp: lifted(look.ramps.wall, Math.round(flare * FLASH_STEPS)),
         edge: school.edge,
         glow: glow ?? look.light.tint,
       },

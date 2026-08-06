@@ -4,7 +4,7 @@ binds every task. STANDING is inherited from GAME.md, unamended. DEFAULT
 binds until deliberately revisited. PARKED is not law — build nothing
 that assumes it. How the game is touched — the interaction model — lives
 in the-thumb.md (arts 66–76, 90–92, 116, 118). What a touch may *cost* is
-art. 119, installed here beside arts 5–7 because it is about the world and
+art. 120, installed here beside arts 5–7 because it is about the world and
 not about the thumb.
 
 ## Time & the clock
@@ -29,7 +29,7 @@ not about the thumb.
    knowledge, or a world event.
 
 ### The price of an act (ratified 2026-08-06)
-119. SETTLED (ruled 2026-08-06) — **An act may carry a declared price, and
+120. SETTLED (ruled 2026-08-06) — **An act may carry a declared price, and
      the price is visible before the press.**
 
      **This is the Descent's art. 42.** The Lots promise the intent before
@@ -232,7 +232,7 @@ not about the thumb.
     the permanent ledger, written when a run walks out of a room leaving
     something it was offered — the forfeited half of a fork (art. 89
     produces one every time), a bone left where it lay, a mercy not taken,
-    a question not asked (art. 119). It is a small, reusable vocabulary and
+    a question not asked (art. 120). It is a small, reusable vocabulary and
     it is deliberately capped: a flag lands in two or three later moments,
     and a game that authored a branch per refusal would be authoring
     hundreds of them for a line each. What a flag changes is what a tap

@@ -33,7 +33,7 @@ const NO_GOODS: Goods = { talismans: [], riders: [] }
  * `yourHealthMax` defaults to what you walked in with, which is right for
  * the demo fixtures and wrong for a run: a body's ceiling is a stat
  * (art. 60), not the number it happened to be standing at. The descent wave
- * surfaced it — a run that had paid a priced act's price (art. 119) entered
+ * surfaced it — a run that had paid a priced act's price (art. 120) entered
  * a fight with its ceiling quietly clamped to its current health, so a leech
  * rider could not heal it back to whole and a *resumed* fight (which
  * restores `run.healthMax`) disagreed with a fresh one about the same body.

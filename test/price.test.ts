@@ -1,11 +1,11 @@
 /**
- * card 86 — **the price of an act** (art. 119), and card 87 — **the refused
+ * card 86 — **the price of an act** (art. 120), and card 87 — **the refused
  * ledger** (art. 84 as extended).
  *
  * No article anywhere gave an act a price: art. 5 says tapping never harms,
  * art. 7 gates outcomes, and GAME.md's promise of acts *"with gates and
  * consequences"* was never ratified. So curiosity was not dangerous; it was
- * merely slow. Art. 119 is the Descent's art. 42 — the Lots promise the
+ * merely slow. Art. 120 is the Descent's art. 42 — the Lots promise the
  * intent before you commit, and this promises the cost — and the whole of it
  * is testable, because every clause is a fact about the catalog or about a
  * walk.
@@ -78,7 +78,7 @@ const priced = (): readonly Act[] => everyAct().filter((one) => one.price !== un
 
 const BAR: readonly Payload[] = ['knowledge', 'leverage', 'relationship', 'change', 'object']
 
-describe('art. 119 — an act may carry a declared price', () => {
+describe('art. 120 — an act may carry a declared price', () => {
   it('ships the three verbs GAME.md named, and each is summoned by looking', () => {
     const ids = priced().map((one) => one.id)
     expect(ids).toContain('act.peer')
@@ -95,7 +95,7 @@ describe('art. 119 — an act may carry a declared price', () => {
     }
   })
 
-  it('declares a price that costs something (art. 119)', () => {
+  it('declares a price that costs something (art. 120)', () => {
     for (const one of priced()) {
       expect(one.price!.health, one.id).toBeGreaterThan(0)
     }
@@ -159,7 +159,7 @@ describe('art. 119 — an act may carry a declared price', () => {
   })
 })
 
-describe('art. 119 — and the price is visible before the press', () => {
+describe('art. 120 — and the price is visible before the press', () => {
   /**
    * **The look is where the price is said**, because art. 68 abolished the
    * inspect button and art. 66 gives the verb two words. The tap that
@@ -278,7 +278,7 @@ describe('art. 3 — nothing required sits behind a priced act', () => {
 
 describe('art. 118 — and a priced act whose payload is spent is absent', () => {
   /**
-   * Card 70's rule composes with art. 119, and the descent wave found the
+   * Card 70's rule composes with art. 120, and the descent wave found the
    * case that makes it bite: `collect` and `learn` are both idempotent by
    * id, so a second press spends a deed, charges a price and changes
    * nothing — which is the dead press art. 118 exists to end.

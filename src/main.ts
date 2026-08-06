@@ -18,6 +18,7 @@
 import {
   ALL_RIDERS,
   BARE_BODY,
+  CASCADE,
   CATALOG,
   CROSSING,
   END_LINES,
@@ -55,7 +56,9 @@ import {
   saysDeath,
   saysDie,
   saysExchange,
+  saysFiring,
   saysIntent,
+  saysLine,
   saysItem,
 } from './content/index.js'
 import type { Act, Bands, Pick, Tappable } from './descent/index.js'
@@ -85,6 +88,8 @@ import {
   turnedHere,
   withholding,
 } from './descent/index.js'
+import type { Playing } from './shell/beats.js'
+import { REAL_CLOCK, playBeats } from './shell/beats.js'
 import { wayOn } from './shell/strip.js'
 import type { Held } from './shell/band.js'
 import { HUSHED, answered, bandLine, holding, noticed } from './shell/band.js'
@@ -104,11 +109,25 @@ import {
   saveFight,
   turnLots,
 } from './hinge/index.js'
-import type { Card, Die, DieId, Fight, Goods, Landed, Line, Resolution } from './lots/index.js'
+import type {
+  Beat,
+  Card,
+  Hit,
+  Die,
+  DieId,
+  Fight,
+  Frame,
+  Goods,
+  Landed,
+  Line,
+  Resolution,
+  Shown,
+} from './lots/index.js'
 import {
   LINES,
   advanceFight,
   assemble,
+  cascadeBeats,
   cast,
   casting,
   castingsLeft,
@@ -123,7 +142,9 @@ import {
   keep,
   recast,
   ridersFired,
+  rollBeats,
   sealed,
+  tumblingFace,
   unused,
   withTurn,
   woundedBy,
@@ -176,6 +197,7 @@ import {
 
 // ── The bands ──────────────────────────────────────────────────────────
 
+const stage = must<HTMLDivElement>('stage')
 const wordBand = must<HTMLDivElement>('word')
 const worldBand = must<HTMLElement>('world')
 const canvas = must<HTMLCanvasElement>('view')
@@ -285,6 +307,9 @@ let pick: Pick = null
  */
 let picked: readonly DieId[] = []
 
+/** A first casting holds nothing back: everything in the hand is in the air. */
+const NOTHING_HELD: ReadonlySet<string> = new Set<string>()
+
 /** art. 75: mirrored into the run on every mutation, never only here. */
 let fight: Fight | null = null
 let phase: FightPhase = 'pre'
@@ -293,9 +318,16 @@ let selected: readonly DieId[] = []
 let advanced = false
 let closeness = 1
 let advanceTimer: number | undefined
-/** art. 1: a pulse in presentation, skippable, with a settled end state. */
+/**
+ * art. 1: a pulse in presentation, skippable, with a settled end state.
+ *
+ * art. 119: and the two of them are one thing now. `resolving` is what the
+ * engine answered at the press and `resolved` is the fight it advanced to —
+ * both computed **before the first frame is drawn**, so every beat between
+ * here and `settleTurn` reveals what is already true and decides nothing.
+ */
 let resolving: Resolution | null = null
-let resolveTimer: number | undefined
+let resolved: Fight | null = null
 
 function goods(): Goods {
   return { talismans: ledgers.permanent.keepsakes, riders: ALL_RIDERS }
@@ -453,14 +485,29 @@ function world(marks = true): void {
   const content = roomContent(node.room)
   const state = sceneStateOf(ledgers, ROOM_BOOK, node)
   const scene = content.scene(state)
-  const base = castOf(scene, sceneKey(state))
+  // art. 119 §3: the telegraph, which reaches the light and the body alike.
+  const told = telling()
+  const base = castOf(scene, sceneKey(state), told)
   // art. 30: no battle screen — the horror is a prop laid into this room's
   // own frame, so the box behind it is never cast twice for a motion.
   //
   // art. 100, card 31: a horror that has been drawn advances as its drawing.
   // Everything else keeps the mass the hinge draws, which is art. 26's first
   // tier and right for a shape at the end of a corridor.
-  const close = screen.kind === 'fight' && fight !== null ? [advanceWith(fight, closeness)] : []
+  // art. 119 §3: **the lunge** — your strike sends it back and returns it,
+  // settling where it stood. The knock is a fraction of the advance's own
+  // travel, so it is the same motion in reverse rather than a second one.
+  const close =
+    screen.kind === 'fight' && fight !== null
+      ? [
+          advanceWith(
+            fight,
+            closeness - knocked * LUNGE,
+            flare === 'them' ? 1 : 0,
+            told ? SWELL : 0,
+          ),
+        ]
+      : []
   // arts 106–110: and the stir, which is overlay repaint and never a recast.
   // art. 116: with the world held still there is no overlay at all, so what
   // shows is the cast frame — which is the settled state, and art. 107 says
@@ -487,27 +534,64 @@ function world(marks = true): void {
  * chooses between two prepared frames rather than changing what a pixel
  * means (art. 17, unamended).
  */
-function castOf(scene: Scene, key: string): RenderedRoom {
+function castOf(scene: Scene, key: string, dim = false): RenderedRoom {
   const lit = !stillness() && swelling(scene, tick)
-  const stamp = `${key}:${frameHeight()}${lit ? ':lit' : ''}`
+  // art. 119 §3: **the light dims a step.** It is the same two-prepared-
+  // frames trick art. 110 already uses for a room that breathes — a cast and
+  // not an overlay, because the light reaches every surface and what colour
+  // a surface takes is the cast's to decide (art. 15). One more cached
+  // frame, held for as long as the tell stands.
+  const stamp = `${key}:${frameHeight()}${lit ? ':lit' : ''}${dim ? ':told' : ''}`
   let held = painted.get(stamp)
   if (held === undefined) {
-    held = renderRoom(
-      lit ? breathing(scene, scene.motion?.swell ?? 0) : scene,
-      atGrid(GRID, frameHeight()),
-    )
+    const shown_ = lit ? breathing(scene, scene.motion?.swell ?? 0) : scene
+    held = renderRoom(dim ? breathing(shown_, -DIM_STEPS) : shown_, atGrid(GRID, frameHeight()))
     painted.set(stamp, held)
   }
   return held
 }
 
-/** art. 30: the thing come close, in whichever body content gave it. */
-function advanceWith(now: Fight, close: number): Prop {
+/** art. 119 §3: how many ramp steps the light drops for the tell. Tuning. */
+const DIM_STEPS = 3
+
+/**
+ * art. 30: the thing come close, in whichever body content gave it.
+ *
+ * art. 119 §3: and `flare` is the flash — the struck thing at the top of its
+ * own ramp. It is passed through rather than painted here because what a
+ * body's own ramp is, is the body's business (arts 100, 115).
+ */
+function advanceWith(now: Fight, close: number, flare = 0, swell = 0): Prop {
   const drawn = advanceBodyOf(now.horror.id)
   return drawn === null
-    ? advance(now, close).prop
-    : advance(now, close, (_, settled) => drawn(settled)).prop
+    ? advance(now, close, undefined, flare, swell).prop
+    : advance(now, close, (_, settled, lit) => drawn(settled, lit), flare, swell).prop
 }
+
+/**
+ * art. 119 §3: **the telegraph.** An intent that declares one shows its tell
+ * a turn early — the horror swells, the light dims a step, the chip marks
+ * itself. It is the highest-value thing in the wave: BELLOW 16 is the
+ * biggest hit in the depth and the thing the death scrawl tells the player
+ * to count, and the tell is what makes *count the swipes* learnable by
+ * watching rather than only by dying.
+ *
+ * It says *something is coming* and never *what*, so art. 42 is untouched:
+ * the intent on the chip is still this turn's and only this turn's. And
+ * which intents tell is content's, read off the script rather than off a
+ * threshold the engine holds.
+ */
+function telling(): boolean {
+  const now = fight
+  if (now === null || screen.kind !== 'fight' || now.outcome !== 'fighting') return false
+  // A timeline running is a turn resolving, and the turn it would be telling
+  // about has not opened yet. The tell belongs to a turn the thumb is in.
+  if (beating) return false
+  return now.horror.intentFor(now.turnNumber + 1).telegraph === true
+}
+
+/** How much more of the lens a telegraphing horror fills. Tuning. */
+const SWELL = 0.09
 
 function show(frame: Framebuffer): void {
   present(frame, canvas)
@@ -516,6 +600,10 @@ function show(frame: Framebuffer): void {
   const scale = fillScale(frame, worldBand.clientWidth, worldBand.clientHeight)
   canvas.style.width = `${frame.width * scale}px`
   canvas.style.height = `${frame.height * scale}px`
+  // art. 22: nothing is fixed in device pixels. The shake is **two game
+  // pixels** (art. 119 §3), so it is stated in the frame's own units and
+  // handed to the stylesheet in whatever those come to on this device.
+  document.documentElement.style.setProperty('--shake', `${(SHAKE_PIXELS * scale).toFixed(2)}px`)
 }
 
 /** The smallest a mark may be drawn, in device pixels. A thumb is a thumb. */
@@ -595,7 +683,7 @@ function markFor(target: Tappable): HTMLButtonElement {
         target,
         ledgers.run?.carried ?? [],
         withholding(ledgers, ROOM_BOOK, here(), target.id),
-        // art. 119: and the fourth, which is the price. The tap that summons
+        // art. 120: and the fourth, which is the price. The tap that summons
         // the verb is the tap that says what it costs, so there is no order
         // of presses in which the verb arrives before its number.
         priceAt(ledgers, ROOM_BOOK, here(), target.id),
@@ -875,17 +963,23 @@ function crown(): void {
 
   const name = document.createElement('span')
   name.className = 'name'
-  name.textContent = `${LABELS[now.horror.id] ?? now.horror.id} ${now.horrorHealth}/${now.horror.health}`
+  // art. 119 §3: **the crown falls as the blow lands** — not before it and
+  // not after. So the bar reads the beat, and the beat that moves it is the
+  // strike, which is where the whole cascade has been going.
+  const health = shown?.horrorHealth ?? now.horrorHealth
+  name.textContent = `${LABELS[now.horror.id] ?? now.horror.id} ${health}/${now.horror.health}`
 
   const bar = document.createElement('span')
-  bar.className = 'bar'
+  bar.className = `bar${flare === 'them' ? ' struck' : ''}`
   const fill = document.createElement('i')
-  fill.style.width = `${Math.max(0, (100 * now.horrorHealth) / now.horror.health)}%`
+  fill.style.width = `${Math.max(0, (100 * health) / now.horror.health)}%`
   bar.append(fill)
 
   // art. 73: the intent is tappable, and explains itself in plain words.
+  // art. 119 §3: and it marks itself when the room can feel the next one
+  // coming. The mark says *something*, never *what* (art. 42).
   const intent = document.createElement('button')
-  intent.className = 'intent'
+  intent.className = `intent${telling() ? ' telling' : ''}`
   intent.textContent = intentChip(now.turn.intent)
   intent.onclick = () => {
     settle()
@@ -936,9 +1030,10 @@ function drawSheet(): void {
  */
 function settleEverything(): void {
   clearTimeout(advanceTimer)
-  clearTimeout(resolveTimer)
   clearTimeout(fadeTimer)
+  stopBeats()
   resolving = null
+  resolved = null
   fight = null
   phase = 'pre'
   selected = []
@@ -1204,14 +1299,22 @@ function vitals(): void {
   // running totals belong to the fight, so art. 57 keeps them pinned in the
   // FIGHT panel's header rather than in a rail that is always on screen.
   const corroded = now !== null && inAFight() && now.turn.intent.effect?.kind === 'corrode'
+  const armor = reading(
+    READOUT.armor ?? '',
+    corroded ? `0 ${READOUT.corroded}` : `${now !== null && inAFight() ? now.armor : run.armor}`,
+  )
+  // art. 65 (`corrode`), art. 119 §3: **the armour flakes off the vitals**,
+  // on the beat the blow that ate it lands and on no other.
+  if (corroded && beatNow?.kind === 'struck') armor.className = 'flaking'
   vitalsRegion.append(
-    reading(READOUT.health ?? '', now !== null && inAFight()
-      ? `${now.yourHealth}/${now.yourHealthMax}`
-      : `${run.health}/${run.healthMax}`),
     reading(
-      READOUT.armor ?? '',
-      corroded ? `0 ${READOUT.corroded}` : `${now !== null && inAFight() ? now.armor : run.armor}`,
+      READOUT.health ?? '',
+      // art. 119: while a timeline runs, the body reads what the beat says.
+      now !== null && inAFight()
+        ? `${shown?.yourHealth ?? now.yourHealth}/${now.yourHealthMax}`
+        : `${run.health}/${run.healthMax}`,
     ),
+    armor,
   )
   // art. 74: the card lives behind a small, persistent glyph — and while a
   // fight is on it lives in the fight's own header, where the rest of that
@@ -1248,11 +1351,21 @@ function theFightPanel(): void {
   const armorNow = corroded ? 0 : now.armor
   const totals = document.createElement('div')
   totals.className = 'totals'
+  // art. 119: while a cascade runs, the running total is the cascade's — it
+  // is being *built* out of the dice, one lift at a time, and a readout that
+  // showed the finished number would give away the whole beat before the
+  // first die had lifted.
   totals.append(
-    reading(READOUT.attack ?? '', `${now.turn.claims.reduce((sum, made) => sum + harm(made), 0)}`),
+    reading(
+      READOUT.attack ?? '',
+      `${shown?.attack ?? now.turn.claims.reduce((sum, made) => sum + harm(made), 0)}`,
+    ),
     reading(READOUT.incoming ?? '', `${Math.max(0, now.turn.intent.amount - armorNow)}`),
     reading(READOUT.unused ?? '', `${unused(now.turn).length}`),
   )
+  // art. 119: **the line names itself, with its multiplier** — and then
+  // stands, because what it says is what the climb is about to do.
+  if (named !== null) totals.append(reading('', named))
   const priced = pricedNow()
   if (priced > 0) totals.append(reading(READOUT.cost ?? '', `${priced}`))
   // art. 57: everything visible, and art. 65: a bleed is a number the plan
@@ -1260,11 +1373,23 @@ function theFightPanel(): void {
   // after armor — the fight's own armor, because corrosion is something an
   // *intent* does and a bleed is not this turn's intent.
   if (now.bleed !== null) {
-    totals.append(reading(READOUT.bleeding ?? '', `${Math.max(0, now.bleed.amount - now.armor)}`))
+    const mark = reading(READOUT.bleeding ?? '', `${Math.max(0, now.bleed.amount - now.armor)}`)
+    // art. 65 (`bleed`), art. 119 §3: **a mark that ticks each turn**, and
+    // this is the tick. It is on the readout the plan was made against, so
+    // the thing that moves is the thing the player was counting on.
+    if (beatNow?.kind === 'bled') mark.className = 'ticking'
+    totals.append(mark)
   }
   const offer = claimOffer()
   if (offer !== null) totals.append(reading('', offer))
-  totals.append(cardGlyph())
+  const glyph = cardGlyph()
+  // art. 65 (`seal`), art. 119 §3: **it shuts the pair-shaped lines**, and
+  // the lines live behind the glyph (art. 74) — so the glyph is where a seal
+  // landing can be seen. One tap from the mark to the card it is about.
+  if (sealed(now.turn.intent).length > 0 && beatNow?.kind === 'struck') {
+    glyph.classList.add('sealed')
+  }
+  totals.append(glyph)
   fightPanel.append(totals)
 
   // The hand, as it lies. art. 72's four states are the die slot's business
@@ -1303,7 +1428,10 @@ function theFightPanel(): void {
  * there is nothing to commit, which is the point of it.
  */
 function boundSlot(die: Die, horror: string): HTMLButtonElement {
-  const el = slot('die bound')
+  // art. 65 (`bind`), art. 119 §3: **it drags the die out of the tray**, on
+  // the beat it takes it. After that the die is simply somebody else's, and
+  // the bar across it is what says so (art. 70).
+  const el = slot(`die bound${beatNow?.kind === 'bound' ? ' dragged' : ''}`)
   el.append(pips(die.faces[0]?.value ?? 1))
   el.setAttribute('aria-label', saysBound(die, horror))
   el.onclick = () => {
@@ -1467,12 +1595,41 @@ function dieSlot(die: Die, landed: Landed | null, claimed: boolean): HTMLButtonE
     resolving !== null && landed !== null && !claimed
       ? ' unused'
       : ''
+  // art. 119, card 75: **dice do not appear, they land.** Until this one's
+  // own beat, it is still in the air — and the face it shows while it is
+  // there is hashed off its identity, never rolled, because nothing is
+  // decided during an animation.
+  const air = landed !== null && shown !== null && !shown.landed.includes(landed.die)
+  // art. 65 (`curse`), art. 119 §3: **the sixes go grey.** An intent that
+  // attacks the plan has to be visible on the plan, and the plan is the dice
+  // as they lie — a value counting for nothing is a fact about this turn, so
+  // it stands for the turn rather than flickering for a frame (art. 70).
+  const cursed =
+    landed !== null &&
+    fight !== null &&
+    inAFight() &&
+    cursedValue(fight.turn.intent) === landed.face.value
+  // art. 119 §2: **a claimed die lifts, alone**, brightening — and it stays
+  // lifted, because the total it fed is still climbing off it.
+  const lift = landed !== null && (shown?.lifted.includes(landed.die) ?? false)
   const el = slot(
-    `die${landed === null ? ' rest' : ''}${kept ? ' kept' : ''}${isSelected ? ' sel' : ''}${
-      claimed ? ' claimed' : ''
-    }${idle}`,
+    `die${landed === null ? ' rest' : ''}${air ? ' rolling' : ''}${lift ? ' lifted' : ''}${
+      cursed ? ' cursed' : ''
+    }${kept ? ' kept' : ''}${isSelected ? ' sel' : ''}${claimed ? ' claimed' : ''}${idle}`,
   )
-  if (landed !== null) el.append(pips(landed.face.value))
+  if (landed !== null) {
+    const face = air ? die.faces[tumblingFace(landed.die, spun, die.body)] : landed.face
+    el.append(pips(face?.value ?? landed.face.value))
+  }
+  // …with its own small `+n`, in the moment it lifts and in no other. A
+  // number that stood on every lifted die would be a column of arithmetic;
+  // this is one die saying what it was worth.
+  if (landed !== null && beatNow?.kind === 'lift' && beatNow.die === landed.die) {
+    const gain = document.createElement('span')
+    gain.className = 'gain'
+    gain.textContent = `+${beatNow.value}`
+    el.append(gain)
+  }
   el.setAttribute('aria-label', saysDie(die, landed?.face))
   // art. 69: silence is a bug. A die answers with its declared truth whether
   // or not the tap also does something to it.
@@ -1889,8 +2046,9 @@ const SETTINGS_ACTS: SettingsActs = {
  */
 function abandonTheRun(): void {
   clearTimeout(advanceTimer)
-  clearTimeout(resolveTimer)
+  stopBeats()
   resolving = null
+  resolved = null
   fight = null
   phase = 'pre'
   selected = []
@@ -2111,9 +2269,217 @@ function settleAdvance(): void {
   persist()
 }
 
+// ── art. 119: the beats, played ────────────────────────────────────────
+
+/**
+ * **A fight event resolves in beats, and each beat says one thing.**
+ *
+ * The script arrives whole from `src/lots/beats.ts`, computed off an event
+ * that has already happened, and this is the only thing in the shell that
+ * reads it. Two properties are worth stating because both are the article
+ * rather than the implementation:
+ *
+ * - **Nothing is decided here.** No engine call happens inside a scheduled
+ *   beat. Every frame already carries the numbers the screen should be
+ *   reading once it has landed, so a beat is a repaint and never a
+ *   question. `test/beats.guard.test.ts` is what stops that drifting.
+ * - **There is one timeline.** art. 116 does not get a second path: the same
+ *   frames are read with every delay zero, and a delay of nothing is not a
+ *   short wait but no wait, so the whole script falls through in this one
+ *   turn of the loop and what shows is the settled state (art. 107).
+ */
+let playing: Playing | null = null
+/**
+ * Whether a fight event is resolving. It is a flag beside the player rather
+ * than a look at the player, because the very first frame shows *inside*
+ * `playBeats` — before it has returned anything to hold — and that frame is
+ * the one that has to take the pressed verb off the strip.
+ */
+let beating = false
+/**
+ * What the fight's numbers read while a timeline is running. `null` is the
+ * fight itself, which is what they read the rest of the time.
+ */
+let shown: Shown | null = null
+/**
+ * How many frames of the current timeline have shown. A die still in the air
+ * takes its face from this, so the tumble moves without anything rolling
+ * (art. 119: nothing is decided during an animation).
+ */
+let spun = 0
+/**
+ * The beat showing right now. A `+n` belongs to the die that is lifting *in
+ * this moment* and to no other, which is what art. 119 means by each beat
+ * saying one thing.
+ */
+let beatNow: Beat | null = null
+/**
+ * art. 119: **the line names itself**, and then stands. The name is a
+ * readout and lives in the tray with the rest of art. 57's numbers; the
+ * band is for prose, which in a cascade is what the riders say.
+ */
+let named: string | null = null
+/**
+ * art. 119 §3: **the blow.** Which body the beat now is flashing, how far
+ * the lunge has knocked the horror back, and whether the frame is offset.
+ *
+ * All three are one frame long: the beat after clears them, which is why
+ * every timeline ends on a settled beat. Nothing here can be left standing.
+ */
+let flare: Hit = 'none'
+let knocked = 0
+let jolted = false
+/** Whether the world band is showing a flash or a lunge and owes a settle. */
+let moved = false
+
+/** How far back a lunge sends it, as a fraction of the advance's own travel. */
+const LUNGE = 0.14
+/** art. 22: the shake, in **game** pixels. `show` turns it into device ones. */
+const SHAKE_PIXELS = 2
+
+function begin(frames: readonly Frame[], lands: () => void = paint): void {
+  stopBeats()
+  beating = true
+  const reading = playBeats(frames, {
+    clock: REAL_CLOCK,
+    // art. 116: the one place the setting is read. Past here there is one
+    // timeline and no branch that could disagree with itself about anything.
+    still: stillness(),
+    show: showFrame,
+    lands: () => {
+      beating = false
+      settleMarks()
+      lands()
+    },
+  })
+  // With the world held still the whole script has already been read out by
+  // the time this line runs, and there is nothing left to hold (art. 116).
+  if (beating) playing = reading
+}
+
+/**
+ * One frame, shown. Everything a beat does to the screen is here, and all of
+ * it is reading fields off a frame that was computed before any of this
+ * started — there is no engine call in this function and there must not be.
+ */
+function showFrame(frame: Frame, first: boolean): void {
+  spun += 1
+  shown = frame.shows
+  beatNow = frame.beat
+  // art. 119 §3: the blow's three marks, each exactly one beat long. The
+  // beat after clears them, which is why every timeline ends on a settled
+  // beat — nothing here can be left standing (art. 1).
+  flare = frame.shows.hit
+  knocked = frame.beat.kind === 'strike' ? 1 : 0
+  // **The only time the room itself moves.** The frame is the player's body,
+  // and spending that gesture anywhere else spends it for nothing — so it is
+  // the intent landing on you, and nothing else in the game, ever.
+  jolted = frame.beat.kind === 'struck' && frame.beat.amount > 0
+  speak(frame.beat)
+  // The first frame gets the whole screen, because it is the answer to a
+  // press: the strip has to lose the verb that started this in the same
+  // instant the first beat lands.
+  if (first) paint()
+  else showBeat()
+}
+
+/**
+ * art. 119: **each beat says one thing**, and this is where it says it.
+ *
+ * The riders and the bond take the band, because they are the beat that
+ * teaches the pouch to a player who never opens it and a mark alone cannot
+ * do that. The line takes the tray, because a name and a multiplier are a
+ * readout and the band is for prose (art. 66's seam, one level down). And
+ * the settled beat gives the band back to what the turn did (card 69), so
+ * the line standing at the end of a cascade is the exchange either way.
+ */
+function speak(beat: Beat): void {
+  switch (beat.kind) {
+    case 'rider':
+    case 'bond': {
+      const said = saysFiring(beat)
+      if (said !== '') band = answered(said)
+      return
+    }
+    case 'line':
+      named = saysLine(beat.line, beat.tier.multiplier)
+      return
+    case 'settled':
+      if (resolving !== null) band = answered(saysExchange(resolving))
+      return
+    default:
+      return
+  }
+}
+
+/** What a beat repaints: the numbers, and nothing that has not moved. */
+function showBeat(): void {
+  say()
+  vitals()
+  crown()
+  theFightPanel()
+  // art. 119 §3: the blow is the one beat that reaches the world band. It
+  // repaints on the beat that flashes and once more on the beat after, so
+  // the flash and the lunge settle rather than standing (art. 1).
+  const reaches = flare !== 'none' || knocked !== 0
+  if (reaches || moved) world(false)
+  moved = reaches
+  jolt()
+}
+
+/**
+ * art. 119 §3: **the shake.** Two game pixels, for about three frames, and
+ * only when the blow lands on you. It is a class on the stage rather than a
+ * repaint, because the frame moving is not the frame changing.
+ */
+function jolt(): void {
+  stage.classList.toggle('shaken', jolted)
+}
+
+/**
+ * art. 1: the settled end state, arrived at. Every entry point comes through
+ * here before it does anything else, so a timeline is never something the
+ * player has to wait out — and because the settled state is the whole truth
+ * (art. 119), skipping it costs nothing.
+ */
+function landBeats(): void {
+  playing?.land()
+}
+
+/** art. 119: no element left mid-transform. The whole of "ends settled". */
+function settleMarks(): void {
+  playing = null
+  beating = false
+  shown = null
+  spun = 0
+  beatNow = null
+  named = null
+  flare = 'none'
+  knocked = 0
+  jolted = false
+  jolt()
+  if (moved) {
+    moved = false
+    world(false)
+  }
+}
+
+/**
+ * art. 36: **close mid-anything and resume exactly.** A timeline is never
+ * written down — it is presentation over a ledger that is already settled —
+ * so dropping it cannot lose anything, and every scheduled beat goes with it.
+ */
+function stopBeats(): void {
+  playing?.stop()
+  beating = false
+  settleMarks()
+  moved = false
+}
+
 /** Every entry point settles whatever pulse is running first (art. 1). */
 function settle(): void {
   if (screen.kind === 'fight' && !advanced) settleAdvance()
+  if (beating) landBeats()
   if (resolving !== null) settleTurn()
 }
 
@@ -2126,6 +2492,10 @@ function fightActs(): void {
   const now = fight
   if (now === null) return
   if (resolving !== null) return
+  // art. 119: a timeline is a fight event resolving, and a fight event that
+  // is still resolving has nothing to offer. The verbs come back with the
+  // settled state; a tap anywhere lands the timeline first (art. 1).
+  if (beating) return
   // art. 36: each casting's lot is a pure function of where the run stands,
   // so the shell never has to hold a half-spent generator between paints.
   const lots = turnLots(ledgers.run!.seed, ledgers.run!.at.step, now.turnNumber)
@@ -2133,11 +2503,14 @@ function fightActs(): void {
   if (phase === 'pre') {
     fightPanel.append(
       verb('roll', () => {
-        fight = withTurn(now, cast(now.turn, lots(1)))
+        // art. 119: the throw is made, and written down, before the first
+        // frame is drawn. What the beats do is land the dice one at a time.
+        const rolled = withTurn(now, cast(now.turn, lots(1)))
+        fight = rolled
         phase = 'keep'
         band = HUSHED
         persist()
-        paint()
+        begin(rollBeats(rolled, NOTHING_HELD, CASCADE))
       }),
     )
     return
@@ -2148,12 +2521,24 @@ function fightActs(): void {
       verb(
         'recast',
         () => {
-          fight = withTurn(now, recast(now.turn, lots(2)))
+          // art. 41, card 75: **a reroll re-tumbles only the dice being
+          // rerolled.** What the thumb kept sits perfectly still, and that
+          // stillness is what makes holding feel like a decision that has
+          // already happened. The kept set is read off the turn *before* the
+          // recast, because the recast is what clears the keep-marks
+          // (art. 72).
+          const held = new Set<string>(
+            casting(now.turn)
+              .filter((landed) => landed.kept)
+              .map((landed) => landed.die as string),
+          )
+          const thrown = withTurn(now, recast(now.turn, lots(2)))
+          fight = thrown
           phase = 'claim'
           selected = []
           band = HUSHED
           persist()
-          paint()
+          begin(rollBeats(thrown, held, CASCADE))
         },
         castingsLeft(now.turn) === 0,
       ),
@@ -2192,36 +2577,51 @@ function fightActs(): void {
 }
 
 /**
- * art. 57: unused dice dim at resolve. The resolve is a beat of presentation
- * and nothing else — it is skippable, its end state is settled, and no
- * decision waits on it (art. 1).
+ * art. 119: **the turn resolves in beats, and the outcome is computed before
+ * the first one is drawn.**
+ *
+ * This is the seam the whole article is about. The engine is asked its two
+ * questions *here* — what the turn did, and what the fight is now — and both
+ * answers are written down before a single frame shows. Everything after
+ * this line is a repaint: the claimed dice lifting one at a time, the line
+ * naming its multiplier, each rider firing in its own moment, and the total
+ * climbing to a number that was already decided.
+ *
+ * The old shape asked `advanceFight` at the *end* of a 700ms pause, which is
+ * exactly what the article forbids — a decision inside a timeline — and it
+ * also meant the whole exchange resolved in one frame with nothing between
+ * the press and the answer. Both are the same fix.
+ *
+ * art. 57: unused dice dim at resolve, and they still do — `resolving` is
+ * what that reads, and it now stands for the whole cascade.
  */
 function endTurn(): void {
   const now = fight
   if (now === null) return
-  resolving = decide(now.turn, 'end-turn', now.armor, goods())
+  const resolution = decide(now.turn, 'end-turn', now.armor, goods())
+  resolving = resolution
+  resolved = advanceFight(now, resolution)
   selected = []
   // card 69: **the turn says what it did**, both halves, and it holds the
   // band until the player turns it. Before this, pressing Attack moved two
   // numbers and then talked about the next intent: nothing on screen ever
   // said you hit it for twenty, or that it took seven out of you.
-  band = answered(saysExchange(resolving))
-  // art. 116: the resolve is a beat of presentation and nothing else — no
-  // decision waits on it (art. 1) — so with the world held still it is
-  // skipped and the turn lands. What the dimming would have shown is what
-  // the next paint shows anyway.
-  if (stillness()) return settleTurn()
-  paint()
-  resolveTimer = setTimeout(settleTurn, 700) as unknown as number
+  //
+  // art. 119: the riders borrow the band as they fire and the settled beat
+  // gives it back, so the line standing at the end of the cascade is this
+  // one either way.
+  band = answered(saysExchange(resolution))
+  // art. 116: the same timeline with every delay zero. Nothing branches.
+  begin(cascadeBeats(now, resolved, resolution, goods(), CASCADE), settleTurn)
 }
 
 function settleTurn(): void {
-  clearTimeout(resolveTimer)
   const now = fight
   const resolution = resolving
+  const advancedFight = resolved
   resolving = null
-  if (now === null || resolution === null) return
-  const advancedFight = advanceFight(now, resolution)
+  resolved = null
+  if (now === null || resolution === null || advancedFight === null) return
   fight = advancedFight
   phase = 'pre'
   selected = []
@@ -2312,8 +2712,11 @@ function runFromTheFight(): void {
   const now = fight
   if (now === null || screen.kind !== 'fight') return
   clearTimeout(advanceTimer)
-  clearTimeout(resolveTimer)
   resolving = null
+  resolved = null
+  // art. 119: a timeline is presentation over a settled ledger, so leaving
+  // the fight drops it whole. Every beat it had scheduled goes with it.
+  stopBeats()
   ledgers = routeFlight(
     ledgers,
     saveFight(now, ledgers.run!.at.instance, phase, selected, advanced, false),
@@ -2349,8 +2752,9 @@ let endingAt = 0
 
 function died(cause: string = endLineOf(fight?.horror.id ?? '')): void {
   clearTimeout(advanceTimer)
-  clearTimeout(resolveTimer)
   resolving = null
+  resolved = null
+  stopBeats()
   ledgers = routeDeath(ledgers, cause)
   chain = deal(ledgers.run!.seed, ledgers.run!.depth, CATALOG, GRAMMAR, ledgers.run!.history)
   bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)

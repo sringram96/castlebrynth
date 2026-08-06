@@ -10,7 +10,7 @@
  */
 
 import type { Door, InstanceId } from '../gen/index.js'
-import type { Die, Face, Good, Intent, Line, Resolution } from '../lots/index.js'
+import type { Beat, Die, Face, Good, Intent, Line, Resolution } from '../lots/index.js'
 import type { ItemId } from '../state/index.js'
 import { LADDER } from './ladder.js'
 import { endLineOf } from './horrors.js'
@@ -19,6 +19,7 @@ import {
   DEATHS,
   END_LINES,
   EXCHANGE,
+  FIRING,
   INTENT_SAYS,
   LABELS,
   LOOKS,
@@ -169,6 +170,37 @@ export function saysClaim(line: Line, harm: number): string {
 }
 
 /**
+ * art. 119: **the line names itself, with its multiplier.**
+ *
+ * A readout and not prose — a name and a number, in the tray with art. 57's
+ * other numbers. The multiplier is the interesting half: it is what the
+ * total is about to climb by, and naming it a beat before the climb is what
+ * makes the climb read as an answer rather than as a number changing.
+ *
+ * The tier is handed in rather than looked up, because a talisman may have
+ * moved it (art. 53) and the ladder's own entry would then be a lie.
+ */
+export function saysLine(line: Line, multiplier: number): string {
+  return `${LADDER[line].name} ×${multiplier}`
+}
+
+/**
+ * art. 119: **what a rider says in the moment it fires.**
+ *
+ * Keyed on the rider first and on what it does second, so a good that ships
+ * without a line of its own still says something (art. 69: silence is a
+ * bug) and a good that has one says the thing that teaches it. The words
+ * are `prose.ts`'s and linted there; this puts the rider's own number in
+ * one, exactly as `saysIntent` does for an intent.
+ */
+export function saysFiring(beat: Beat): string {
+  if (beat.kind === 'bond') return FIRING.bond ?? ''
+  if (beat.kind !== 'rider') return ''
+  const said = FIRING[beat.rider as string] ?? FIRING[beat.effect.kind] ?? ''
+  return fill(said, { n: beat.effect.amount })
+}
+
+/**
  * card 69: **what an act answers with.** art. 70 asks prose to confirm what
  * an act did, and the shell had one authored line for one act — so every
  * other press fell through to the candle underneath, which is the candle
@@ -275,7 +307,7 @@ export function saysGood(good: Good, remembered: readonly string[] = []): string
 }
 
 /**
- * art. 119: the price, put into the sentence that carries it.
+ * art. 120: the price, put into the sentence that carries it.
  *
  * The look is authored with `{n}` in it and the number arrives from the act,
  * exactly as art. 42's intent lines fill from the intent — so no sentence
