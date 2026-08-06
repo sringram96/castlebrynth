@@ -94,9 +94,10 @@ describe('art. 91 — the vault carries the new field forward', () => {
   it('keeps the ladder gapless up to the current version', () => {
     // Bumped by the threshold wave: 6 for the run's `descending` (the front
     // door may only offer Continue for a run that was begun) and 7 for
-    // art. 116's preferences. Both rungs are the filling kind — nothing
-    // about the arrangement moves — so no descent was lost to either.
-    expect(VAULT_VERSION).toBe(7)
+    // art. 116's preferences. 8 is the reason wave, which puts the line that
+    // is not yours at the head of every Book. All three are the filling kind
+    // — nothing about the arrangement moves — so no descent was lost to any.
+    expect(VAULT_VERSION).toBe(8)
     expect(MIGRATIONS.map((one) => one.from).sort((a, b) => a - b)).toEqual(
       Array.from({ length: VAULT_VERSION - 1 }, (_, at) => at + 1),
     )

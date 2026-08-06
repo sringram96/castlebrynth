@@ -100,7 +100,184 @@ blind doors → the room behind it is dealt on the spot → keep choosing → a
 region locks and the depth announces where you have arrived → the rest of
 the depth deals from that region and its encounters wake → the Warden's
 door, refused without the key and terse with it. `npm test` is green: 33
-files, 321 tests.
+files, 327 tests.
+
+**And the frame says who you are.** The reason wave shipped the premise that
+had been sitting in `reference/GAME.md` since the beginning: a brother, a
+name you keep saying, and down as the only direction there is.
+
+## The reason wave (card 66)
+
+The playtest's verdict was *"the story doesn't give me a reason to care about
+the protagonist, or want to get out, or even know where I am."* The finding
+behind it was not that the premise was missing. **The premise existed and did
+not ship.** GAME.md's fantasy opens with it — you wake beneath Castlebrynth
+with a pouch of bones and a name you keep saying, your brother's, and down is
+where your brother is — and not one string in `prose.ts` carried any of it.
+This wave was delivery, not invention.
+
+Scope was **the frame**: the moments that hold a run, not the rooms inside
+it. Room prose is still placeholder and cards 27–28 are still the register
+passes. Four facts, delivered obliquely and never as exposition: **the name**
+(he is your brother, he is never named — depth 3 owns the naming), **the
+want** (down is where your brother is, which is why art. 9's forward-only
+ratchet is the premise and not only the rule), **the place** (Castlebrynth
+keeps what it is given), and **the dice** (art. 86 was already law; the frame
+makes the implication land — *you check every one*).
+
+### Every frame string, before and after
+
+**The threshold** (`gate.*`, `src/content/prose.ts`)
+
+| | |
+|---|---|
+| before | *The way down. Stone stops at a shut door, and what comes up under it is colder than the room.* |
+| after | *The way down into Castlebrynth. Stone stops at a shut door, and what comes up under it is colder than the room. You say the name to it again.* |
+| before | *The way down. The door stands as you left it, and the run behind it is still yours.* |
+| after | *The way down. The door stands as you left it, and the run behind it is still yours. Your brother is further down than that.* |
+| before | *The run ends here, unfinished. The depth behind it goes with it, and the Book takes the line.* |
+| after | *The run ends here, unfinished. The depth behind it goes with it, the Book takes the line, and the way down starts again at the Crossing.* |
+| before | *The door shuts on it. What you carried down is down there.* |
+| after | *The door shuts on it. What you carried down stays down there, and the name comes back up with you.* |
+
+The cold line is the first pixels a new player ever sees, so it carries the
+place and the ritual and nothing else. It says *the name* without saying
+whose: the waking is where you learn that, one screen later, which is the
+whole of the sequencing.
+
+**The waking** (`BEATS['room.crossing']`) — three candles became four.
+
+| | |
+|---|---|
+| before | *The Crossing. You wake, and the ceiling is close enough to touch.* |
+| after | *The Crossing. You wake with the ceiling close enough to touch and your brother's name already in your mouth.* |
+| before | *Five bones lie in your open hand. Your hand holds six.* |
+| after | unchanged (arts 55–56: the hole in the hand is still the invitation) |
+| after (new) | *The traveler against the wall is not the one you are looking for. You check anyway. You check every one.* |
+| before | *The corridor goes down. Behind you the stone is unbroken.* |
+| after | *The corridor goes down. Behind you the stone is unbroken, and down is where the name goes.* |
+
+The third candle is the load-bearing one. It is art. 86 becoming the search:
+every die down here belonged to somebody who did not come back, so you check
+every body you pass — and the player works out why without a word of it being
+explained. The traveler it names is the Crossing's own authored scenery and
+not a socket, so art. 83 is untouched.
+
+**The three arrivals** (`ARRIVALS`) — one flat sentence each became two.
+
+| | |
+|---|---|
+| before | *The floor slopes, and stays sloped. Everything under this runs to water.* |
+| after | *Every door you take leans down toward water, and the labyrinth stops offering the others.* / *The floor slopes, and stays sloped. What Castlebrynth is given down here, it keeps under water.* |
+| before | *The air dries out. Everything under this has burned once already.* |
+| after | *Every door you take opens on something already burnt, and the labyrinth stops offering the others.* / *The air dries out. What Castlebrynth is given down here, it keeps as ash, and the ash is deep.* |
+| before | *The walls go pale. Everything under this is bone, and set in courses.* |
+| after | *Every door you take goes further in among the dead, and the labyrinth stops offering the others.* / *The walls go pale. What Castlebrynth is given down here, it keeps in the courses, and the courses are bone.* |
+
+The first candle is the one the placeholder was missing: it says what the
+*choosing* did. art. 77's twenty questions, answered — the region reads as
+the labyrinth leaning where you leaned rather than as a biome loading, which
+is what art. 78 means by arrival being the payoff of commitment. A run sees
+exactly one of these, so the shared shape is a refrain and not a repetition:
+what a player learns across runs is that Castlebrynth keeps everything, and
+only the keeping changes.
+
+**The endings** (`run.dead`, `run.finished`, and the two `.choose` variants)
+
+| | |
+|---|---|
+| before | *The floor comes up. The run ends here.* |
+| after | *The floor comes up. The run ends here, and everything you know of it keeps. So does the name.* |
+| before | *You go through, and the stair keeps going down.* |
+| after | *You go through, and the stair keeps going down. Your brother is not on this depth.* |
+
+The Warden's door is the line the wave is proudest of. Finishing a depth was
+a terse shrug; now it is the thing you came down for, not found — which is
+what a depth-one ending actually is, and it costs one sentence to say.
+
+**The choosing screen** (`choose.which`)
+
+| | |
+|---|---|
+| before | *More bones than your hand holds. The rest stay up here.* |
+| after | *More bones than your hand holds. Each one belongs to somebody who does not come back up. The rest stay here.* |
+
+**The Book** (`book.title`, and how a line reads)
+
+| | |
+|---|---|
+| before | *The Book of Ends.* |
+| after | *The Book of Ends. Every ending is written here, oldest first.* |
+
+A line of the Book used to be a depth and a seed — a receipt rather than a
+record. The `END_LINES` sentences were authored for this sheet and had never
+reached it, so a line is now **the ending's own sentence**, with the numbers
+dim beside it. Two of those sentences are new: `end.abandoned` never had one
+at all (giving a run up writes a Book line and the Book had nothing to write
+for it), and `end.gone` is the straw ruling below.
+
+### The straw ruling — **flagged for veto**
+
+**The Book of Ends is not empty at the first waking.** One line already
+stands in it, and it is not yours:
+
+> 1 · *Gone down, and not back up.*     depth unknown · seed unknown
+
+Every death writes your line beneath it. It is the cheapest sentence in the
+game that makes the Book mean something before the player has died once — the
+record you spend the whole game adding yourself to was already open, and the
+line at the top of it has no seed because nothing here dealt that run and no
+depth because nobody came back to say how far it went. It is also the one
+line in the Book with no *you* in it.
+
+Built as the card specified:
+
+- `FIRST_END` is seeded on `firstPermanent`, so there is no "new game" path
+  where it could be forgotten — `erase` boots through the same function.
+- `EndLine.seed` and `EndLine.depth` are `Seed | null` / `number | null`.
+  That is the honest field rather than a flag: "not yours" and "no seed" are
+  the same fact here, and the reader prints what it is given.
+- `VAULT_VERSION` is 8, with a `fillingThePermanent` rung that puts the line
+  **above** an existing Book's own lines. A player mid-collection gets the
+  premise and loses nothing; the rung is idempotent by the cause.
+- The reader draws it with the same code and the same class as every other
+  line. What marks it out is its content — no numbers, and a sentence with
+  nobody in it. Never styling.
+
+**If vetoed**, the fact moves into the threshold's prose and the Book is born
+empty again: revert `FIRST_END` out of `firstPermanent`, drop rung 7 → 8, and
+the nullable fields can stay or go with it.
+
+**What it changes elsewhere, and this is on purpose:** the door's Read verb
+is offered from the very first boot, because `hasBook` is now always true.
+The Book was previously unreachable until you had died, which meant the one
+screen that explains what death is *for* was gated behind dying.
+
+**No law was edited.** art. 86 already says what the dice are, and the ruling
+is content behaviour under art. 11's existing text. If it survives veto, the
+sentence to add to `.claude/rules/the-world.md` under art. 11 is: *the Book
+does not open empty — one ending stands in it from the first waking, and it
+is not the player's.* Nothing more.
+
+### What the frame still cannot carry
+
+The frame is four moments and a Book, and it is now doing all four moments
+can do: you know who you are at the threshold, why you are going down by the
+second candle of the waking, where you are the first time a region locks, and
+what death is for the first time you read the Book. What it cannot do is hold
+any of that up **while you are in a room**, and a run is mostly rooms. Every
+room beat in the game is still the placeholder tranche — a true, flat,
+unhaunted sentence about a floor — and none of them knows there is a brother,
+a search, or a labyrinth that keeps what it is given. The lines that mattered
+most in this wave work because the frame is where the player is *not*
+distracted; the rooms are where they spend their attention, and there the
+prose still says nothing to them. Cards 27–28 are the register passes and
+this wave deliberately did not touch them. Until they land, the honest
+statement is that the game now has a premise and a placeholder middle: a
+player who reads the frame carefully knows the story, and a player who reads
+only the rooms still does not. The arrivals are the seam to watch — they are
+frame prose standing in a room, and they show exactly how much a room's own
+words could be carrying and are not.
 
 ## The threshold wave (arts 96, 99, 104–105, 116)
 
