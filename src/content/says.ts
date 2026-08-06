@@ -84,9 +84,26 @@ export function intentChip(intent: Intent): string {
   return `${intent.verb} ${intent.amount}`
 }
 
-/** art. 73: the intent is tappable, and explains its effect in plain words. */
+/**
+ * art. 73: the intent is tappable, and explains itself in plain words.
+ *
+ * card 71: **both halves, and the numbers are the intent's own.** Half of
+ * these used to describe an effect and never the damage beside it, and the
+ * other half described nothing at all. Filling from the intent rather than
+ * writing the number into the sentence is also what stops COVET claiming to
+ * eat sixes in the one script where it eats fives — the same line, told the
+ * truth twice.
+ */
 export function saysIntent(intent: Intent): string {
-  return INTENT_SAYS[intent.verb] ?? intentChip(intent)
+  const said = INTENT_SAYS[intent.verb]
+  if (said === undefined) return intentChip(intent)
+  const effect = intent.effect
+  return fill(said, {
+    n: intent.amount,
+    v: effect?.kind === 'curse' ? effect.value : 0,
+    t: effect?.kind === 'bleed' ? effect.turns : 0,
+    f: effect?.kind === 'hunger' ? effect.amount : 0,
+  })
 }
 
 /** What a claimed line is worth, as a readout: the name and the number. */

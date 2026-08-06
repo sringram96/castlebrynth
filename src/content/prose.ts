@@ -530,33 +530,56 @@ export const DEATHS: Readonly<Record<string, string>> = {
  * what the number will do to the plan (art. 65). art. 73: the intent is
  * tappable, and this is what it answers with.
  */
+/**
+ * **Rewritten by the answer wave (card 71).** Two defects, and the second
+ * one is the one that cost the player money.
+ *
+ * *Impending, not landed.* The first thing anybody read on entering a fight
+ * was *"It swipes at you."* — present tense, health untouched — which reads
+ * as a report of something that already happened and undercuts the whole of
+ * art. 42's promise that the attack is visible **before** the first casting.
+ * Every line here is now the thing about to happen.
+ *
+ * *Both halves.* Half of these described their effect and never their
+ * number: SEAL 6 explained itself as *"It jams your pair combos"* and said
+ * nothing about the six it also lands. The other half described nothing at
+ * all — BELLOW 16, the biggest hit in the depth and the one the death scrawl
+ * tells you to count for, explained itself as *"It takes a long breath,"*
+ * which sounds like a turn where nothing happens. So each line carries
+ * **what the number does to the body and what the effect does to the plan**,
+ * and neither half is optional.
+ *
+ * `{n}` is the intent's own number, `{v}` the value a curse eats, `{t}` the
+ * turns a bleed runs and `{f}` what a hunger feeds back. `saysIntent` fills
+ * them from the intent itself, which is what stops COVET claiming to eat
+ * sixes in the one script where it eats fives.
+ */
 export const INTENT_SAYS: Readonly<Record<string, string>> = {
-  SWIPE: 'It swipes at you.',
-  SEAL: 'It jams your pair combos. Pair-shaped lines are shut this turn.',
-  COVET: 'It curses your sixes. Sixes count as nothing this turn.',
-  CORRODE: 'It spits something corrosive. Your armor does nothing this turn.',
-  BELLOW: 'It takes a long breath.',
-  REND: 'It opens you from the shoulder down.',
-  // card 29–30: the three new kinds, said in plain words. Each names what
-  // the number does to the plan, because art. 73 makes the intent tappable
-  // and this is the whole of what a tap on it gets back.
-  DRAG: 'It reaches for your highest bone. That die stays under, and does not cast next turn.',
-  CHILL: 'The cold gets into you. It takes a little at the start of each of your next three turns.',
-  SILT: 'It pushes the whole floor at you.',
-  UNDERTOW: 'The water goes out from under you.',
-  SEAR: 'It burns you, and the burn keeps going for three turns.',
-  GAPE: 'It opens. Any turn of yours that claims nothing puts some of it back.',
-  CHAR: 'It lays a hand flat on you.',
-  GUTTER: 'It draws the fire back in, and swings.',
-  // card 31: the depth's exam. Every kind it has taught, said in the same
-  // plain words the room that taught it used (art. 73).
-  JUDGE: 'It reads you. Pair-shaped lines are shut this turn.',
-  BIND: 'It takes your highest bone off the table. That die does not cast next turn.',
-  TITHE: 'It counts your sixes as owed. Sixes count as nothing this turn.',
-  FLENSE: 'It opens a long cut. That cut takes a little at the start of each of your next three turns.',
-  STRIP: 'It goes through your armor. Your armor does nothing this turn.',
-  WAIT: 'It waits. A turn of yours that claims nothing gives it back some of its own.',
-  KEEP: 'It brings the whole door down on you.',
+  // The plain ones. There is no effect to name, so the line is the wind-up
+  // and the number — which is all a plain intent has ever been.
+  SWIPE: 'It draws back to swipe. That is {n} coming at me.',
+  SILT: 'It is going to push the whole floor at me. {n}.',
+  CHAR: 'It is going to lay a hand flat on me. {n}.',
+  REND: 'It is winding up to open me from the shoulder down. {n}.',
+  BELLOW: 'It is filling its chest. Whatever that breath is for, it is {n}.',
+  UNDERTOW: 'The water is about to go out from under me. {n}.',
+  GUTTER: 'It is drawing the fire back into itself before it swings. {n}.',
+  KEEP: 'It is going to bring the whole door down on me. {n}.',
+  // art. 65: the plan-attacks. Both halves, in that order — the plan first,
+  // because that is what has to be decided before the casting.
+  SEAL: 'It is about to jam my pairs shut. Nothing pair-shaped scores this turn, and it swings for {n} behind that.',
+  JUDGE: 'It is reading me. Nothing pair-shaped scores this turn, and it comes in for {n} while I look for something else.',
+  COVET: 'It wants my {v}s. They count for nothing this turn, and it takes {n} while I work around them.',
+  TITHE: 'It is counting my {v}s as owed. They score nothing this turn, and it takes {n} anyway.',
+  CORRODE: 'It is going to spit something that eats iron. My armour stops nothing this turn, and {n} goes straight through.',
+  STRIP: 'It is going through my armour. Nothing I am wearing counts this turn, and {n} lands on me.',
+  DRAG: 'It is reaching for my highest bone. That one stays under and does not cast next turn, and it takes {n} taking it.',
+  BIND: 'It is going to lift my highest bone off the table. That one does not cast next turn, and it takes {n} doing it.',
+  CHILL: 'The cold is getting into me. {n} now, and more at the start of each of my next {t} turns.',
+  SEAR: 'It is about to burn me. {n} now, and the burn keeps taking for {t} turns after.',
+  FLENSE: 'It is opening a long cut. {n} now, and it keeps taking for {t} turns after that.',
+  GAPE: 'It is opening. {n} coming, and any turn I claim nothing puts {f} back into it.',
+  WAIT: 'It is waiting. Only {n} — and any turn I claim nothing gives it {f} of its own back.',
 }
 
 /**
@@ -700,7 +723,18 @@ export const NOTICES: Readonly<Record<string, string>> = {
   // art. 72: claim offers match the exact selection, so a selection that
   // fits nothing says why. The shape must be exactly what is chosen — a
   // full house is the five, never the five and one more.
-  'claim.exact': 'No combo uses exactly these dice.',
+  'claim.exact': 'Nothing on the card takes exactly these.',
+  /**
+   * card 71: **and the floor is an offer, not a refusal.**
+   *
+   * The two were printed together — *"any dice 4 · No combo uses exactly
+   * these dice."* — which is an offer and a refusal on one line. Both
+   * clauses were true and they contradicted each other in plain reading:
+   * here is what you get, and nothing fits. What it actually means is that
+   * the floor is the best this selection makes (art. 46), which is one
+   * statement, so it is said as one.
+   */
+  'claim.floor': 'the best these make',
   'claim.none': 'Nothing is chosen yet.',
   // arts 60, 86: the hand is a chosen six, and choosing is a swap. Neither
   // of these instructs — they say what is true of the tray right now, and

@@ -276,6 +276,10 @@ const AMENDED_NOTICES: readonly string[] = [
   // thought from the moment it is written.
   'door.blind',
   'door.held',
+  // card 71: the totals line, said as one statement rather than as an offer
+  // and a refusal standing next to each other.
+  'claim.exact',
+  'claim.floor',
 ]
 
 /**
@@ -341,6 +345,10 @@ export function everyString(): readonly Utterance[] {
       // filled by `saysExchange` and are words like any other to the lint.
       ...Object.values(EXCHANGE),
       ...Object.values(DEATHS),
+      // card 71: rewritten this wave — impending, and carrying both halves.
+      // The `{n}` tokens are filled by `saysIntent` and are words like any
+      // other to the lint.
+      ...Object.values(INTENT_SAYS),
     ]),
     // The Book of Ends is the pile of things he wrote down, and the line at
     // the head of it is the oldest of them.
@@ -363,7 +371,6 @@ export function everyString(): readonly Utterance[] {
       // as prose. If a sentence cannot pass the lint the item does not ship,
       // which is the article's acceptance test enforced rather than quoted.
       ...Object.values(ORIGINS),
-      ...Object.values(INTENT_SAYS),
       ...noticesIn(false),
     ]),
     ...asLabels([

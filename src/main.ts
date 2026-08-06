@@ -1297,8 +1297,12 @@ function claimOffer(): string | null {
   const offer = saysClaim(line, scoreOf(line))
   // The floor is always on offer (art. 46), so "the offer is the floor" is
   // exactly the case art. 72 says owes the thumb a reason as well as a price.
+  //
+  // card 71: and the reason is a *reason*, not a refusal. This used to print
+  // the offer and "No combo uses exactly these dice" side by side, which
+  // reads as the tray offering something and denying it in one breath.
   return fitsNothing(now.turn, selected, LADDER)
-    ? `${offer} · ${NOTICES['claim.exact'] ?? ''}`
+    ? `${offer} · ${NOTICES['claim.floor'] ?? ''}`
     : offer
 }
 
