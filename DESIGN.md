@@ -109,8 +109,17 @@ keep choosing → a region locks and the depth announces where you have arrived
 → the rest of the depth deals from that region and its encounters wake → the
 Warden's door, and the keeper behind it once the key turns. Every doorway
 breathes while you stand there, and seven rooms will do one thing of their own
-accord if you stand there long enough. `npm test` is green: 56 files, 649
+accord if you stand there long enough. `npm test` is green: 58 files, 671
 tests.
+
+**And the tray is legible now.** The six are warm rounded pipped **bone** and a
+carried thing is cold bevelled glyphed **iron**, so the two rows tell apart at
+a glance rather than by a border colour; a die or a trinket that is not in play
+draws its whole face set with the cost face marked where it sits; and a fight
+has one running readout — `sum × line` — that is live before the press, with
+every number popping off the thing that made it. **And a fight is begun by
+tapping the horror**, not by bumping into the door it guards. Two sections
+down: **The legible wave**.
 
 **And two things you carry now have faces of their own.** The rolling goods
 (card 93) are a new species beside the dice: carried outside the hand, taking
@@ -3543,3 +3552,237 @@ every horror in `HORRORS` has a body, and that an undrawn one still honestly
 has none.
 
 `npm test`: 50 files, 557 tests, green.
+
+## The legible wave (cards 94–95)
+
+Two playtest complaints from 2026-08-06, and neither of them moves a number.
+Card 94: *"I have no idea how to tell core die apart from item die. The
+descriptions of special die are not clear. I can't tell what item die are
+doing."* Card 95: *"I don't like that you have to click on the door and try to
+go through it to initiate the fight."*
+
+Signed-off reference for card 94: `reference/castlebrynth-dice-v3.html`, landed
+with this wave. It wins ties about intent.
+
+### The two materials, and the glyph set
+
+The six and the carried things were the same 42px box in two border colours,
+and a border colour is not a material. They are two **objects** now.
+
+**Bone.** A warm ramp — six steps from `hsl(26 22% 17%)` to `hsl(44 46% 90%)`,
+with the scar at `hsl(8 52% 42%)` past the end of it — a rounded body that
+fills its square, pips, and the near corner lit. **Iron.** A cold ramp from
+`hsl(220 18% 13%)` to `hsl(200 34% 84%)`, a bevelled octagon that cuts its
+corners away, and a **glyph per face kind** rather than pips.
+
+| kind    | glyph              | word              | ink                  |
+| ------- | ------------------ | ----------------- | -------------------- |
+| `block` | a shield           | `turns {n} aside` | cold `hsl(202 44% 66%)` |
+| `add`   | a plus             | `+{n}`            | gold `hsl(40 62% 64%)`  |
+| `per`   | a plus, framed by four corner dots | `+{n} per die` | gold |
+| `cost`  | teeth              | `bites {n}`       | red `hsl(8 56% 58%)`    |
+| `null`  | a bar through dull metal | `nothing`   | — nothing is claimed |
+
+Everything above is **data**, in `src/content/faces.ts`: 16×16 grids of indices
+into a ramp, never colours (art. 100). `src/shell/faces.ts` paints them. Three
+consequences and each is the article — a drawing cannot fall out of palette,
+one drawing lights two ways by swapping the ramp under it (art. 115: a claimed
+bone lifting, a trinket landing, a null gone dull), and readable size is a
+property of the drawing rather than of whatever is drawing it.
+
+**The bar was that the two rows read apart with the screen upside down**, which
+a colour swap alone does not pass — so the silhouette moves as well as the hue,
+and `test/faces.test.ts` asserts the silhouettes differ rather than asserting a
+hue. Once they do, a **dashed hairline** is the whole separator the tray needs.
+No heading, no label.
+
+**Two departures from the reference, and both are corrections rather than
+disagreements.** The pips are one pixel right and one down of the demo's: at
+three device pixels to an authored one the demo's block sits a pixel and a half
+left of the body's centre, and a die with its pips shoved into a corner reads
+as a broken die. And a `block` pops a bare number rather than the demo's `⛊`,
+because U+26CA is not in the default serif on either mobile platform and would
+render as a fallback box on the phone the tuning has to be settled on — the
+shield is still there, drawn rather than typed, on the face the number pops off.
+
+### A thing shows its faces
+
+art. 54 asks for declaration on inspect, and **a sentence is not a
+declaration**. A die at rest was a hollow box: the pouch held seven identical
+boxes, and the choosing screen — whose entire job is telling dice apart — drew
+every die as its first face, so a plain bone, the pusher and the careful all
+rendered as a 1 and the best die in the game advertised itself as the worst.
+
+A thing that is not on the table now draws its **name and its whole face set**,
+in the order a roll indexes them, with the cost face **marked where it sits**
+(the scar, plus `costs {n}` under it) and every trinket face wearing its
+plain-word label coloured by kind. It is not an inspect button and not a
+tooltip — art. 68 abolished both — it is what the thing looks like when it is
+not in play, and the tap still answers in the word band like every other tap.
+
+Carried trinkets are readable in the **pouch** now, not only in a fight, which
+was the one place nobody has time to read six faces.
+
+### One vocabulary, three places
+
+The tray caption, the inspect's face labels and the word band all come out of
+`faceSays`, and `test/faces.test.ts` asserts the other two *contain* what it
+says rather than that they happen to agree. The number goes inside the words
+(`turns {n} aside`, filled from the good's own face) so a retuned face cannot
+drift off its own description.
+
+`READOUT.nothing` moved from `—` to `nothing`, which amends card 93's
+"draw it, do not name it". That card was right and its argument is now carried
+by a pixel: the null is *drawn*, as a bar through dull metal. What is left is a
+caption, and there an em dash is not the absence of a word, it is an unreadable
+one.
+
+### Where the number came from
+
+**Before the press:** each carried thing's loaded face is captioned in the tray
+at all times. The face was never rolled at the moment of pressing — a turn's
+amend lot is a pure function of seed, step and turn number — so `loadedFaces`
+*reads* it, and `rollAmends` is written on top of that call so there is one
+statement of which face and no second one to drift. It is art. 42's promise
+said about a carried thing: the number is on the frame from the top of the
+turn, and choosing is planning. **It moves no number and changes no odds; it
+changes what a player can know while deciding, which is the point of the card.**
+
+**One readout, two boxes: `sum × line`**, live before Attack. `attack` left the
+totals row and the claim line kept only the half the boxes cannot carry — a
+selection that fits nothing, and a line that is on the table and shut. There is
+exactly one running number in the fight.
+
+**The beat order is art. 119's own, unchanged**, and the score row reads it:
+
+| beat | what moves | timing (`CASCADE`) |
+| --- | --- | --- |
+| `lift`, per claimed bone | the die pops `+n` gold on itself; the sum box ticks | 180ms apart |
+| `bond` | the ghost joins the sum, in its own moment | 460ms |
+| `line` | the multiplier box lights, the line's name beneath it | 320ms |
+| `rider` | one at a time, in the band | 460ms |
+| `climb` | the two boxes **collapse into the blow** — one number, caption `the blow`, multiplier dark | 350ms over 7 frames |
+| `amend`, per fired trinket | it pops **its** number on itself, coloured by kind | 460ms |
+| `strike` / `struck` | the blow, and the frame's one gesture | 320ms |
+
+Nothing is decided inside an animation, the outcome is computed at the press,
+and with reduced motion the whole sequence collapses to its settled state — all
+three by construction, because the beats are art. 119's and this wave only
+reads them. `test/beats.cascade.test.ts` asserts the readout lands on
+`resolution.harmDealt` for every line, with and without carried goods, in
+motion and still.
+
+**Why the caption and the pop split the work:** the caption is the standing
+explanation, the pop is only ever the amount. That split is why a trinket never
+needs a log line, and it is what makes the mechanic learnable by a player who
+was never told.
+
+### The two rejected scoring shapes
+
+Recorded so neither is rediscovered. **v1** threw fly-away numbers that left
+their source and vanished — the number moved and the reason evaporated. **v2**
+wrote a persistent line-by-line receipt — correct information, wrong shape:
+too slow, and it read as a spreadsheet. **v3 is the structure**: attribution is
+**spatial**, and there is exactly one running readout.
+
+### The block readout: what was found
+
+The wave asked which of two it turned out to be. **A block pops cold on the
+thing that rolled it and does not move the readout**, because it does not add
+to the blow — and that is what shipped, without the second readout the card
+held in reserve.
+
+The honest report: this was settled in Chromium at 390×860 and **not in a
+hand**, so it is the same class of finding as the fight wave's timings. What a
+browser can show is that the beat is not silent — the iron lights, the number
+rises off it in cold, the caption under it already says `turns 6 aside`, and
+the band says the sentence — four marks for one event, three of which stand
+still. What it cannot answer is whether *the readout not moving* reads as
+"nothing happened" to a thumb. If the phone pass says it does, the fix on file
+is a second small readout for what is turned aside, and **not** folding it into
+the blow: a block is not damage and a readout that pretended otherwise would be
+lying to make itself busier.
+
+### A fight is begun by tapping the horror (card 95)
+
+Tap the horror → **FIGHT** on the strip (art. 68's own law, art. 66's plain
+verb). Press it and the fight opens exactly as before: art. 30 untouched, no
+battle screen, still the room with the thing come close. Every door of a room
+with something standing in it offers **no way through**, and its look says
+why — *Something is in the way* — which names nothing and points at nothing
+(art. 3) and does not have to, because there is only ever one thing it could be
+about and that thing is on the frame (art. 118's third clause).
+
+Two consequences fell out, and both are the article rather than the scope:
+
+- **A fight has no door in hand.** The tap that summons its verb is the tap
+  that releases a picked door (art. 71 as strengthened), so a fight is won
+  standing in the room and the way on is chosen afterwards like any other
+  room's. A crossroads with teeth used to push the player through whichever
+  door they had bumped into; both halves of art. 31 survive now instead of one.
+- **No door opens when a fight starts.** That was the world remembering
+  something that had not happened — a defect card 31 had already noticed and
+  made a Warden-shaped exception of. A door opens when it is walked through, in
+  every room including the hall.
+
+So a beaten horror **leaves the room**: no prop, no tappable, one candle saying
+what happened (art. 70). That state was unreachable before, because winning
+walked you out before you could stand in it. Its deed is `HORROR_DOWN`, the
+keeper's `WARDEN_DOWN` said one floor down, written against the *instance* so
+two copies of one Lair keep their own (art. 82).
+
+**The keeper keeps its door.** art. 37 makes it the door's own, it stands in no
+socket, it is not in the hall until the key turns, and the ceremony that wakes
+it is already a verb pressed about a thing — the lock. Recorded as a known
+edge: a player who flees the Warden and returns re-enters through the hall
+door's Fight verb, because the keeper has no body standing in the hall to tap.
+Giving it one is a body card, not this one.
+
+**Unchanged:** fleeing pauses the fight in the room and it is there when you
+come back (arts 41, 63); the horror gates the way on until it falls; the
+fight's own loop does not move. **No ambushes** — a fight that begins on entry
+with no verb pressed is not a QTE and art. 2 does not forbid it, but it is a
+separate card and is not in this wave.
+
+### One defect found mid-build, by the harness
+
+`fightSummoned` first asked only whether the horror had been looked at. The
+summons is knowledge and lives on the ledger, so it survives everything —
+including the thing it was about — and FIGHT stayed on the strip after the
+horror fell. A press that cannot change anything is art. 118 exactly, and
+card 74's screen harness caught it before a human could. The verb goes with the
+thing now.
+
+### Manual, at 390×860 — and what it is not
+
+Driven in Chromium at 390×860 at device-scale 2, through the real front door.
+Confirmed: the two rows tell apart at a glance and the pips read at 32px; a
+guarded door answers *"The draught off it is wet. Something is dripping a long
+way in. Something is in the way."* and offers no verb; tapping the horror puts
+Fight on the strip; the fight opens; a turn lands and the horror goes to
+270/290; **Run** backs out and **Fight** resumes at 270/290 with the card as
+spent as it was left; the score row reads `19 × 1` live before Attack and
+collapses to `21 · the blow` with the multiplier dark; no console errors; no
+horizontal overflow anywhere.
+
+**This is not the hand pass, and the hand pass is still owed** — the same
+sentence the fight wave wrote, for the same reason. A headless browser at phone
+dimensions can prove the marks are there and the numbers are right. It cannot
+answer whether a cold pop that moves nothing reads as an event, or whether the
+face labels are readable at 24px on glass. Both are on file above rather than
+quietly adjusted.
+
+The win-and-stay-in-the-room path was verified through the screen harness
+across sixty seeds rather than by hand: the bot's greedy policy dies to a
+290-health Gnawing long before it wins one. `test/hinge.summon.test.ts` asserts
+the deed is written, every door in the room gives, the socket stops offering
+anything to tap, the room says one line about the fall, and FIGHT is gone.
+
+### What this wave did not touch
+
+No law changed — arts 30, 54, 66, 68, 70, 113 and 119 carry all of it. No new
+screens. No change to the ladder, the card, the three presses, the rolling
+goods' faces or values, or any card 89 tuning number. No new horrors. Cards
+80/81 stay deferred.
+
+`npm test`: 58 files, 671 tests, green.
