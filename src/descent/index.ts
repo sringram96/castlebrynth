@@ -210,7 +210,19 @@ export interface RoomBook {
    * than a hint (art. 68). The engine passes the run's pocket and reads
    * nothing out of it; which answers care is content's business alone.
    */
-  look(room: RoomId, target: string, carried?: readonly ItemId[]): string
+  /**
+   * art. 118 (`withheld`): and it answers a third way. When an act about
+   * this thing exists but is not being offered — a mercy a whole body
+   * cannot drink — the look is where the reason lives, because a withheld
+   * verb has nowhere to put one. Content authors the second sentence under
+   * its own key; the engine only says which of the two states it is in.
+   */
+  look(
+    room: RoomId,
+    target: string,
+    carried?: readonly ItemId[],
+    withheld?: boolean,
+  ): string
   acts(room: RoomId): readonly Act[]
   /**
    * art. 83: sockets carry their own words. The room is handed over so the
@@ -405,6 +417,11 @@ export function enterRoom(
       // defect as a verb you have not earned, so it gets the same answer.
       // What the player gets instead is the tap: the lock says what it wants.
       .filter((one) => afforded(run, one))
+      // art. 118: nor an act that could not change anything if it were
+      // pressed. The precedent is the line above it — card 67 took the verb
+      // away from a lock you have no key to, and a mercy a whole body cannot
+      // drink is the same verb offering the same nothing.
+      .filter((one) => moves(ledgers, one))
       .filter((one) => !done(run, at, one))
       .map((one) => ({ kind: 'act' as const, act: one })),
     ...node.doors.map((door) => ({ kind: 'door' as const, door })),
@@ -463,6 +480,48 @@ export function afforded(run: RunLedger | null, one: Act): boolean {
   return one.needs.every((item) => held.has(item))
 }
 
+/**
+ * art. 118: **whether pressing this would change anything at all.**
+ *
+ * An act that cannot is not offered — the verb is absent, the way a locked
+ * door's already is (card 67). Today the whole of "cannot" is art. 40's
+ * unspent mercy: a body with nothing open gets nothing back, and `act`
+ * already refuses such a press rather than spending the deed. The refusal
+ * was correct and invisible, which is exactly the shape this article bans.
+ *
+ * Everything else moves by definition — a take puts something in your hand,
+ * a lock turns — so the default is true and each new kind of cannot has to
+ * come here and say so.
+ */
+export function moves(ledgers: Ledgers, one: Act): boolean {
+  if (one.heals !== undefined) return breathFor(ledgers, one) > 0
+  return true
+}
+
+/**
+ * art. 118: whether an act *about this thing* is being withheld right now.
+ *
+ * It is what the look needs in order to say what withholds it. An act
+ * already done is not withheld — it is spent, and the room shows that in
+ * pixels (art. 70) — and neither is one whose gate is simply not met, which
+ * card 67 already answers with the lock's own sentence.
+ */
+export function withholding(
+  ledgers: Ledgers,
+  book: RoomBook,
+  node: ChainNode,
+  target: string,
+): boolean {
+  const run = ledgers.run
+  return actsIn(book, node).some(
+    (one) =>
+      one.about === target &&
+      !done(run, node.instance, one) &&
+      afforded(run, one) &&
+      !moves(ledgers, one),
+  )
+}
+
 /** art. 82: done *here*. Two alcoves each hold their own key. */
 function done(run: RunLedger | null, instance: InstanceId, one: Act): boolean {
   if (run === null) return false
@@ -489,8 +548,9 @@ export function look(
   bands: Bands,
   target: Tappable,
   carried: readonly ItemId[] = [],
+  withheld = false,
 ): Beat {
-  return { text: book.look(bands.room, target.id, carried), index: -1, last: true }
+  return { text: book.look(bands.room, target.id, carried, withheld), index: -1, last: true }
 }
 
 /**

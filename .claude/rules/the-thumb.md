@@ -3,7 +3,8 @@ Articles keep their numbers; cite as "art. N". Statuses as in
 the-world.md. This file governs how the game is touched; it stands
 beside the touch laws (arts 5–8, the-world.md) and the screen laws
 (arts 29–30, the-room.md). Ratified 2026-08-04 from the first
-skeleton playtest.
+skeleton playtest. Settings are art. 116; the dead-press ruling of
+2026-08-06 is art. 118, at the foot of this file.
 
 ## The two registers
 66. SETTLED — Controls and prose are different languages. A control is
@@ -208,3 +209,42 @@ skeleton playtest.
      by nothing else. A new knob does not need a stand-up under art. 76 —
      it spends no interaction — but it does need to be presentation, and
      the burden is on the knob.
+
+## Dead presses (ratified 2026-08-06)
+Drafted from the answer wave, whose playtest looped a bot twelve times
+through one room pressing Open and never leaving it. It is the only
+finding in that report that can end a session, and it is a collision
+between two articles that are each right: art. 3 says a held-back
+refusal names nothing, and art. 68 says an act does not exist until its
+thing has been tapped. Together they read *you may not leave until you
+take a thing you have not found, and I will not tell you what it is.*
+
+118. SETTLED (ruled 2026-08-06) — **Nothing may be a dead press.** This
+     extends art. 71 from *where a press takes you* to *whether a press
+     does anything at all*.
+
+     **An act that cannot change anything is not offered.** The verb is
+     absent — not greyed, not refusing, not there — exactly as a locked
+     door's already is. Card 67 set that precedent and applied it only to
+     locks; this is the same rule everywhere. The two cases it was
+     hiding are the mercy a whole body cannot drink (art. 40) and the
+     door a required thing still holds (art. 3).
+
+     **When an act is withheld, the thing's look says what withholds
+     it.** An absence with nothing behind it is a mystery, and a mystery
+     the player has no way to solve is the defect this article exists to
+     end. Looking is free (art. 5) and always answers (art. 69), so the
+     explanation costs nothing and belongs in the answer rather than on
+     a verb that would have to lie to carry it.
+
+     **A room may only hold you back for something already on the frame
+     as a tappable.** Art. 3 keeps its silence about *which* thing — a
+     stop is not a hint, and that is unchanged. What a room may no
+     longer do is hold you for a thing you cannot reach by looking.
+     Every stop is therefore solvable with the vocabulary the game
+     already has: look at the room, find the thing that answers, take
+     it. This is the clause that makes the first two safe.
+
+     Art. 5 is the reason: the world never punishes touch, it sometimes
+     stops offering — and a verb that is offered and does nothing is a
+     punishment wearing an offer's coat.

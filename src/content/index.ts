@@ -262,7 +262,22 @@ const AMENDED_NOTICES: readonly string[] = [
   'choose.which',
   'book.title',
   'book.empty',
+  // The answer wave. Card 68 has not landed, so the rest of this map is
+  // still the debt — but nothing new may be written in the repealed voice
+  // (rules/voice.md), so every line this wave touched is judged as a
+  // thought from the moment it is written.
+  'door.blind',
+  'door.held',
+  'mercy.breath',
 ]
+
+/**
+ * The same declaration for the looks, and for the same reason. `LOOKS` is
+ * cards 27–29's debt and is otherwise a placeholder wholesale; these are the
+ * lines the answer wave wrote, and they answer to the amended register from
+ * the day they were written rather than from the day the card lands.
+ */
+const AMENDED_LOOKS: readonly string[] = ['basin.water.kept', 'mender.figure.kept']
 
 /**
  * Every player-facing string in the game, for the voice lint. If a string
@@ -285,6 +300,10 @@ export function everyString(): readonly Utterance[] {
     Object.entries(NOTICES)
       .filter(([key]) => AMENDED_NOTICES.includes(key) === amended)
       .map(([, said]) => said)
+  const looksIn = (amended: boolean): readonly string[] =>
+    Object.entries(LOOKS)
+      .filter(([key]) => AMENDED_LOOKS.includes(key) === amended)
+      .map(([, said]) => said)
   return [
     // The amended register, as far as it has been written. Everything the
     // wave has not reached yet is a declared placeholder below rather than a
@@ -297,6 +316,7 @@ export function everyString(): readonly Utterance[] {
       // working out what his own choosing has done.
       ...Object.values(ARRIVALS).flat(),
       ...noticesIn(true),
+      ...looksIn(true),
     ]),
     // The Book of Ends is the pile of things he wrote down, and the line at
     // the head of it is the oldest of them.
@@ -314,7 +334,7 @@ export function everyString(): readonly Utterance[] {
       // written days before the register changed under them, so they wait on
       // the same card as the rooms they belong to.
       ...Object.values(UNBIDDEN),
-      ...Object.values(LOOKS),
+      ...looksIn(false),
       // art. 87: an origin is prose that reaches the player, so it is judged
       // as prose. If a sentence cannot pass the lint the item does not ship,
       // which is the article's acceptance test enforced rather than quoted.

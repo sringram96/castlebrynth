@@ -1809,7 +1809,11 @@ export const ROOM_BOOK: RoomBook = {
   // art. 69, card 67: it answers either way, and one thing in the depth
   // answers differently depending on what is on you. Which things care is
   // content's business; the engine hands over the pocket and reads nothing.
-  look: (_id, target, carried = []) => LOOKS[lookKey(target, carried)] ?? LOOKS[target] ?? '',
+  // art. 118: and a third way, when an act about this thing exists and is
+  // being withheld. The reason has nowhere else to live — the verb it would
+  // have hung on is the thing that is absent.
+  look: (_id, target, carried = [], withheld = false) =>
+    LOOKS[lookKey(target, carried, withheld)] ?? LOOKS[target] ?? '',
   acts: (id) => roomContent(id).acts,
   // art. 83: the room is handed over so the thing can stand somewhere, and
   // for nothing else — every word below comes from the encounter.
@@ -1833,7 +1837,19 @@ const ANSWERS_WHEN_CARRYING: Readonly<Record<string, readonly [ItemId, string]>>
   'warden.lock': [WARDEN_KEY_ITEM, 'warden.lock.fits'],
 }
 
-function lookKey(target: string, carried: readonly ItemId[]): string {
+/**
+ * art. 118: the suffix a thing wears while the act about it is withheld.
+ *
+ * It is a suffix rather than a second field for the same reason the one
+ * above is: a thing's answers are looked up by key, so a new state is a new
+ * key and nothing in the engine has to learn a new shape. A thing with no
+ * `.kept` line falls through to its one answer, which is right — most acts
+ * are never withheld, and art. 69 only asks that the tap answer.
+ */
+const KEPT = '.kept'
+
+function lookKey(target: string, carried: readonly ItemId[], withheld = false): string {
+  if (withheld && LOOKS[`${target}${KEPT}`] !== undefined) return `${target}${KEPT}`
   const held = ANSWERS_WHEN_CARRYING[target]
   if (held === undefined) return target
   return carried.includes(held[0]) ? held[1] : target

@@ -4,7 +4,7 @@ the-world.md. Reference implementation:
 `reference/castlebrynth-wake-v3.html` — it wins ties about intent.
 Hero-density bar: `reference/crawling-one-authored-pixel-example.png`.
 What the three bands *are* is here; how they are touched is the
-interaction model, in the-thumb.md (arts 66–76, 90–92). The tray band is
+interaction model, in the-thumb.md (arts 66–76, 90–92, 116, 118). The tray band is
 a rail and panels under art. 67 as amended.
 
 What a room is *made of* — parts, shape, thresholds, detail, things,

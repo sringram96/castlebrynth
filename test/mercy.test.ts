@@ -45,6 +45,7 @@ import {
   runOf,
   runWith,
   seedOf,
+  walkTo,
   takeable, lookAround } from './drift.js'
 import { BURNT, DROWNED, OSSUARY } from '../src/content/index.js'
 
@@ -89,34 +90,6 @@ function mercyAct(node: ChainNode): Act {
   const one = actsIn(ROOM_BOOK, node).find((held) => held.heals !== undefined)
   if (one === undefined) throw new Error(`no mercy offered at ${node.instance}`)
   return one
-}
-
-/** A run walked forward until it is standing in a room a predicate names. */
-function walkTo(
-  seed: number,
-  wanted: (node: ChainNode) => boolean,
-  policy: Policy = alwaysLeft,
-): { ledgers: Ledgers; chain: Chain; node: ChainNode } | null {
-  let { ledgers, chain } = opened(seed)
-  ledgers = greet(ledgers, chain)
-  for (let n = 0; n < DEPTH_ONE.length + 2; n++) {
-    const node = hereIn(chain)
-    if (node === null) return null
-    // art. 68: looking is what summons a verb, and a thumb looks.
-    if (wanted(node)) return { ledgers: lookAround(ledgers, node), chain, node }
-    // art. 3: only what the room *requires* is taken, so nothing else is
-    // spent on the way to the thing under test.
-    for (const one of takeable(ledgers, node).filter((held) => held.required)) {
-      ledgers = act(ledgers, one)
-    }
-    const door = node.doors[Math.min(Math.max(0, policy(node.doors, chain)), node.doors.length - 1)]
-    if (door === undefined || door.ends === true) return null
-    const walked = chooseDoor(ledgers, chain, ROOM_BOOK, door, DEALER)
-    ledgers = walked.ledgers
-    chain = walked.chain
-    ledgers = greet(ledgers, chain)
-  }
-  return null
 }
 
 /** The first run in a sweep that puts the Mender in front of the player. */
@@ -210,23 +183,35 @@ describe('art. 40 — the Sanctum restores half of what is missing', () => {
     expect(after.permanent).toBe(ledgers.permanent)
   })
 
-  it('is not spent by a body that is whole — the press is never a punishment', () => {
+  /**
+   * **Amended by art. 118 (the answer wave).** This test used to assert that
+   * a whole body was still *offered* the breath and got `mercy.whole` back
+   * for pressing it. The dead-press ruling repeals that: an act that cannot
+   * change anything is not offered, and the reason moves into the basin's own
+   * look, where a withheld verb can carry one. What survives unamended is
+   * art. 40's substance — the breath is not spent, and it is still there when
+   * the run comes back hurt.
+   */
+  it('is not spent by a body that is whole, and is not offered to one (art. 118)', () => {
     const found = walkTo(1, (node) => node.type === 'sanctum')!
     const { ledgers, chain, node } = found
     expect(ledgers.run!.health).toBe(ledgers.run!.healthMax)
 
-    const before = enterRoom(ledgers, chain, ROOM_BOOK, node.instance)
     const drink = mercyAct(node)
-    const after = act(ledgers, drink)
-    // Nothing moved, and — the point — the breath is still on the table.
-    expect(after).toBe(ledgers)
-    const still = enterRoom(after, chain, ROOM_BOOK, node.instance)
-    expect(still.tray.length).toBe(before.tray.length)
+    // The engine still refuses the press, which is the belt to the suspender.
+    expect(act(ledgers, drink)).toBe(ledgers)
+    // art. 118: and the suspender is that the verb is not on the strip at all.
+    const whole = enterRoom(ledgers, chain, ROOM_BOOK, node.instance)
     expect(
-      still.tray.flatMap((offer) => (offer.kind === 'act' ? [offer.act.id] : [])),
+      whole.tray.flatMap((offer) => (offer.kind === 'act' ? [offer.act.id] : [])),
+    ).not.toContain('act.drink')
+
+    // art. 40 unamended: the breath keeps. Come back open and it is there.
+    const hurt = { ...ledgers, run: wounded(ledgers.run!, 7) }
+    const later = enterRoom(hurt, chain, ROOM_BOOK, node.instance)
+    expect(
+      later.tray.flatMap((offer) => (offer.kind === 'act' ? [offer.act.id] : [])),
     ).toContain('act.drink')
-    // art. 69: and the word band says which of the two happened.
-    expect((NOTICES['mercy.whole'] ?? '').length).toBeGreaterThan(0)
     expect((NOTICES['mercy.breath'] ?? '').length).toBeGreaterThan(0)
   })
 })

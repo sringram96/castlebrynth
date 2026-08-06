@@ -76,7 +76,9 @@ import {
   sceneStateOf,
   stranded,
   turnedHere,
+  withholding,
 } from './descent/index.js'
+import { wayOn } from './shell/strip.js'
 import type { Chain, ChainNode, Door } from './gen/index.js'
 import { deal, dealerOf, meetings, nodeAt, reseed } from './gen/index.js'
 import type { Standing } from './hinge/index.js'
@@ -559,7 +561,18 @@ function markFor(target: Tappable): HTMLButtonElement {
     // card 67: the pocket goes with the question. A lock names what it wants,
     // or — carrying the key — names what fits, and that second answer is
     // what makes the verb it summons legible before it is pressed.
-    notice = look(ROOM_BOOK, bands, target, ledgers.run?.carried ?? []).text
+    //
+    // art. 118: and the third question, which is whether the act about this
+    // thing is being withheld. A withheld verb is absent, so the look is the
+    // only place its reason can be — a basin a whole body cannot drink says
+    // so when you look at it, and says nothing anywhere else.
+    notice = look(
+      ROOM_BOOK,
+      bands,
+      target,
+      ledgers.run?.carried ?? [],
+      withholding(ledgers, ROOM_BOOK, here(), target.id),
+    ).text
     ledgers = looking(ledgers, target)
     bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
     persist()
@@ -583,7 +596,14 @@ function doorMark(door: Door): HTMLButtonElement {
     // art. 71: a bare tap never walks you through a door. It picks it out,
     // and the going is a verb in the act strip.
     pick = picking({ kind: 'door', door })
-    notice = NOTICES['door.blind'] ?? ''
+    // art. 118: a door with something still owed to the room offers no verb,
+    // so the door's own answer is where that has to be said. It still names
+    // nothing and points at nothing (art. 3) — what changed is that the
+    // player now hears it by looking rather than by pressing and failing.
+    notice =
+      (heldBack(ledgers, ROOM_BOOK, here()).length > 0
+        ? NOTICES['door.held']
+        : NOTICES['door.blind']) ?? ''
     paint()
   }
   return el
@@ -1472,17 +1492,19 @@ function roomActs(): void {
   // card 67: **and only an unlocked door offers its way on.** A locked
   // door's verbs are absent, not disabled (art. 68) — what the player gets
   // instead is the lock, which answers, and the verb the answer summons.
+  //
+  // art. 118: **and only a door that would actually give.** The way on is
+  // one question asked in one place (`wayOn`), and a null answer is the
+  // article: a room still owed something offers no door verb at all, rather
+  // than a press that fails and leaves the strip exactly as it was.
+  //
+  // card 31: the Warden's door is a fight-door for as long as its keeper is
+  // standing, and Descend is what is left once it is not — art. 71, since
+  // those two words mean different journeys and neither may lie.
   const door = pickedDoor(pick, ahead)
-  if (door !== null && opens(ledgers, ROOM_BOOK, here(), door)) {
-    actStrip.append(
-      // card 31: the Warden's door is a fight-door for as long as its keeper
-      // is standing. Descend is what is left once it is not — art. 71, since
-      // those two words mean different journeys and neither may lie.
-      verb(
-        door.fight !== undefined || keeperUp(door) ? 'fight' : door.ends === true ? 'descend' : 'open',
-        () => commitDoor(door),
-      ),
-    )
+  const way = door === null ? null : wayOn(ledgers, ROOM_BOOK, here(), door, keeperUp(door))
+  if (door !== null && way !== null) {
+    actStrip.append(verb(way, () => commitDoor(door)))
   }
 
   // A run that walked past its key would reach a door it cannot open, and
@@ -1543,9 +1565,9 @@ function keeperUp(door: Door): boolean {
 }
 
 function doAct(one: Act): void {
-  // art. 40: a mercy pressed by a whole body restores nothing and is not
-  // spent. The act strip does not go quiet about it (art. 69) — the word
-  // band says which of the two happened.
+  // art. 118: a mercy a whole body cannot drink is no longer on the strip at
+  // all, so a mercy that is pressed is always a mercy that lands. The
+  // "restores nothing" branch that used to be here went with the verb.
   const mercy = one.heals === undefined ? null : breathFor(ledgers, one)
   ledgers = act(ledgers, one)
   bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
@@ -1556,8 +1578,7 @@ function doAct(one: Act): void {
   // convention rather than a field because the id is already the key the
   // shell looks a verb up by (art. 66) — one lookup, one place to author.
   notice =
-    NOTICES[`answer.${one.id}`] ??
-    (mercy === null ? null : (NOTICES[mercy > 0 ? 'mercy.breath' : 'mercy.whole'] ?? null))
+    NOTICES[`answer.${one.id}`] ?? (mercy === null ? null : (NOTICES['mercy.breath'] ?? null))
   persist()
   // card 31: **turning the key is what wakes it.** The hall answers in one
   // line and the thing arrives at the near depth — art. 30, so the room is

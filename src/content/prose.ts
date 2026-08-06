@@ -265,6 +265,11 @@ export const LOOKS: Readonly<Record<string, string>> = {
   'key.iron': 'Iron, long as your palm, cut with three teeth.',
   'basin.water': 'Copper, full to the lip, and still. It costs nothing.',
   'mender.figure': 'It sits with its hands open. Nothing about it moves but the breath.',
+  // art. 118: what a thing says while the act about it is withheld. The
+  // verb is absent, so this is the whole of where the reason can live —
+  // and art. 40 is the reason: an unspent mercy keeps.
+  'basin.water.kept': 'Copper, full to the lip. There is nothing open on me for it to close. It keeps.',
+  'mender.figure.kept': 'Its hands stay open. Nothing on me is bleeding, so it goes on waiting.',
   'door.ahead': 'Shut. Nothing comes under it, and nothing goes through it but you.',
   // art. 86: a traveler answers as a body. The bone is what the act takes;
   // this is what the thumb finds when it asks.
@@ -482,9 +487,11 @@ export const NOTICES: Readonly<Record<string, string>> = {
   'door.locked': 'The lock holds. Whatever opens it is not on you.',
   // arts 31, 77: a door's sense would be its region tag leaking, and the
   // hint system is parked. A door still answers — it answers with itself.
-  'door.blind': 'Shut, and giving nothing away. The road is what you pick.',
-  // arts 3 and 9: a stop, not a hint. It names nothing and points at nothing.
-  'door.held': 'Something here is still yours to take.',
+  'door.blind': 'Shut, and giving nothing away. The road is whichever one I pick.',
+  // arts 3, 9 and 118: a stop, not a hint. It names nothing and points at
+  // nothing — and under art. 118 it no longer has to, because what holds
+  // the door is on the frame and one tap away.
+  'door.held': 'Not yet. There is something in here still mine to take.',
   // card 67: what a turned lock answers with. It is keyed on the act rather
   // than on the door, so every future lock gets its own sentence and none of
   // them has to be written in the shell.
@@ -495,8 +502,12 @@ export const NOTICES: Readonly<Record<string, string>> = {
     'The wards give, one after another, and the lock hangs open. At the far end of the hall something that has been standing there the whole time takes a step.',
   // art. 40: what the breath answers with. The poetry is the response to the
   // button, never the button (art. 66).
-  'mercy.breath': 'The cold of it goes through you, and some of what is open closes.',
-  'mercy.whole': 'Nothing on you is open. What is offered here keeps.',
+  //
+  // art. 118 retired its twin. `mercy.whole` was what a whole body got back
+  // for pressing Drink, and under the dead-press ruling that press is not
+  // offered at all — the basin's own look carries the reason now
+  // (`basin.water.kept`), which is where a withheld verb has to put one.
+  'mercy.breath': 'The cold of it goes through me, and some of what is open closes.',
   'fight.won': 'The room goes quiet. The door gives.',
   // art. 63: a fled fight pauses. Nothing about it refills.
   'fight.fled': 'You back out of the door. It waits where you leave it.',
