@@ -101,7 +101,7 @@ keep choosing → a region locks and the depth announces where you have arrived
 → the rest of the depth deals from that region and its encounters wake → the
 Warden's door, and the keeper behind it once the key turns. Every doorway
 breathes while you stand there, and seven rooms will do one thing of their own
-accord if you stand there long enough. `npm test` is green: 44 files, 488
+accord if you stand there long enough. `npm test` is green: 48 files, 525
 tests.
 
 **And the frame says who you are, in his voice.** The reason wave shipped the
@@ -114,6 +114,16 @@ the eleven findings of the 2026-08-06 playtest that had one root cause — *the
 game does things and never says it did them* — and installed art. 118 behind
 them. What that wave did, what it did not touch, and what the suite still
 cannot see is one section down: **The answer wave**.
+
+**And now it shows what it did.** The fight wave (cards 75–76) is the other
+half of the same diagnosis: a claim resolved instantly and silently, so the
+most interesting decision in the game passed in a single frame. Art. 119 says
+a fight event resolves in **beats**, and the beats now run — the dice land one
+at a time, the claimed dice lift with their own `+n`, the line names its
+multiplier, each rider fires alone, the total climbs, and then the blow.
+**Timings are still owed a phone.** The section at the foot of this file —
+**The fight wave** — records what was settled, what was measured in a browser
+at 390×844, and what a hand still has to decide.
 
 ## The answer wave (art. 118, cards 69–71, 74)
 
@@ -2401,3 +2411,202 @@ and number in vitals, and `NOTICES['claim.exact']` beside it when the
 offer is only the floor. A selection makes at most one combo, so `Claim`
 is a single verb that takes the highest tier on the table rather than a
 row of names and numbers wearing the coat of controls.
+
+## The fight wave (art. 119, cards 75–76)
+
+The playtest called the fight a spreadsheet. Card 69 found half of why —
+*nothing said what happened* — and shipped the word band's third state. This
+is the other half: **nothing showed it.** A claim resolved instantly and
+silently, so the most interesting decision in the game — which line to spend,
+and what it costs you to spend it — passed in a single frame.
+
+### The article, as installed
+
+**art. 119 (the-lots.md).** *A fight event resolves in beats, and each beat
+says one thing. The outcome is computed before the first frame is drawn; the
+beats only reveal what is already true. Every beat is a one-shot that ends
+settled (art. 1), so with motion reduced (art. 116) the whole sequence
+collapses to its settled state and nothing is lost — the settled state is the
+whole truth or the beat is wrong.* Plus the three consequences the wave asked
+to be stated because each is a rule somebody would otherwise break: **nothing
+is decided during an animation**, **a rider gets its own beat**, and **the
+room holds still** except for the blow that lands on you.
+
+Two clauses were added past the brief, both because leaving them unsaid would
+have left an argument open. **The order of the beats is law and their
+durations are not** — which is what makes the phone pass below a tuning job
+rather than a re-litigation. And **which intents telegraph is content**, never
+a threshold the engine holds, so a script says for itself which of its beats
+the room can feel coming.
+
+### The seam that makes it true
+
+`src/lots/beats.ts` computes a **script**: a list of frames, each carrying the
+beat it is and the numbers the screen should be reading once it has landed.
+`src/shell/beats.ts` reads the script out. Look at what `playBeats` takes —
+frames, a clock, and two callbacks. There is no fight in it, no resolution, no
+lot and no engine, so a beat **cannot** decide anything. art. 119's first
+consequence is a fact about a type rather than a thing anybody has to
+remember.
+
+Three things fall out of that, and all three are why the wave is testable at
+all. The script is a **value**, so the beat order is asserted rather than
+watched. The clock is **injected**, so "timers do not leak" is a number the
+player reports rather than an audit by hand. And reduced motion is `atOnce`
+over the same frames — **one timeline, read at two speeds** — so there is no
+second path that could disagree with the first about an outcome.
+
+`endTurn` now asks the engine both its questions before the first frame. The
+old shape called `advanceFight` at the *end* of a 700ms pause, which is
+precisely the decision-inside-a-timeline the article forbids.
+
+### The beat order (settled)
+
+**§1, the roll.** Two turns of the tumble, then each die lands on its own
+beat, staggered. A **reroll re-tumbles only the dice being rerolled**; what
+the thumb kept sits perfectly still. A recast that keeps everything —
+art. 41's way of declining the second casting — has nothing in the air at all,
+and its timeline is a single settled frame. The tumbling face is hashed off
+the die's identity and the spin, never thrown, so art. 75 replays a throw as
+the throw it was.
+
+**§2, the cascade.** Each claimed die lifts alone with its own `+n` and the
+running total climbs off it → composites resolve **group by group**, so a full
+house reads as a triple and a pair → the bond gets its own beat inside the sum
+it joins (art. 52: the sisters pay only together) → the line names itself with
+its multiplier → **the riders fire, one at a time**, each taking the band →
+the total climbs to the number the line just promised.
+
+The running total starts at **nothing** and is built. Before this the tray
+showed the finished number the instant the claim was made, which gave away the
+whole beat before the first die had lifted.
+
+**§3, the blow.** *Then, and only then.* Strike (flash + lunge, the crown
+falls) → hunger's swell → the intent landing on you (flash + **shake**) →
+bleed's tick → bind's drag → the ending. It is read straight off the events
+`advanceFight` already wrote — the beats narrate the engine's own transcript
+rather than re-deriving it. The one thing reordered is *when the horror's
+health is seen to fall*: the engine takes it at the top of the exchange and
+the blow shows it at the end, which changes no outcome and is the whole of
+what *then, and only then* asks for.
+
+### What each effect got
+
+The flash is `lifted(ramp, steps)` — the same drawing read further up the same
+ramp, so a body drawn as indices lights itself and the hinge's default mass
+takes the light end of the two tones it is made of. **No new colours**, and
+art. 17 is unamended because every pixel is still a step on the ramp it was
+already on. The lunge moves the horror in **world coordinates**, so the
+growing and shrinking are the projector's (art. 15). The shake is stated in
+**game pixels** — art. 22 says nothing is fixed in device ones — and the shell
+hands the stylesheet whatever two of them come to on this device.
+
+Each of art. 65's attacks on the plan got a signature, because the plan is on
+screen: **seal** marks the glyph the lines live behind (art. 74), **curse**
+greys the cursed value *for the whole turn it is cursed for* rather than for a
+frame, **corrode** flakes the armour off the vitals as the blow eats it,
+**bind** drags the die out, **bleed** ticks the readout the plan was made
+against, **hunger** swells it.
+
+### The telegraph
+
+An intent may declare `telegraph: true`, and a turn before it lands the horror
+swells, the light dims a step, and the chip marks itself. It says *something*,
+never *what*, so art. 42's promise — this turn's intent and only this turn's —
+is untouched. The dim is a second cached cast, which is the two-prepared-frames
+trick art. 110 already uses for a room that breathes; the swell reaches the
+body past the settled closeness, so `advance` still reports that the thing
+stands at the lens (art. 28).
+
+Declared on five intents, all of them a script's biggest hit: **BELLOW 16**
+(the Gnawing — the one the death scrawl tells the player to count for), REND
+13 (the Marrow), UNDERTOW 12 (the Silt Mother), GUTTER 13 (the Kindled), KEEP
+18 (the Warden). Nothing smaller tells: a room that feels every turn coming
+feels none of them, which is art. 107's argument carried one step out.
+
+### The guard
+
+Five tests, all of them the ones the wave asked for by name
+(`test/beats.guard.test.ts`, on the fight loop in `test/beats.ts`):
+
+- **same outcome either way** — a scripted fight at four seeds, played with
+  motion and without, ends on the same body, the same Book line, the same
+  vault bytes, and the same beats in the same order;
+- **nothing decided mid-timeline** — reading a script cannot move the fight it
+  was built from, and the same event resolved twice gives the same script;
+- **every rider that fires gets a beat** — walked over every rider on every
+  die in `CATALOG_GOODS`, each claimed on its own face, each asserted to have
+  a beat *and* a word;
+- **every beat ends settled** — nothing lifted, nothing struck, and the
+  numbers are the fight the engine advanced to;
+- **timers do not leak** — an interrupted cascade cancels its scheduled beat,
+  never lands, and leaves nothing that can still fire.
+
+`npm test`: 48 files, 525 tests, green. The golden plate is untouched — the
+telegraph's dim is a *new* cached stamp and the default cast is unchanged.
+
+### Manual, at 390×844 — and what it is not
+
+Driven in Chromium at 390×844 at device-scale 2, through the real front door,
+the real doors, and the real settings screen. What was confirmed: five dice in
+the air mid-roll and none after; **three** re-tumbling after a keep of two;
+the running total climbing `1 → 5 → 8 → 14 → 15` with `+1 +4 +3 +6 +1` on the
+dice as they lift; the line naming `any dice ×1`; the crown falling on the
+strike and the horror's mass flashing warm against the cold room; the frame
+offsetting on the blow that lands on you and settling back; `--shake` resolving
+to 3.25px on that device, which is two game pixels; no console errors. With
+reduced motion on, the same fight showed **one** state — the settled one —
+and the band still said what the turn did.
+
+**This is not the hand pass, and the hand pass is still owed.** A headless
+browser at phone dimensions can prove the beats fire, in the right order, with
+the right numbers. It cannot answer the only question the timings actually
+turn on, which is whether they *feel* right under a thumb. So the demo's
+numbers ship unchanged and are recorded here rather than quietly adjusted —
+inventing a tuning result from a machine that cannot perceive it would be
+worse than shipping the number the demo settled.
+
+**What was measured**, so the phone pass starts from data rather than from
+zero. Press → settled is **~1.8s** for a five-die ANY DICE claim (no climb,
+because a ×1 multiplier has nothing to climb) and would be **~2.2s** with one.
+The roll is ~630ms and the recast the same, so a full turn now carries **~3.1s
+of animation** on top of the thumb's own time. The wave predicted the desktop
+demo would run 20–30% slow in the hand; if that holds, the numbers to cut
+first are `lift` (180ms × five dice is 900ms and the single largest block) and
+`blow` (320ms, the longest pause in the timeline). `rider` at 460ms should be
+cut last or not at all — it is the beat that teaches the pouch, and a rider
+that goes by at the speed of a die teaches nothing.
+
+### What felt worse than instant, and what is still owed
+
+**The flash and the lunge are landing on something nearly invisible.** The
+default horror body is art. 26's first tier — a dark mass that reads as the
+room's own darkness until it is struck. The flash actually *rescues* it: the
+strike is the first frame in which the shape is legible at all, which is a
+strange thing for a hit reaction to be doing. The beat is not wrong and it is
+not cut; it will pay properly when **card 78** gives the horrors bodies, and
+this wave's boundary said explicitly that it animates whatever body exists.
+Recorded rather than fixed.
+
+**No beat was cut.** Every one in the brief earned its place under a browser,
+and the two that were nearly cut for symmetry are worth naming as kept on
+purpose: the **bond** beat, because a bond that arrives inside a total is a
+bond the player never learns they carry (art. 54), and the **armour-only**
+`struck` beat, because without it the one turn a player most needs to see
+their armour work is the one turn nothing on screen moves (art. 57).
+
+### What this wave did not touch
+
+No new horrors, no new effect kinds, no sprite work, no room motion beyond the
+shake, nothing in the drift or the schools. The ambient stir is arts 106–110
+and is unchanged: these are one-shots on a state change, which art. 107
+already permits, and **stillness is the capital they spend** (art. 106) — the
+fight is what it was saved for.
+
+**The signed-off reference is missing.** `castlebrynth-animation.html` is not
+in `reference/` and is not in the repo's history. The article says so and
+stands as the statement of what it proved, on the same footing the graphics
+amendment stands on for its own three missing demos. Everything above was
+built from the wave's brief, which carries the beat order and every timing;
+if the file turns up and disagrees about intent, it wins and this section is
+the record of what was assumed in its absence.

@@ -183,3 +183,51 @@ fixture lands (tracked on the board).
     tap answers or what a horror does (arts 7, 10). It lives on the
     permanent ledger like any other good and owes art. 87 its sentence
     like any other good.
+
+## The beat law (ratified 2026-08-06)
+Drafted from the fight wave, whose playtest verdict was that the fight
+is a spreadsheet. Card 69 found half of it — nothing *said* what
+happened — and this is the other half: nothing *showed* it. A claim
+resolved instantly and silently, so the most interesting decision in
+the game, which line to spend and what spending it costs you, passed in
+a single frame.
+
+Reference implementation: `castlebrynth-animation.html`, signed off. It
+is not in `reference/`; until it lands, this article and the wave's own
+brief are the statement of what it proved, and they win ties by default
+rather than by precedence.
+
+119. SETTLED (ruled 2026-08-06) — **A fight event resolves in beats, and
+     each beat says one thing.** The outcome is computed before the
+     first frame is drawn; the beats only reveal what is already true.
+     Every beat is a one-shot that ends settled (art. 1), so with motion
+     reduced (art. 116) the whole sequence collapses to its settled
+     state and nothing is lost — **the settled state is the whole truth
+     or the beat is wrong.**
+
+     **Nothing is decided during an animation.** No roll, no branch, no
+     randomness inside the timeline: the engine is asked once, at the
+     press, and what it answers is the script the beats read from.
+     Determinism is therefore untouched by construction rather than by
+     care (arts 17, 36), and a test stands guard over the seam.
+
+     **A rider gets its own beat.** An effect that fires silently inside
+     a total is an effect the player never learns, so every rider that
+     fires says so in its own moment, alone. This is art. 54's
+     declaration duty applied to the instant of firing rather than to
+     the inspect that precedes it — a power the player cannot see land
+     is a power they cannot price.
+
+     **The room holds still.** Arts 106–110 govern ambient loops and are
+     unchanged: these are one-shots on a state change, which art. 107
+     already permits, and stillness is the capital they spend
+     (art. 106). The fight is what it was saved for. The one gesture
+     that moves the frame itself is the blow that lands on **you** —
+     the frame is the player's body, and spending that anywhere else
+     spends it for nothing.
+
+     The order of the beats is law and their durations are not: which
+     beat comes after which is what a player learns to read, and how
+     long each stands is tuning that must be settled on a phone. Which
+     intents telegraph a turn early is content, declared per intent,
+     never a threshold the engine holds.

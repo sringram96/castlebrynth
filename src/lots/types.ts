@@ -242,6 +242,19 @@ export interface Intent {
   readonly verb: string
   readonly amount: number
   readonly effect?: IntentEffect
+  /**
+   * art. 119 §3: **the telegraph.** An intent that declares this shows its
+   * tell a turn early — the horror swells, the light dims a step, the chip
+   * marks itself — so *count the swipes* becomes learnable by watching
+   * instead of only by dying.
+   *
+   * **Which intents telegraph is content, not law.** There is no threshold
+   * here and there must not be one: the engine holds a socket and every
+   * script says for itself which of its beats the room can feel coming. The
+   * tell says *something big* and never *what*, so art. 42's promise —
+   * this turn's intent, and only this turn's — is untouched.
+   */
+  readonly telegraph?: boolean
 }
 
 /** One die as it landed, and whether it is being kept mid-turn (art. 41). */

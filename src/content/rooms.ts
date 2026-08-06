@@ -1795,7 +1795,9 @@ const WARDEN_COMING = comingCloser(IRON, WARDEN_KEEPER_BODY, 'the keeper', {
  * The body a horror advances with, if it has one drawn. `null` is the
  * ordinary answer, and the hinge's own mass is what it means.
  */
-export function advanceBodyOf(horror: string): ((closeness: number) => Prop) | null {
+export function advanceBodyOf(
+  horror: string,
+): ((closeness: number, flare?: number) => Prop) | null {
   return horror === 'horror.warden' ? WARDEN_COMING : null
 }
 

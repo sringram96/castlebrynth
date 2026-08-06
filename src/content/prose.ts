@@ -506,6 +506,34 @@ export const EXCHANGE: Readonly<Record<string, string>> = {
 }
 
 /**
+ * art. 119: **a rider gets its own beat**, and this is what it says in it.
+ *
+ * The exchange above is the whole turn in one line, said once the dust has
+ * settled. This is the other grain: the moment a face he chose to spend does
+ * the thing it does, said alone, while the die it came off is still lit.
+ *
+ * It is the beat that teaches the pouch to a player who never opens it —
+ * art. 54 asks every power to be declared on inspect, and a player who never
+ * inspects has still just watched it happen. Which is why each of these
+ * names the *die* rather than the effect: the lesson is that this bone does
+ * this, not that some number moved.
+ *
+ * `{n}` is the rider's own number, filled by `saysFiring`. The bond has no
+ * number of its own — what the sisters do is arrive together, and the sum
+ * says the rest (art. 52).
+ */
+export const FIRING: Readonly<Record<string, string>> = {
+  'rider.leech': 'The stained face came up. {n} of what I took off it goes back into me.',
+  'rider.push': 'That was the low one. Throwing it costs me {n}.',
+  'rider.bleed': 'The bone opens something up again. {n}.',
+  // The species, for a rider that ships without a line of its own. Keyed on
+  // what it does, because that is the only thing an unnamed one declares.
+  heal: 'Something of what I took off it comes back into me. {n}.',
+  wound: 'The bone I spent takes {n} of its own.',
+  bond: 'The other one answers. They only ever counted together.',
+}
+
+/**
  * **What dying is** (card 69). Death was not an event: the turn resolved,
  * and the next thing on screen was the following run's Crossing, fully lit,
  * with the health bar full again and one lowercase line at the top.

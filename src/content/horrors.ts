@@ -53,7 +53,10 @@ export const GNAWING_SCRIPT: readonly Intent[] = [
   { verb: 'SEAL', amount: 6, effect: { kind: 'seal', lines: PAIRISH } },
   { verb: 'COVET', amount: 5, effect: { kind: 'curse', value: 6 } },
   { verb: 'CORRODE', amount: 9, effect: { kind: 'corrode' } },
-  { verb: 'BELLOW', amount: 16 },
+  // art. 119 §3: the biggest hit in the depth, and the one the death
+  // scrawl tells the player to count for. The tell is what makes counting
+  // learnable by watching rather than only by dying.
+  { verb: 'BELLOW', amount: 16, telegraph: true },
   { verb: 'SWIPE', amount: 8 },
 ]
 
@@ -83,7 +86,7 @@ export const MARROW_SCRIPT: readonly Intent[] = [
   { verb: 'SEAL', amount: 6, effect: { kind: 'seal', lines: PAIRISH } },
   { verb: 'COVET', amount: 5, effect: { kind: 'curse', value: 5 } },
   { verb: 'CORRODE', amount: 8, effect: { kind: 'corrode' } },
-  { verb: 'REND', amount: 13 },
+  { verb: 'REND', amount: 13, telegraph: true },
 ]
 
 export const MARROW_ESCALATION = 3
@@ -121,7 +124,7 @@ export const SILT_MOTHER_SCRIPT: readonly Intent[] = [
   { verb: 'CHILL', amount: 4, effect: { kind: 'bleed', amount: 4, turns: 3 } },
   { verb: 'SILT', amount: 8 },
   { verb: 'DRAG', amount: 7, effect: { kind: 'bind', rule: 'highest' } },
-  { verb: 'UNDERTOW', amount: 12 },
+  { verb: 'UNDERTOW', amount: 12, telegraph: true },
 ]
 
 export const SILT_MOTHER_ESCALATION = 3
@@ -153,7 +156,7 @@ export const KINDLED_SCRIPT: readonly Intent[] = [
   { verb: 'GAPE', amount: 6, effect: { kind: 'hunger', amount: 12 } },
   { verb: 'CHAR', amount: 9 },
   { verb: 'GAPE', amount: 5, effect: { kind: 'hunger', amount: 14 } },
-  { verb: 'GUTTER', amount: 13 },
+  { verb: 'GUTTER', amount: 13, telegraph: true },
 ]
 
 export const KINDLED_ESCALATION = 3
@@ -194,7 +197,7 @@ export const WARDEN_SCRIPT: readonly Intent[] = [
   { verb: 'FLENSE', amount: 5, effect: { kind: 'bleed', amount: 4, turns: 3 } },
   { verb: 'STRIP', amount: 12, effect: { kind: 'corrode' } },
   { verb: 'WAIT', amount: 4, effect: { kind: 'hunger', amount: 16 } },
-  { verb: 'KEEP', amount: 18 },
+  { verb: 'KEEP', amount: 18, telegraph: true },
 ]
 
 export const WARDEN_ESCALATION = 5

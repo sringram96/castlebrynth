@@ -72,7 +72,7 @@ export function openFightDoor(
  * recognised is drawn once, by hand); what it hands over is a `Prop`, so
  * this module still knows nothing about drawings, ramps or schools.
  */
-export type ComingCloser = (fight: Fight, closeness: number) => Prop
+export type ComingCloser = (fight: Fight, closeness: number, flare: number) => Prop
 
 /**
  * art. 28: the advance is a motion that matters, so it never undoes itself.
@@ -81,10 +81,29 @@ export type ComingCloser = (fight: Fight, closeness: number) => Prop
  *
  * art. 26's first tier is the default body: a mass, deliberately basic and
  * improved over time. A horror that has been drawn brings its own.
+ *
+ * art. 119 §3: `flare` is **the flash** — the struck thing jumping to the
+ * top of its own ramp for a couple of frames. It is a number and not a
+ * colour on purpose: no new colours, only a step the body already owns, so
+ * a body drawn as ramp indices lights itself and the default mass takes the
+ * light end of the two tones it is made of. Zero is a thing standing there.
  */
-export function advance(fight: Fight, closeness = 1, body: ComingCloser = horrorProp): Advance {
+export function advance(
+  fight: Fight,
+  closeness = 1,
+  body: ComingCloser = horrorProp,
+  flare = 0,
+  swell = 0,
+): Advance {
   const settled = fight.outcome === 'fighting' ? Math.min(1, Math.max(0, closeness)) : 0
-  return { closeness: settled, prop: body(fight, settled) }
+  // art. 119 §3: **the telegraph.** The swell is handed to the body past
+  // the settled closeness rather than folded into it, because the advance is
+  // a thing that has finished (art. 28) and the swell is a thing about the
+  // *next* turn. What comes back still says it stands at the lens.
+  return {
+    closeness: settled,
+    prop: body(fight, settled + Math.max(0, swell), Math.min(1, Math.max(0, flare))),
+  }
 }
 
 /**
@@ -95,8 +114,14 @@ export function advance(fight: Fight, closeness = 1, body: ComingCloser = horror
  * art. 70: a wounded horror stays wounded — the mass thins as its health
  * goes, so the pixels say what the numbers say.
  */
-function horrorProp(fight: Fight, closeness: number): Prop {
+function horrorProp(fight: Fight, closeness: number, flare = 0): Prop {
+  // No clamp: the advance already settled it, and anything past one is the
+  // telegraph's swell (art. 119 §3) — a thing filling more of the lens.
   const whole = Math.max(0, fight.horrorHealth / Math.max(1, fight.horror.health))
+  // art. 119 §3: no new colours. The mass is made of four tones and the
+  // flash is the two it keeps for its eyes and its brow — the top of the
+  // only ramp this body has.
+  const [dark, mid] = flare > 0 ? ['#3a2b22', '#d8d0c0'] : ['#050506', '#0d0c10']
   return {
     name: fight.horror.id,
     z: 1,
@@ -112,8 +137,8 @@ function horrorProp(fight: Fight, closeness: number): Prop {
         for (let x = frame.cx - reach; x < frame.cx + reach; x++) {
           const edge = 1 - Math.abs(x - frame.cx) / reach
           // art. 17: the mass is dither, never alpha. A hurt one shows through.
-          if (brush.dither(x, y, 2 + edge * (4 + 12 * whole))) brush.px('#050506', x, y)
-          else if (brush.dither(x + 2, y, edge * 3 * whole)) brush.px('#0d0c10', x, y)
+          if (brush.dither(x, y, 2 + edge * (4 + 12 * whole))) brush.px(dark!, x, y)
+          else if (brush.dither(x + 2, y, edge * 3 * whole)) brush.px(mid!, x, y)
         }
       }
       if (closeness < 0.35) return

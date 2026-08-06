@@ -69,6 +69,57 @@ export const MOTION = {
   unbidden: { soonest: 56, spread: 96, frames: 9 },
 } as const
 
+/**
+ * art. 119: **how long each beat of a fight event stands.**
+ *
+ * The *order* of the beats is law and lives in the article; every number
+ * here is tuning, on the same seam every other dial in the game sits on.
+ * The article is explicit that these must be settled on a phone — the demo
+ * they came from was tuned on a desktop, and a desktop cannot show the thing
+ * being decided. What is below is the demo's, and DESIGN.md records that it
+ * has not been through a hand yet.
+ */
+export const CASCADE = {
+  /**
+   * Section 1: turns of the tumble before the first die settles. Without
+   * them the first die lands having never been in the air.
+   */
+  tumbles: 2,
+  /** Section 1: the stagger, so five dice read as five events. */
+  land: 90,
+  /** Section 2: one claimed die lifting, alone, with its own `+n`. */
+  lift: 180,
+  /**
+   * Section 2: between the groups of a composite. Longer than a lift, so a
+   * full house reads as a triple *and* a pair rather than as five dice.
+   */
+  group: 300,
+  /** Section 2: before the line names itself, with its multiplier. */
+  line: 320,
+  /**
+   * Section 2: between riders. The longest gap in the cascade on purpose —
+   * this is the beat that teaches the pouch to a player who never opens it,
+   * and a rider that goes by at the speed of a die teaches nothing.
+   */
+  rider: 460,
+  /** Section 2: how long the total takes to climb, and in how many frames. */
+  climb: 350,
+  climbs: 7,
+  /**
+   * Section 3: before the blow. The longest pause in the whole timeline,
+   * because *then, and only then* is a pause and not a transition.
+   */
+  blow: 320,
+  /**
+   * Section 3: how long the struck thing stands at the top of its ramp, and
+   * how long the frame stays offset when the blow lands on you. The article
+   * counts them in frames — a couple, and three — and this is that at the
+   * world clock's own rate, near enough to be tuned against it.
+   */
+  flash: 170,
+  shake: 220,
+} as const
+
 /** The same room on the 480 dial. art. 23: a re-render, never a rewrite. */
 export function atGrid(grid: number, height: number): RenderConfig {
   return { ...RENDER, grid, height }
