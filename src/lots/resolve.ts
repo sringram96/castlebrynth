@@ -10,6 +10,7 @@
 import { harm } from './combos.js'
 import { claimedDice } from './card.js'
 import { healedBy, ridersFired, shapeTriggers, woundedBy } from './goods.js'
+import { addedBy, bittenBy, rollAmends, turnedBy } from './rolling.js'
 import { casting } from './turn.js'
 import type {
   Armor,
@@ -18,6 +19,7 @@ import type {
   DieId,
   Goods,
   Intent,
+  Lot,
   Resolution,
   Turn,
 } from './types.js'
@@ -112,18 +114,31 @@ export function attack(turn: Turn, goods: Goods = { talismans: [], riders: [] })
  * also a killing blow taken.
  *
  * art. 41: FLEE is always offered, and flight neither deals nor takes.
+ *
+ * **card 93: the one seam the rolling goods have.** The lot is last and it is
+ * optional, because a run carrying no rolling good never reaches for it — the
+ * amendments are rolled after the claims have already scored, they amend the
+ * three numbers below rather than being a fourth, and `amends` is empty on
+ * every fight in the game that carries none. A caller that hands over a
+ * company with trinkets in it and no lot is refused rather than quietly
+ * played without them (`rollAmends`).
  */
 export function decide(
   turn: Turn,
   decision: Decision,
   armor: Armor,
   goods: Goods = { talismans: [], riders: [] },
+  lot?: Lot,
 ): Resolution {
   const linesSpent = turn.claims.map((claim) => claim.line)
   if (decision === 'flee') {
     // art. 41: flight neither deals nor takes — and an intent that never
     // landed binds nothing, opens no bleed, and is not fed. What is already
     // running keeps running: the fight pauses, it does not heal (art. 63).
+    //
+    // card 93: nothing rolls either. Running is not an attack, and the goods
+    // roll at Attack — so flight cannot be a free look at what they would
+    // have thrown.
     return {
       decision,
       harmDealt: 0,
@@ -136,16 +151,27 @@ export function decide(
       binds: [],
       bleeds: null,
       fed: 0,
+      amends: [],
     }
   }
-  const harmDealt = attack(turn, goods)
+  // card 93: **after the line, never inside it.** The claims have already
+  // scored — tier, sum, talismans and all — and the amendments move what that
+  // came to. Nothing here reaches back into combo detection: a face is an
+  // effect or a null, never a number a line could be made of.
+  const amends = rollAmends(turn, goods, lot)
+  const harmDealt = attack(turn, goods) + addedBy(amends)
   const fired = ridersFired(turn.claims, goods.riders)
   const healed = healedBy(fired)
   // art. 86: a cost face is charged where the riders fire, not where the
   // intent lands. Armor does not touch it — armor is what the horror has to
-  // get through, and this did not come from the horror (art. 47).
-  const hurt = woundedBy(fired)
-  const standing = armorAgainst(turn.intent, armor)
+  // get through, and this did not come from the horror (art. 47). card 93: a
+  // trinket's bite is the same species of thing and is charged in the same
+  // place, so the death it causes reads like any other (`endLineFor`).
+  const hurt = woundedBy(fired) + bittenBy(amends)
+  // card 93: and what a `block` face turned aside stands beside the armor
+  // rather than inside it — a corroding intent eats the body stat and not a
+  // thing that happened at score time (`turnedBy`).
+  const standing = armorAgainst(turn.intent, armor) + turnedBy(amends)
   const blocked = Math.min(standing, turn.intent.amount)
   return {
     decision,
@@ -160,5 +186,6 @@ export function decide(
     binds: bindsFrom(turn),
     bleeds: bleedFrom(turn.intent),
     fed: hungerFrom(turn),
+    amends,
   }
 }

@@ -25,6 +25,8 @@ declare const talismanBrand: unique symbol
 export type TalismanId = string & { readonly [talismanBrand]: 'talisman' }
 declare const wearableBrand: unique symbol
 export type WearableId = string & { readonly [wearableBrand]: 'wearable' }
+declare const trinketBrand: unique symbol
+export type TrinketId = string & { readonly [trinketBrand]: 'trinket' }
 
 /**
  * art. 51 (amended): the face schema — a value and an optional rider. The
@@ -131,6 +133,82 @@ export interface Wearable {
 /** art. 47: the stat itself, once the worn wearables and mercies are summed. */
 export type Armor = number
 
+// ── The rolling goods (card 93) ─────────────────────────────────────────
+
+/**
+ * **What one face of a rolling good does** (card 93, art. 53).
+ *
+ * art. 53 already lets a talisman act at score time, and a rolling good is a
+ * talisman with a face: it is carried outside the hand, takes no slot, enters
+ * no combo, and lands *after* the line's tier and sum have settled to amend
+ * what the line came to. So no article moves, and none needed to — the shape
+ * here is the same one art. 51 gives a rider, said about the total instead of
+ * about a die.
+ *
+ * Four kinds, and a fifth is content: the union is authored data, so a face
+ * nobody ships is a face that does not exist rather than a branch nobody
+ * takes.
+ *
+ * - `block` turns its value aside from the incoming hit;
+ * - `add` is that much more damage;
+ * - `per` is that much **for each die in the claim** — the interesting one,
+ *   because it is the only kind whose worth rises as the hand improves, and
+ *   it pays a full house five times;
+ * - `cost` bites you, which is art. 54's *every power pays* and art. 86's
+ *   *the cost face is the mistake that killed them*;
+ * - `null` did not fire.
+ *
+ * **The nulls are the feature.** They are what keeps a rolling good from
+ * being flat power — a thing that always fires is a number on the body, and
+ * a number on the body is a wearable (art. 47). Every rolling good therefore
+ * carries at least two nulls and one cost face, and `test/rolling.test.ts`
+ * holds the catalog to it.
+ */
+export type Amend =
+  | { readonly kind: 'block'; readonly amount: number }
+  | { readonly kind: 'add'; readonly amount: number }
+  | { readonly kind: 'per'; readonly amount: number }
+  | { readonly kind: 'cost'; readonly amount: number }
+  | { readonly kind: 'null' }
+
+/**
+ * card 93: **a rolling good** — a trinket with faces, carried like a
+ * wearable.
+ *
+ * The noun is the reference implementation's own
+ * (`reference/castlebrynth-lots-demo.html` calls the company's row the
+ * trinkets), so art. 49's five axes are untouched: on the collection axis
+ * this is a talisman — a keepsake, permanent, upgrading scoring from outside
+ * the hand (art. 53) — and it is *carried* the way a wearable is, outside the
+ * hand and taking no slot of it. Nothing about it is a sixth axis.
+ *
+ * The faces live under `rolls` rather than `faces` deliberately: a `Die` is
+ * told apart from everything else in the collection by having faces, and a
+ * second thing with a `faces` field would be a die to every predicate in the
+ * game (`collect` in src/state, the audit's own catalog walk). One field
+ * name, and the discrimination stays structural and stays right.
+ */
+export interface Trinket {
+  readonly id: TrinketId
+  /** Every face, in the order a roll indexes them. */
+  readonly rolls: readonly Amend[]
+}
+
+/**
+ * card 93: one rolling good, rolled — which face came up and what it came to.
+ *
+ * `amount` is the face's value with `per` already multiplied out against the
+ * dice the turn claimed, so nothing downstream has to count dice again, and a
+ * beat can read what it is about to move off the field beside it (art. 119).
+ * A null is recorded with nothing: the roll happened, and saying so is what
+ * lets the tray prove it (art. 70).
+ */
+export interface Rolled {
+  readonly trinket: TrinketId
+  readonly face: Amend
+  readonly amount: number
+}
+
 /**
  * arts 49, 86: anything collectible, on any of the axes that ship. It exists
  * as one type because everything on it crosses to the permanent ledger by
@@ -161,6 +239,28 @@ export interface Goods {
    * fact that the catalog stops one short of it.
    */
   readonly levelCap?: number
+  /**
+   * card 93: **the rolling goods this run is carrying**, in the order they
+   * were found.
+   *
+   * Optional, and absent is the normal state of the game: the waking hand
+   * carries none, most runs carry none for most of their length, and nothing
+   * in the engine, the bands or the tuning may assume one. A company built
+   * without thinking about this field is a company with no rolling goods in
+   * it, which is what every fixture that predates the wave wants.
+   */
+  readonly trinkets?: readonly Trinket[]
+  /**
+   * card 93: **how many of them may be carried at once.**
+   *
+   * It rides on the company for the reason `levelCap` does — it is a rule
+   * about goods and a number about tuning, so the rule lives here and the
+   * number arrives from content — and it is the number the wave measured as
+   * most likely to break things: three took a weak hand from 0.412 to 0.825,
+   * which is a different game. Absent means uncapped, which is what a fixture
+   * carrying none wants and what one carrying two already satisfies.
+   */
+  readonly trinketCap?: number
 }
 
 /** art. 60: the pouch is the collection, on the permanent ledger. */
@@ -395,6 +495,20 @@ export interface Resolution {
    * horror. Zero on every turn that landed a claim, which is nearly all.
    */
   readonly fed: number
+  /**
+   * card 93: **the rolling goods, rolled** — every carried trinket's face for
+   * this turn, in the order they are carried.
+   *
+   * Empty is the normal state, and empty means *nothing was drawn*: a run
+   * carrying none never touches a lot here, so its stream is the stream it
+   * was before the wave (`test/rolling.test.ts`). What the faces did is
+   * already inside the three numbers above — `harmDealt` carries the `add`
+   * and the `per`, `blocked` and `harmTaken` carry the `block`, `hurt`
+   * carries the `cost` — so this is the *itemisation* and not a second
+   * arithmetic. It exists because art. 119 asks an effect that fires to say
+   * so in its own moment, and a beat cannot narrate a number it cannot see.
+   */
+  readonly amends: readonly Rolled[]
 }
 
 // ── The fight ──────────────────────────────────────────────────────────
