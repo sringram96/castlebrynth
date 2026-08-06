@@ -17,6 +17,7 @@
 
 import {
   ALL_RIDERS,
+  LEVEL_CAP,
   BARE_BODY,
   CASCADE,
   CATALOG,
@@ -145,6 +146,7 @@ import {
   ridersFired,
   rollBeats,
   sealed,
+  tierFor,
   tumblingFace,
   unused,
   withheld,
@@ -332,8 +334,19 @@ let advanceTimer: number | undefined
 let resolving: Resolution | null = null
 let resolved: Fight | null = null
 
+/**
+ * art. 53: the company this run is fighting with — the keepsakes on the
+ * permanent ledger, and every rider the labyrinth can fire.
+ *
+ * card 90: **and the ceiling on levelling**, which travels with the company
+ * because it is a rule about talismans and a number about tuning. Nothing
+ * in the shipped catalog can reach it — two run-levellers agree about the
+ * run of 3 and the run of 4 and that is the whole of it — so it is a guard
+ * rather than a wall, and it is set here so that it cannot be lost by a
+ * caller assembling a `Goods` without thinking about it.
+ */
 function goods(): Goods {
-  return { talismans: ledgers.permanent.keepsakes, riders: ALL_RIDERS }
+  return { talismans: ledgers.permanent.keepsakes, riders: ALL_RIDERS, levelCap: LEVEL_CAP }
 }
 
 // ── Boot ───────────────────────────────────────────────────────────────
@@ -1065,16 +1078,31 @@ function forgetEverything(): void {
   paint()
 }
 
+/**
+ * art. 74: the card, read.
+ *
+ * card 90: **and it shows the levelled lines.** A talisman that raises a
+ * line's multiplier is invisible until a claim of that line lands, which is
+ * a power a player cannot plan around — and the card is the one screen in
+ * the game whose whole job is *what a line is worth*. So the number beside
+ * each line is the multiplier that line would actually score at, asked of
+ * the same `tierFor` the claim will ask (art. 53), and a line the pouch has
+ * moved says so rather than printing the ladder's own entry, which would be
+ * a lie in exactly the case the player most needs the truth.
+ */
 function cardLines(): void {
   const card: Card = fight?.turn.card ?? freshCard()
   const shut = fight === null ? [] : sealed(fight.turn.intent)
+  const held = goods()
   for (const line of LINES) {
     const div = document.createElement('div')
-    div.className = `line ${card[line] ? 'spent' : shut.includes(line) ? 'sealed' : 'open'}`
+    const live = tierFor(line, LADDER, held.talismans, false, held.levelCap)
+    const moved = live.multiplier === LADDER[line].multiplier ? '' : ' levelled'
+    div.className = `line ${card[line] ? 'spent' : shut.includes(line) ? 'sealed' : 'open'}${moved}`
     const name = document.createElement('span')
     name.textContent = LADDER[line].name
     const tier = document.createElement('span')
-    tier.textContent = `×${LADDER[line].multiplier}`
+    tier.textContent = `×${live.multiplier}`
     div.append(name, tier)
     sheetBand.append(div)
   }

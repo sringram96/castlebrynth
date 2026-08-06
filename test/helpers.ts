@@ -7,6 +7,7 @@ import type {
   Card,
   Die,
   DieId,
+  Face,
   Hand,
   Intent,
   Landed,
@@ -43,13 +44,22 @@ export function turnOf(
     readonly dice?: readonly Die[]
     /** art. 65: dice a bind has taken off this turn, if the test wants any. */
     readonly bound?: readonly DieId[]
+    /**
+     * The exact face each die landed on, where a value is not enough to
+     * name one. A die may carry the same value twice with a rider on only
+     * one of them (`THE_RUNNER`), and *which of the two sixes came up* is
+     * the whole question a rider test is asking — looking the face up by
+     * value would silently pick the quiet one and pass by testing nothing.
+     */
+    readonly showing?: readonly Face[]
   } = {},
 ): Turn {
   const dice = options.dice ?? values.map((_, i) => bone(i))
   const landed: Landed[] = values.map((value, i) => {
     const die = dice[i]
     if (die === undefined) throw new Error('a value with no die behind it')
-    const face = die.faces.find((f) => f.value === value) ?? { value: value as Value }
+    const face =
+      options.showing?.[i] ?? die.faces.find((f) => f.value === value) ?? { value: value as Value }
     return die.bond === undefined
       ? { die: die.id, face, kept: false }
       : { die: die.id, face, kept: false, bond: die.bond }

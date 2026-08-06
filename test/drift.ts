@@ -23,7 +23,7 @@ import type { Catalog, Chain, ChainNode, Door, Grammar, RegionId } from '../src/
 import { NO_HISTORY, deal, dealerOf, hereIn, lotFrom, meetings } from '../src/gen/index.js'
 import type { Ledgers, RunHistory, Seed } from '../src/state/index.js'
 import { collect, firstPermanent, lookedAt, meet, movedTo, tookDoor, wake } from '../src/state/index.js'
-import type { Die, Wearable } from '../src/lots/index.js'
+import type { Die, Talisman, Wearable } from '../src/lots/index.js'
 
 export const DEALER = dealerOf(CATALOG, GRAMMAR)
 export const seedOf = (n: number): Seed => n as unknown as Seed
@@ -137,7 +137,11 @@ export function reportOf(chain: Chain): Report {
  */
 export function opened(
   seed: number,
-  carrying: { readonly dice?: readonly Die[]; readonly worn?: readonly Wearable[] } = {},
+  carrying: {
+    readonly dice?: readonly Die[]
+    readonly worn?: readonly Wearable[]
+    readonly keepsakes?: readonly Talisman[]
+  } = {},
 ): { ledgers: Ledgers; chain: Chain } {
   let permanent = firstPermanent(
     { dice: [...(carrying.dice ?? []), ...PLAIN_POUCH.dice] },
@@ -145,6 +149,9 @@ export function opened(
     BARE_BODY,
   )
   for (const wearable of carrying.worn ?? []) permanent = collect(permanent, wearable)
+  // art. 53: a keepsake is permanent, so a returning run brings it down —
+  // and the levels wave is the first thing that makes that measurable.
+  for (const kept of carrying.keepsakes ?? []) permanent = collect(permanent, kept)
   const ledgers = wake(permanent, seedOf(seed))
   return { ledgers, chain: deal(seedOf(seed), 1, CATALOG, GRAMMAR, ledgers.run!.history) }
 }

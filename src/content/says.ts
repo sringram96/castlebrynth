@@ -12,6 +12,7 @@
 import type { Door, InstanceId } from '../gen/index.js'
 import type { Beat, Die, Face, Good, Intent, Line, Resolution } from '../lots/index.js'
 import type { ItemId } from '../state/index.js'
+import { LEVEL_CAP } from './items.js'
 import { LADDER } from './ladder.js'
 import { endLineOf } from './horrors.js'
 import { ECHOES, marked } from './marks.js'
@@ -320,7 +321,50 @@ export function itemLabel(item: ItemId): string {
 export function saysGood(good: Good, remembered: readonly string[] = []): string {
   const label = LABELS[good.id as string] ?? (good.id as string)
   const origin = originOf(good, remembered)
-  return origin === '' ? label : `${label} · ${origin}`
+  return [label, ...declaredBy(good), origin].filter((part) => part !== '').join(' · ')
+}
+
+/**
+ * art. 54, card 90: **what a good that is not a die declares.**
+ *
+ * A talisman used to answer with a name and a sentence and no numbers at
+ * all, which was survivable while every talisman in the game was an unplaced
+ * fixture and is not survivable the moment one of them is the difference
+ * between a line at ×4 and a line at ×5. Card 72's declaration duty applies
+ * from birth: a power the player cannot read is a power they cannot price.
+ *
+ * It is a **readout**, not prose — the line's own name and a signed number,
+ * in the same register as the tray's other numbers (art. 57). The words are
+ * `prose.ts`'s and linted there; the numbers are the good's own, so a
+ * talisman that is retuned cannot drift off its own description.
+ *
+ * The cap rides on the sharpening because art. 53 as the levels wave uses it
+ * caps the lift and not the net, and a player holding two levels for one
+ * line needs to know that the second one stopped counting.
+ */
+function declaredBy(good: Good): readonly string[] {
+  if (!('species' in good)) {
+    return 'armor' in good ? [`${READOUT.armor} ${good.armor}`] : []
+  }
+  const said: string[] = []
+  const rung = (line: Line): string => LADDER[line].name
+  if (good.species === 'ladder' && good.ladder !== undefined) {
+    const { tiers, lines, dulls } = good.ladder
+    if (lines !== undefined && lines.length > 0) {
+      said.push(`${READOUT.sharpens} ${lines.map(rung).join(', ')} +${tiers}`)
+    }
+    if (dulls !== undefined && dulls.length > 0) {
+      said.push(`${READOUT.dulls} ${dulls.map(rung).join(', ')} −${tiers}`)
+    }
+    said.push(`${READOUT.cap} +${LEVEL_CAP}`)
+  }
+  if (good.species === 'value' && good.value !== undefined) {
+    said.push(`${good.value.of} ×${good.value.times}`)
+  }
+  if (good.species === 'shape' && good.shape !== undefined) {
+    said.push(`${READOUT.everyDie} ×${good.shape.times}`)
+  }
+  return said
 }
 
 /**

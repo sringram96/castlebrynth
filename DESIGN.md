@@ -109,8 +109,16 @@ keep choosing → a region locks and the depth announces where you have arrived
 → the rest of the depth deals from that region and its encounters wake → the
 Warden's door, and the keeper behind it once the key turns. Every doorway
 breathes while you stand there, and seven rooms will do one thing of their own
-accord if you stand there long enough. `npm test` is green: 50 files, 571
+accord if you stand there long enough. `npm test` is green: 52 files, 589
 tests.
+
+**And the depth ramps, and the build is how you keep up.** The levels wave
+(cards 89–90) is the arithmetic pass the six-bone amendment left owing, plus
+the growth path it left the game without: five new **levels** — talismans
+that raise one line of the ladder and lower another — placed through the
+ordinary drops beside found dice, armor and bonds. The principle it installs
+is one section down: **The levels wave**, with the table every survival
+number in this file now comes from.
 
 **And the doors say something, and curiosity costs something.** The descent
 wave (cards 49, 86–88) built the missing half of the exploration engine: the
@@ -151,6 +159,250 @@ best these make*, and a boot no longer throws the permanent ledger away when
 the migration ladder hands it a snapshot with no run. One section down: **The
 fixes wave**.
 
+## The levels wave (cards 89–90)
+
+**The depth ramps, and the build is how you keep up.** The first rooms are
+winnable with the bones you wake holding. The deep rooms are not. Nothing
+specific is ever the key — no fight, door or number requires a particular
+good — but the gradient assumes *growth in general*, and growth is
+structural rather than mandated: drops happen because rooms happen, and the
+pouch survives death (arts 11, 60), so even a losing run deposits the
+material the next one descends with. **You fail, you start over, you go
+further.**
+
+Three reference hands govern every band, and two of the three are
+**derived** rather than asserted — `test/report.ts` walks a thousand seeds
+of the real drop machinery and reads them off it:
+
+- **The waking hand** — six plain bones (art. 55). Governs the first rooms.
+- **The found hand** — the median accumulation at mid-depth. Governs the
+  region uniques.
+- **The returning hand** — the median haul a *whole failed run* deposits.
+  The ratchet. Governs the Warden. (**The taught hand** is the same thing
+  twice: what two whole failed runs leave, which is what DESIGN.md has meant
+  by *taught* since the company wave.)
+
+**The shape is law; the numbers are tuning.** A monotone gradient down the
+depth, a real wall at its end, a ratchet across runs. For the record, so
+nobody relitigates it: the five-bone game *had* this gradient, measured
+(0.134 bare → 0.936 taught against the Warden); six bones at the waking
+flattened it (bare 0.784 against the Gnawing). This wave restores the
+gradient at the six-bone baseline — restoration, not invention.
+
+**Two framings tried and retired on the way here.** Tuning that *expected*
+levels, with guaranteed offers — retired, because it forces pickups and
+art. 4 makes every good optional treasure. And tuning whole at the bare
+hand — retired, because it makes the build decorative, which is the exact
+defect the six-bone amendment introduced.
+
+### The levers moved, and their final values
+
+No law changed. Only the levers card 89 named were pulled.
+
+| lever | was | is | why |
+| --- | --- | --- | --- |
+| the body (`YOUR_HEALTH_AT_WAKING`) | 26 | **64** | a body of 26 is dead on the Gnawing's fourth intent whatever it does, so no fight could reach a fifth turn |
+| the Gnawing's health | 150 | **290** | a six-to-seven-turn fight won three times in five |
+| the Marrow | 120 | **310** | at or above the ordinary teeth (arts 78, 83) |
+| the Silt Mother | 112 | **290** | the same, and her `bleed` 4 → 5 |
+| the Kindled | 128 | **310** | the same; `bleed` 4 → 6, `hunger` 12/14 → 30/34 |
+| the Warden's health | 168 | **380** | the wall. Script unchanged but `FLENSE` 4 → 5 and `WAIT` 16 → 38 |
+| the plate's armor | 3 | **3** | not moved: the fork un-inverted from the other side, and armour 2 and 3 measure identically against this script |
+| the Pusher's faces | 1,5,5,6,6,6 | **unchanged** | every *higher* variant measured worse; it is the wave's control |
+| the Careful's faces | 2,3,3,4,4,5 | **3,3,3,4,4,4** | the same 21, squeezed onto two faces |
+| the Runner's faces | 2,3,4,5,6,6, **both** biting | **3,4,5,5,6,6, one** biting | it measured *below a plain bone*; two prices on the only two faces worth reaching for is not a decision |
+| the cost faces (`THE_PUSH` / `THE_BLEED`) | 3 / 2 | **7 / 5** | 11% and 8% of a body of 26; the body is 64 |
+
+Two numbers that were **not** on the list and are now a smaller share of a
+body than they were: the priced acts (art. 120, 1 and 2 health) and the
+Leech's heal (2). Both are noted for Status rather than moved here.
+
+### The table
+
+One row per reference hand, at full health, `test/report.ts` over 2000
+seeds per cell, the greedy thumb (`test/policy.ts`). Every number in this
+section comes from that one model.
+
+| hand | Gnawing | Marrow | Silt Mother | Kindled | **Warden** |
+| --- | --- | --- | --- | --- | --- |
+| the waking hand — 6 plain bones | **0.591** | 0.475 | 0.408 | 0.409 | **0.141** |
+| the found hand — + the Careful | 0.653 | 0.526 | 0.412 | 0.423 | 0.124 |
+| the returning hand — + the Pusher, + the plate | 0.770 | 0.700 | 0.720 | 0.711 | **0.314** |
+| the taught hand — + the Careful, + the chain | 0.807 | 0.728 | 0.727 | 0.733 | 0.291 |
+| *the gate hand* — 2 bones, the plate, 2 levels | — | — | — | — | **0.485** |
+
+**The ratchet**, whole-depth, 1000 seeds a row, coin-flip doors, each run
+carrying what the last one's median whole failed run deposited:
+
+| run | reaches the last door | finishes the depth |
+| --- | --- | --- |
+| 1 (a first waking) | 0.173 | 0.008 |
+| 2 (on run one's haul) | **0.335** | **0.047** |
+| 3 (on two runs' haul) | 0.352 | 0.045 |
+
+**The fight, as a shape** — the thing card 89 was called for. Waking hand
+against the ordinary Gnawing: **6.81 turns** mean; the script comes round in
+**79%** of fights; BELLOW is reached in 95% of them and **lands in 83%** of
+those. Turns per fight across a whole depth: **5.73**.
+
+**The ladder's top is no longer decorative.** Top five lines by share of
+claims made: any dice 14.2%, triple 13.0%, full house 12.0%, pair 11.8%, two
+pair 11.6% — flat, where before the fight ended before the card could be
+spent broadly.
+
+**Median finds**, reported and never mandated: **1** at mid-depth, **2**
+standing at the last door.
+
+**Wall-clock**, at the shipped `CASCADE` timings: an ordinary Gnawing fight
+is **21.5s of beats**, and **~46s** with a thumb allowance of 1.2s a press
+and three presses a turn. The Warden is 22.8s / **~48s** at the waking hand
+and 25.7s / **~55s** at the taught one. Budgets were 75s and 120s. **The
+device is a model, not a phone** — this is the beat script summed, and the
+fight wave's note stands: the timings are still owed a hand.
+
+### The levels, and what each one bends
+
+A level raises one line's multiplier by one and lowers another's by one.
+Both halves are art. 54: the lift is the power and the dull is what it pays,
+and it is the only version of a level that changes a *decision* — a
+whetstone that lifts the quad and dulls the pair makes you want a different
+die. Cap: **+2 tiers of lift per line**, declared on inspect.
+
+| level | sharpens | dulls | L1, waking hand vs the Gnawing |
+| --- | --- | --- | --- |
+| the counting cord (amended) | run of 3, 4, 5 | quad | **+0.041** |
+| the beggar's bowl | any dice | quint | +0.034 |
+| the surveyor's chain | run of 3, run of 4 | two pair | +0.033 |
+| the whetstone | quad | pair | +0.028 |
+| the notched stick | two pair, three pairs | run of 4 | +0.022 |
+| the widow's ring | full house | triple | +0.021 |
+
+**L2** — two levels together: cord + bowl **+0.080**, cord + chain (which
+lands exactly on the cap for the run of 3 and the run of 4) **+0.064**. A
+level is worth about a third of a traveler's bone, and two are worth about
+one. Nothing here bends nothing, which is card 82's test.
+
+**And the Zealot, placed at last, is worth +0.260** — three times any level
+and twice any die. Its price is its condition (every die of the hand spent
+in a claim) and its rarity, and that is the whole of it. It is reported here
+because it is by a wide margin the strongest good in the game and nothing
+audits it; the honest next move is a declared cost or a fork, and neither
+was this wave's to make.
+
+### The bands: hit, and missed
+
+| band | asked | measured | |
+| --- | --- | --- | --- |
+| waking vs the ordinary Gnawing | 0.55–0.65 at 5–7 turns | **0.591 at 6.81** | hit |
+| found vs the uniques | 0.40–0.55 | **0.412–0.526** | hit |
+| uniques at or above the Gnawing | ≥ 290 | 310 / 290 / 310 | hit |
+| the wall: waking vs the Warden | ≤ 0.15 | **0.141** | hit |
+| escalation fires | majority | **0.79** | hit |
+| the fork un-inverted | within a few points | plate **+0.124**, the Runner **+0.084** — four points apart, from ten | hit |
+| wall-clock | ≤75s / ≤120s | ~46s / ~55s | hit |
+| BELLOW lands | ≥85% of full fights | **0.83** | **missed by two points** |
+| the gate: returning, taught, vs the Warden | ≈0.5 | **0.31 / 0.29** (0.485 at the gate hand) | **missed** |
+| the ratchet: a first run finishes | 0.03–0.10 | **0.008** (run two: 0.047) | **missed** |
+
+**Why BELLOW misses, and what it would cost to hit.** The denominator is
+honest: *fights that reach the turn the telegraph is scheduled for*, not
+*fights that outlive the whole script* — the second is true by construction
+of any fight that has had a seventh turn. The 17% that reach turn five and
+never see it are fights where a strong roll kills the Gnawing on that turn.
+The rate is a function of the Gnawing's health alone, and it crosses 0.85 at
+about 300 — which takes the win rate to 0.53 and out of the band above it.
+Two points of tell against six points of the wave's headline band is a trade
+that was made deliberately.
+
+**Why the gate misses, and it is the wave's most useful finding.** The gate
+*is* reachable: two bones, the plate and two levels beat the keeper 0.485 of
+the time. What does not reach it is the **median** haul of a whole failed
+run, which is **two goods**. And the two halves of a build are not worth the
+same thing at that door: measured against the Warden, a traveler's bone is
+worth about +0.01 and the plate about +0.17. The reason is art. 63 — the
+card is the ceiling, so a better hand raises what a fight can deal by about
+a sixth, while armor buys *turns*, and turns are what let the card be spent
+at all. So the gate is a question about **what the drops deal**, not about
+the keeper's numbers, and the lever is content density rather than any lever
+card 89 named.
+
+**Why a first run finishes 0.008, and why the two bands cannot both hold.**
+This is arithmetic and not tuning. A run meets one to three fights on the
+road and the wave's own band puts each at about three in five; a won fight
+leaves the winner on **a third of their body** (median 21 of 64), because at
+a 0.6 win rate the winner is by construction nearly dead; and the wall is
+≤0.15 at *full* health, which is about 0.02 at a third of it. Multiply those
+and 0.008 is what comes out. **The per-fight band and the 0.03–0.10
+first-run band are incompatible at the current mercy budget** — the missing
+lever is health handed back between fights (art. 40's two tiers, or a second
+mercy band), and neither is a lever this wave was given. Run two lands *in*
+the band at 0.047, which is the ratchet doing its job: what the wave
+actually asks for — *materially above a first run's* — is a factor of six.
+
+### The acceptance test, performed
+
+`test/acceptance.test.ts` walks it rather than asserting it. From a fresh
+vault, seed 2: the run reaches the last door at step 8, having fought the
+Gnawing (six turns) and picked up **the surveyor's chain and the counting
+cord** off two floors, arrives in the drowned, turns the key, and dies to
+the Warden in five turns. **The death deposited**: both levels are on the
+permanent ledger, the pouch has outgrown the hand, and the next waking owes
+a choice (`mustChoose`). The choosing screen is a reordering and destroys
+nothing.
+
+The return, over the forty seeds after it, carrying those two levels:
+**8/40 to the last door against 6/40 bare**, mean depth 4.45 rooms against
+4.20. Over a thousand seeds the same comparison is 0.335 against 0.173. So:
+further, and the further is small when the haul is two levels and large when
+it is a bone and the plate — which is the gate finding again, from the other
+end.
+
+**Where a six-turn fight felt long rather than substantial: turn seven.**
+Walked turn by turn (waking hand, Gnawing, seed 7): turns one to six each
+land a claim and take 3.0–4.0s of beats — 61, 32, 18, 46, 75, 42 — and then
+the card has five lines left and all five are shapes a hand of six almost
+never makes. **Turns seven and eight claim nothing at all**, deal nothing,
+and cost 1.4s each of watching a blow land. That is art. 63 working as
+written — *an empty card leaves only armor and flight* — but the last two
+turns of a lost fight are the only turns in the game with no decision in
+them. The specific pinch is that **ANY DICE is spent once, and it is spent
+on turn one**, so the floor art. 46 keeps for exactly this is gone by the
+time it is needed. That is the strongest argument this wave found for
+cards 80/81 coming off the shelf.
+
+### Rejected, one line each
+
+- **A global multiplier.** A flat ×1.30 measured 0.51 and climbing — art. 54's
+  uncapped-multiplication failure — and, worse, it changes *no decision*: it
+  makes you want the same dice slightly harder. Per-line changes what dice
+  you want.
+- **A desperation curve.** Not built and not proposed: a horror that hits
+  harder as you weaken is a difficulty dial wearing a mechanic's coat, and
+  art. 116 already says what may not be one.
+- **Guaranteed level offers.** They would force pickups, and art. 4 makes
+  every good optional treasure.
+- **Tuning the depth whole at the bare hand.** It makes the build decorative,
+  which is the defect this wave exists to undo.
+
+### Findings for Status
+
+1. **The mercy budget is the next number.** The road+wall bands and the
+   first-run band cannot both hold until a run gets more of its body back
+   between fights. Art. 40's two tiers and their rarity are where it lives.
+2. **The drops deal three bones to one piece of armor.** At the Warden that
+   is the difference between 0.31 and 0.485. Either the density or the
+   rarity bands want a content pass; neither is a test.
+3. **The Zealot is unpriced and enormous** (+0.260). Rarity is doing all the
+   work.
+4. **Two numbers stayed still while the body grew by two and a half:** the
+   priced acts (1 and 2 health, art. 120) and the Leech's heal (2). Both are
+   a smaller share of a body than they were authored to be.
+5. **The last turns of a lost fight are empty.** See turn seven, above.
+6. **The stale pre-six numbers in this file are superseded**, not corrected
+   in place: every survival number in the sections above was measured
+   against a body of 26 and a Gnawing of 150 and is a record of the wave
+   that measured it. This section's table is the current one.
+
 ## The fixes wave (art. 55 amended · arts 11, 63, 65, 72, 118)
 
 Three findings, from one player report: *I can't pick up the 6th die in the
@@ -186,6 +438,12 @@ against the Gnawing over 2000 runs with the policy in `test/policy.ts`:
 | six plain bones | none | 0.784 |
 | six plain bones | Rusted Plate | 0.931 |
 | a traveler's die swapped for a bone | none | 0.81–0.83 |
+
+> **Superseded by the levels wave (card 89).** These three are the debt
+> being described, not the game: the arithmetic pass named in the paragraph
+> below was done, and against the body of 64 and the Gnawing of 290 the same
+> three rows read 0.591, 0.715 and 0.627–0.675. The fork is no longer
+> inverted. The current table is in **The levels wave**, above.
 
 The first fight is comfortable again — it was ~0.28 under five bones — and
 **art. 89's first fork is inverted**: *a bone or the plate* now has a right
@@ -2462,6 +2720,12 @@ Named, not hidden. Each of these is a task, not an accident.
   numbers beside each other always mean the same thing.
 
   **One fight, at full health**, 1000 seeds:
+
+  > **Superseded by the levels wave (card 89).** Every number in the four
+  > tables below was measured against a body of 26, a Gnawing of 150 and
+  > uniques at 112–128, and each is kept as the record of the wave that
+  > measured it. The current table is in **The levels wave**, near the top
+  > of this file.
 
   | horror | health | bare five | found six | found six + plate |
   | --- | --- | --- | --- | --- |

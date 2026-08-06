@@ -63,7 +63,7 @@ export const GNAWING_SCRIPT: readonly Intent[] = [
 /** Every loop of the script, its attacks come back this much heavier. */
 export const GNAWING_ESCALATION = 3
 
-export const GNAWING_HEALTH = 150
+export const GNAWING_HEALTH = 290
 
 export const THE_GNAWING: Horror = scriptedHorror(
   'horror.gnawing',
@@ -91,7 +91,7 @@ export const MARROW_SCRIPT: readonly Intent[] = [
 
 export const MARROW_ESCALATION = 3
 
-export const MARROW_HEALTH = 120
+export const MARROW_HEALTH = 310
 
 export const THE_MARROW: Horror = scriptedHorror(
   'horror.marrow',
@@ -121,7 +121,7 @@ export const THE_MARROW: Horror = scriptedHorror(
  */
 export const SILT_MOTHER_SCRIPT: readonly Intent[] = [
   { verb: 'DRAG', amount: 6, effect: { kind: 'bind', rule: 'highest' } },
-  { verb: 'CHILL', amount: 4, effect: { kind: 'bleed', amount: 4, turns: 3 } },
+  { verb: 'CHILL', amount: 4, effect: { kind: 'bleed', amount: 5, turns: 3 } },
   { verb: 'SILT', amount: 8 },
   { verb: 'DRAG', amount: 7, effect: { kind: 'bind', rule: 'highest' } },
   { verb: 'UNDERTOW', amount: 12, telegraph: true },
@@ -129,7 +129,7 @@ export const SILT_MOTHER_SCRIPT: readonly Intent[] = [
 
 export const SILT_MOTHER_ESCALATION = 3
 
-export const SILT_MOTHER_HEALTH = 112
+export const SILT_MOTHER_HEALTH = 290
 
 export const THE_SILT_MOTHER: Horror = scriptedHorror(
   'horror.silt-mother',
@@ -152,16 +152,16 @@ export const THE_SILT_MOTHER: Horror = scriptedHorror(
  * player who has learned one has half-learned the other.
  */
 export const KINDLED_SCRIPT: readonly Intent[] = [
-  { verb: 'SEAR', amount: 5, effect: { kind: 'bleed', amount: 4, turns: 3 } },
-  { verb: 'GAPE', amount: 6, effect: { kind: 'hunger', amount: 12 } },
+  { verb: 'SEAR', amount: 5, effect: { kind: 'bleed', amount: 6, turns: 3 } },
+  { verb: 'GAPE', amount: 6, effect: { kind: 'hunger', amount: 30 } },
   { verb: 'CHAR', amount: 9 },
-  { verb: 'GAPE', amount: 5, effect: { kind: 'hunger', amount: 14 } },
+  { verb: 'GAPE', amount: 5, effect: { kind: 'hunger', amount: 34 } },
   { verb: 'GUTTER', amount: 13, telegraph: true },
 ]
 
 export const KINDLED_ESCALATION = 3
 
-export const KINDLED_HEALTH = 128
+export const KINDLED_HEALTH = 310
 
 export const THE_KINDLED: Horror = scriptedHorror(
   'horror.kindled',
@@ -194,15 +194,15 @@ export const WARDEN_SCRIPT: readonly Intent[] = [
   { verb: 'JUDGE', amount: 9, effect: { kind: 'seal', lines: PAIRISH } },
   { verb: 'BIND', amount: 8, effect: { kind: 'bind', rule: 'highest' } },
   { verb: 'TITHE', amount: 7, effect: { kind: 'curse', value: 6 } },
-  { verb: 'FLENSE', amount: 5, effect: { kind: 'bleed', amount: 4, turns: 3 } },
+  { verb: 'FLENSE', amount: 5, effect: { kind: 'bleed', amount: 5, turns: 3 } },
   { verb: 'STRIP', amount: 12, effect: { kind: 'corrode' } },
-  { verb: 'WAIT', amount: 4, effect: { kind: 'hunger', amount: 16 } },
+  { verb: 'WAIT', amount: 4, effect: { kind: 'hunger', amount: 38 } },
   { verb: 'KEEP', amount: 18, telegraph: true },
 ]
 
 export const WARDEN_ESCALATION = 5
 
-export const WARDEN_HEALTH = 168
+export const WARDEN_HEALTH = 380
 
 export const THE_WARDEN: Horror = scriptedHorror(
   'horror.warden',

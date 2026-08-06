@@ -223,6 +223,14 @@ export const NOUNS: Readonly<Record<string, string>> = {
   'leech.thing': 'the dark bone',
   'cord.thing': 'the knotted cord',
   'plate.thing': 'the rusted plate',
+  // card 90: the levels, as they lie. A plain noun before it is anything
+  // (art. 111), and none of them names what it does.
+  'whetstone.thing': 'the whetstone',
+  'chain.thing': 'the surveyor’s chain',
+  'ring.thing': 'the thin ring',
+  'bowl.thing': 'the wooden bowl',
+  'notch.thing': 'the notched stick',
+  'zealot.thing': 'the burnt medal',
   // card 88: the covered font's three, and each is a plain noun before it is
   // anything (art. 111). What they add up to is the room's business.
   'font.cloth': 'the cloth',
@@ -312,6 +320,15 @@ export const LOOKS: Readonly<Record<string, string>> = {
   'leech.thing': 'One face of it is stained darker than the others. The stain is not dust.',
   'cord.thing': 'Knotted at every hand’s width. The knots run out before the cord does.',
   'plate.thing': 'Iron, rusted through in two places, and neither of them over the heart.',
+  // card 90: the levels, under the thumb. Each says what it is and what it
+  // was for, and none of them says the number — the number is on the good
+  // (art. 54) and the look is the man seeing it.
+  'whetstone.thing': 'A grey stone, worn hollow in the middle. Somebody used one edge on it for years and never turned it over.',
+  'chain.thing': 'A measuring chain, coiled. The links are counted in threes and marked at the fourth.',
+  'ring.thing': 'A thin ring, still bright. Whoever wore it had a whole house behind them once.',
+  'bowl.thing': 'A wooden bowl, worn smooth inside. It has held whatever there was, and never held much.',
+  'notch.thing': 'A stick cut with marks. Always two together, never three, and never one.',
+  'zealot.thing': 'A medal, burnt black. The face of it is somebody who wanted the whole of something.',
 
   // ── The covered font, free (card 88, arts 5, 111) ────────────────────
   //
@@ -425,6 +442,28 @@ export const ORIGINS: Readonly<Record<string, string>> = {
   'talisman.ossuary':
     'The luck of one who counts the high faces twice and the low ones not at all, and stops counting at four.',
   /**
+   * card 90: **the levels, each with the sentence art. 87 asks of it.** Every
+   * one names the habit that sharpened a line and the habit that blunted
+   * another, because a level is both halves and a sentence about only the
+   * gift would be a sentence about half the item.
+   *
+   * These are written in the amended register (`AMENDED_ORIGINS`), not the
+   * repealed one: the placeholder category is a debt with a name and not a
+   * category anything new may be written in (rules/voice.md).
+   */
+  'talisman.whetstone':
+    'I know this one. One trick, worked until it cuts, and nothing else sharp on the whole body.',
+  'talisman.chain':
+    'She measured it in threes and fours the whole way down, and never once looked at a pair of anything.',
+  'talisman.ring':
+    'He would not count a house until it was whole. Three of a thing was three of a thing to him.',
+  'talisman.bowl':
+    'He kept the leavings every time. Five of a kind was somebody else\u2019s idea of a good day.',
+  'talisman.notch':
+    'Two of everything, all the way down the stick. Nothing on it is in order and nothing on it is alone.',
+  'talisman.zealot':
+    'All of it, every throw. Spend the whole hand or it is not worth the throwing \u2014 and here is the medal, and here is the ash.',
+  /**
    * art. 84 (extended, card 87): **the die you refused turns up in another
    * traveler's hand.** Same good, same numbers, one sentence further on —
    * because the labyrinth remembers, and the cheapest true way to say so is
@@ -466,6 +505,14 @@ export const SOCKET_BEATS: Readonly<Record<string, readonly string[]>> = {
   'enc.leech': ['A bone lies apart from the grit, and one face of it is stained.'],
   'enc.cord': ['A knotted cord lies coiled where a hand lets go of it.'],
   'enc.plate': ['A plate of rusted iron lies flat on the stone. The straps are cut.'],
+  // card 90: the levels each say their own candle where they lie, the way
+  // everything in a socket does. The room never mentions them.
+  'enc.whetstone': ['A whetstone sits on the stone, hollowed on one side.'],
+  'enc.chain': ['A measuring chain lies coiled and counted out along the floor.'],
+  'enc.ring': ['A thin ring lies where a finger thins enough to lose it.'],
+  'enc.bowl': ['A wooden bowl lies on its side, empty, worn smooth inside.'],
+  'enc.notch': ['A cut stick lies here, marked in twos all down its length.'],
+  'enc.zealot': ['A burnt medal lies face up on the stone, and nothing here has burnt.'],
   /**
    * art. 89: the terms of a fork, said plainly and said first — before
    * either verb is on the strip, and once (the labyrinth never explains
@@ -873,6 +920,14 @@ export const NOTICES: Readonly<Record<string, string>> = {
   'answer.act.take.sister.younger': 'Two notches. The other one is not below me. It is behind me, and behind me is stone.',
   'answer.act.take.leech': 'The stain does not come off on my hand. Whatever it took, it took a little at a time.',
   'answer.act.take.cord': 'Knotted at every hand of it. Somebody counted the way down in order and ran out of cord.',
+  // card 90: what a level answers with when it is picked up. Each one says
+  // the habit that made it worth carrying, and none of them says a number.
+  'answer.act.take.whetstone': 'Hollow on one side and untouched on the other. He sharpened one edge for years and it was the only edge he had.',
+  'answer.act.take.chain': 'Marked in threes and fours all the way along. She measured the whole way down, and then she ran.',
+  'answer.act.take.ring': 'Still bright. Whoever came down here with this had a full house behind them, and came anyway.',
+  'answer.act.take.bowl': 'Worn smooth inside. He kept whatever was left over, every time, and never once held out for more.',
+  'answer.act.take.notch': 'Cut in twos the whole way down. Never three, never one. Somebody wanted everything to have a partner.',
+  'answer.act.take.zealot': 'Burnt through and still legible. Somebody who spent all of it, every time, and had nothing left over.',
   'answer.act.take.plate': 'The straps are cut, not worn through. Somebody got this off him fast, and it did not save either of them.',
   /**
    * art. 120: **what a priced press buys.** Each of the three is knowledge
@@ -1083,6 +1138,12 @@ export const LABELS: Readonly<Record<string, string>> = {
   'talisman.ossuary': 'the counting stone',
   'talisman.zealot': 'the zealot',
   'talisman.cord': 'the counting cord',
+  // card 90: the levels wear the name of the thing, never of what it lifts.
+  'talisman.whetstone': 'the whetstone',
+  'talisman.chain': 'the surveyor’s chain',
+  'talisman.ring': 'the widow’s ring',
+  'talisman.bowl': 'the beggar’s bowl',
+  'talisman.notch': 'the notched stick',
   'wearable.rusted-plate': 'the rusted plate',
   'rider.leech': 'the leech bite',
   'rider.push': 'the push',
@@ -1108,6 +1169,14 @@ export const READOUT: Readonly<Record<string, string>> = {
   bound: 'bound by',
   showing: 'showing',
   faces: 'faces',
+  // art. 54, card 90: what a talisman declares about itself in the pouch —
+  // which line it sharpens, which it blunts, and how far a line may ever be
+  // lifted however many agree about it (art. 53).
+  sharpens: 'sharpens',
+  dulls: 'dulls',
+  cap: 'at most',
+  doubles: 'counts double',
+  everyDie: 'whole hand',
   spent: 'spent in',
   corroded: 'corroded',
   next: 'next',
@@ -1148,6 +1217,13 @@ export const VERBS: Readonly<Record<string, string>> = {
   'act.take.leech': 'Take leech',
   'act.take.cord': 'Take cord',
   'act.take.plate': 'Take plate',
+  // card 90: one plain verb each, two words or fewer (art. 66).
+  'act.take.whetstone': 'Take stone',
+  'act.take.chain': 'Take chain',
+  'act.take.ring': 'Take ring',
+  'act.take.bowl': 'Take bowl',
+  'act.take.notch': 'Take stick',
+  'act.take.zealot': 'Take medal',
   /**
    * art. 120's three, and GAME.md named all three long before anything gave
    * an act a price. They are plain imperatives like every other control —
