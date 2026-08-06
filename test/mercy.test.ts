@@ -16,6 +16,7 @@ import {
   VERBS,
   atGrid,
   roomContent,
+  saysAct,
 } from '../src/content/index.js'
 import type { Act } from '../src/descent/index.js'
 import {
@@ -212,7 +213,10 @@ describe('art. 40 — the Sanctum restores half of what is missing', () => {
     expect(
       later.tray.flatMap((offer) => (offer.kind === 'act' ? [offer.act.id] : [])),
     ).toContain('act.drink')
-    expect((NOTICES['mercy.breath'] ?? '').length).toBeGreaterThan(0)
+    // card 69: and pressing it answers with the breath's own line, keyed on
+    // the act. `mercy.breath` retired with `mercy.whole` — a second name for
+    // one act's answer is a second thing to keep in step.
+    expect(saysAct('act.drink').length).toBeGreaterThan(0)
   })
 })
 

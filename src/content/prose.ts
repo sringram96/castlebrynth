@@ -492,22 +492,57 @@ export const NOTICES: Readonly<Record<string, string>> = {
   // nothing — and under art. 118 it no longer has to, because what holds
   // the door is on the frame and one tap away.
   'door.held': 'Not yet. There is something in here still mine to take.',
+  /**
+   * **What an act answers with** (the answer wave, card 69).
+   *
+   * art. 70 asks prose to confirm what an act did. Until this wave there was
+   * exactly one of these — the unlock's — and every other act fell through
+   * to the candle the player was standing on, which is the candle describing
+   * the thing they had just picked up. *Take bone* replied *"There is a bone
+   * in it."*
+   *
+   * So there is one line per act id, and `test/answers.test.ts` enumerates
+   * the catalog and fails on a missing one rather than trusting anybody to
+   * remember. The key is the act's own id, because that is already the key
+   * art. 66 looks its verb up by: one lookup, one place to author.
+   *
+   * These are the moment of doing it, in his head — never a restatement of
+   * the numbers, which are the die's to declare on inspect (art. 54).
+   */
   // card 67: what a turned lock answers with. It is keyed on the act rather
   // than on the door, so every future lock gets its own sentence and none of
   // them has to be written in the shell.
   'answer.act.unlock': 'The key goes in and the wards give, one after another. The lock hangs open.',
+  // arts 3, 80: the depth's one required thing. He does not know what it is
+  // for yet — the lock is eight rooms down — so the line carries the teeth
+  // and not the destination.
+  'answer.act.take-key': 'Heavier than it looks, and cold all the way through. Three teeth. Something down here is cut for this.',
+  // art. 40's two tiers, and they may not say the same thing: a breath is
+  // not a mercy. The Sanctum closes some of what is open; the Mender closes
+  // all of it and asks for nothing.
+  'answer.act.drink': 'The cold of it goes through me, and some of what is open closes.',
+  'answer.act.kneel': 'Its hands close over mine for a moment. Everything that was open is shut, and it has not asked me for anything.',
+  // art. 86: every one of these came off somebody, and the shape of it is
+  // how they died. He reads the bone, not the stat.
+  'answer.act.take.traveler.pusher': 'It gives up out of the hand easily. Four faces high, one low. He kept throwing until the low one came up.',
+  'answer.act.take.traveler.careful': 'Nothing on it is chipped. He never threw anything he could not afford, and he is still lying here.',
+  'answer.act.take.traveler.runner': 'It was in the boot and not in the hand. He was keeping it for later, and later did not come.',
+  // art. 52: the halves are banded apart, so which one he finds says which
+  // way the other one lies. Both lines are true of the dealing.
+  'answer.act.take.sister.elder': 'One notch, cut halfway. There is another of these further down. There would have to be.',
+  'answer.act.take.sister.younger': 'Two notches. The other one is not below me. It is behind me, and behind me is stone.',
+  'answer.act.take.leech': 'The stain does not come off on my hand. Whatever it took, it took a little at a time.',
+  'answer.act.take.cord': 'Knotted at every hand of it. Somebody counted the way down in order and ran out of cord.',
+  'answer.act.take.plate': 'The straps are cut, not worn through. Somebody got this off him fast, and it did not save either of them.',
   // card 31: what the hall answers with when the lock it was built around
   // is turned. One candle: the key, and the thing the door was for.
   'warden.wakes':
     'The wards give, one after another, and the lock hangs open. At the far end of the hall something that has been standing there the whole time takes a step.',
-  // art. 40: what the breath answers with. The poetry is the response to the
-  // button, never the button (art. 66).
-  //
-  // art. 118 retired its twin. `mercy.whole` was what a whole body got back
-  // for pressing Drink, and under the dead-press ruling that press is not
-  // offered at all — the basin's own look carries the reason now
-  // (`basin.water.kept`), which is where a withheld verb has to put one.
-  'mercy.breath': 'The cold of it goes through me, and some of what is open closes.',
+  // art. 40's mercies answer under their own act ids now (`answer.act.drink`,
+  // `answer.act.kneel`), because card 69 gives every act its own line and a
+  // second name for one of them is a second place to keep in step. Art. 118
+  // retired the other half of the old pair: `mercy.whole` was what a whole
+  // body got back for pressing Drink, and that press is not offered at all.
   'fight.won': 'The room goes quiet. The door gives.',
   // art. 63: a fled fight pauses. Nothing about it refills.
   'fight.fled': 'You back out of the door. It waits where you leave it.',

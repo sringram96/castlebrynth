@@ -51,6 +51,7 @@ import {
   saysClaim,
   saysDie,
   saysIntent,
+  saysAct,
   saysItem,
 } from './content/index.js'
 import type { Act, Bands, Pick, Tappable } from './descent/index.js'
@@ -79,6 +80,8 @@ import {
   withholding,
 } from './descent/index.js'
 import { wayOn } from './shell/strip.js'
+import type { Held } from './shell/band.js'
+import { HUSHED, answered, bandLine, holding, noticed } from './shell/band.js'
 import type { Chain, ChainNode, Door } from './gen/index.js'
 import { deal, dealerOf, meetings, nodeAt, reseed } from './gen/index.js'
 import type { Standing } from './hinge/index.js'
@@ -245,7 +248,19 @@ let screen: Screen
 let resumed: Screen = { kind: 'room' }
 /** Set while the door is asking whether the run should really be given up. */
 let abandoning = false
-let notice: string | null = null
+/**
+ * card 69: **the band's third state.** art. 29 gave the word band two jobs —
+ * what you are looking at, and what is coming — and the shell had one slot
+ * for both, with nowhere at all for what just happened. So an act's answer
+ * and a tap's answer fought over one variable, and an act with no authored
+ * line fell straight through to the candle underneath.
+ *
+ * `Held` is that slot split in three with a priority: **an act's answer,
+ * then what you are looking at, then the ambient** (`src/shell/band.ts`).
+ * The ambient is `wordOf()` and is never null — art. 69 says silence is a
+ * bug, and the bottom of a priority order is where a silence would hide.
+ */
+let band: Held = HUSHED
 /** Set when a door has already refused you here, so the room can say so. */
 let refused = false
 /** art. 74: the card and the Book live behind glyphs, never mid-screen. */
@@ -566,13 +581,15 @@ function markFor(target: Tappable): HTMLButtonElement {
     // thing is being withheld. A withheld verb is absent, so the look is the
     // only place its reason can be — a basin a whole body cannot drink says
     // so when you look at it, and says nothing anywhere else.
-    notice = look(
-      ROOM_BOOK,
-      bands,
-      target,
-      ledgers.run?.carried ?? [],
-      withholding(ledgers, ROOM_BOOK, here(), target.id),
-    ).text
+    band = noticed(
+      look(
+        ROOM_BOOK,
+        bands,
+        target,
+        ledgers.run?.carried ?? [],
+        withholding(ledgers, ROOM_BOOK, here(), target.id),
+      ).text,
+    )
     ledgers = looking(ledgers, target)
     bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
     persist()
@@ -600,10 +617,11 @@ function doorMark(door: Door): HTMLButtonElement {
     // so the door's own answer is where that has to be said. It still names
     // nothing and points at nothing (art. 3) — what changed is that the
     // player now hears it by looking rather than by pressing and failing.
-    notice =
+    band = noticed(
       (heldBack(ledgers, ROOM_BOOK, here()).length > 0
         ? NOTICES['door.held']
-        : NOTICES['door.blind']) ?? ''
+        : NOTICES['door.blind']) ?? '',
+    )
     paint()
   }
   return el
@@ -691,7 +709,7 @@ function theUnbidden(): void {
   // so the beat the player was on is exactly where they left it.
   const said = UNBIDDEN[node.room as string]
   if (said !== undefined) {
-    notice = said
+    band = answered(said)
     say()
   }
 }
@@ -712,11 +730,12 @@ function paint(): void {
 let fadeTimer: number | undefined
 
 function say(): void {
-  const said = notice ?? wordOf()
+  // card 69: the priority, and the only place it is resolved.
+  const said = bandLine(band, wordOf())
   wordBand.replaceChildren(document.createTextNode(said))
   const browsing = screen.kind === 'room'
   const left = bands.beats.length - 1 - (bands.word?.index ?? 0)
-  if (notice === null && browsing && left > 0) {
+  if (!holding(band) && browsing && left > 0) {
     const more = document.createElement('span')
     more.className = 'more'
     // Not a word: a mark, so the candle that is still to come is visible
@@ -740,8 +759,8 @@ wordBand.onclick = () => {
   // art. 29: presentation fades, knowledge doesn't. One tap recalls the
   // word; the same tap turns the candle when there is another (art. 67 keeps
   // the beat advance out of the tray).
-  if (notice !== null) {
-    notice = null
+  if (holding(band)) {
+    band = HUSHED
   } else if (bands.word !== null && !bands.word.last) {
     bands = nextBeat(bands)
     persist()
@@ -803,7 +822,7 @@ function crown(): void {
   intent.textContent = intentChip(now.turn.intent)
   intent.onclick = () => {
     settle()
-    notice = saysIntent(now.turn.intent)
+    band = noticed(saysIntent(now.turn.intent))
     paint()
   }
 
@@ -876,7 +895,7 @@ function forgetEverything(): void {
   // vault with nothing in it, because that is what a new install is. A
   // second path would be a second thing to keep in step.
   boot()
-  notice = NOTICES['forget.done'] ?? null
+  band = answered(NOTICES['forget.done'] ?? null)
   paint()
 }
 
@@ -1011,7 +1030,7 @@ function tabs(): void {
       // already on steps back — which is how you return to a fight that has
       // no tab of its own.
       focus(panel === on && inAFight() ? 'fight' : panel)
-      notice = null
+      band = HUSHED
       persist()
       paint()
     }
@@ -1222,7 +1241,7 @@ function boundSlot(die: Die, horror: string): HTMLButtonElement {
   el.setAttribute('aria-label', saysBound(die, horror))
   el.onclick = () => {
     settle()
-    notice = saysBound(die, horror)
+    band = noticed(saysBound(die, horror))
     paint()
   }
   return el
@@ -1389,7 +1408,7 @@ function dieSlot(die: Die, landed: Landed | null, claimed: boolean): HTMLButtonE
   el.onclick = () => {
     settle()
     const spentIn = claimed ? claimIn(landed!.die) : undefined
-    notice = saysDie(die, landed?.face, spentIn ?? undefined)
+    band = noticed(saysDie(die, landed?.face, spentIn ?? undefined))
     if (landed !== null) tapDie(landed.die)
     paint()
   }
@@ -1406,7 +1425,7 @@ function emptySlot(): HTMLButtonElement {
   const el = slot('empty')
   el.onclick = () => {
     settle()
-    notice = NOTICES['pouch.empty'] ?? ''
+    band = noticed(NOTICES['pouch.empty'] ?? '')
     paint()
   }
   return el
@@ -1423,7 +1442,7 @@ function spareSlot(die: Die): HTMLButtonElement {
   el.setAttribute('aria-label', saysDie(die))
   el.onclick = () => {
     settle()
-    notice = saysDie(die)
+    band = noticed(saysDie(die))
     paint()
   }
   return el
@@ -1434,7 +1453,7 @@ function carriedSlot(item: ItemId): HTMLButtonElement {
   el.textContent = itemLabel(item).replace(/^the /, '')
   el.onclick = () => {
     settle()
-    notice = saysItem(item)
+    band = noticed(saysItem(item))
     paint()
   }
   return el
@@ -1566,26 +1585,29 @@ function keeperUp(door: Door): boolean {
 
 function doAct(one: Act): void {
   // art. 118: a mercy a whole body cannot drink is no longer on the strip at
-  // all, so a mercy that is pressed is always a mercy that lands. The
-  // "restores nothing" branch that used to be here went with the verb.
-  const mercy = one.heals === undefined ? null : breathFor(ledgers, one)
+  // all, so a mercy that is pressed is always a mercy that lands — which is
+  // why there is no longer a branch here asking which of the two happened.
   ledgers = act(ledgers, one)
   bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
   // art. 70: prose confirms, pixels prove — the answer is the room without
   // the thing in it, which the scene state has already stopped drawing.
   //
-  // card 67: an act may author its own answer, keyed on its own id. It is a
-  // convention rather than a field because the id is already the key the
-  // shell looks a verb up by (art. 66) — one lookup, one place to author.
-  notice =
-    NOTICES[`answer.${one.id}`] ?? (mercy === null ? null : (NOTICES['mercy.breath'] ?? null))
+  // card 69: **every act answers, and it answers with its own line.** The id
+  // is the key, because that is already the key art. 66 looks the verb up
+  // by — one lookup, one place to author, and `test/answers.test.ts` walks
+  // the catalog so a new act cannot ship without one.
+  //
+  // There is no fallback left. The old one fell through to the candle the
+  // player was standing on, which is the candle describing the thing they
+  // had just picked up: *Take bone* answered *"There is a bone in it."*
+  band = answered(saysAct(one.id))
   persist()
   // card 31: **turning the key is what wakes it.** The hall answers in one
   // line and the thing arrives at the near depth — art. 30, so the room is
   // the room and the tray is what turns to combat.
   const waking = here().doors.find((door) => keeperUp(door))
   if (one.unlocks !== undefined && waking !== undefined) {
-    return openTheFight(waking, NOTICES['warden.wakes'] ?? notice)
+    return openTheFight(waking, NOTICES['warden.wakes'] ?? saysAct(one.id))
   }
   paint()
 }
@@ -1609,7 +1631,7 @@ function choosingPanel(): void {
     el.onclick = () => {
       settle()
       // art. 68: a tap answers first, always — the pick is what it leaves.
-      notice = saysDie(die)
+      band = noticed(saysDie(die))
       picked =
         at >= 0
           ? picked.filter((one) => one !== die.id)
@@ -1618,7 +1640,7 @@ function choosingPanel(): void {
             : [...picked, die.id]
       if (at < 0 && picked.length >= size && !picked.includes(die.id)) {
         // Full: the tap still answered, and the hand did not move (art. 5).
-        notice = NOTICES['choose.full'] ?? notice
+        band = noticed(NOTICES['choose.full'] ?? saysDie(die))
       }
       paint()
     }
@@ -1639,14 +1661,14 @@ function choosingPanel(): void {
  */
 function commitChoice(): void {
   if (picked.length !== ledgers.permanent.handSize) {
-    notice = NOTICES['choose.short'] ?? ''
+    band = answered(NOTICES['choose.short'] ?? '')
     return paint()
   }
   const permanent = chooseHand(ledgers.permanent, picked)
   ledgers = { permanent, run: tookIntoRun(ledgers.run!, permanent) }
   picked = []
   screen = { kind: 'room' }
-  notice = null
+  band = HUSHED
   persist()
   paint()
 }
@@ -1674,7 +1696,7 @@ const DOOR_ACTS = {
    */
   resume(): void {
     screen = resumed
-    notice = null
+    band = HUSHED
     paint()
   },
   descend(): void {
@@ -1682,7 +1704,7 @@ const DOOR_ACTS = {
   },
   arm(): void {
     abandoning = true
-    notice = null
+    band = HUSHED
     paint()
   },
   abandon(): void {
@@ -1690,7 +1712,7 @@ const DOOR_ACTS = {
   },
   keep(): void {
     abandoning = false
-    notice = null
+    band = HUSHED
     paint()
   },
   read(): void {
@@ -1701,7 +1723,7 @@ const DOOR_ACTS = {
     wiping = false
     imported = null
     screen = { kind: 'settings' }
-    notice = null
+    band = HUSHED
     paint()
   },
 }
@@ -1767,7 +1789,7 @@ const SETTINGS_ACTS: SettingsActs = {
   leave(): void {
     screen = { kind: 'threshold' }
     imported = null
-    notice = null
+    band = HUSHED
     paint()
   },
 }
@@ -1803,7 +1825,7 @@ function abandonTheRun(): void {
   abandoning = false
   resumed = { kind: 'room' }
   screen = { kind: 'threshold' }
-  notice = NOTICES['gate.abandoned'] ?? null
+  band = answered(NOTICES['gate.abandoned'] ?? null)
   persist()
   paint()
 }
@@ -1827,7 +1849,7 @@ function beginDescent(): void {
   } else {
     screen = { kind: 'room' }
   }
-  notice = null
+  band = HUSHED
   persist()
   paint()
 }
@@ -1840,7 +1862,7 @@ function beginDescent(): void {
 function commitDoor(door: Door): void {
   if (heldBack(ledgers, ROOM_BOOK, here()).length > 0) {
     // A stop, not a hint: it names nothing and points at nothing (art. 3).
-    notice = NOTICES['door.held'] ?? ''
+    band = answered(NOTICES['door.held'] ?? '')
     paint()
     return
   }
@@ -1850,7 +1872,7 @@ function commitDoor(door: Door): void {
   // suspender rather than the ordinary path.
   if (!opens(ledgers, ROOM_BOOK, here(), door)) {
     // art. 5: the world never punishes touch; it sometimes stops offering.
-    notice = NOTICES['door.locked'] ?? ''
+    band = answered(NOTICES['door.locked'] ?? '')
     refused = true
     paint()
     return
@@ -1873,7 +1895,7 @@ function walk(door: Door, said: string | null = null): void {
   bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
   pick = onArrival(doors(bands))
   greet()
-  notice = said
+  band = answered(said)
   persist()
   paint()
 }
@@ -1891,7 +1913,7 @@ function finishTheDepth(): void {
   unbidden = null
   screen = { kind: 'finished' }
   focus(panelAfter('finished'))
-  notice = null
+  band = HUSHED
   persist()
   paint()
 }
@@ -1918,7 +1940,7 @@ function openTheFight(door: Door, said: string | null = null): void {
     // same way it did the first time.
     focus(panelAfter('fight-resumed'))
     if (door.ends !== true) ledgers = openDoor(ledgers, door)
-    notice = NOTICES['fight.resumed'] ?? ''
+    band = answered(NOTICES['fight.resumed'] ?? '')
     persist()
     paint()
     return
@@ -1943,7 +1965,7 @@ function openTheFight(door: Door, said: string | null = null): void {
   // turns, so the fight is the only place it can be met.
   const who = encounterOfHorror(horror.id)
   if (who !== null) ledgers = { ...ledgers, permanent: meet(ledgers.permanent, who) }
-  notice = said
+  band = answered(said)
   persist()
   beginAdvance()
   paint()
@@ -2031,7 +2053,7 @@ function fightActs(): void {
       verb('roll', () => {
         fight = withTurn(now, cast(now.turn, lots(1)))
         phase = 'keep'
-        notice = null
+        band = HUSHED
         persist()
         paint()
       }),
@@ -2047,7 +2069,7 @@ function fightActs(): void {
           fight = withTurn(now, recast(now.turn, lots(2)))
           phase = 'claim'
           selected = []
-          notice = null
+          band = HUSHED
           persist()
           paint()
         },
@@ -2078,7 +2100,7 @@ function fightActs(): void {
   fightPanel.append(
     verb('attack', () => {
       fight = withTurn(now, claim(now.turn, selected, line, LADDER, goods()))
-      notice = null
+      band = HUSHED
       // The claim is on the ledger before the beat runs, so a phone locked
       // mid-resolve wakes with the attack made rather than unmade (art. 75).
       persist()
@@ -2118,7 +2140,7 @@ function settleTurn(): void {
   selected = []
   switch (routeTurn(advancedFight, resolution)) {
     case 'fight-continues':
-      notice = null
+      band = HUSHED
       persist()
       paint()
       return
@@ -2150,7 +2172,7 @@ function wonTheFight(): void {
     // art. 71 as strengthened (card 63): a fight ending is an arrival in the
     // room it was fought at the door of, and an arrival picks the way on.
     pick = onArrival(doors(bands))
-    notice = NOTICES['fight.won'] ?? null
+    band = answered(NOTICES['fight.won'] ?? null)
     persist()
     paint()
     return
@@ -2181,7 +2203,7 @@ function runFromTheFight(): void {
   focus(panelAfter('fight-fled'))
   bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
   pick = onArrival(doors(bands))
-  notice = NOTICES['fight.fled'] ?? ''
+  band = answered(NOTICES['fight.fled'] ?? '')
   persist()
   paint()
 }
@@ -2202,7 +2224,7 @@ function died(cause: string = endLineOf(fight?.horror.id ?? '')): void {
   refused = false
   screen = { kind: 'dead', cause }
   focus(panelAfter('died'))
-  notice = null
+  band = HUSHED
   persist()
   paint()
 }

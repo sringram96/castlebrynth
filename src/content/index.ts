@@ -174,6 +174,7 @@ export {
   intentChip,
   itemLabel,
   originOf,
+  saysAct,
   saysBound,
   saysClaim,
   saysDie,
@@ -268,8 +269,19 @@ const AMENDED_NOTICES: readonly string[] = [
   // thought from the moment it is written.
   'door.blind',
   'door.held',
-  'mercy.breath',
 ]
+
+/**
+ * card 69: every `answer.*` line is this wave's, so it is a prefix rather
+ * than a list. A new act ships with a new answer, and the answer is judged
+ * as a thought the moment it is written — there is no version of that where
+ * somebody has to remember to add a key here as well.
+ */
+const AMENDED_PREFIXES: readonly string[] = ['answer.']
+
+function amendedNotice(key: string): boolean {
+  return AMENDED_NOTICES.includes(key) || AMENDED_PREFIXES.some((at) => key.startsWith(at))
+}
 
 /**
  * The same declaration for the looks, and for the same reason. `LOOKS` is
@@ -298,7 +310,7 @@ const AMENDED_LOOKS: readonly string[] = ['basin.water.kept', 'mender.figure.kep
 export function everyString(): readonly Utterance[] {
   const noticesIn = (amended: boolean): readonly string[] =>
     Object.entries(NOTICES)
-      .filter(([key]) => AMENDED_NOTICES.includes(key) === amended)
+      .filter(([key]) => amendedNotice(key) === amended)
       .map(([, said]) => said)
   const looksIn = (amended: boolean): readonly string[] =>
     Object.entries(LOOKS)

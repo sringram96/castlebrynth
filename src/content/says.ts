@@ -12,7 +12,7 @@
 import type { Die, Face, Good, Intent, Line } from '../lots/index.js'
 import type { ItemId } from '../state/index.js'
 import { LADDER } from './ladder.js'
-import { INTENT_SAYS, LABELS, LOOKS, ORIGINS, READOUT } from './prose.js'
+import { INTENT_SAYS, LABELS, LOOKS, NOTICES, ORIGINS, READOUT } from './prose.js'
 
 /** Which name a die answers to. Shapes are free; the names are authored. */
 export function dieLabel(die: Die): string {
@@ -81,6 +81,22 @@ export function saysIntent(intent: Intent): string {
 /** What a claimed line is worth, as a readout: the name and the number. */
 export function saysClaim(line: Line, harm: number): string {
   return `${LADDER[line].name} ${harm}`
+}
+
+/**
+ * card 69: **what an act answers with.** art. 70 asks prose to confirm what
+ * an act did, and the shell had one authored line for one act — so every
+ * other press fell through to the candle underneath, which is the candle
+ * describing the thing that had just been picked up.
+ *
+ * Keyed on the act's own id, because that is already the key art. 66 looks
+ * its verb up by: one lookup, one place to author, and no field on `Act` for
+ * content to forget to fill in. `test/answers.test.ts` enumerates the
+ * catalog and fails on an act that has no line, so this can never quietly
+ * return nothing again.
+ */
+export function saysAct(id: string): string {
+  return NOTICES[`answer.${id}`] ?? ''
 }
 
 /** Which thing in the world a carried item is, so it answers the same way. */
