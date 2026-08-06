@@ -37,7 +37,7 @@ Test: kill the process anywhere; restart; nothing is lost.
 Never: unresumable state, a hardcoded pixel, content logic in the engine.
 
 ## The law
-`.claude/rules/` holds 117 numbered articles, cited in tasks as "art. N".
+`.claude/rules/` holds 119 numbered articles, cited in tasks as "art. N".
 Two are spent: art. 12 is repealed (there are no classes, ever) and
 art. 47's BRACE is repealed. The rest:
 - **the-world.md** — time, touch, structure, the chain, room grammar, the
@@ -63,7 +63,11 @@ art. 47's BRACE is repealed. The rest:
 - **the-lots.md** — the dice: turn, duel, the card, collection, armor, and
   the travelers (arts 86–88): the start is five bones, every other die
   belonged to somebody, and an item's origin explains its rules in one
-  sentence or the item does not ship
+  sentence or the item does not ship — and the beat law (art. 119): a
+  fight event resolves in beats, each saying one thing; the outcome is
+  computed before the first frame and the beats only reveal it; nothing
+  is decided during an animation, a rider gets its own beat, and the
+  room holds still except for the blow that lands on you
 - **the-thumb.md** — the interaction model: registers; the tray as a
   rail and panels (art. 67, amended); look-then-take, where an act about
   a thing does not exist until the thing has been tapped and the summons
