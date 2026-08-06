@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest'
 import { BARE_BODY, HAND_SIZE, PLAIN_POUCH } from '../src/content/index.js'
 import type { Vault } from '../src/state/index.js'
 import {
+  THE_SCRAWL,
   MIGRATIONS,
   QUARANTINE_KEY,
+  die,
   erase,
   VAULT_KEY,
   VAULT_VERSION,
@@ -80,8 +82,10 @@ describe('the vault ladder — art. 11 (the Book survives everything)', () => {
     const restored = load(vault)
 
     expect(restored).not.toBeNull()
-    // The line the ladder exists for, word for word.
+    // The lines the ladder exists for, word for word — and above them the
+    // one the reason wave puts at the head of every Book (art. 11).
     expect(restored!.permanent.bookOfEnds).toEqual([
+      THE_SCRAWL,
       { seed: 7, depth: 1, cause: 'end.gnawing' },
       { seed: 9, depth: 1, cause: 'end.marrow' },
     ])
@@ -112,11 +116,11 @@ describe('the vault ladder — art. 11 (the Book survives everything)', () => {
     const { vault } = killable({ [VAULT_KEY]: V1 })
     const restored = load(vault)!
     expect(restored.run).toBeNull()
-    expect(restored.permanent.bookOfEnds).toHaveLength(2)
+    expect(restored.permanent.bookOfEnds).toHaveLength(3)
     // And the permanent it kept still wakes a run, which is the point.
     const woken = wake(restored.permanent, 3 as never)
     expect(woken.run).not.toBeNull()
-    expect(woken.permanent.bookOfEnds).toHaveLength(2)
+    expect(woken.permanent.bookOfEnds).toHaveLength(3)
   })
 
   it('walks every rung of the ladder, with no gap between them', () => {
@@ -212,6 +216,121 @@ describe('the vault ladder — quarantine, not destruction', () => {
 function freshLedgers() {
   return wake(firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY), 7 as never)
 }
+
+/**
+ * art. 11, the reason wave (straw ruling, pending veto): **the Book of Ends
+ * is not empty at the first waking.** One line already stands in it and it is
+ * not yours — the record you spend the game adding yourself to was open
+ * before you got here.
+ *
+ * The rung is what makes that true for a player who is already collecting
+ * endings. It adds the line *above* theirs, because it is older than any of
+ * them, and it takes nothing away.
+ */
+describe('the scrawl at the head of the Book — art. 11 (the reason wave)', () => {
+  it('opens a first waking with exactly one line, and it is not an ending', () => {
+    const permanent = firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY)
+    expect(permanent.bookOfEnds).toEqual([THE_SCRAWL])
+    // Not an ending, and honest about it: there is no run behind it, so it
+    // has no seed to print and no depth to claim — which is what the reader
+    // reads it by, rather than by asking which line it is.
+    expect(permanent.bookOfEnds[0]!.seed).toBeNull()
+    expect(permanent.bookOfEnds[0]!.depth).toBeNull()
+  })
+
+  it('keeps it there through a death, with yours written under it', () => {
+    const ledgers = wake(firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY), 11 as never)
+    const after = die(ledgers, 'end.gnawing')
+    expect(after.bookOfEnds.map((line) => line.cause)).toEqual([THE_SCRAWL.cause, 'end.gnawing'])
+    expect(after.bookOfEnds[1]!.seed).toBe(ledgers.run!.seed)
+  })
+
+  it('gives an existing Book the scrawl above its own lines, and loses nothing', () => {
+    const rung = MIGRATIONS.find((one) => one.from === 7)!
+    const walked = rung.up({
+      version: 7,
+      ledgers: {
+        run: { seed: 3, descending: true },
+        permanent: {
+          bookOfEnds: [
+            { seed: 7, depth: 1, cause: 'end.gnawing' },
+            { seed: 9, depth: 1, cause: 'end.marrow' },
+          ],
+        },
+      },
+    })
+    const ledgers = walked.ledgers as {
+      run: Record<string, unknown>
+      permanent: { bookOfEnds: readonly Record<string, unknown>[] }
+    }
+    expect(ledgers.permanent.bookOfEnds).toEqual([
+      THE_SCRAWL,
+      { seed: 7, depth: 1, cause: 'end.gnawing' },
+      { seed: 9, depth: 1, cause: 'end.marrow' },
+    ])
+    // The filling kind of rung: nobody mid-descent loses a descent to it.
+    expect(ledgers.run.seed).toBe(3)
+    expect(ledgers.run.descending).toBe(true)
+  })
+
+  it('does not grow a second copy of it on a Book that already has one', () => {
+    const rung = MIGRATIONS.find((one) => one.from === 7)!
+    const once = { version: 7, ledgers: { run: null, permanent: { bookOfEnds: [THE_SCRAWL] } } }
+    const walked = rung.up(once) as { ledgers: { permanent: { bookOfEnds: readonly unknown[] } } }
+    expect(walked.ledgers.permanent.bookOfEnds).toEqual([THE_SCRAWL])
+  })
+
+  it('fills a Book that was never written at all', () => {
+    const rung = MIGRATIONS.find((one) => one.from === 7)!
+    const walked = rung.up({ version: 7, ledgers: { run: null, permanent: {} } }) as {
+      ledgers: { permanent: { bookOfEnds: readonly unknown[] } }
+    }
+    expect(walked.ledgers.permanent.bookOfEnds).toEqual([THE_SCRAWL])
+  })
+
+  /**
+   * v8 shipped the line as an ending — a death that happened before yours.
+   * The ruling as it stands is that it is the player's own hand, so a Book
+   * written by that build is rewritten rather than left holding an id with no
+   * words behind it, and nothing else in it moves.
+   */
+  it('rewrites the v8 line, which was an ending, and touches no other', () => {
+    const rung = MIGRATIONS.find((one) => one.from === 8)!
+    const walked = rung.up({
+      version: 8,
+      ledgers: {
+        run: { seed: 5 },
+        permanent: {
+          bookOfEnds: [
+            { seed: null, depth: null, cause: 'end.gone' },
+            { seed: 7, depth: 1, cause: 'end.gnawing' },
+          ],
+        },
+      },
+    }) as {
+      ledgers: { run: Record<string, unknown>; permanent: { bookOfEnds: readonly unknown[] } }
+    }
+    expect(walked.ledgers.permanent.bookOfEnds).toEqual([
+      THE_SCRAWL,
+      { seed: 7, depth: 1, cause: 'end.gnawing' },
+    ])
+    // And the descent it was standing in is where it was.
+    expect(walked.ledgers.run.seed).toBe(5)
+  })
+
+  /**
+   * Starting over is the player asking to be forgotten, and it does not
+   * un-write the premise: the vault boots exactly as a new install does, and
+   * a new install has the line in it.
+   */
+  it('is there again after a wipe, because a wipe is a first waking', () => {
+    const { vault } = killable()
+    save(freshLedgers(), vault)
+    erase(vault)
+    expect(load(vault)).toBeNull()
+    expect(firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY).bookOfEnds).toEqual([THE_SCRAWL])
+  })
+})
 
 describe('starting over — the vault is emptied, and nothing is kept back', () => {
   /** A vault that remembers what it was told to forget, so the test can see. */
