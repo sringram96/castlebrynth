@@ -81,13 +81,28 @@ export {
   BASE_ARMOR,
   CATALOG_GOODS,
   LEECH,
+  // card 90: the levels, and the ceiling on how far one line may be lifted.
+  LEVELS,
+  LEVEL_CAP,
   RUSTED_PLATE,
+  THE_BOWL,
+  THE_CHAIN,
   THE_CORD,
+  THE_NOTCHED_STICK,
   THE_OSSUARY,
+  THE_RING,
+  THE_WHETSTONE,
   THE_ZEALOT,
 } from './items.js'
 export { YOUR_HEALTH_AT_WAKING, BARE_BODY } from './body.js'
-export { DEMO_HAND, DEMO_GOODS, DEMO_ARMOR, DEMO_HEALTH } from './reference.js'
+export {
+  DEMO_ARMOR,
+  DEMO_GNAWING,
+  DEMO_GNAWING_HEALTH,
+  DEMO_GOODS,
+  DEMO_HAND,
+  DEMO_HEALTH,
+} from './reference.js'
 export {
   THE_GNAWING,
   GNAWING_SCRIPT,
@@ -129,8 +144,14 @@ export {
   IRON_KEY,
   KINDLED,
   LEAVES_A_GOOD,
+  BOWL,
+  CHAIN,
   LEECH_BONE,
   MARROW,
+  NOTCH,
+  RING,
+  WHETSTONE,
+  ZEALOT,
   MENDER,
   OSSUARY,
   SILT_MOTHER,
@@ -329,10 +350,43 @@ const AMENDED_LOOK_SUFFIXES: readonly string[] = ['.kept', '.price', '.knows', '
  * in the amended voice from the first line — a room later authors are told
  * to read cannot be a room in the repealed register.
  */
-const AMENDED_LOOKS: readonly string[] = ['font.cloth', 'font.basin', 'font.dry']
+const AMENDED_LOOKS: readonly string[] = [
+  'font.cloth',
+  'font.basin',
+  'font.dry',
+  // card 90: the six levels, as they lie. Written after the register
+  // changed, so judged by it — the placeholder category is a debt with a
+  // name and not a category anything new may be written in.
+  'whetstone.thing',
+  'chain.thing',
+  'ring.thing',
+  'bowl.thing',
+  'notch.thing',
+  'zealot.thing',
+]
 
 function amendedLook(key: string): boolean {
   return AMENDED_LOOKS.includes(key) || AMENDED_LOOK_SUFFIXES.some((at) => key.endsWith(at))
+}
+
+/**
+ * card 90: **the origins written in the amended register.** `ORIGINS` is
+ * cards 27–29's debt wholesale, exactly as `LOOKS` is; these are the
+ * sentences the levels wave wrote, and art. 87's sentence is prose that
+ * reaches the player, so a new one has to be judged as prose in the voice
+ * the game actually has.
+ */
+const AMENDED_ORIGINS: readonly string[] = [
+  'talisman.whetstone',
+  'talisman.chain',
+  'talisman.ring',
+  'talisman.bowl',
+  'talisman.notch',
+  'talisman.zealot',
+]
+
+function amendedOrigin(key: string): boolean {
+  return AMENDED_ORIGINS.includes(key)
 }
 
 /**
@@ -367,6 +421,10 @@ export function everyString(): readonly Utterance[] {
     Object.entries(LOOKS)
       .filter(([key]) => amendedLook(key) === amended)
       .map(([, said]) => said)
+  const originsIn = (amended: boolean): readonly string[] =>
+    Object.entries(ORIGINS)
+      .filter(([key]) => amendedOrigin(key) === amended)
+      .map(([, said]) => said)
   return [
     // The amended register, as far as it has been written. Everything the
     // wave has not reached yet is a declared placeholder below rather than a
@@ -386,6 +444,9 @@ export function everyString(): readonly Utterance[] {
       ...Object.values(ARRIVALS).flat(),
       ...noticesIn(true),
       ...looksIn(true),
+      // card 90: art. 87's sentence, for the goods this wave wrote. The rest
+      // of `ORIGINS` is the declared debt below.
+      ...originsIn(true),
       // card 69: what a turn did, and the candle before the scrawl. Both are
       // him in live play, so both are thoughts — the `{dealt}` tokens are
       // filled by `saysExchange` and are words like any other to the lint.
@@ -420,7 +481,7 @@ export function everyString(): readonly Utterance[] {
       // art. 87: an origin is prose that reaches the player, so it is judged
       // as prose. If a sentence cannot pass the lint the item does not ship,
       // which is the article's acceptance test enforced rather than quoted.
-      ...Object.values(ORIGINS),
+      ...originsIn(false),
       ...noticesIn(false),
     ]),
     ...asLabels([

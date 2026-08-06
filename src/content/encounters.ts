@@ -25,7 +25,16 @@ import type { Good } from '../lots/index.js'
 import type { Prop, WorldMark } from '../room/index.js'
 import type { ItemId, RoomId } from '../state/index.js'
 import { THE_LEECH, THE_SISTERS } from './dice.js'
-import { RUSTED_PLATE, THE_CORD } from './items.js'
+import {
+  RUSTED_PLATE,
+  THE_BOWL,
+  THE_CHAIN,
+  THE_CORD,
+  THE_NOTCHED_STICK,
+  THE_RING,
+  THE_WHETSTONE,
+  THE_ZEALOT,
+} from './items.js'
 import { REFUSALS } from './marks.js'
 import type { School } from './palettes.js'
 import {
@@ -104,6 +113,19 @@ export const SISTER_YOUNGER = who('enc.sister.younger')
 export const LEECH_BONE = who('enc.leech')
 export const CORD = who('enc.cord')
 export const PLATE = who('enc.plate')
+
+/**
+ * card 90: **the levels, on the floor like anything else.** They are dealt
+ * through the same boon socket the travelers stand in, at the same bands,
+ * because the wave's whole claim about them is that they are one path in the
+ * growth basket beside found dice and armor — not a system beside it.
+ */
+export const WHETSTONE = who('enc.whetstone')
+export const CHAIN = who('enc.chain')
+export const RING = who('enc.ring')
+export const BOWL = who('enc.bowl')
+export const NOTCH = who('enc.notch')
+export const ZEALOT = who('enc.zealot')
 
 /**
  * How often the goods are dealt against each other. Rarity is content's, and
@@ -316,6 +338,58 @@ export const ENCOUNTERS: readonly Encounter[] = [
     region: null,
     weight: RARITY.uncommon,
   },
+  // card 90: the levels. Four at the talisman band the Cord already sits in,
+  // and the two that measured largest one band rarer — the beggar's bowl,
+  // because doubling art. 46's floor is the biggest single lift in the game,
+  // and the Zealot, because doubling a whole turn is not a level at all.
+  {
+    id: WHETSTONE,
+    kind: 'boon',
+    binding: 'floating',
+    scope: 'unique',
+    region: null,
+    weight: RARITY.uncommon,
+  },
+  {
+    id: CHAIN,
+    kind: 'boon',
+    binding: 'floating',
+    scope: 'unique',
+    region: null,
+    weight: RARITY.uncommon,
+  },
+  {
+    id: RING,
+    kind: 'boon',
+    binding: 'floating',
+    scope: 'unique',
+    region: null,
+    weight: RARITY.uncommon,
+  },
+  {
+    id: NOTCH,
+    kind: 'boon',
+    binding: 'floating',
+    scope: 'unique',
+    region: null,
+    weight: RARITY.uncommon,
+  },
+  {
+    id: BOWL,
+    kind: 'boon',
+    binding: 'floating',
+    scope: 'unique',
+    region: null,
+    weight: RARITY.rare,
+  },
+  {
+    id: ZEALOT,
+    kind: 'boon',
+    binding: 'floating',
+    scope: 'unique',
+    region: null,
+    weight: RARITY.rare,
+  },
 ]
 
 /**
@@ -336,6 +410,12 @@ const LEFT_BY: Readonly<Record<string, readonly Good[]>> = {
   [LEECH_BONE]: [THE_LEECH],
   [CORD]: [THE_CORD],
   [PLATE]: [RUSTED_PLATE],
+  [WHETSTONE]: [THE_WHETSTONE],
+  [CHAIN]: [THE_CHAIN],
+  [RING]: [THE_RING],
+  [BOWL]: [THE_BOWL],
+  [NOTCH]: [THE_NOTCHED_STICK],
+  [ZEALOT]: [THE_ZEALOT],
 }
 
 /** Every encounter that leaves a good, for the catalog tests to walk. */
@@ -359,6 +439,16 @@ const REFUSED_FOR: Readonly<Record<string, string>> = {
   [LEECH_BONE]: REFUSALS.stain,
   [CORD]: REFUSALS.luck,
   [PLATE]: REFUSALS.iron,
+  // card 90: a level is somebody's luck like the cord is, so it writes the
+  // same flag. The vocabulary is deliberately small (art. 84) — what the
+  // labyrinth remembers is the *kind* of thing walked past, and six pieces
+  // of luck left lying are one refusal six times over.
+  [WHETSTONE]: REFUSALS.luck,
+  [CHAIN]: REFUSALS.luck,
+  [RING]: REFUSALS.luck,
+  [BOWL]: REFUSALS.luck,
+  [NOTCH]: REFUSALS.luck,
+  [ZEALOT]: REFUSALS.luck,
 }
 
 /** What this encounter leaves, if it leaves anything (arts 86–87). */

@@ -7,7 +7,7 @@ import {
   LADDER,
   saysFiring,
 } from '../src/content/index.js'
-import type { Die, Fight, Frame, Goods, Horror, Rider } from '../src/lots/index.js'
+import type { Die, Face, Fight, Frame, Goods, Horror, Rider } from '../src/lots/index.js'
 import {
   advanceFight,
   cascadeBeats,
@@ -152,7 +152,13 @@ describe('art. 119 §4 — reduced motion, and the guard', () => {
         const rider = book.get(face.rider as string)
         expect(rider, face.rider as string).toBeDefined()
         // Claimed on its own face, so the rider is spent in a claim (art. 51).
-        const { frames } = oneExchange({ dice: [die, die], values: [face.value, face.value] })
+        // The face itself, not a face of the same value: a die may show the
+        // same number twice and charge for only one of them (art. 51).
+        const { frames } = oneExchange({
+          dice: [die, die],
+          values: [face.value, face.value],
+          showing: [face, face],
+        })
         const fired = frames.flatMap((frame) =>
           frame.beat.kind === 'rider' && frame.beat.rider === face.rider ? [frame.beat] : [],
         )
@@ -254,7 +260,11 @@ const HORROR: Horror = {
 }
 
 function oneExchange(
-  options: { readonly dice?: readonly Die[]; readonly values?: readonly number[] } = {},
+  options: {
+    readonly dice?: readonly Die[]
+    readonly values?: readonly number[]
+    readonly showing?: readonly Face[]
+  } = {},
 ): {
   before: Fight
   after: Fight
@@ -264,7 +274,12 @@ function oneExchange(
   const values = options.values ?? [4, 4, 4]
   const opened = openFight(HORROR, { dice: [] }, 60, 2, RIDERS)
   const turn =
-    options.dice === undefined ? turnOf(values) : turnOf(values, { dice: options.dice })
+    options.dice === undefined
+      ? turnOf(values)
+      : turnOf(values, {
+          dice: options.dice,
+          ...(options.showing === undefined ? {} : { showing: options.showing }),
+        })
   const laid = turn.castings[0]!.map((one) => one.die)
   const line = values.length === 3 ? 'triple' : 'pair'
   const before = withTurn(

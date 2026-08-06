@@ -110,21 +110,39 @@ export function bondIn(line: Line, dice: readonly Landed[]): BondId | null {
   return bonds[0]
 }
 
-/** art. 53: ladder modifiers apply when tiering — one tier is one multiplier. */
+/**
+ * art. 53: ladder modifiers apply when tiering — one tier is one multiplier.
+ *
+ * **Three rules, in this order** (the levels wave). Every ladder talisman
+ * that names this line sharpens it; every one that dulls it takes a tier
+ * back; the sharpening is then capped, and the whole thing floored at one.
+ *
+ * The cap is on the **sharpening alone**, not on the net, so a player
+ * holding two levels and a talisman that dulls the same line does not get
+ * headroom back for the dulling. It is a ceiling on how far a line can be
+ * lifted, which is what a cap is for; nothing here can turn a dulled line
+ * into a lifted one by arithmetic.
+ */
 export function tierFor(
   line: Line,
   ladder: Ladder,
   talismans: readonly Talisman[],
   bonded: boolean,
+  cap: number = Number.POSITIVE_INFINITY,
 ): Tier {
   const base = bonded ? ladder.triple : ladder[line]
-  let multiplier = base.multiplier
+  let sharper = 0
+  let duller = 0
   for (const talisman of talismans) {
     if (talisman.species !== 'ladder' || talisman.ladder === undefined) continue
-    const reads = talisman.ladder.lines
-    if (reads !== undefined && !reads.includes(line)) continue
-    multiplier += talisman.ladder.tiers
+    const { tiers, lines, dulls } = talisman.ladder
+    if (dulls !== undefined && dulls.includes(line)) duller += tiers
+    if (lines !== undefined && !lines.includes(line)) continue
+    sharper += tiers
   }
+  // art. 46: the floor is spendable, so a dulled line is worth one and never
+  // nothing. A line priced down to zero has been repealed, not priced.
+  const multiplier = Math.max(1, base.multiplier + Math.min(sharper, cap) - duller)
   return multiplier === base.multiplier ? base : { name: base.name, multiplier }
 }
 
@@ -151,7 +169,7 @@ export function assemble(
     // The ghost sister shows the same face, and is taxed by the same curse.
     sum += worth(dice[0]!.face.value, cursed, goods.talismans)
   }
-  const tier = tierFor(line, ladder, goods.talismans, bond !== null)
+  const tier = tierFor(line, ladder, goods.talismans, bond !== null, goods.levelCap)
   return bond === null ? { line, dice, sum, tier } : { line, dice, sum, tier, bond }
 }
 

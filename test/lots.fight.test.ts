@@ -4,9 +4,10 @@ import {
   DEMO_ARMOR,
   DEMO_GOODS,
   DEMO_HAND,
+  DEMO_GNAWING,
+  DEMO_GNAWING_HEALTH,
   DEMO_HEALTH,
   LADDER,
-  THE_GNAWING,
 } from '../src/content/index.js'
 import { lotFrom } from '../src/gen/index.js'
 import type { DieId, Fight, Turn } from '../src/lots/index.js'
@@ -53,13 +54,13 @@ describe('lots — the reference fight (arts 41, 45–48, 63–65 as amended)', 
   it('reproduces the re-authored encounter turn for turn', () => {
     const lot = lotFrom(seedOf(SEED))
     let fight: Fight = openFight(
-      THE_GNAWING,
+      DEMO_GNAWING,
       DEMO_HAND,
       DEMO_HEALTH,
       DEMO_ARMOR,
       DEMO_GOODS,
     )
-    expect(fight.horrorHealth).toBe(150)
+    expect(fight.horrorHealth).toBe(DEMO_GNAWING_HEALTH)
     expect(fight.armor).toBe(3)
 
     // ── Turn 1 — swipe 7. `5 3 4 2 3 2`. Two pair, one claim (art. 64).

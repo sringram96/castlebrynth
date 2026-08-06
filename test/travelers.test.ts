@@ -14,6 +14,7 @@ import {
   ROOM_BOOK,
   THE_CAREFUL,
   THE_ORPHAN,
+  THE_PUSH,
   THE_PUSHER,
   THE_RUNNER,
   TRAVELER_DICE,
@@ -76,14 +77,18 @@ describe('art. 86 — the dice belonged to somebody', () => {
     const values = (die: Die): readonly number[] => die.faces.map((face) => face.value)
     // The one who kept pushing: high, and one throw that did not pay.
     expect(values(THE_PUSHER)).toEqual([1, 5, 5, 6, 6, 6])
-    // The one who was careful: no ceiling, no floor, and dead anyway.
-    expect(values(THE_CAREFUL)).toEqual([2, 3, 3, 4, 4, 5])
+    // The one who was careful: no ceiling, no floor, and dead anyway. Card
+    // 89 tightened it to the same twenty-one squeezed onto two faces, which
+    // is a shape saying the same sentence louder.
+    expect(values(THE_CAREFUL)).toEqual([3, 3, 3, 4, 4, 4])
     expect(values(THE_CAREFUL)).not.toContain(6)
     expect(values(THE_CAREFUL)).not.toContain(1)
-    // The one who ran: strong, and it bites where it is strong.
-    expect(values(THE_RUNNER)).toEqual([2, 3, 4, 5, 6, 6])
+    // The one who ran: strong, and it bites where it is strong. **One** of
+    // the sixes bites (card 89) — two of them made the only two faces worth
+    // reaching for both unreachable, which is not a decision.
+    expect(values(THE_RUNNER)).toEqual([3, 4, 5, 5, 6, 6])
     const bites = THE_RUNNER.faces.filter((face) => face.rider !== undefined)
-    expect(bites.map((face) => face.value)).toEqual([6, 6])
+    expect(bites.map((face) => face.value)).toEqual([6])
   })
 
   it('keeps every face inside 1–6 whatever the body (art. 50)', () => {
@@ -133,15 +138,15 @@ describe('art. 54 — every power pays, and the audit is what says so', () => {
     const spent = claim(idle, everyDie(idle).slice(0, 3), 'run-3', LADDER, GOODS)
     const priced = decide(spent, 'end-turn', 0, GOODS)
     const push = ALL_RIDERS.find((rider: Rider) => rider.id === 'rider.push')!
-    expect(push.onUse).toEqual({ kind: 'wound', amount: 3 })
-    expect(priced.hurt).toBe(3)
+    expect(push.onUse).toEqual({ kind: 'wound', amount: THE_PUSH.onUse.amount })
+    expect(priced.hurt).toBe(THE_PUSH.onUse.amount)
   })
 
   it('does not let armor eat a cost face — it did not come from the horror (art. 47)', () => {
     const dice = [THE_PUSHER, ...PLAIN_POUCH.dice.slice(0, 5)]
     const turn = turnOf([1, 2, 3, 4, 5, 6], { dice })
     const spent = claim(turn, everyDie(turn).slice(0, 3), 'run-3', LADDER, GOODS)
-    expect(decide(spent, 'end-turn', 99, GOODS).hurt).toBe(3)
+    expect(decide(spent, 'end-turn', 99, GOODS).hurt).toBe(THE_PUSH.onUse.amount)
   })
 })
 

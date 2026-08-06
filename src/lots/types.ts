@@ -90,8 +90,29 @@ export interface Talisman {
   readonly species: TalismanSpecies
   /** `value`: a face of `of` counts `times` its worth when a claim is summed. */
   readonly value?: { readonly of: Value; readonly times: number }
-  /** `ladder`: a claimed line scores `tiers` higher — one tier is one multiplier. */
-  readonly ladder?: { readonly tiers: number; readonly lines?: readonly Line[] }
+  /**
+   * `ladder`: a claimed line scores `tiers` higher — one tier is one
+   * multiplier. `lines` is what it **sharpens**; `dulls` is what it takes
+   * back, at the same depth, and it is how a ladder talisman pays
+   * (art. 54).
+   *
+   * **The levels wave installs the second half.** A talisman that only ever
+   * gave was a talisman with nothing declared against it, and art. 54 asks
+   * every power to pay somewhere the player can read. A level therefore
+   * sharpens one shape and blunts another, which is also the only version
+   * of it that *changes a decision*: a whetstone that lifts the quad and
+   * dulls the pair makes you want a different die, and a flat gift makes
+   * you want the same dice slightly harder.
+   *
+   * A dulled line is never worth nothing: the floor is one multiplier,
+   * because art. 46 keeps ANY DICE spendable and a line worth zero is a
+   * line that has been repealed rather than priced.
+   */
+  readonly ladder?: {
+    readonly tiers: number
+    readonly lines?: readonly Line[]
+    readonly dulls?: readonly Line[]
+  }
   /** `shape`: reads the whole turn; when every die of the hand is claimed, the total ×`times`. */
   readonly shape?: { readonly everyDie: boolean; readonly times: number }
 }
@@ -125,6 +146,21 @@ export type Good = Die | Talisman | Wearable
 export interface Goods {
   readonly talismans: readonly Talisman[]
   readonly riders: readonly Rider[]
+  /**
+   * art. 53, as the levels wave uses it: **how many tiers of sharpening one
+   * line may carry, however many talismans agree about it.** The rule is
+   * law-shaped and lives here; the number is tuning and arrives from
+   * content like every other, which is why it is a field on the company
+   * rather than a constant in the engine.
+   *
+   * Absent means uncapped, which is what every fixture that predates the
+   * wave wants: the guard exists for the case where a player is holding
+   * more level than the ladder should let one line take, and the shipped
+   * catalog cannot reach it — two run-levellers agree about two lines and
+   * that is all. `test/levels.test.ts` proves both halves, the cap and the
+   * fact that the catalog stops one short of it.
+   */
+  readonly levelCap?: number
 }
 
 /** art. 60: the pouch is the collection, on the permanent ledger. */

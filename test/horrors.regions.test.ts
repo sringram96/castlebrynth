@@ -145,10 +145,22 @@ describe('card 29 — a locked region is a different depth, not a worse one', ()
     return out / DEEP_RUNS
   }
 
+  /**
+   * **Re-baselined by the levels wave** (card 89), and the band came down
+   * because the road did. The arithmetic pass took the ordinary fight from
+   * about four in five to about three in five — which is the wave's own
+   * headline band — and a run meets between one and three of them, so a
+   * number that is a product of per-fight rates fell further than any of
+   * them did. Measured: 0.12–0.22 by lean, 0.15–0.18 blind.
+   *
+   * What the band still guards is the failure the card named — *a region
+   * that became a death sentence* — so the floor is what matters, and it is
+   * set under the measured worst region rather than at it.
+   */
   it('leaves every region survivable, and none of them a formality', () => {
     for (const [, where] of UNIQUES) {
       const rate = rateOf(() => leaning(where))
-      expect(rate, `${where as string} floor`).toBeGreaterThan(0.12)
+      expect(rate, `${where as string} floor`).toBeGreaterThan(0.06)
       expect(rate, `${where as string} ceiling`).toBeLessThan(0.5)
     }
   })
@@ -156,7 +168,7 @@ describe('card 29 — a locked region is a different depth, not a worse one', ()
   it('keeps a blind walk inside the same band the depth already held', () => {
     for (const policy of [coinFlip, () => alwaysLeft, () => alwaysRight] as const) {
       const rate = rateOf(policy as (seed: number) => Policy)
-      expect(rate).toBeGreaterThan(0.15)
+      expect(rate).toBeGreaterThan(0.08)
       expect(rate).toBeLessThan(0.45)
     }
   })

@@ -88,6 +88,10 @@
       #sheet .line.spent { color: #5c574e; text-decoration: line-through; }
       #sheet .line.sealed { color: var(--gold); }
       #sheet .line.open { color: var(--ink); }
+      /* card 90: a line the pouch has moved says so on the card, so a level
+         is readable before a claim of that line ever lands (art. 53). */
+      #sheet .line.levelled { font-weight: 600; }
+      #sheet .line.levelled span:last-child { color: var(--gold); }
 
       /* art. 67: the tray is anatomy. Four regions, always in these places,
          always in this order, whatever the moment holds. */

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  BARE_BODY,
   BASIN,
   CATALOG,
   DEPTH_ONE,
@@ -177,8 +178,11 @@ describe('art. 40 — the Sanctum restores half of what is missing', () => {
     expect(drink!.required).toBe(false)
 
     const after = act(ledgers, drink!)
-    // 26 max, 7 held: 19 missing, half of it rounded up is 10.
-    expect(after.run!.health).toBe(17)
+    // Half of what is missing, rounded in the player's favour — asked of the
+    // rule rather than written down as a number, because the body is tuning
+    // (card 89 moved it from twenty-six to sixty-four) and art. 40's share
+    // is not.
+    expect(after.run!.health).toBe(7 + breathOf(7, BARE_BODY.health, SANCTUM_BREATH))
     // It costs nothing: no item leaves, nothing on the permanent moves.
     expect(after.run!.carried).toEqual(ledgers.run!.carried)
     expect(after.permanent).toBe(ledgers.permanent)
@@ -256,13 +260,15 @@ describe('art. 82 — once per instance, and only per instance', () => {
     expect(before.tray.flatMap((o) => (o.kind === 'act' ? [o.act.id] : []))).toContain('act.drink')
 
     const after = act(ledgers, mercyAct(here))
-    expect(after.run!.health).toBe(16)
+    expect(after.run!.health).toBe(6 + breathOf(6, BARE_BODY.health, SANCTUM_BREATH))
     const again = enterRoom(after, chain, ROOM_BOOK, here.instance)
     expect(again.tray.flatMap((o) => (o.kind === 'act' ? [o.act.id] : []))).not.toContain(
       'act.drink',
     )
     // And a second press changes nothing, whatever presses it.
-    expect(act(after, mercyAct(here)).run!.health).toBe(16)
+    expect(act(after, mercyAct(here)).run!.health).toBe(
+      6 + breathOf(6, BARE_BODY.health, SANCTUM_BREATH),
+    )
   })
 
   it('still offers it in a different instance of the same template', () => {

@@ -1,119 +1,203 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  ALL_RIDERS,
   BARE_BODY,
   GNAWING_ESCALATION,
   GNAWING_HEALTH,
   GNAWING_SCRIPT,
+  GNAWING_SCRIPT as SCRIPT,
   HAND_SIZE,
+  KINDLED_HEALTH,
+  LEVEL_CAP,
+  MARROW_HEALTH,
   PLAIN_POUCH,
   RUSTED_PLATE,
-  THE_GNAWING,
+  SILT_MOTHER_HEALTH,
   THE_CAREFUL,
+  THE_GNAWING,
+  THE_KINDLED,
+  THE_MARROW,
+  THE_PUSHER,
+  THE_RUNNER,
+  THE_SILT_MOTHER,
+  THE_WARDEN,
+  TRAVELER_DICE,
   scriptedHorror,
 } from '../src/content/index.js'
-import type { Armor, Hand, Horror, Intent, IntentEffect } from '../src/lots/index.js'
+import type { Armor, Die, Goods, Hand, Horror, Intent, IntentEffect } from '../src/lots/index.js'
 import { assembleHand } from '../src/lots/index.js'
-import { claimIfWorth, winRateOf } from './policy.js'
+import { claimIfWorth, statsOf, winRateOf } from './policy.js'
 
 /**
- * Is it fair? — restated for the six-die start (arts 55, 86).
+ * **The company every row is measured through** (the levels wave). It used
+ * to be left out, and leaving it out is not neutral: a rider fires only
+ * when its face is spent in a claim (art. 51), so a fight fought with no
+ * riders at all is a fight where **the cost faces never fire** — and the
+ * cost faces are exactly what art. 54 charges a traveler's die for. The
+ * Runner measured four points better than it plays. The shell's own
+ * `goods()` always carries them; so does this.
+ */
+const COMPANY: Goods = { talismans: [], riders: ALL_RIDERS, levelCap: LEVEL_CAP }
+
+/**
+ * Is it fair? — restated for the levels wave (card 89, the arithmetic pass).
  *
- * **The ruling of 2026-08-06 moved this file twice over.** art. 55 now wakes
- * the player with a full hand of six, and the measured win rate against the
- * depth's ordinary teeth goes back to about 0.78 — where it was before the
- * five-bone ruling took it down to about 0.28. A first waking is expected to
- * *win* again, and this file says so rather than hoping otherwise.
+ * **What this file used to assert is what the wave was called to fix.** It
+ * held a bare six-die player to *winning* the ordinary fight comfortably
+ * (0.78) and it asserted, as a named debt, that art. 89's first fork was
+ * **inverted** — the Rusted Plate outrated every bone in the game. Both are
+ * gone. The pass moved seven numbers and only the seven the wave named: the
+ * body, the Gnawing's health, the region uniques' health, the Warden's, the
+ * travelers' distributions, the cost faces those distributions carry, and
+ * the bleeds that are taxes on a body that changed size.
  *
- * **And a found bone is a different kind of thing now.** It no longer fills
- * a hole: the hand is full, so a traveler's die comes down only by taking a
- * plain bone's place at the choosing screen (art. 60), and what it is worth
- * is the difference between the two dice rather than the difference between
- * five dice and six. Measured, that is a step of three to five points
- * instead of the fifty the empty slot was worth.
- *
- * **The debt that leaves is named at the foot of this file.** art. 89's
- * first fork is *a bone or the plate*, and the two sides of it have swapped
- * places: the plate is worth more than any die in the game right now. That
- * is an arithmetic question — the plate's armor, the Gnawing's health, or
- * the travelers' distributions — and it is not settled here.
+ * **The bands are the wave's, stated at its three reference hands.** They
+ * are wide on purpose and they are a tripwire under the tuning rather than
+ * an opinion about it — the numbers they are set around are measured in
+ * `test/report.ts` and published in DESIGN.md, and this file is where a
+ * later pass has to come and move them deliberately.
  *
  * It plays the Gnawing well rather than perfectly: hunt the biggest set on
- * the recast, then take the best-scoring claims until the hand is dry. The
- * bands are wide on purpose. They are a tripwire under the tuning, not an
- * opinion about it.
+ * the recast, then take the best-scoring claims until the hand is dry.
  */
 
-/**
- * art. 55: the bare hand. art. 86 as it now lands: the same hand with a
- * traveler's bone **in place of** a plain one, because a full hand is what a
- * find has to displace something out of (art. 60).
- */
+/** art. 55: the bare hand. Six plain bones, full at the waking. */
 const BARE_HAND = assembleHand(PLAIN_POUCH, HAND_SIZE)
-const FOUND_HAND = assembleHand(
-  { dice: [...PLAIN_POUCH.dice.slice(0, HAND_SIZE - 1), THE_CAREFUL] },
-  HAND_SIZE,
-)
 
-function winRate(armor: Armor, runs: number, hand = BARE_HAND): number {
-  return winRateOf(THE_GNAWING, hand, armor, runs)
+/** art. 86, art. 60: a find is a *replacement* now — one bone for one bone. */
+function handWith(...found: readonly Die[]): Hand {
+  return assembleHand({ dice: [...found, ...PLAIN_POUCH.dice] }, HAND_SIZE)
 }
 
+const FOUND_HAND = handWith(THE_CAREFUL)
+
+function winRate(armor: Armor, runs: number, hand = BARE_HAND): number {
+  return winRateOf(THE_GNAWING, hand, armor, runs, undefined, COMPANY)
+}
+
+const RUNS = 600
+
 describe('lots — is it fair? (art. 33, and the arithmetic agent)', () => {
-  it('leaves a bare six-die player expected to beat the Gnawing (arts 55, 86)', () => {
-    const bare = winRate(BARE_BODY.armor, 400)
-    // Expected to win: art. 55 as amended wakes the hand full, and the loop
-    // closes comfortably on six bones and no armor.
-    expect(bare).toBeGreaterThan(0.6)
-    // And not a formality — the depth's ordinary teeth still take a run in
-    // roughly one fight in five, which is what keeps art. 32 meaning
-    // anything.
-    expect(bare).toBeLessThan(0.9)
-  })
-
-  it('leaves a traveler’s die worth swapping in, and only just (art. 86)', () => {
-    const bare = winRate(BARE_BODY.armor, 400)
-    const found = winRate(BARE_BODY.armor, 400, FOUND_HAND)
-    // Still an upgrade: a traveler's distribution beats a plain bone's, which
-    // is the whole of what art. 86 promises now that the hand starts full.
-    expect(found).toBeGreaterThan(bare)
-    // **And a small one.** Under the five-bone start this step was worth more
-    // than half the fight; it is now worth a few points, because a find
-    // displaces a plain bone instead of filling a hole. Asserted so that a
-    // future tuning pass has to come here and move it deliberately.
-    expect(found - bare).toBeLessThan(0.2)
-  })
-
-  it('makes armor worth wearing without making the fight a formality (art. 47)', () => {
-    const bare = winRate(BARE_BODY.armor, 400)
-    const plated = winRate(RUSTED_PLATE.armor, 400)
-    expect(plated).toBeGreaterThan(bare)
-    expect(plated).toBeLessThanOrEqual(1)
+  /**
+   * **The wave's headline band.** The ordinary fight from the second room is
+   * a fight a first waking is expected to win, and expected to feel: about
+   * three in five, over five to seven turns. The turn count is half the
+   * band and not decoration — card 89's finding was that fights ended in
+   * about three and a half turns, so the escalation never came round and
+   * the horror's arc never happened.
+   */
+  it('makes the ordinary Gnawing a fight of five to seven turns, won three times in five', () => {
+    const stats = statsOf(THE_GNAWING, BARE_HAND, BARE_BODY.armor, RUNS, undefined, COMPANY)
+    expect(stats.winRate).toBeGreaterThan(0.5)
+    expect(stats.winRate).toBeLessThan(0.7)
+    expect(stats.meanTurns).toBeGreaterThan(5)
+    expect(stats.meanTurns).toBeLessThan(7.5)
   })
 
   /**
-   * **art. 89's fork, inverted — an open arithmetic question, not a rule.**
+   * **The horror's arc, which is what the turns were bought for.** The
+   * script comes round in the majority of fights, so the escalation is a
+   * thing that happens rather than a field nobody reads; and the
+   * telegraphed blow — BELLOW, the biggest hit in the depth — lands in the
+   * large majority of the fights that reach the turn it is scheduled for.
    *
-   * The fork is *a bone or the plate*, and it was designed around the bone
-   * being the bigger of the two: armor is three off every blow, and the
-   * sixth die used to be a whole extra shape. With the hand full at the
-   * waking (art. 55 as amended 2026-08-06) the die is no longer an extra
-   * shape — it is a better face on a shape you already had — and the plate
-   * now wins the fork outright.
-   *
-   * This test asserts the state of things rather than the intent, so that
-   * the gap is visible in the suite instead of living in somebody's head. It
-   * is a tripwire under a decision the arithmetic agent has not made yet:
-   * the levers are the plate's armor, the Gnawing's health, and the
-   * travelers' distributions, and none of them is this file's to pull.
+   * *Reaching the turn* is the honest denominator. Counting the fights that
+   * outlive the whole script instead would make this test pass by
+   * construction, because a fight on its seventh turn has obviously had its
+   * fifth.
    */
-  it('rates the plate above a found bone — art. 89’s fork, inverted (debt)', () => {
-    const plated = winRate(RUSTED_PLATE.armor, 400)
-    const found = winRate(BARE_BODY.armor, 400, FOUND_HAND)
-    expect(plated).toBeGreaterThan(found)
-    // Both sides are still worth taking, which is what keeps it a fork and
-    // not a right answer wearing a question's coat.
-    expect(found).toBeGreaterThan(winRate(BARE_BODY.armor, 400))
+  it('lets the script come round, and the telegraphed blow land (art. 119 §3)', () => {
+    const stats = statsOf(THE_GNAWING, BARE_HAND, BARE_BODY.armor, RUNS, undefined, COMPANY)
+    expect(stats.escalated / stats.runs).toBeGreaterThan(0.5)
+    expect(stats.ranFull / stats.runs).toBeGreaterThan(0.5)
+    expect(stats.telegraphLanded / stats.ranFull).toBeGreaterThan(0.8)
+  })
+
+  /**
+   * **art. 89's fork, no longer inverted.** The fork is *a bone or the
+   * plate*, and under the five-bone start the bone was a whole extra shape,
+   * so it won outright; under six-at-the-waking it became a better face on
+   * a shape you already had, and the plate won outright. Neither is a fork.
+   *
+   * The lever was the one the debt named: **the travelers' distributions**.
+   * The runner went from a die measurably *worse* than a plain bone — two
+   * cost faces on the only two faces worth reaching for — to the best bone
+   * in the game, and it now sits within a few points of the plate.
+   */
+  it('rates the best bone and the plate within a few points — the fork, restored', () => {
+    const bare = winRate(BARE_BODY.armor, RUNS)
+    const plated = winRate(RUSTED_PLATE.armor, RUNS)
+    const bone = winRate(BARE_BODY.armor, RUNS, handWith(THE_RUNNER))
+    // Both sides are worth taking, which is what keeps it a fork.
+    expect(plated).toBeGreaterThan(bare)
+    expect(bone).toBeGreaterThan(bare)
+    // And neither is the right answer: a few points, in either direction.
+    expect(Math.abs(plated - bone)).toBeLessThan(0.08)
+  })
+
+  /** Every traveler's die is worth swapping a plain bone out for (art. 86). */
+  it('leaves every traveler’s die worth the bone it displaces', () => {
+    const bare = winRate(BARE_BODY.armor, RUNS)
+    for (const die of TRAVELER_DICE) {
+      expect(winRate(BARE_BODY.armor, RUNS, handWith(die)), die.id as string).toBeGreaterThan(bare)
+    }
+  })
+
+  /**
+   * **The uniques come up to the Gnawing's level, and above it.** They sat
+   * at 112 and 128 against its 150, so arriving in a region made a depth
+   * *safer* — the exact opposite of what art. 78 says arrival costs. They
+   * are now at or above the ordinary teeth, and the found hand meets them
+   * at two in five to one in two.
+   */
+  it('puts every region’s unique at or above the ordinary teeth (arts 78, 83)', () => {
+    for (const health of [MARROW_HEALTH, SILT_MOTHER_HEALTH, KINDLED_HEALTH]) {
+      expect(health).toBeGreaterThanOrEqual(GNAWING_HEALTH)
+    }
+    for (const unique of [THE_MARROW, THE_SILT_MOTHER, THE_KINDLED]) {
+      const found = winRateOf(unique, FOUND_HAND, BARE_BODY.armor, RUNS, undefined, COMPANY)
+      expect(found, unique.id).toBeGreaterThan(0.35)
+      expect(found, unique.id).toBeLessThan(0.6)
+      // And the ordinary teeth are the easier fight, which is what makes a
+      // region's unique worth being afraid of.
+      expect(found, unique.id).toBeLessThan(
+        winRateOf(THE_GNAWING, FOUND_HAND, BARE_BODY.armor, RUNS, undefined, COMPANY),
+      )
+    }
+  })
+
+  /**
+   * **The wall.** A first-ever run bouncing off the last door is the design
+   * working — provided the bounce deposits, which `test/depth.ts` and the
+   * ratchet row in DESIGN.md are what measure.
+   */
+  it('makes the keeper a wall to a first waking (card 31, the wave’s band)', () => {
+    expect(winRateOf(THE_WARDEN, BARE_HAND, BARE_BODY.armor, RUNS, undefined, COMPANY)).toBeLessThan(
+      0.15,
+    )
+  })
+
+  /**
+   * **And the wall is a gate, not a ceiling.** What a run deposits has to
+   * move the number it bounced off, or death is not the progression system
+   * the pitch says it is. The band here is the *direction* and its size:
+   * the wave asked for about a half and the measured answer is about a
+   * third, which DESIGN.md reports as a miss with its reason (the median
+   * haul a whole failed run leaves is two goods, and against this keeper a
+   * bone is worth a third of what armour is).
+   */
+  it('lets what a failed run deposited move the wall, and by a lot', () => {
+    const bare = winRateOf(THE_WARDEN, BARE_HAND, BARE_BODY.armor, RUNS, undefined, COMPANY)
+    const returning = winRateOf(
+      THE_WARDEN,
+      handWith(THE_PUSHER),
+      RUSTED_PLATE.armor,
+      RUNS,
+      undefined,
+      COMPANY,
+    )
+    expect(returning).toBeGreaterThan(bare * 2)
   })
 })
 
@@ -126,7 +210,7 @@ describe('lots — is it fair? (art. 33, and the arithmetic agent)', () => {
  * fights — it is a control, and it is the only honest way to say what a
  * kind is worth.
  */
-const PLAIN_SCRIPT: readonly Intent[] = GNAWING_SCRIPT.map((one) => ({
+const PLAIN_SCRIPT: readonly Intent[] = SCRIPT.map((one) => ({
   verb: one.verb,
   amount: one.amount,
 }))
@@ -148,76 +232,106 @@ function probe(effect: IntentEffect): Horror {
   )
 }
 
-const RUNS = 400
+/**
+ * The band the kinds are held to, restated for the wave's own numbers: the
+ * bare hand still has a fight (above 0.2) and a found hand is still ahead
+ * of it. A kind that pushes either side of that out is over budget.
+ */
+const inBand = (bare: number, found: number, what: string): void => {
+  expect(bare, `${what} bare`).toBeGreaterThan(0.2)
+  expect(found, `${what} found`).toBeGreaterThan(bare)
+}
 
 describe('lots — the new effect kinds move the number, and stay inside the band', () => {
-  /**
-   * The band this file already holds: a bare five is a fight and not a
-   * formality (above 0.15), and the sixth bone takes a run past a coin
-   * flip. A kind that pushes either side of that out is over budget.
-   */
-  const inBand = (bare: number, found: number, what: string): void => {
-    expect(bare, `${what} bare`).toBeGreaterThan(0.15)
-    expect(found, `${what} found`).toBeGreaterThan(0.5)
-  }
-
   it('prices bind against the hand: one die fewer is worth about a tenth', () => {
-    const control = winRateOf(CONTROL, BARE_HAND, BARE_BODY.armor, RUNS)
+    const control = winRateOf(CONTROL, BARE_HAND, BARE_BODY.armor, RUNS, undefined, COMPANY)
     const bound = probe({ kind: 'bind', rule: 'highest' })
-    const bare = winRateOf(bound, BARE_HAND, BARE_BODY.armor, RUNS)
-    const found = winRateOf(bound, FOUND_HAND, BARE_BODY.armor, RUNS)
+    const bare = winRateOf(bound, BARE_HAND, BARE_BODY.armor, RUNS, undefined, COMPANY)
+    const found = winRateOf(bound, FOUND_HAND, BARE_BODY.armor, RUNS, undefined, COMPANY)
     expect(bare).toBeLessThan(control)
     inBand(bare, found, 'bind')
   })
 
   it('prices bleed against time, once it is big enough to cost a turn', () => {
-    const control = winRateOf(CONTROL, BARE_HAND, BARE_BODY.armor, RUNS)
-    const bleeding = probe({ kind: 'bleed', amount: 4, turns: 3 })
-    const bare = winRateOf(bleeding, BARE_HAND, BARE_BODY.armor, RUNS)
-    const found = winRateOf(bleeding, FOUND_HAND, BARE_BODY.armor, RUNS)
+    const control = winRateOf(CONTROL, BARE_HAND, BARE_BODY.armor, RUNS, undefined, COMPANY)
+    const bleeding = probe({ kind: 'bleed', amount: 9, turns: 3 })
+    const bare = winRateOf(bleeding, BARE_HAND, BARE_BODY.armor, RUNS, undefined, COMPANY)
+    const found = winRateOf(bleeding, FOUND_HAND, BARE_BODY.armor, RUNS, undefined, COMPANY)
     expect(bare).toBeLessThan(control)
     inBand(bare, found, 'bleed')
   })
 
   /**
-   * A finding worth keeping rather than smoothing over: at a body of 26
-   * against this script the player dies on the fourth intent whatever
-   * happens, so a bleed that does not cost a whole turn does not move the
-   * win rate at all. Three is invisible here and four is worth a fifth of
-   * the fight. The step is a property of the body's size, not of the
-   * effect, and it is why the shipped bleeds are authored at four.
+   * A finding worth keeping rather than smoothing over, **and it inverted
+   * with the body** (card 89).
+   *
+   * The step is a property of the body's **headroom over the script**, not
+   * of the effect: a bleed changes nothing until its total pushes the
+   * player across the intent they were surviving by. At twenty-six that
+   * headroom was wide — the player died on the fourth intent whatever
+   * happened — so a bleed of three was invisible and four was worth a fifth
+   * of the fight. At sixty-four the body survives the Gnawing's whole
+   * script and dies to the loop coming round with **three points to
+   * spare**, so the step has moved to two and a bleed of one over three
+   * turns is already a turn shorter.
+   *
+   * That is the argument, not a smaller number: the same law, read against a
+   * body that now sits near a threshold instead of far from one. It is also
+   * why the shipped bleeds came up from four to five and six — a bleed that
+   * cannot cost a turn cannot cost anything, and the turn is what a bleed is
+   * priced against.
    */
-  it('shows the step: a bleed under a turn’s worth of health moves nothing', () => {
-    const control = winRateOf(CONTROL, BARE_HAND, BARE_BODY.armor, RUNS)
-    const small = winRateOf(
-      probe({ kind: 'bleed', amount: 3, turns: 3 }),
+  it('shows the step: a bleed inside the body’s headroom moves nothing', () => {
+    const control = winRateOf(CONTROL, BARE_HAND, BARE_BODY.armor, RUNS, undefined, COMPANY)
+    const inside = winRateOf(
+      probe({ kind: 'bleed', amount: 2, turns: 1 }),
       BARE_HAND,
       BARE_BODY.armor,
       RUNS,
+      undefined,
+      COMPANY,
     )
-    expect(small).toBe(control)
+    expect(inside).toBe(control)
+    // And one point past it is a whole turn's worth of difference.
+    const past = winRateOf(
+      probe({ kind: 'bleed', amount: 3, turns: 1 }),
+      BARE_HAND,
+      BARE_BODY.armor,
+      RUNS,
+      undefined,
+      COMPANY,
+    )
+    expect(past).toBeLessThan(control)
   })
 
   it('charges hunger for hesitation only, and for nothing else', () => {
-    const feeding = probe({ kind: 'hunger', amount: 12 })
+    const feeding = probe({ kind: 'hunger', amount: 30 })
     // A thumb that always claims is never charged. Exactly, not nearly:
     // art. 46 keeps the floor spendable, so the greedy player never once
     // ends a turn with nothing landed.
-    expect(winRateOf(feeding, BARE_HAND, BARE_BODY.armor, RUNS)).toBe(
-      winRateOf(CONTROL, BARE_HAND, BARE_BODY.armor, RUNS),
+    expect(winRateOf(feeding, BARE_HAND, BARE_BODY.armor, RUNS, undefined, COMPANY)).toBe(
+      winRateOf(CONTROL, BARE_HAND, BARE_BODY.armor, RUNS, undefined, COMPANY),
     )
 
     // And a thumb that holds out for a big claim is. The turtle is the
     // player this kind exists for, and against it the number moves.
     const turtle = claimIfWorth(40)
-    const control = winRateOf(CONTROL, BARE_HAND, BARE_BODY.armor, RUNS, turtle)
-    const bare = winRateOf(feeding, BARE_HAND, BARE_BODY.armor, RUNS, turtle)
-    const found = winRateOf(feeding, FOUND_HAND, BARE_BODY.armor, RUNS, turtle)
+    const control = winRateOf(CONTROL, BARE_HAND, BARE_BODY.armor, RUNS, turtle, COMPANY)
+    const bare = winRateOf(feeding, BARE_HAND, BARE_BODY.armor, RUNS, turtle, COMPANY)
     expect(bare).toBeLessThan(control)
     // The turtle is already a worse player than the greedy one, so the band
     // this is held to is the turtle's own: hunger must not be the thing that
     // makes turtling unplayable, only the thing that makes it cost.
     expect(bare).toBeGreaterThan(0.1)
-    expect(found).toBeGreaterThan(0.5)
+  })
+})
+
+/** The script is unchanged by the pass, and the file says which way it went. */
+describe('lots — what the arithmetic pass moved', () => {
+  it('left the Gnawing’s intents where they were, and moved its health', () => {
+    expect(GNAWING_SCRIPT.map((one) => one.amount)).toEqual([7, 6, 5, 9, 16, 8])
+    // The fight got longer because the *body* did, which is what makes a
+    // fight's length a thing content can tune without touching a horror.
+    expect(BARE_BODY.health).toBeGreaterThan(GNAWING_SCRIPT.reduce((sum, one) => sum + one.amount, 0))
   })
 })
