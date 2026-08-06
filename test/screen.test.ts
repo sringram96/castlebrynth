@@ -73,6 +73,17 @@ describe('card 74 — no dead press', () => {
             shell.press(one)
           }
           expect(heldBack(shell.ledgers, ROOM_BOOK, shell.node())).toEqual([])
+          // card 95: **and the thing in it has to be down as well.** A room
+          // can hold the run for two reasons at once and they are different
+          // reasons — art. 3 wants something taken, and a horror standing in
+          // the room wants dealing with. Paying one does not answer the other,
+          // which is the whole of why the door's look now says which it is.
+          if (shell.fightOffered()) {
+            shell.enter()
+            for (let n = 0; n < 300 && shell.fight?.outcome === 'fighting'; n++) shell.turn()
+            if (shell.fight?.outcome !== 'won') break
+            shell.won()
+          }
           expect(
             shell.node().doors.some((door) => shell.way(door) !== null),
             `seed ${seed}: the room did not let go once it was paid`,

@@ -44,8 +44,11 @@ import {
   keeperStanding,
   encounterOfHorror,
   endLineOf,
+  HORROR_DOWN,
   horrorById,
   horrorIn,
+  horrorMarkIn,
+  horrorStanding,
   intentChip,
   itemLabel,
   roomContent,
@@ -113,7 +116,7 @@ import type { Playing } from './shell/beats.js'
 import { REAL_CLOCK, playBeats } from './shell/beats.js'
 import type { Layer } from './shell/faces.js'
 import { paintFace } from './shell/faces.js'
-import { wayOn } from './shell/strip.js'
+import { fightSummoned, wayOn } from './shell/strip.js'
 import type { Held } from './shell/band.js'
 import { HUSHED, answered, bandLine, holding, noticed } from './shell/band.js'
 import type { Chain, ChainNode, Door } from './gen/index.js'
@@ -278,7 +281,13 @@ type Screen =
    * its own — not a thing done in passing from a panel.
    */
   | { readonly kind: 'choosing' }
-  | { readonly kind: 'fight'; readonly door: Door }
+  /**
+   * card 95: **the door is null for every fight but the keeper's.** A fight is
+   * about the thing you tapped (art. 68); only the Warden's is also about a
+   * door, because art. 37 makes that keeper the door's own and beating it is
+   * what turns the door back into a way down.
+   */
+  | { readonly kind: 'fight'; readonly door: Door | null }
   /**
    * **The ending is the scrawling** (the mind wave). Death is forgetting, so
    * what the word band shows at the end of a run is not a summary of it — it
@@ -797,10 +806,17 @@ function doorMark(door: Door): HTMLButtonElement {
      * stop comes after it, because it is what he is doing about it. Looking
      * is free (art. 5) and it stays free of art. 3's refusal; the stop still
      * names nothing and points at nothing.
+     *
+     * **card 95: and the third state, which is a thing standing in front of
+     * it.** The door stops being a trap that starts a fight and becomes a
+     * thing that tells you what is wrong — art. 118's second clause, and the
+     * one stop in the game that does not need to name anything because there
+     * is only ever one thing it could be about.
      */
     band = noticed(
       [
         saysDoor(door, here().instance),
+        ...(horrorUp() ? [NOTICES['door.guarded'] ?? ''] : []),
         ...(heldBack(ledgers, ROOM_BOOK, here()).length > 0
           ? [NOTICES['door.held'] ?? '']
           : []),
@@ -2198,8 +2214,18 @@ function roomActs(): void {
   // card 31: the Warden's door is a fight-door for as long as its keeper is
   // standing, and Descend is what is left once it is not — art. 71, since
   // those two words mean different journeys and neither may lie.
+  // card 95: **the horror's own verb, summoned by looking at it** (art. 68).
+  // It is not a door verb and does not answer to the pick: the fight is about
+  // the thing, and the doors are what the thing is standing in front of.
+  if (fightSummoned(ledgers, here(), horrorMarkIn(here()), horrorUp())) {
+    actStrip.append(verb('fight', () => openTheFight(null)))
+  }
+
   const door = pickedDoor(pick, ahead)
-  const way = door === null ? null : wayOn(ledgers, ROOM_BOOK, here(), door, keeperUp(door))
+  const way =
+    door === null
+      ? null
+      : wayOn(ledgers, ROOM_BOOK, here(), door, keeperUp(door), horrorUp())
   if (door !== null && way !== null) {
     actStrip.append(verb(way, () => commitDoor(door)))
   }
@@ -2249,6 +2275,14 @@ function actsInAFight(): void {
 }
 
 // ── The Warden (card 31, art. 37 as amended 2026-08-06) ────────────────
+
+/**
+ * card 95: whether the thing standing in this room is still on its feet. The
+ * rule is content's, like the keeper's; this is the shell asking it.
+ */
+function horrorUp(): boolean {
+  return horrorStanding(here(), sceneStateOf(ledgers, ROOM_BOOK, here()).done)
+}
 
 /** card 31: the rule is content's; this is the shell asking it (arts 63, 71). */
 function keeperUp(door: Door): boolean {
@@ -2552,7 +2586,15 @@ function commitDoor(door: Door): void {
     paint()
     return
   }
-  if (door.fight !== undefined) return openTheFight(door)
+  // card 95: **a door never starts a fight.** `wayOn` offers no verb while
+  // something is standing in the room, so this is unreachable through the
+  // strip; it is the belt to that suspender, and it is a refusal rather than
+  // an entry because the entry is a verb on the horror (art. 68).
+  if (horrorUp()) {
+    band = answered(NOTICES['door.guarded'] ?? '')
+    paint()
+    return
+  }
   // card 67: both halves of the lock, and one line for both. The verb is
   // absent when either fails (`roomActs`), so this is the belt to that
   // suspender rather than the ordinary path.
@@ -2611,7 +2653,16 @@ function finishTheDepth(): void {
  * The card is as spent as you left it and the horror as wounded — running is
  * a retreat, never a way to launder a card.
  */
-function openTheFight(door: Door, said: string | null = null): void {
+/**
+ * card 95: **the door is `null` for every fight but the keeper's.**
+ *
+ * A fight is about the horror, not about a way out. The Warden's is the one
+ * exception the article itself makes — art. 37 says the keeper *is* the door's
+ * own, it stands in no socket, and its hall's one door is what it was built
+ * for — so that one is still opened with a door in hand, and beating it turns
+ * that door into a way down.
+ */
+function openTheFight(door: Door | null, said: string | null = null): void {
   const at = ledgers.run!.at.instance
   // art. 83: which horror this is comes from what stands in the room's
   // socket — and, at the last room, from the room, because art. 37 as
@@ -2625,7 +2676,6 @@ function openTheFight(door: Door, said: string | null = null): void {
     // art. 63: a paused fight resumed is a fight entered, and focuses the
     // same way it did the first time.
     focus(panelAfter('fight-resumed'))
-    if (door.ends !== true) ledgers = openDoor(ledgers, door)
     band = answered(NOTICES['fight.resumed'] ?? '')
     persist()
     paint()
@@ -2639,13 +2689,12 @@ function openTheFight(door: Door, said: string | null = null): void {
   // here — the shell states what happened and the law says where that puts
   // the thumb.
   focus(panelAfter('fight-opened'))
-  // art. 70: opening a door is an act, and the room it stands in shows it.
-  //
-  // Except the last one (card 31): its keeper came out of the hall, not
-  // through the door, and the door does not open until you go through it.
-  // Painting it open the moment the fight starts would be the world
-  // remembering something that has not happened.
-  if (door.ends !== true) ledgers = openDoor(ledgers, door)
+  // card 95, art. 70: **and no door opens.** A fight used to be started by
+  // pressing a door's verb, so the room painted that door open the moment the
+  // thing came close — the world remembering something that had not happened,
+  // which card 31 had already noticed and made an exception of for the hall.
+  // The fight is about the horror now, so a door opens when it is walked
+  // through and at no other moment, in every room including that one.
   // art. 84: a meeting is knowledge, and standing in a room with something
   // is how most of them are written. The keeper is in no room until the key
   // turns, so the fight is the only place it can be met.
@@ -3164,6 +3213,21 @@ function theBlow(before: Fight, after: Fight): string {
   return ''
 }
 
+/**
+ * card 95: **a fight is won standing in the room.**
+ *
+ * It used to walk you through the door you had bumped into, which is what a
+ * door-fight leaves you no choice but to do — the press that started the fight
+ * had already picked a way out. Under art. 68 the fight is about the horror
+ * and the pick is released by the tap that summons it, so there is no door in
+ * hand at the end, and there should not be: a crossroads with teeth in it is a
+ * room where the thing has to be dealt with *and then* a way chosen. Both
+ * halves of art. 31 survive rather than one.
+ *
+ * So both endings are one shape now — the deed, the room re-read, an arrival's
+ * pick — and the only thing that differs between the keeper's and a stray's is
+ * which deed is written and which line is said.
+ */
 function wonTheFight(): void {
   const now = fight
   const at = screen
@@ -3177,23 +3241,28 @@ function wonTheFight(): void {
   // card 31: the Warden's door commits no room (art. 37), so beating its
   // keeper does not walk you anywhere — it writes the deed that turns the
   // door back into a way down, and `Descend` is the press that takes it.
-  if (at.door.ends === true) {
-    ledgers = { ...ledgers, run: didHere(ledgers.run!, ledgers.run!.at.instance, WARDEN_DOWN) }
-    bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
-    // art. 71 as strengthened (card 63): a fight ending is an arrival in the
-    // room it was fought at the door of, and an arrival picks the way on.
-    pick = onArrival(doors(bands))
-    // art. 37, card 69: the keeper the depth was built around gets its own
-    // line. Unlocking the door is ceremonial and the fall was not — it said
-    // the same six words a stray in a corridor says, which left the depth's
-    // last beat flatter than its second-to-last.
-    band = answered(NOTICES['warden.fell'] ?? NOTICES['fight.won'] ?? null)
-    persist()
-    paint()
-    return
+  //
+  // card 95: and a stray's fall writes the deed that opens the room's doors
+  // and empties the socket it stood in (art. 70) — the same shape, one floor
+  // down from the ceremony.
+  const keeper = at.door?.ends === true
+  ledgers = {
+    ...ledgers,
+    run: didHere(ledgers.run!, ledgers.run!.at.instance, keeper ? WARDEN_DOWN : HORROR_DOWN),
   }
-  // Winning opens the door, and the door commits the next room (art. 35).
-  walk(at.door, NOTICES['fight.won'] ?? null)
+  bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
+  // art. 71 as strengthened (card 63): a fight ending is an arrival in the
+  // room it was fought in, and an arrival picks the way on.
+  pick = onArrival(doors(bands))
+  // art. 37, card 69: the keeper the depth was built around gets its own
+  // line. Unlocking the door is ceremonial and the fall was not — it said
+  // the same six words a stray in a corridor says, which left the depth's
+  // last beat flatter than its second-to-last.
+  band = answered(
+    (keeper ? NOTICES['warden.fell'] : NOTICES['fight.won']) ?? NOTICES['fight.won'] ?? null,
+  )
+  persist()
+  paint()
 }
 
 /**

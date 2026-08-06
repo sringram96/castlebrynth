@@ -32,10 +32,13 @@
  */
 
 import {
+  HORROR_DOWN,
   NOTICES,
   ROOM_BOOK,
   horrorIn,
+  horrorMarkIn,
   horrorOf,
+  horrorStanding,
   keeperStanding,
   saysAct,
   saysDoor,
@@ -65,10 +68,10 @@ import type { Fight, Goods } from '../src/lots/index.js'
 import { advanceFight, cast, decide, recast, withTurn } from '../src/lots/index.js'
 import type { Held } from '../src/shell/band.js'
 import { HUSHED, answered, bandLine, noticed } from '../src/shell/band.js'
-import { offeredActs, wayOn } from '../src/shell/strip.js'
+import { fightSummoned, offeredActs, wayOn } from '../src/shell/strip.js'
 import type { WayOn } from '../src/shell/strip.js'
 import type { Ledgers } from '../src/state/index.js'
-import { knownMarks } from '../src/state/index.js'
+import { didHere, knownMarks } from '../src/state/index.js'
 import { DEALER, greet, opened } from './drift.js'
 import { claimGreedily, keepSensibly } from './policy.js'
 
@@ -105,8 +108,16 @@ export interface Shell {
   sense(door: Door): string
   /** Walk through it (art. 79: the room behind it is dealt now). */
   walk(door: Door): void
-  /** art. 30: the door is the fight. */
-  enter(door: Door): void
+  /**
+   * card 95, art. 68: **the thing a fight is summoned by tapping**, and
+   * whether FIGHT is on the strip yet. Null where nothing has teeth.
+   */
+  horror(): string | null
+  fightOffered(): boolean
+  /** art. 30: the fight is the room with the thing come close — no door. */
+  enter(): void
+  /** card 95: what a won fight writes, so the room's doors give (art. 70). */
+  won(): void
   /** One turn, played the way `test/policy.ts` plays. Returns what it said. */
   turn(): Press
 }
@@ -142,6 +153,10 @@ export function shellAt(seed: number): Shell {
       turnedHere(ledgers, ROOM_BOOK, node(), door),
       sceneStateOf(ledgers, ROOM_BOOK, node()).done,
     )
+
+  /** card 95: whether the thing standing in this room is still on its feet. */
+  const standing = (): boolean =>
+    horrorStanding(node(), sceneStateOf(ledgers, ROOM_BOOK, node()).done)
 
   const shell: Shell = {
     get ledgers() {
@@ -188,18 +203,22 @@ export function shellAt(seed: number): Shell {
       band = answered(saysAct(one.id))
       return { verb: one.verb, moved: ledgers !== was, before, after: shell.said() }
     },
-    way: (door) => wayOn(ledgers, ROOM_BOOK, node(), door, keeperUp(door)),
-    // `doorMark`: the sense first, because it is what the door is, and
-    // art. 118's stop after it, because it is what he is doing about it.
+    // card 95: and the room's own teeth, which is what shuts every door in it.
+    way: (door) => wayOn(ledgers, ROOM_BOOK, node(), door, keeperUp(door), standing()),
+    // `doorMark`: the sense first, because it is what the door is, then
+    // card 95's *something is in the way*, then art. 118's stop.
     sense: (door) =>
       [
         saysDoor(door, node().instance),
+        ...(standing() ? [NOTICES['door.guarded'] ?? ''] : []),
         ...(heldBack(ledgers, ROOM_BOOK, node()).length > 0
           ? [NOTICES['door.held'] ?? '']
           : []),
       ]
         .filter((said) => said !== '')
         .join(' '),
+    horror: () => horrorMarkIn(node()),
+    fightOffered: () => fightSummoned(ledgers, node(), horrorMarkIn(node()), standing()),
     walk(door) {
       const walked = chooseDoor(ledgers, chain, ROOM_BOOK, door, DEALER)
       ledgers = walked.ledgers
@@ -208,11 +227,21 @@ export function shellAt(seed: number): Shell {
       band = HUSHED
       ledgers = greet(ledgers, chain)
     },
-    enter(door) {
+    // card 95: `openTheFight(null)` — a fight is about the horror, and the
+    // door it is standing in front of is not part of it.
+    enter() {
       const horror = horrorIn(node()) ?? horrorOf(node().fills)
-      if (horror === null) throw new Error(`${node().instance} has no horror behind its door`)
-      fight = openFightDoor(ledgers, { door, horror }, NO_GOODS)
+      if (horror === null) throw new Error(`${node().instance} has nothing to fight`)
+      fight = openFightDoor(ledgers, { door: null, horror }, NO_GOODS)
       band = HUSHED
+    },
+    // `wonTheFight`, minus the paint: the deed, and the room read again.
+    won() {
+      ledgers = {
+        ...ledgers,
+        run: didHere(ledgers.run!, ledgers.run!.at.instance, HORROR_DOWN),
+      }
+      reread()
     },
     turn() {
       const now = fight
@@ -266,6 +295,21 @@ export function walkDepth(seed: number): Walked {
       presses.push(shell.press(one))
     }
 
+    // card 95: **the thing in the room, before the way out of it.** Looking at
+    // every tappable is what summoned FIGHT (art. 68), and while the horror
+    // stands no door offers anything — so a walk that went to the doors first
+    // would find a room with no way on and call it stuck, which is exactly
+    // what a player who never looked at the horror would find.
+    if (shell.fightOffered()) {
+      shell.enter()
+      for (let n = 0; n < 300 && shell.fight?.outcome === 'fighting'; n++) {
+        presses.push(shell.turn())
+      }
+      if (shell.fight?.outcome !== 'won') return { outcome: 'died', rooms: room, presses, held }
+      // The room is a room again, and its doors give (art. 70).
+      shell.won()
+    }
+
     // art. 118: the way on, or nothing — and nothing must mean the room is
     // genuinely finished with, never that the player is stuck in it.
     const ways = node.doors.map((door) => ({ door, way: shell.way(door) }))
@@ -275,13 +319,13 @@ export function walkDepth(seed: number): Walked {
       return { outcome: 'stuck', rooms: room, presses, held }
     }
 
+    // The keeper is the one fight still entered at a door (art. 37, card 95).
     if (open.way === 'fight') {
-      shell.enter(open.door)
+      shell.enter()
       for (let n = 0; n < 300 && shell.fight?.outcome === 'fighting'; n++) {
         presses.push(shell.turn())
       }
       if (shell.fight?.outcome !== 'won') return { outcome: 'died', rooms: room, presses, held }
-      // Winning opens the door; the last door ends the depth instead.
       if (open.door.ends === true) return { outcome: 'finished', rooms: room, presses, held }
       shell.walk(open.door)
       continue

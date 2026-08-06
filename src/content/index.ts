@@ -258,6 +258,8 @@ export {
   FAR_SOCKET,
   FLOOR_SOCKET,
   GRAMMAR,
+  // card 95: the deed a beaten horror leaves, beside the keeper's.
+  HORROR_DOWN,
   MERCY_SOCKET,
   ROOMS,
   ROOM_BOOK,
@@ -267,6 +269,9 @@ export {
   WARDEN_KEY_ITEM,
   advanceBodyOf,
   horrorIn,
+  // card 95: the thing a fight is summoned by tapping, and whether it stands.
+  horrorMarkIn,
+  horrorStanding,
   keeperStanding,
   horrorOf,
   roomContent,

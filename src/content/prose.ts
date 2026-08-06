@@ -510,6 +510,17 @@ export const SOCKET_BEATS: Readonly<Record<string, readonly string[]>> = {
   // back, and neither says what it is going to do about you.
   'enc.silt-mother': ['Something stands at the far end with the water running off it, and stays standing.'],
   'enc.kindled': ['A shape of char waits ahead. The cracks across it are lit, and nothing here burns.'],
+  /**
+   * card 95: **what the room says once the thing in it is down.** A fight is
+   * won standing in the room now, so a socket that has been emptied by one has
+   * to say so — art. 70, in the room's own mouth rather than in a readout. One
+   * candle each, and each is him having the moment rather than being told
+   * about it (rules/voice.md).
+   */
+  'enc.gnawing.down': ['It stopped. Whatever it was, it is a heap at the far end now.'],
+  'enc.marrow.down': ['It came down all at once, and it is still taller than me lying there.'],
+  'enc.silt-mother.down': ['She is down, and the water is still coming off her. It will stop.'],
+  'enc.kindled.down': ['The cracks went out one at a time. It is cold char now, and it is quiet.'],
   'enc.iron-key': ['An iron key lies where the floor is worn, cut with three teeth.'],
   // art. 40: the place, and the being. Neither asks for anything.
   'enc.basin': ['A copper basin stands full at the foot of the steps. Nothing guards it.'],
@@ -902,6 +913,17 @@ export const NOTICES: Readonly<Record<string, string>> = {
   // nothing — and under art. 118 it no longer has to, because what holds
   // the door is on the frame and one tap away.
   'door.held': 'Not yet. There is something in here still mine to take.',
+  /**
+   * card 95, art. 118: **a door a horror is standing in front of offers no way
+   * through, and its look says why.**
+   *
+   * The whole of the fix is that the door stops being a trap that starts a
+   * fight and becomes a thing that tells you what is wrong. It names nothing —
+   * the thing is on the frame and one tap away, which is what art. 118's third
+   * clause makes safe — and it is not a hint, because there is only ever one
+   * thing it could be about.
+   */
+  'door.guarded': 'Something is in the way.',
   /**
    * **What an act answers with** (the answer wave, card 69).
    *
