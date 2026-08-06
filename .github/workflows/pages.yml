@@ -63,14 +63,18 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
+      # Ten minutes is a **hard ceiling** in this action, not a default:
+      # passing anything larger logs "timeout value is greater than the
+      # allowed maximum - timeout set to the maximum of 600000
+      # milliseconds" and clamps it. Raising it is not an option, so do not
+      # try — that was tried on 2026-08-06 and did nothing but add a warning
+      # to every run.
+      #
+      # What that means when Pages is slow: the step polls for ten minutes,
+      # gives up, and *cancels* the deployment — and the deployment lands
+      # anyway. On 2026-08-06 three runs went red this way while the site
+      # published correctly each time. **A red deploy step is therefore not
+      # proof that the publish failed.** Check the served asset hash before
+      # believing it.
       - id: deployment
         uses: actions/deploy-pages@v4
-        with:
-          # The action polls Pages and **cancels the deployment** when it
-          # gives up, so its default ten minutes is a guillotine and not a
-          # report: a deploy that would have landed at minute eleven is
-          # killed and the run goes red. Deploys here took ~20 seconds until
-          # 2026-08-06, when they began sitting in `in_progress` past the
-          # cap. Thirty minutes is long enough to tell *slow* from *stuck*,
-          # which is the thing we could not previously distinguish.
-          timeout: 1800000
