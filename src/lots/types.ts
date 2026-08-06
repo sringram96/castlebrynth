@@ -215,7 +215,7 @@ export interface Rolled {
  * the same ritual (`collect` in src/state) and because art. 87 asks the same
  * sentence of all of them.
  */
-export type Good = Die | Talisman | Wearable
+export type Good = Die | Talisman | Wearable | Trinket
 
 /**
  * The company a hand keeps: what the permanent ledger lends to a claim. The

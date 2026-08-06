@@ -15,12 +15,29 @@
  * Nothing here is content. The policies stand in for thumbs.
  */
 
-import { ALL_RIDERS, LEVEL_CAP, ROOM_BOOK, horrorIn, horrorOf } from '../src/content/index.js'
+import {
+  ALL_RIDERS,
+  CATALOG,
+  GRAMMAR,
+  LEVEL_CAP,
+  ROLLING_CAP,
+  ROOM_BOOK,
+  horrorIn,
+  horrorOf,
+} from '../src/content/index.js'
 import { act, chooseDoor, opens } from '../src/descent/index.js'
-import type { Chain, ChainNode, Door } from '../src/gen/index.js'
-import { hereIn } from '../src/gen/index.js'
-import { carryOut, openFightDoor, turnLots } from '../src/hinge/index.js'
-import type { Die, Fight, Goods, Horror, Talisman, Wearable } from '../src/lots/index.js'
+import type { Catalog, Chain, ChainNode, Door } from '../src/gen/index.js'
+import { dealerOf, hereIn } from '../src/gen/index.js'
+import { AMEND_LOT, carryOut, openFightDoor, turnLots } from '../src/hinge/index.js'
+import type {
+  Die,
+  Fight,
+  Goods,
+  Horror,
+  Talisman,
+  Trinket,
+  Wearable,
+} from '../src/lots/index.js'
 import { advanceFight, cast, decide, recast, withTurn } from '../src/lots/index.js'
 import type { EncounterId, Ledgers, PermanentLedger } from '../src/state/index.js'
 import { DEALER, greet, lookAround, opened, takeable, type Policy } from './drift.js'
@@ -32,6 +49,8 @@ export interface Carrying {
   readonly worn?: readonly Wearable[]
   /** art. 53: keepsakes are permanent, so a returning run brings them down. */
   readonly keepsakes?: readonly Talisman[]
+  /** card 93: and the rolling goods, which are permanent for the same reason. */
+  readonly trinkets?: readonly Trinket[]
 }
 
 /**
@@ -44,7 +63,18 @@ export interface Carrying {
  * DESIGN.md. Reading the ledger is what makes a measured run the run.
  */
 function companyOf(permanent: PermanentLedger): Goods {
-  return { talismans: permanent.keepsakes, riders: ALL_RIDERS, levelCap: LEVEL_CAP }
+  return {
+    talismans: permanent.keepsakes,
+    riders: ALL_RIDERS,
+    levelCap: LEVEL_CAP,
+    // card 93: read off the ledger for the same reason the keepsakes are — a
+    // run that picked one up off a floor is a run carrying it, and a model
+    // that hard-coded nothing here would make the whole species invisible to
+    // every number in DESIGN.md (which is exactly what the levels wave found
+    // this function doing to the talismans).
+    trinkets: permanent.trinkets,
+    trinketCap: ROLLING_CAP,
+  }
 }
 
 /**
@@ -58,6 +88,8 @@ export interface Haul {
   readonly dice: readonly Die[]
   readonly keepsakes: readonly Talisman[]
   readonly worn: readonly Wearable[]
+  /** card 93: and the rolling goods, which most runs never pick up at all. */
+  readonly trinkets: readonly Trinket[]
   /** How many goods of any kind. The number the median-finds row reports. */
   readonly count: number
 }
@@ -66,10 +98,18 @@ function haulOver(before: PermanentLedger, after: PermanentLedger): Haul {
   const had = new Set(before.pouch.dice.map((die) => die.id as string))
   const wore = new Set(before.wearables.map((one) => one.id as string))
   const kept = new Set(before.keepsakes.map((one) => one.id as string))
+  const held = new Set(before.trinkets.map((one) => one.id as string))
   const dice = after.pouch.dice.filter((die) => !had.has(die.id as string))
   const keepsakes = after.keepsakes.filter((one) => !kept.has(one.id as string))
   const worn = after.wearables.filter((one) => !wore.has(one.id as string))
-  return { dice, keepsakes, worn, count: dice.length + keepsakes.length + worn.length }
+  const trinkets = after.trinkets.filter((one) => !held.has(one.id as string))
+  return {
+    dice,
+    keepsakes,
+    worn,
+    trinkets,
+    count: dice.length + keepsakes.length + worn.length + trinkets.length,
+  }
 }
 
 /** How a run ended. `stuck` is a chain that offered nowhere to go. */
@@ -129,13 +169,35 @@ function fightItOut(
     const lots = turnLots(ledgers.run!.seed, node.step, fight.turnNumber)
     turns = fight.turnNumber
     const turn = claimGreedily(recast(keepSensibly(cast(fight.turn, lots(1))), lots(2)), goods)
-    fight = advanceFight(withTurn(fight, turn), decide(turn, 'end-turn', fight.armor, goods))
+    // card 93: the amend roll is the shell's own third lot, so a walked run
+    // rolls its trinkets exactly where a real run at that seed does — and a
+    // run carrying none never draws from it (`rollAmends`).
+    fight = advanceFight(
+      withTurn(fight, turn),
+      decide(turn, 'end-turn', fight.armor, goods, lots(AMEND_LOT)),
+    )
   }
   return { ledgers: carryOut(ledgers, fight), won: fight.outcome === 'won', turns }
 }
 
-export function playDepth(seed: number, policy: Policy, carrying: Carrying = {}): DepthReport {
-  let { ledgers, chain } = opened(seed, carrying)
+/**
+ * card 93: **the catalog a walk is dealt from**, so that a walk can be asked
+ * what the game does *without* a piece of content in it.
+ *
+ * It defaults to the shipped one and almost every caller leaves it alone. The
+ * one that does not is the flexibility test: the rolling goods are an add-on,
+ * and the strongest way to say so is to deal a depth from a catalog with their
+ * two encounters taken out and find the run the build had before the wave, room
+ * for room (`test/rolling.seam.test.ts`).
+ */
+export function playDepth(
+  seed: number,
+  policy: Policy,
+  carrying: Carrying = {},
+  catalog: Catalog = CATALOG,
+): DepthReport {
+  const dealer = catalog === CATALOG ? DEALER : dealerOf(catalog, GRAMMAR)
+  let { ledgers, chain } = opened(seed, carrying, catalog)
   const woke = ledgers.permanent
   ledgers = greet(ledgers, chain)
   let fights = 0
@@ -211,7 +273,7 @@ export function playDepth(seed: number, policy: Policy, carrying: Carrying = {})
       return report('finished', node)
     }
 
-    const walked = chooseDoor(ledgers, chain, ROOM_BOOK, door, DEALER)
+    const walked = chooseDoor(ledgers, chain, ROOM_BOOK, door, dealer)
     ledgers = walked.ledgers
     chain = walked.chain
     ledgers = greet(ledgers, chain)

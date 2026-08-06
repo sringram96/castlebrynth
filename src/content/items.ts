@@ -1,6 +1,7 @@
 import type { Good, Rider, RiderId, Talisman, TalismanId, Wearable, WearableId } from '../lots/index.js'
 import { LEECH_RIDER, THE_LEECH, THE_SISTERS } from './dice.js'
 import { TRAVELER_DICE, TRAVELER_RIDERS } from './travelers.js'
+import { ROLLING_GOODS } from './trinkets.js'
 
 /**
  * The goods: talismans and wearables, as typed data (arts 49, 53, 47).
@@ -227,4 +228,7 @@ export const CATALOG_GOODS: readonly Good[] = [
   // card 90: placed at last, and the only shape talisman in the game.
   THE_ZEALOT,
   RUSTED_PLATE,
+  // card 93: the rolling goods, held to the same audit and the same origin
+  // sentence as everything else that reaches a player.
+  ...ROLLING_GOODS,
 ]

@@ -12,13 +12,17 @@
  * as dumb as it can be.
  *
  * - **the fights** — one horror, one hand, one seed, every turn's four
- *   numbers in order. If the amend seam draws a single value off a lot it
- *   should not have touched, the very first turn of the very first fight
- *   disagrees and the row says which.
- * - **the depths** — a whole run walked the way `test/depth.ts` walks one,
- *   over enough seeds that a shifted stream cannot hide in the noise: the
- *   outcome, how far it got, what it was holding, and how long each of its
- *   fights ran.
+ *   numbers in order. This half is the *seam's* claim: if the amend seam draws
+ *   a single value off a lot it should not have touched, the very first turn of
+ *   the very first fight disagrees and the row says which.
+ * - **the depths** — a whole run walked the way `test/depth.ts` walks one, over
+ *   enough seeds that a shifted stream cannot hide in the noise: the outcome,
+ *   how far it got, what it was holding, and how long each of its fights ran.
+ *   This half is the *add-on's* claim, and it is dealt from a catalog with the
+ *   two rolling-good encounters taken out of it — because deleting the content
+ *   has to delete the mechanic, and a pool that grew by two rows deals a
+ *   different good on some seeds for the same ordinary reason the levels wave's
+ *   six did (`WITHOUT_ROLLING`).
  *
  * `test/fixtures/pre-rolling.json` is this file's output, taken on the commit
  * before the wave and committed beside it. Nothing regenerates it: a fixture
@@ -29,15 +33,19 @@
 import {
   ALL_RIDERS,
   BARE_BODY,
+  CATALOG,
   HAND_SIZE,
   LEVEL_CAP,
   PLAIN_POUCH,
+  SLIVER,
   THE_CAREFUL,
   THE_GNAWING,
   THE_PUSHER,
   THE_WARDEN,
+  TIN_SAINT,
   RUSTED_PLATE,
 } from '../src/content/index.js'
+import type { Catalog } from '../src/gen/index.js'
 import { lotFrom } from '../src/gen/index.js'
 import type { Die, Fight, Goods, Hand, Horror } from '../src/lots/index.js'
 import {
@@ -114,6 +122,26 @@ function transcribeFight(
   }
 }
 
+/**
+ * **The catalog with the rolling goods taken out of it.**
+ *
+ * Two encounters were added to the boon pool, so the shipped pool deals a
+ * different good on some seeds — content growing, exactly as the levels wave's
+ * six did. Take those two rows back out and the arrangement is the arrangement:
+ * room for room, good for good, death for death, turn count for turn count. It
+ * is the strongest form of the boundary the wave set — **deleting the content
+ * deletes the mechanic** — and it is checked rather than claimed.
+ */
+const ROLLING_ENCOUNTERS: ReadonlySet<string> = new Set<string>([
+  TIN_SAINT as string,
+  SLIVER as string,
+])
+
+const WITHOUT_ROLLING: Catalog = {
+  ...CATALOG,
+  encounters: CATALOG.encounters.filter((one) => !ROLLING_ENCOUNTERS.has(one.id as string)),
+}
+
 export interface DepthTranscript {
   readonly seed: number
   readonly outcome: string
@@ -126,7 +154,7 @@ export interface DepthTranscript {
 }
 
 function transcribeDepth(seed: number): DepthTranscript {
-  const played = playDepth(seed, coinFlip(seed))
+  const played = playDepth(seed, coinFlip(seed), {}, WITHOUT_ROLLING)
   return {
     seed,
     outcome: played.outcome,

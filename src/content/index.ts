@@ -170,6 +170,9 @@ export {
   SAVIOR_MERCY,
   SISTER_ELDER,
   SISTER_YOUNGER,
+  // card 93: the two rolling goods, on the floor like anything else.
+  SLIVER,
+  TIN_SAINT,
   WARDEN_KEEPER,
   encounterOfHorror,
   encounterProp,

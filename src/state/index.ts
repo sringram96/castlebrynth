@@ -17,10 +17,12 @@ import type {
   Card,
   Die,
   DieId,
+  Good,
   Hand,
   Line,
   Pouch,
   Talisman,
+  Trinket,
   Wearable,
   WearableId,
 } from '../lots/index.js'
@@ -190,6 +192,20 @@ export interface PermanentLedger {
   readonly keepsakes: readonly Talisman[]
   /** art. 49: wearables are collectible like dice, so they survive death. */
   readonly wearables: readonly Wearable[]
+  /**
+   * card 93: **the rolling goods**, in the order they were found.
+   *
+   * They are keepsakes in art. 53's sense — permanent, and acting on scoring
+   * from outside the hand — and they are carried the way a wearable is: never
+   * one of the six, never on the choosing screen, taking no slot of the hand.
+   * A list of their own rather than a widened `keepsakes`, because a talisman
+   * and a trinket answer to different declarations (arts 54, 87) and one list
+   * holding both would be a list nothing could read without asking which.
+   *
+   * How many of them may be *carried* is content's (`ROLLING_CAP`); how many
+   * may be *owned* is not capped at all, exactly as the pouch is not.
+   */
+  readonly trinkets: readonly Trinket[]
   /** art. 34: keyed on room and entity identity, never on position. */
   readonly known: readonly Clue[]
   /**
@@ -575,17 +591,16 @@ export function knownMarks(permanent: PermanentLedger): readonly string[] {
 }
 
 /**
- * A die, a keepsake, or a wearable crosses from the run to the permanent —
- * the collection survives death (arts 11, 49). Not to be confused with the
- * turn's *keep*, which only holds dice between castings (art. 41).
+ * A die, a keepsake, a wearable or a rolling good crosses from the run to the
+ * permanent — the collection survives death (arts 11, 49). Not to be confused
+ * with the turn's *keep*, which only holds dice between castings (art. 41).
  *
  * art. 56: the signature is simply the first die you collect — including
- * the one you pick out of a pouch you already carry.
+ * the one you pick out of a pouch you already carry. A rolling good is not a
+ * die and never names one (card 93): it is not one of the six, it takes no
+ * slot of the hand, and it never reaches the pouch at all.
  */
-export function collect(
-  permanent: PermanentLedger,
-  taken: Die | Talisman | Wearable,
-): PermanentLedger {
+export function collect(permanent: PermanentLedger, taken: Good): PermanentLedger {
   if (isDie(taken)) {
     const already = permanent.pouch.dice.some((die) => die.id === taken.id)
     const pouch: Pouch = already
@@ -593,6 +608,13 @@ export function collect(
       : { dice: [...permanent.pouch.dice, taken] }
     const signature = permanent.signature ?? taken.id
     return { ...permanent, pouch, signature }
+  }
+  // card 93: before the wearable check, because a trinket has neither faces
+  // nor armor and would otherwise fall through to the keepsakes — where its
+  // faces would be a talisman's missing species.
+  if (isTrinket(taken)) {
+    if (permanent.trinkets.some((held) => held.id === taken.id)) return permanent
+    return { ...permanent, trinkets: [...permanent.trinkets, taken] }
   }
   if (isWearable(taken)) {
     if (permanent.wearables.some((worn) => worn.id === taken.id)) return permanent
@@ -602,8 +624,17 @@ export function collect(
   return { ...permanent, keepsakes: [...permanent.keepsakes, taken] }
 }
 
-function isDie(taken: Die | Talisman | Wearable): taken is Die {
+function isDie(taken: Good): taken is Die {
   return 'faces' in taken
+}
+
+/**
+ * card 93: a rolling good, told apart by the one field only it has. Its faces
+ * live under `rolls` for exactly this reason — a second thing with a `faces`
+ * field would be a die to `isDie` above, and would end up in the pouch.
+ */
+function isTrinket(taken: Good): taken is Trinket {
+  return 'rolls' in taken
 }
 
 function isWearable(taken: Talisman | Wearable): taken is Wearable {
@@ -751,6 +782,9 @@ export function firstPermanent(pouch: Pouch, handSize: number, body: Body): Perm
     signature: null,
     keepsakes: [],
     wearables: [],
+    // card 93: zero rolling goods is the normal state of the game, and a first
+    // waking is the plainest statement of it.
+    trinkets: [],
     known: [],
     met: [],
     memories: [],
@@ -927,9 +961,12 @@ export const QUARANTINE_KEY = 'castlebrynth.quarantine'
  * company wave: a paused fight now carries what a bind took off it and what
  * a bleed is still taking (art. 65), and neither can be derived from a seed.
  * 11 is the descent wave: art. 84 extended to refusals, so the permanent
- * carries what a player has turned down as well as who they have met.
+ * carries what a player has turned down as well as who they have met. 12 is
+ * card 93's rolling goods, which are collectible and therefore permanent — and
+ * a snapshot from before them carries none, which is the normal state of the
+ * game rather than a loss.
  */
-export const VAULT_VERSION = 11
+export const VAULT_VERSION = 12
 
 // ── The migration ladder ───────────────────────────────────────────────
 
@@ -1178,6 +1215,21 @@ export const MIGRATIONS: readonly Migration[] = [
       fillingThePermanent(snapshot, (permanent) => ({
         ...permanent,
         declined: Array.isArray(permanent.declined) ? permanent.declined : [],
+      })),
+  },
+  /**
+   * 11 → 12. card 93's rolling goods. A v11 permanent was kept by a game with
+   * no such species in it, so it has none — which is not a loss and not a
+   * guess: **zero rolling goods is the normal state of the game**, and a
+   * player who has never been offered one is a player carrying none. Nothing
+   * about the arrangement moves, so no descent is lost to it either.
+   */
+  {
+    from: 11,
+    up: (snapshot) =>
+      fillingThePermanent(snapshot, (permanent) => ({
+        ...permanent,
+        trinkets: Array.isArray(permanent.trinkets) ? permanent.trinkets : [],
       })),
   },
 ]

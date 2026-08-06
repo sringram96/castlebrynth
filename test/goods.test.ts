@@ -90,7 +90,8 @@ describe('cards 19–20 — the goods are found rather than fixtured', () => {
   it('never offers both halves of the Sisters in a run’s first half', () => {
     let sawElder = 0
     let sawYounger = 0
-    let sawBoth = 0
+    let deepestElder = -1
+    let shallowestYounger = Number.POSITIVE_INFINITY
     for (let seed = 1; seed <= 400; seed++) {
       const chain = greedyRun(seed).chain
       const half = Math.floor(chain.length / 2)
@@ -98,17 +99,30 @@ describe('cards 19–20 — the goods are found rather than fixtured', () => {
       const younger = stepOfEncounter(chain, SISTER_YOUNGER as string)
       if (elder >= 0) sawElder++
       if (younger >= 0) sawYounger++
-      if (elder >= 0 && younger >= 0) sawBoth++
+      if (elder >= 0) deepestElder = Math.max(deepestElder, elder)
+      if (younger >= 0) shallowestYounger = Math.min(shallowestYounger, younger)
       // Neither half is ever dealt outside its band, and the younger is
       // never in the first half of the road.
       if (younger >= 0) expect(younger, `seed ${seed}`).toBeGreaterThanOrEqual(half)
       if (elder >= 0 && younger >= 0) expect(elder, `seed ${seed}`).toBeLessThan(younger)
     }
-    // And the axis is not decoration: both halves do get dealt, and a run
-    // occasionally holds them both — after walking for the second.
+    // And the axis is not decoration: both halves do get dealt…
     expect(sawElder).toBeGreaterThan(0)
     expect(sawYounger).toBeGreaterThan(0)
-    expect(sawBoth).toBeGreaterThan(0)
+    /**
+     * …and the two bands are **disjoint and in order**, which is the claim
+     * art. 52's carry actually rests on: finding one half means the other is
+     * somewhere *below*, so a run that holds both walked for the second.
+     *
+     * **This replaces a count that was a coin toss** (card 93). The assertion
+     * used to be *some run in this sample held both*, and both halves are dealt
+     * at the rarest band there is — one run in about two thousand holds the
+     * pair, so a four-hundred-seed sample saw it or did not depending on the
+     * pool, and card 93's two extra boon rows were enough to tip it from seen to
+     * unseen. Nothing about the bands or the weights moved; what moved is that
+     * the structural claim is now checked structurally instead of sampled for.
+     */
+    expect(deepestElder).toBeLessThan(shallowestYounger)
   })
 
   /**

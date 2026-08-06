@@ -33,6 +33,7 @@ import {
   NOTICES,
   PLAIN_POUCH,
   READOUT,
+  ROLLING_CAP,
   ROOM_BOOK,
   TABS,
   UNBIDDEN,
@@ -99,6 +100,7 @@ import type { Chain, ChainNode, Door } from './gen/index.js'
 import { deal, dealerOf, meetings, nodeAt, reseed } from './gen/index.js'
 import type { Standing } from './hinge/index.js'
 import {
+  AMEND_LOT,
   advance,
   carryOut,
   keepFight,
@@ -346,7 +348,18 @@ let resolved: Fight | null = null
  * caller assembling a `Goods` without thinking about it.
  */
 function goods(): Goods {
-  return { talismans: ledgers.permanent.keepsakes, riders: ALL_RIDERS, levelCap: LEVEL_CAP }
+  return {
+    talismans: ledgers.permanent.keepsakes,
+    riders: ALL_RIDERS,
+    levelCap: LEVEL_CAP,
+    // card 93: **and the rolling goods, with their cap.** They are read off
+    // the permanent like the keepsakes are, so a trinket found in this room is
+    // in the next fight already — and the cap travels with them for the same
+    // reason `levelCap` does, so it cannot be lost by a caller who assembled a
+    // company without thinking about it. Empty on almost every run there is.
+    trinkets: ledgers.permanent.trinkets,
+    trinketCap: ROLLING_CAP,
+  }
 }
 
 // ── Boot ───────────────────────────────────────────────────────────────
@@ -2644,7 +2657,12 @@ function fightActs(): void {
 function endTurn(): void {
   const now = fight
   if (now === null) return
-  const resolution = decide(now.turn, 'end-turn', now.armor, goods())
+  // card 93: the rolling goods roll here, off a lot of their own — the third
+  // of a turn's lots, where art. 41 allows only two castings, so the stream
+  // the hand is thrown from is untouched and a run carrying no trinket never
+  // reaches for this at all (`turnLots`, `rollAmends`).
+  const amending = turnLots(ledgers.run!.seed, ledgers.run!.at.step, now.turnNumber)(AMEND_LOT)
+  const resolution = decide(now.turn, 'end-turn', now.armor, goods(), amending)
   resolving = resolution
   resolved = advanceFight(now, resolution)
   selected = []

@@ -231,6 +231,10 @@ export const NOUNS: Readonly<Record<string, string>> = {
   'bowl.thing': 'the wooden bowl',
   'notch.thing': 'the notched stick',
   'zealot.thing': 'the burnt medal',
+  // card 93: the two rolling goods, as they lie. A plain noun before it is
+  // anything (art. 111), and neither of them names what it does.
+  'tin-saint.thing': 'the tin saint',
+  'sliver.thing': 'the chip of flint',
   // card 88: the covered font's three, and each is a plain noun before it is
   // anything (art. 111). What they add up to is the room's business.
   'font.cloth': 'the cloth',
@@ -329,6 +333,11 @@ export const LOOKS: Readonly<Record<string, string>> = {
   'bowl.thing': 'A wooden bowl, worn smooth inside. It has held whatever there was, and never held much.',
   'notch.thing': 'A stick cut with marks. Always two together, never three, and never one.',
   'zealot.thing': 'A medal, burnt black. The face of it is somebody who wanted the whole of something.',
+  // card 93: the rolling goods, under the thumb. Each says what it is and
+  // what it was for. The numbers are on the good and reach the player on
+  // inspect (art. 54); the look is the man seeing the thing.
+  'tin-saint.thing': 'A saint pressed into tin, on a chain somebody snapped. The face is rubbed half away. It has been held a lot.',
+  'sliver.thing': 'A chip of flint, worn down to almost nothing. There is a rag wound round one end of it and the rag is stiff.',
 
   // ── The covered font, free (card 88, arts 5, 111) ────────────────────
   //
@@ -464,6 +473,16 @@ export const ORIGINS: Readonly<Record<string, string>> = {
   'talisman.zealot':
     'All of it, every throw. Spend the whole hand or it is not worth the throwing \u2014 and here is the medal, and here is the ash.',
   /**
+   * card 93: **the rolling goods, each with the sentence art. 87 asks of it.**
+   * A face is a habit the way a rider is, so the sentence says the habit and
+   * the mistake in the same breath \u2014 which is art. 86 exactly: the faces are
+   * how they played, the cost face is what killed them.
+   */
+  'trinket.tin-saint':
+    'He held it whenever something came at him, and mostly it turned the thing aside. He was still holding it when it did not.',
+  'trinket.sliver':
+    'One cut, worked until it was the only thing he had, and it cut deeper the more he threw at it. It cut him too, in the end.',
+  /**
    * art. 84 (extended, card 87): **the die you refused turns up in another
    * traveler's hand.** Same good, same numbers, one sentence further on —
    * because the labyrinth remembers, and the cheapest true way to say so is
@@ -513,6 +532,10 @@ export const SOCKET_BEATS: Readonly<Record<string, readonly string[]>> = {
   'enc.bowl': ['A wooden bowl lies on its side, empty, worn smooth inside.'],
   'enc.notch': ['A cut stick lies here, marked in twos all down its length.'],
   'enc.zealot': ['A burnt medal lies face up on the stone, and nothing here has burnt.'],
+  // card 93: the rolling goods say their own candle where they lie, the way
+  // everything in a socket does. The room never mentions them.
+  'enc.tin-saint': ['A little tin saint lies on the stone with a broken chain beside it.'],
+  'enc.sliver': ['A chip of flint lies where a hand opens. There is a rag wound round it.'],
   /**
    * art. 89: the terms of a fork, said plainly and said first — before
    * either verb is on the strip, and once (the labyrinth never explains
@@ -929,6 +952,10 @@ export const NOTICES: Readonly<Record<string, string>> = {
   'answer.act.take.notch': 'Cut in twos the whole way down. Never three, never one. Somebody wanted everything to have a partner.',
   'answer.act.take.zealot': 'Burnt through and still legible. Somebody who spent all of it, every time, and had nothing left over.',
   'answer.act.take.plate': 'The straps are cut, not worn through. Somebody got this off him fast, and it did not save either of them.',
+  // card 93: what a rolling good answers with when it is picked up. Each
+  // says the habit that made it worth carrying, and neither says a number.
+  'answer.act.take.tin-saint': 'The chain is snapped, not undone. He held this every time something came at him, and most times nothing touched him.',
+  'answer.act.take.sliver': 'Sharp still, after all that. He only ever knew the one cut, and he got very good at it.',
   /**
    * art. 120: **what a priced press buys.** Each of the three is knowledge
    * (art. 88), and each answer *sharpens the question rather than answering
@@ -1145,6 +1172,10 @@ export const LABELS: Readonly<Record<string, string>> = {
   'talisman.bowl': 'the beggar’s bowl',
   'talisman.notch': 'the notched stick',
   'wearable.rusted-plate': 'the rusted plate',
+  // card 93: the rolling goods wear the name of the thing, never of what
+  // they throw.
+  'trinket.tin-saint': 'the tin saint',
+  'trinket.sliver': 'the sliver',
   'rider.leech': 'the leech bite',
   'rider.push': 'the push',
   'rider.bleed': 'the bleed',
@@ -1224,6 +1255,9 @@ export const VERBS: Readonly<Record<string, string>> = {
   'act.take.bowl': 'Take bowl',
   'act.take.notch': 'Take stick',
   'act.take.zealot': 'Take medal',
+  // card 93: one plain verb each, two words or fewer (art. 66).
+  'act.take.tin-saint': 'Take saint',
+  'act.take.sliver': 'Take flint',
   /**
    * art. 120's three, and GAME.md named all three long before anything gave
    * an act a price. They are plain imperatives like every other control —
