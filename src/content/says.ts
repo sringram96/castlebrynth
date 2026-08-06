@@ -10,7 +10,7 @@
  */
 
 import type { Door, InstanceId } from '../gen/index.js'
-import type { Beat, Die, Face, Good, Intent, Line, Resolution } from '../lots/index.js'
+import type { Amend, Beat, Die, Face, Good, Intent, Line, Resolution, Rolled } from '../lots/index.js'
 import type { ItemId } from '../state/index.js'
 import { LEVEL_CAP } from './items.js'
 import { LADDER } from './ladder.js'
@@ -343,6 +343,13 @@ export function saysGood(good: Good, remembered: readonly string[] = []): string
  * line needs to know that the second one stopped counting.
  */
 function declaredBy(good: Good): readonly string[] {
+  // card 93: **a rolling good declares every face and its number**, in the
+  // order a roll indexes them, so the nulls are as visible as the powers. They
+  // have to be: the nulls are what pays for the rest (art. 54), and a player
+  // who cannot see how often the thing does nothing cannot price it.
+  if ('rolls' in good) {
+    return [`${READOUT.rolls} ${good.rolls.map(faceSays).join(' ')}`]
+  }
   if (!('species' in good)) {
     return 'armor' in good ? [`${READOUT.armor} ${good.armor}`] : []
   }
@@ -365,6 +372,44 @@ function declaredBy(good: Good): readonly string[] {
     said.push(`${READOUT.everyDie} ×${good.shape.times}`)
   }
   return said
+}
+
+/**
+ * card 93: one face of a rolling good, as a readout — the kind's own word and
+ * the number on it. A null is drawn rather than named: *nothing* is what it
+ * says, and a word for it would read as a fifth kind.
+ */
+export function faceSays(face: Amend): string {
+  switch (face.kind) {
+    case 'null':
+      return READOUT.nothing ?? ''
+    case 'add':
+      return `${READOUT.add} ${face.amount}`
+    case 'block':
+      return `${READOUT.block} ${face.amount}`
+    case 'per':
+      return `${face.amount} ${READOUT.per}`
+    case 'cost':
+      return `${READOUT.cost} ${face.amount}`
+  }
+}
+
+/**
+ * card 93, art. 119: **what a rolling good says in the moment it lands.**
+ *
+ * The same shape `saysFiring` gives a rider: the thing's own name, then what
+ * the face did. It is a readout and not prose — the words are `prose.ts`'s and
+ * the numbers are the roll's — because a beat that moves a number has to say
+ * which number it moved (art. 57).
+ */
+export function saysAmend(rolled: Rolled): string {
+  const label = LABELS[rolled.trinket as string] ?? (rolled.trinket as string)
+  const face = rolled.face
+  if (face.kind === 'null') return `${label} · ${READOUT.nothing ?? ''}`
+  // `per` is the one kind whose face and whose *total* are different numbers,
+  // and both of them are worth reading: two a die, and eight this turn.
+  const said = face.kind === 'per' ? `${faceSays(face)} ${rolled.amount}` : faceSays(face)
+  return `${label} · ${said}`
 }
 
 /**

@@ -63,6 +63,10 @@ import {
   saysLine,
   saysItem,
   saysWithheld,
+  // card 93: what a rolling good declares, and what it says as it lands.
+  faceSays,
+  saysAmend,
+  saysGood,
 } from './content/index.js'
 import type { Act, Bands, Pick, Tappable } from './descent/index.js'
 import {
@@ -126,11 +130,13 @@ import type {
   Line,
   Resolution,
   Shown,
+  Trinket,
 } from './lots/index.js'
 import {
   LINES,
   advanceFight,
   assemble,
+  carriedTrinkets,
   cascadeBeats,
   cast,
   casting,
@@ -1464,7 +1470,43 @@ function theFightPanel(): void {
     const die = byId.get(id as string)
     if (die !== undefined) fightPanel.append(boundSlot(die, now.horror.id))
   }
+  // card 93: **they render only if carried.** No empty row, no placeholder —
+  // zero rolling goods is the normal state of the game, so a run carrying none
+  // has nothing here and nothing on screen hints that something is missing.
+  for (const held of carriedTrinkets(goods())) fightPanel.append(trinketSlot(held))
   fightActs()
+}
+
+/**
+ * card 93: a rolling good in the tray, beside the hand it is not part of.
+ *
+ * arts 68–69: it answers with its declared truth on a tap — every face and its
+ * number, then the sentence art. 87 asks of it — and it commits nothing, which
+ * is the whole of what a trinket is: the decision was made when it was picked
+ * up off a floor, and there is no press about it in the duel.
+ *
+ * art. 70: and what it *rolled* shows, from the beat it lands on until the turn
+ * settles. Prose confirms; pixels prove.
+ */
+function trinketSlot(held: Trinket): HTMLButtonElement {
+  const landed = resolving?.amends.find((one) => one.trinket === held.id) ?? null
+  const now = beatNow?.kind === 'amend' && beatNow.rolled.trinket === held.id
+  const el = slot(`trinket${landed === null ? '' : ' rolled'}${now ? ' landing' : ''}`)
+  el.textContent = (LABELS[held.id as string] ?? (held.id as string)).replace(/^the /, '')
+  if (landed !== null) {
+    const face = document.createElement('span')
+    face.className = 'face'
+    face.textContent = faceSays(landed.face)
+    el.append(face)
+  }
+  const says = saysGood(held, knownMarks(ledgers.permanent))
+  el.setAttribute('aria-label', says)
+  el.onclick = () => {
+    settle()
+    band = noticed(says)
+    paint()
+  }
+  return el
 }
 
 /**
@@ -2460,6 +2502,12 @@ function speak(beat: Beat): void {
       if (said !== '') band = answered(said)
       return
     }
+    // card 93: a rolling good takes the band for the same reason a rider does
+    // — it is the beat that teaches a thing the player is carrying, and a mark
+    // alone cannot do that. It says the thing's name and what the face did.
+    case 'amend':
+      band = answered(saysAmend(beat.rolled))
+      return
     case 'line':
       named = saysLine(beat.line, beat.tier.multiplier)
       return

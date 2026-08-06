@@ -222,6 +222,9 @@ export {
   saysDie,
   saysExchange,
   saysGood,
+  // card 93: what a rolling good declares, and what it says as it lands.
+  faceSays,
+  saysAmend,
   saysIntent,
   saysItem,
   saysWithheld,

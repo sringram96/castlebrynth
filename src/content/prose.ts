@@ -1209,6 +1209,18 @@ export const READOUT: Readonly<Record<string, string>> = {
   doubles: 'counts double',
   everyDie: 'whole hand',
   spent: 'spent in',
+  /**
+   * card 93: **what a rolling good declares about itself**, face by face —
+   * card 72's declaration duty applied to a brand-new species from birth, so
+   * the rider defect (a power that fired without ever having said it could) is
+   * not repeated. One word per kind, and a null is drawn rather than named,
+   * because *nothing* is what it says.
+   */
+  rolls: 'rolls',
+  block: 'block',
+  add: 'hit',
+  per: 'per die',
+  nothing: '—',
   corroded: 'corroded',
   next: 'next',
   ends: 'ends',

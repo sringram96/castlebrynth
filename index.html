@@ -253,6 +253,25 @@
       .slot.bound .pips i { background: #4a3f3a; }
       .slot.bound::after { content: ''; position: absolute; left: -1px; right: -1px;
         top: 50%; height: 3px; margin-top: -1px; background: #7a3b40; }
+      /* card 93: a rolling good sits beside the hand it is not part of — wider
+         than a die because it wears a name rather than a face, and set apart by
+         a rule the way a spare is, because which side of the hand a thing is on
+         is the only thing either mark is about. It renders only if carried:
+         there is no empty state, because carrying none is the normal state. */
+      .slot.trinket { width: auto; min-width: 42px; padding: 0 6px; font-size: .66em;
+        color: var(--dim); background: #1d1a22; border-color: #3b3446;
+        margin-left: 10px; box-shadow: inset 3px 0 0 -1px #6a5b86; }
+      /* One rule, off the hand — a second between two trinkets would say they
+         are on different sides of something, and they are not. */
+      .slot.trinket + .slot.trinket { margin-left: 0; }
+      /* art. 70: what it rolled stays legible until the turn settles. A face
+         that fired lights; a null is drawn and says nothing else. */
+      .slot.trinket .face { display: block; font-size: .92em; color: #8d7fa8; }
+      .slot.trinket.rolled { color: var(--ink); border-color: #6a5b86; }
+      /* art. 119: and the beat it lands on is the one moment it moves. */
+      .slot.trinket.landing { background: #2b2438; border-color: var(--gold);
+        transform: translateY(-2px); }
+      .slot.trinket.landing .face { color: var(--gold); }
     </style>
   </head>
   <body>
