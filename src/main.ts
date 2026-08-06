@@ -55,7 +55,9 @@ import {
   saysDeath,
   saysDie,
   saysExchange,
+  saysFiring,
   saysIntent,
+  saysLine,
   saysItem,
 } from './content/index.js'
 import type { Act, Bands, Pick, Tappable } from './descent/index.js'
@@ -103,6 +105,7 @@ import {
   turnLots,
 } from './hinge/index.js'
 import type {
+  Beat,
   Card,
   Die,
   DieId,
@@ -119,6 +122,7 @@ import {
   advanceFight,
   assemble,
   atOnce,
+  cascadeBeats,
   cast,
   casting,
   castingsLeft,
@@ -307,9 +311,16 @@ let selected: readonly DieId[] = []
 let advanced = false
 let closeness = 1
 let advanceTimer: number | undefined
-/** art. 1: a pulse in presentation, skippable, with a settled end state. */
+/**
+ * art. 1: a pulse in presentation, skippable, with a settled end state.
+ *
+ * art. 119: and the two of them are one thing now. `resolving` is what the
+ * engine answered at the press and `resolved` is the fight it advanced to —
+ * both computed **before the first frame is drawn**, so every beat between
+ * here and `settleTurn` reveals what is already true and decides nothing.
+ */
 let resolving: Resolution | null = null
-let resolveTimer: number | undefined
+let resolved: Fight | null = null
 
 function goods(): Goods {
   return { talismans: ledgers.permanent.keepsakes, riders: ALL_RIDERS }
@@ -915,9 +926,10 @@ function drawSheet(): void {
  */
 function settleEverything(): void {
   clearTimeout(advanceTimer)
-  clearTimeout(resolveTimer)
   clearTimeout(fadeTimer)
+  stopBeats()
   resolving = null
+  resolved = null
   fight = null
   phase = 'pre'
   selected = []
@@ -1227,11 +1239,21 @@ function theFightPanel(): void {
   const armorNow = corroded ? 0 : now.armor
   const totals = document.createElement('div')
   totals.className = 'totals'
+  // art. 119: while a cascade runs, the running total is the cascade's — it
+  // is being *built* out of the dice, one lift at a time, and a readout that
+  // showed the finished number would give away the whole beat before the
+  // first die had lifted.
   totals.append(
-    reading(READOUT.attack ?? '', `${now.turn.claims.reduce((sum, made) => sum + harm(made), 0)}`),
+    reading(
+      READOUT.attack ?? '',
+      `${shown?.attack ?? now.turn.claims.reduce((sum, made) => sum + harm(made), 0)}`,
+    ),
     reading(READOUT.incoming ?? '', `${Math.max(0, now.turn.intent.amount - armorNow)}`),
     reading(READOUT.unused ?? '', `${unused(now.turn).length}`),
   )
+  // art. 119: **the line names itself, with its multiplier** — and then
+  // stands, because what it says is what the climb is about to do.
+  if (named !== null) totals.append(reading('', named))
   const priced = pricedNow()
   if (priced > 0) totals.append(reading(READOUT.cost ?? '', `${priced}`))
   // art. 57: everything visible, and art. 65: a bleed is a number the plan
@@ -1451,14 +1473,26 @@ function dieSlot(die: Die, landed: Landed | null, claimed: boolean): HTMLButtonE
   // there is hashed off its identity, never rolled, because nothing is
   // decided during an animation.
   const air = landed !== null && shown !== null && !shown.landed.includes(landed.die)
+  // art. 119 §2: **a claimed die lifts, alone**, brightening — and it stays
+  // lifted, because the total it fed is still climbing off it.
+  const lift = landed !== null && (shown?.lifted.includes(landed.die) ?? false)
   const el = slot(
-    `die${landed === null ? ' rest' : ''}${air ? ' rolling' : ''}${kept ? ' kept' : ''}${
-      isSelected ? ' sel' : ''
-    }${claimed ? ' claimed' : ''}${idle}`,
+    `die${landed === null ? ' rest' : ''}${air ? ' rolling' : ''}${lift ? ' lifted' : ''}${
+      kept ? ' kept' : ''
+    }${isSelected ? ' sel' : ''}${claimed ? ' claimed' : ''}${idle}`,
   )
   if (landed !== null) {
     const face = air ? die.faces[tumblingFace(landed.die, spun, die.body)] : landed.face
     el.append(pips(face?.value ?? landed.face.value))
+  }
+  // …with its own small `+n`, in the moment it lifts and in no other. A
+  // number that stood on every lifted die would be a column of arithmetic;
+  // this is one die saying what it was worth.
+  if (landed !== null && beatNow?.kind === 'lift' && beatNow.die === landed.die) {
+    const gain = document.createElement('span')
+    gain.className = 'gain'
+    gain.textContent = `+${beatNow.value}`
+    el.append(gain)
   }
   el.setAttribute('aria-label', saysDie(die, landed?.face))
   // art. 69: silence is a bug. A die answers with its declared truth whether
@@ -1873,8 +1907,9 @@ const SETTINGS_ACTS: SettingsActs = {
  */
 function abandonTheRun(): void {
   clearTimeout(advanceTimer)
-  clearTimeout(resolveTimer)
+  stopBeats()
   resolving = null
+  resolved = null
   fight = null
   phase = 'pre'
   selected = []
@@ -2134,10 +2169,24 @@ let shown: Shown | null = null
  * (art. 119: nothing is decided during an animation).
  */
 let spun = 0
+/**
+ * The beat showing right now. A `+n` belongs to the die that is lifting *in
+ * this moment* and to no other, which is what art. 119 means by each beat
+ * saying one thing.
+ */
+let beatNow: Beat | null = null
+/**
+ * art. 119: **the line names itself**, and then stands. The name is a
+ * readout and lives in the tray with the rest of art. 57's numbers; the
+ * band is for prose, which in a cascade is what the riders say.
+ */
+let named: string | null = null
 
 function begin(frames: readonly Frame[], lands: () => void = paint): void {
   stopBeats()
   spun = 0
+  beatNow = null
+  named = null
   playing = {
     frames: stillness() ? atOnce(frames) : frames,
     at: 0,
@@ -2158,11 +2207,42 @@ function stepBeat(draw: () => void = showBeat): void {
   now.at += 1
   spun += 1
   shown = frame.shows
+  beatNow = frame.beat
+  speak(frame.beat)
   draw()
   const next = now.frames[now.at]
   if (next === undefined) return landBeats()
   if (next.after <= 0) return stepBeat()
   now.timer = setTimeout(() => stepBeat(), next.after) as unknown as number
+}
+
+/**
+ * art. 119: **each beat says one thing**, and this is where it says it.
+ *
+ * The riders and the bond take the band, because they are the beat that
+ * teaches the pouch to a player who never opens it and a mark alone cannot
+ * do that. The line takes the tray, because a name and a multiplier are a
+ * readout and the band is for prose (art. 66's seam, one level down). And
+ * the settled beat gives the band back to what the turn did (card 69), so
+ * the line standing at the end of a cascade is the exchange either way.
+ */
+function speak(beat: Beat): void {
+  switch (beat.kind) {
+    case 'rider':
+    case 'bond': {
+      const said = saysFiring(beat)
+      if (said !== '') band = answered(said)
+      return
+    }
+    case 'line':
+      named = saysLine(beat.line, beat.tier.multiplier)
+      return
+    case 'settled':
+      if (resolving !== null) band = answered(saysExchange(resolving))
+      return
+    default:
+      return
+  }
 }
 
 /** What a beat repaints: the numbers, and nothing that has not moved. */
@@ -2186,6 +2266,8 @@ function landBeats(): void {
   playing = null
   shown = null
   spun = 0
+  beatNow = null
+  named = null
   now.lands()
 }
 
@@ -2199,6 +2281,8 @@ function stopBeats(): void {
   playing = null
   shown = null
   spun = 0
+  beatNow = null
+  named = null
 }
 
 /** Every entry point settles whatever pulse is running first (art. 1). */
@@ -2302,36 +2386,51 @@ function fightActs(): void {
 }
 
 /**
- * art. 57: unused dice dim at resolve. The resolve is a beat of presentation
- * and nothing else — it is skippable, its end state is settled, and no
- * decision waits on it (art. 1).
+ * art. 119: **the turn resolves in beats, and the outcome is computed before
+ * the first one is drawn.**
+ *
+ * This is the seam the whole article is about. The engine is asked its two
+ * questions *here* — what the turn did, and what the fight is now — and both
+ * answers are written down before a single frame shows. Everything after
+ * this line is a repaint: the claimed dice lifting one at a time, the line
+ * naming its multiplier, each rider firing in its own moment, and the total
+ * climbing to a number that was already decided.
+ *
+ * The old shape asked `advanceFight` at the *end* of a 700ms pause, which is
+ * exactly what the article forbids — a decision inside a timeline — and it
+ * also meant the whole exchange resolved in one frame with nothing between
+ * the press and the answer. Both are the same fix.
+ *
+ * art. 57: unused dice dim at resolve, and they still do — `resolving` is
+ * what that reads, and it now stands for the whole cascade.
  */
 function endTurn(): void {
   const now = fight
   if (now === null) return
-  resolving = decide(now.turn, 'end-turn', now.armor, goods())
+  const resolution = decide(now.turn, 'end-turn', now.armor, goods())
+  resolving = resolution
+  resolved = advanceFight(now, resolution)
   selected = []
   // card 69: **the turn says what it did**, both halves, and it holds the
   // band until the player turns it. Before this, pressing Attack moved two
   // numbers and then talked about the next intent: nothing on screen ever
   // said you hit it for twenty, or that it took seven out of you.
-  band = answered(saysExchange(resolving))
-  // art. 116: the resolve is a beat of presentation and nothing else — no
-  // decision waits on it (art. 1) — so with the world held still it is
-  // skipped and the turn lands. What the dimming would have shown is what
-  // the next paint shows anyway.
-  if (stillness()) return settleTurn()
-  paint()
-  resolveTimer = setTimeout(settleTurn, 700) as unknown as number
+  //
+  // art. 119: the riders borrow the band as they fire and the settled beat
+  // gives it back, so the line standing at the end of the cascade is this
+  // one either way.
+  band = answered(saysExchange(resolution))
+  // art. 116: the same timeline with every delay zero. Nothing branches.
+  begin(cascadeBeats(now, resolved, resolution, goods(), CASCADE), settleTurn)
 }
 
 function settleTurn(): void {
-  clearTimeout(resolveTimer)
   const now = fight
   const resolution = resolving
+  const advancedFight = resolved
   resolving = null
-  if (now === null || resolution === null) return
-  const advancedFight = advanceFight(now, resolution)
+  resolved = null
+  if (now === null || resolution === null || advancedFight === null) return
   fight = advancedFight
   phase = 'pre'
   selected = []
@@ -2422,8 +2521,8 @@ function runFromTheFight(): void {
   const now = fight
   if (now === null || screen.kind !== 'fight') return
   clearTimeout(advanceTimer)
-  clearTimeout(resolveTimer)
   resolving = null
+  resolved = null
   // art. 119: a timeline is presentation over a settled ledger, so leaving
   // the fight drops it whole. Every beat it had scheduled goes with it.
   stopBeats()
@@ -2462,8 +2561,8 @@ let endingAt = 0
 
 function died(cause: string = endLineOf(fight?.horror.id ?? '')): void {
   clearTimeout(advanceTimer)
-  clearTimeout(resolveTimer)
   resolving = null
+  resolved = null
   stopBeats()
   ledgers = routeDeath(ledgers, cause)
   chain = deal(ledgers.run!.seed, ledgers.run!.depth, CATALOG, GRAMMAR, ledgers.run!.history)

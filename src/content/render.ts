@@ -87,6 +87,24 @@ export const CASCADE = {
   tumbles: 2,
   /** Section 1: the stagger, so five dice read as five events. */
   land: 90,
+  /** Section 2: one claimed die lifting, alone, with its own `+n`. */
+  lift: 180,
+  /**
+   * Section 2: between the groups of a composite. Longer than a lift, so a
+   * full house reads as a triple *and* a pair rather than as five dice.
+   */
+  group: 300,
+  /** Section 2: before the line names itself, with its multiplier. */
+  line: 320,
+  /**
+   * Section 2: between riders. The longest gap in the cascade on purpose —
+   * this is the beat that teaches the pouch to a player who never opens it,
+   * and a rider that goes by at the speed of a die teaches nothing.
+   */
+  rider: 460,
+  /** Section 2: how long the total takes to climb, and in how many frames. */
+  climb: 350,
+  climbs: 7,
 } as const
 
 /** The same room on the 480 dial. art. 23: a re-render, never a rewrite. */

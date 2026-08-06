@@ -158,6 +158,7 @@ export {
   BEATS,
   DEATHS,
   EXCHANGE,
+  FIRING,
   NOUNS,
   LOOKS,
   ORIGINS,
@@ -180,6 +181,8 @@ export {
   saysAct,
   saysBound,
   saysClaim,
+  saysFiring,
+  saysLine,
   saysDeath,
   saysDie,
   saysExchange,
@@ -230,6 +233,7 @@ import {
   DEATHS,
   END_LINES,
   EXCHANGE,
+  FIRING,
   INTENT_SAYS,
   LABELS,
   LOOKS,
@@ -344,6 +348,10 @@ export function everyString(): readonly Utterance[] {
       // him in live play, so both are thoughts — the `{dealt}` tokens are
       // filled by `saysExchange` and are words like any other to the lint.
       ...Object.values(EXCHANGE),
+      // art. 119: a rider gets its own beat, and what it says in it is him
+      // watching a bone he chose to spend do the thing it does. Live play,
+      // so a thought; the `{n}` is filled by `saysFiring`.
+      ...Object.values(FIRING),
       ...Object.values(DEATHS),
       // card 71: rewritten this wave — impending, and carrying both halves.
       // The `{n}` tokens are filled by `saysIntent` and are words like any

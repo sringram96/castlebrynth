@@ -152,5 +152,13 @@ export { advanceFight, openFight, outcomeOf, withTurn } from './fight.js'
  * an event that has already happened; nothing here holds a timer, and
  * `atOnce` is how art. 116 gets the same timeline with every delay zero.
  */
-export type { Beat, Frame, Hit, Shown, Timings } from './beats.js'
-export { atOnce, restingAt, rollBeats, tumblingFace } from './beats.js'
+export type { Beat, Fired, Frame, Hit, Shown, Timings } from './beats.js'
+export {
+  atOnce,
+  cascadeBeats,
+  firedOn,
+  groupsOf,
+  restingAt,
+  rollBeats,
+  tumblingFace,
+} from './beats.js'

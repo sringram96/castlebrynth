@@ -28,8 +28,24 @@
  * two of them to disagree about an outcome.
  */
 
+import { cursedValue, worth } from './combos.js'
 import { casting } from './turn.js'
-import type { Casting, DieId, Face, Fight } from './types.js'
+import type {
+  BondId,
+  Casting,
+  Claim,
+  DieId,
+  Face,
+  Fight,
+  Goods,
+  Landed,
+  Line,
+  Resolution,
+  Rider,
+  RiderEffect,
+  RiderId,
+  Tier,
+} from './types.js'
 
 /** Which body a beat is landing on, for the flash and the shake (art. 119). */
 export type Hit = 'none' | 'them' | 'you'
@@ -70,6 +86,39 @@ export type Beat =
   /** Section 1: this die settles on its face. Dice do not appear; they land. */
   | { readonly kind: 'land'; readonly die: DieId; readonly face: Face }
   /**
+   * Section 2: **a claimed die lifts, alone**, brightening, with its own
+   * `+n`, and the running total climbs as it lands. `group` is which part of
+   * a composite it belongs to — a full house resolves as its triple and then
+   * its pair, so the *shape* of the combo is visible and not only its total.
+   */
+  | { readonly kind: 'lift'; readonly die: DieId; readonly value: number; readonly group: number }
+  /**
+   * art. 52: **the sisters pay only together.** The ghost joins the sum, so
+   * it joins it in its own moment — a bond that arrived inside a total is a
+   * bond the player never learns they are carrying (art. 54).
+   */
+  | { readonly kind: 'bond'; readonly bond: BondId; readonly value: number }
+  /** Section 2: **the line names itself**, with its multiplier. */
+  | { readonly kind: 'line'; readonly line: Line; readonly tier: Tier; readonly sum: number }
+  /**
+   * Section 2: **riders fire, one at a time**, each with its own line and its
+   * own mark. art. 119's second consequence: an effect that fires silently
+   * inside a total is an effect the player never learns.
+   */
+  | {
+      readonly kind: 'rider'
+      readonly die: DieId
+      readonly rider: RiderId
+      readonly effect: RiderEffect
+    }
+  /**
+   * Section 2: **the total climbs** to the final number rather than appearing.
+   * It is several frames because a climb is several frames; each carries the
+   * number the readout should be showing, so the arithmetic is never the
+   * screen's to invent.
+   */
+  | { readonly kind: 'climb' }
+  /**
    * art. 119: the settled state, which is where every timeline ends. It is
    * a beat rather than an absence because art. 1 asks a one-shot to *end* in
    * its settled state — a mark that is cleared by the beat after it can
@@ -86,6 +135,17 @@ export interface Timings {
   readonly tumbles: number
   /** Section 1: the stagger, so five dice read as five events. */
   readonly land: number
+  /** Section 2: between one claimed die lifting and the next. */
+  readonly lift: number
+  /** Section 2: between the groups of a composite, so the shape reads. */
+  readonly group: number
+  /** Section 2: before the line names itself. */
+  readonly line: number
+  /** Section 2: between riders. They fire one at a time or they teach nothing. */
+  readonly rider: number
+  /** Section 2: how long the total takes to climb, and in how many frames. */
+  readonly climb: number
+  readonly climbs: number
 }
 
 /**
@@ -174,6 +234,180 @@ export function rollBeats(
     })
   }
   frames.push({ beat: { kind: 'settled' }, after: timings.land, shows: rest })
+  return frames
+}
+
+// ── Section 2: the cascade (card 75) ───────────────────────────────────
+
+/**
+ * art. 64: a composite is a single claim, and its *shape* is the thing worth
+ * seeing. Two pair, a full house, three pairs and two triples resolve group
+ * by group, so a player can see **why** it was a full house rather than only
+ * what it came to. Everything else — a set, a run, the floor — is one group,
+ * because it has one shape and breaking it up would say something untrue
+ * about it.
+ *
+ * Groups come out largest first, ties in the order the dice lie, which is
+ * the order the line's own name reads in.
+ */
+const COMPOSITES: ReadonlySet<Line> = new Set<Line>([
+  'two-pair',
+  'full-house',
+  'three-pairs',
+  'two-triples',
+])
+
+export function groupsOf(claim: Claim): readonly (readonly Landed[])[] {
+  if (!COMPOSITES.has(claim.line)) return [claim.dice]
+  const byValue = new Map<number, Landed[]>()
+  for (const landed of claim.dice) {
+    const held = byValue.get(landed.face.value)
+    if (held === undefined) byValue.set(landed.face.value, [landed])
+    else held.push(landed)
+  }
+  return [...byValue.values()].sort((one, other) => other.length - one.length)
+}
+
+/** art. 51: which rider fired off which die, so each can have its own beat. */
+export interface Fired {
+  readonly die: DieId
+  readonly rider: Rider
+}
+
+export function firedOn(
+  claims: readonly Claim[],
+  riders: readonly Rider[],
+): readonly Fired[] {
+  const book = new Map<string, Rider>(riders.map((rider) => [rider.id as string, rider]))
+  const fired: Fired[] = []
+  for (const claim of claims) {
+    for (const landed of claim.dice) {
+      const id = landed.face.rider
+      if (id === undefined) continue
+      const rider = book.get(id as string)
+      if (rider !== undefined) fired.push({ die: landed.die, rider })
+    }
+  }
+  return fired
+}
+
+/**
+ * Section 2: **the cascade.** The order is settled and each beat says one
+ * thing — the claimed dice lift one at a time, the line names itself with
+ * its multiplier, the riders fire alone, and only then does the total climb
+ * to the number that is about to land.
+ *
+ * Two things about it are the article rather than the arrangement.
+ *
+ * **The riders come before the total, and the total before the blow**,
+ * because that is the order the engine already resolves them in (`src/lots/
+ * fight.ts`): the claims land, the riders fire, then the intent. The beats
+ * reveal an order that is already true rather than inventing a dramatic one.
+ *
+ * **The arithmetic is the engine's, not the cascade's.** Every heal is shown
+ * against the ceiling the engine caps at and every cost against what the
+ * heals left, so the last frame agrees with the fight the engine already
+ * advanced to. `test/beats.cascade.test.ts` asserts exactly that, because a
+ * beat whose settled state is not the whole truth is a wrong beat (art. 119).
+ */
+export function cascadeBeats(
+  before: Fight,
+  after: Fight,
+  resolution: Resolution,
+  goods: Goods,
+  timings: Timings,
+): readonly Frame[] {
+  const frames: Frame[] = []
+  const cursed = cursedValue(before.turn.intent)
+  const landed = casting(before.turn).map((one) => one.die)
+  const lifted: DieId[] = []
+  // art. 57's running total, built rather than announced. It starts at
+  // nothing: the claim was made by the press, and the cascade is that claim
+  // being assembled where the player can watch it.
+  let attack = 0
+  let yourHealth = before.yourHealth
+  const horrorHealth = before.horrorHealth
+  const push = (beat: Beat, wait: number, hit: Hit = 'none'): void => {
+    frames.push({
+      beat,
+      after: frames.length === 0 ? 0 : wait,
+      shows: { attack, horrorHealth, yourHealth, landed, lifted: [...lifted], hit },
+    })
+  }
+
+  for (const claim of before.turn.claims) {
+    groupsOf(claim).forEach((group, at) => {
+      group.forEach((one, i) => {
+        const value = worth(one.face.value, cursed, goods.talismans)
+        attack += value
+        lifted.push(one.die)
+        push(
+          { kind: 'lift', die: one.die, value, group: at },
+          i === 0 && at > 0 ? timings.group : timings.lift,
+        )
+      })
+    })
+    // art. 52: the ghost sister joins the sum, and joins it visibly. It is
+    // spaced like a rider because that is what it is to the player — a thing
+    // the pouch did that the hand alone does not explain.
+    if (claim.bond !== undefined) {
+      const ghost = worth(claim.dice[0]?.face.value ?? 1, cursed, goods.talismans)
+      attack += ghost
+      push({ kind: 'bond', bond: claim.bond, value: ghost }, timings.rider)
+    }
+    push({ kind: 'line', line: claim.line, tier: claim.tier, sum: claim.sum }, timings.line)
+  }
+
+  // art. 51, art. 86: the riders, one at a time. Heals then costs, which is
+  // the order `advanceFight` charges them in — so what the beats show and
+  // what the ledger holds cannot come apart at the ceiling.
+  const fired = firedOn(before.turn.claims, goods.riders)
+  let given = 0
+  for (const one of fired) {
+    if (one.rider.onUse.kind !== 'heal') continue
+    given += one.rider.onUse.amount
+    yourHealth = Math.min(before.yourHealthMax, before.yourHealth + given)
+    push({ kind: 'rider', die: one.die, rider: one.rider.id, effect: one.rider.onUse }, timings.rider)
+  }
+  const healed = yourHealth
+  let taken = 0
+  for (const one of fired) {
+    if (one.rider.onUse.kind !== 'wound') continue
+    taken += one.rider.onUse.amount
+    yourHealth = healed - taken
+    push({ kind: 'rider', die: one.die, rider: one.rider.id, effect: one.rider.onUse }, timings.rider)
+  }
+
+  // **The total climbs.** From what the dice are worth to what the line
+  // makes of them — which is the payoff of the whole cascade, and the reason
+  // the line named its multiplier without spending it a moment ago.
+  const climbTo = Math.max(0, resolution.harmDealt)
+  if (climbTo !== attack) {
+    const steps = Math.max(1, timings.climbs)
+    const from = attack
+    const each = Math.max(0, Math.round(timings.climb / steps))
+    for (let step = 1; step <= steps; step++) {
+      const along = step / steps
+      // Decelerating into the number, so the last of it reads as arriving
+      // rather than as stopping. Deterministic, like everything else here.
+      attack =
+        step === steps ? climbTo : Math.round(from + (climbTo - from) * (1 - (1 - along) ** 2))
+      push({ kind: 'climb' }, each)
+    }
+  }
+
+  frames.push({
+    beat: { kind: 'settled' },
+    after: frames.length === 0 ? 0 : timings.line,
+    shows: {
+      attack: climbTo,
+      horrorHealth: after.horrorHealth,
+      yourHealth: after.yourHealth,
+      landed,
+      lifted: [],
+      hit: 'none',
+    },
+  })
   return frames
 }
 
