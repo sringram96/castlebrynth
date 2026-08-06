@@ -54,7 +54,6 @@ import {
   saysAct,
   saysBound,
   saysDoor,
-  saysClaim,
   saysDeath,
   saysDie,
   saysExchange,
@@ -67,6 +66,21 @@ import {
   faceSays,
   saysAmend,
   saysGood,
+  // card 94: the two materials, as authored drawings. The tray colours them
+  // at paint time; nothing about what they are is decided here (art. 100).
+  BONE_BODY,
+  BONE_RAMP,
+  BONE_RAMP_LIT,
+  BONE_SCAR,
+  IRON_BODY,
+  IRON_EMPTY,
+  IRON_RAMP,
+  IRON_RAMP_LIT,
+  IRON_RAMP_NULL,
+  KIND_INK,
+  dieLabel,
+  glyphFor,
+  pipsFor,
 } from './content/index.js'
 import type { Act, Bands, Pick, Tappable } from './descent/index.js'
 import {
@@ -97,6 +111,8 @@ import {
 } from './descent/index.js'
 import type { Playing } from './shell/beats.js'
 import { REAL_CLOCK, playBeats } from './shell/beats.js'
+import type { Layer } from './shell/faces.js'
+import { paintFace } from './shell/faces.js'
 import { wayOn } from './shell/strip.js'
 import type { Held } from './shell/band.js'
 import { HUSHED, answered, bandLine, holding, noticed } from './shell/band.js'
@@ -118,11 +134,13 @@ import {
   turnLots,
 } from './hinge/index.js'
 import type {
+  Amend,
   Beat,
   Card,
   Hit,
   Die,
   DieId,
+  Face,
   Fight,
   Frame,
   Goods,
@@ -150,9 +168,11 @@ import {
   freshCard,
   harm,
   keep,
+  loadedFaces,
   recast,
   ridersFired,
   rollBeats,
+  worth,
   sealed,
   tierFor,
   tumblingFace,
@@ -1402,21 +1422,13 @@ function theFightPanel(): void {
   const armorNow = corroded ? 0 : now.armor
   const totals = document.createElement('div')
   totals.className = 'totals'
-  // art. 119: while a cascade runs, the running total is the cascade's — it
-  // is being *built* out of the dice, one lift at a time, and a readout that
-  // showed the finished number would give away the whole beat before the
-  // first die had lifted.
+  // card 94: **the attack is not read here any more.** There is exactly one
+  // running readout and it is the score row below — a number that stood in
+  // two places would be the spreadsheet the fight wave was told it was.
   totals.append(
-    reading(
-      READOUT.attack ?? '',
-      `${shown?.attack ?? now.turn.claims.reduce((sum, made) => sum + harm(made), 0)}`,
-    ),
     reading(READOUT.incoming ?? '', `${Math.max(0, now.turn.intent.amount - armorNow)}`),
     reading(READOUT.unused ?? '', `${unused(now.turn).length}`),
   )
-  // art. 119: **the line names itself, with its multiplier** — and then
-  // stands, because what it says is what the climb is about to do.
-  if (named !== null) totals.append(reading('', named))
   const priced = pricedNow()
   if (priced > 0) totals.append(reading(READOUT.cost ?? '', `${priced}`))
   // art. 57: everything visible, and art. 65: a bleed is a number the plan
@@ -1442,6 +1454,7 @@ function theFightPanel(): void {
   }
   totals.append(glyph)
   fightPanel.append(totals)
+  fightPanel.append(theScore(now))
 
   // The hand, as it lies. art. 72's four states are the die slot's business
   // and have not moved.
@@ -1491,13 +1504,39 @@ function theFightPanel(): void {
 function trinketSlot(held: Trinket): HTMLButtonElement {
   const landed = resolving?.amends.find((one) => one.trinket === held.id) ?? null
   const now = beatNow?.kind === 'amend' && beatNow.rolled.trinket === held.id
-  const el = slot(`trinket${landed === null ? '' : ' rolled'}${now ? ' landing' : ''}`)
-  el.textContent = (LABELS[held.id as string] ?? (held.id as string)).replace(/^the /, '')
-  if (landed !== null) {
-    const face = document.createElement('span')
-    face.className = 'face'
-    face.textContent = faceSays(landed.face)
-    el.append(face)
+  // card 94: **what it is holding, before the press.** The face was settled
+  // when the turn opened — a turn's amend lot is a pure function of where you
+  // are (`loadedFaces`) — so this reads it rather than rolling it, and the
+  // player reads it *while still choosing a line*, which is the only moment
+  // the information can change a decision. It is art. 42's promise said about
+  // a carried thing: the number is on the frame from the top of the turn.
+  const face = landed?.face ?? loaded().get(held.id as string) ?? null
+  const el = slot(
+    `trinket${landed === null ? '' : ' rolled'}${now ? ' landing' : ''}${
+      face?.kind === 'null' ? ' idle' : ''
+    }`,
+  )
+  el.append(ironFace(face, { lit: now }))
+  // The caption is the standing explanation and the pop is only ever the
+  // amount. That split is why a trinket never needs a log line, and it is what
+  // makes the mechanic learnable by a player who was never told.
+  const caption = document.createElement('span')
+  caption.className = 'cap'
+  const said = document.createElement('b')
+  said.textContent = face === null ? '' : faceSays(face)
+  if (face !== null) said.style.color = KIND_INK[face.kind]
+  const name = document.createElement('i')
+  name.textContent = (LABELS[held.id as string] ?? (held.id as string)).replace(/^the /, '')
+  caption.append(said, name)
+  el.append(caption)
+  // art. 119: **and in the moment it lands, its own number, on itself.** A
+  // block moves no readout because it does not add to the blow — what it
+  // moved is the incoming, which the `struck` beat shows with its own
+  // `blocked`. A null pops nothing and stays dark: nothing happened, so
+  // nothing is claimed.
+  if (now && beatNow?.kind === 'amend' && beatNow.rolled.face.kind !== 'null') {
+    const { face: rolled, amount } = beatNow.rolled
+    el.append(pop(amendPop(rolled.kind, amount), KIND_INK[rolled.kind]))
   }
   const says = saysGood(held, knownMarks(ledgers.permanent))
   el.setAttribute('aria-label', says)
@@ -1506,6 +1545,53 @@ function trinketSlot(held: Trinket): HTMLButtonElement {
     band = noticed(says)
     paint()
   }
+  return el
+}
+
+/**
+ * card 94: the pop's text, which is **only ever the amount** — the caption
+ * under the thing has already said what kind of amount it is, and the colour
+ * says it a second time (`KIND_INK`).
+ *
+ * A block is a bare number rather than the demo's shield character, and that
+ * is the one place this departs from the signed-off reference. The reason is
+ * the wave's own instruction about a glyph that cannot be made legible: `⛊` is
+ * not in the default serif on either mobile platform, so it renders as a
+ * fallback box on the phone the tuning has to be settled on. The shield is
+ * still there, drawn rather than typed — it is the glyph on the iron face the
+ * number is popping off.
+ */
+function amendPop(kind: Amend['kind'], amount: number): string {
+  if (kind === 'cost') return `−${amount}`
+  if (kind === 'block') return `${amount}`
+  return `+${amount}`
+}
+
+/**
+ * card 94: what each carried thing is holding this turn, by id.
+ *
+ * Empty outside a fight and empty for a run carrying nothing, which is almost
+ * every run almost all of the time — the flexibility law is `loadedFaces`'s
+ * and this does not get to weaken it (card 93).
+ */
+function loaded(): ReadonlyMap<string, Amend> {
+  const now = fight
+  if (now === null || ledgers.run === null) return new Map()
+  const lot = turnLots(ledgers.run.seed, ledgers.run.at.step, now.turnNumber)(AMEND_LOT)
+  return new Map(loadedFaces(goods(), lot).map((one) => [one.trinket as string, one.face]))
+}
+
+/**
+ * card 94: **the number, on the thing that made it.** It rises off its own
+ * source and is gone, so attribution is spatial and never has to be written
+ * down. Nothing is decided here — the amount was computed before the first
+ * frame was drawn (art. 119).
+ */
+function pop(text: string, ink: string): HTMLSpanElement {
+  const el = document.createElement('span')
+  el.className = 'pop'
+  el.textContent = text
+  el.style.color = ink
   return el
 }
 
@@ -1519,7 +1605,7 @@ function boundSlot(die: Die, horror: string): HTMLButtonElement {
   // the beat it takes it. After that the die is simply somebody else's, and
   // the bar across it is what says so (art. 70).
   const el = slot(`die bound${beatNow?.kind === 'bound' ? ' dragged' : ''}`)
-  el.append(pips(die.faces[0]?.value ?? 1))
+  el.append(boneFace(die.faces[0]?.value ?? 1))
   el.setAttribute('aria-label', saysBound(die, horror))
   el.onclick = () => {
     settle()
@@ -1541,21 +1627,23 @@ function pricedNow(): number {
   return woundedBy(ridersFired(now.turn.claims, goods().riders))
 }
 
-/** What the current selection would take, and for how much (arts 57, 72). */
+/**
+ * arts 57, 72: **why** the selection is worth what it is worth.
+ *
+ * card 94: it no longer says *what* — the score row does, in two boxes and a
+ * caption, live. This used to print the line and its harm as well, which was
+ * right while the tray had no running readout and is a third phrasing of one
+ * fact now that it has one. What is left is the half the boxes cannot carry: a
+ * selection that fits nothing, and a line that is on the table and shut.
+ */
 function claimOffer(): string | null {
   const now = fight
   if (now === null || phase !== 'claim') return null
   if (selected.length === 0) return null
-  const line = bestLine()
-  if (line === null) return NOTICES['claim.exact'] ?? null
-  const offer = saysClaim(line, scoreOf(line))
+  if (bestLine() === null) return NOTICES['claim.exact'] ?? null
   // The floor is always on offer (art. 46), so "the offer is the floor" is
   // exactly the case art. 72 says owes the thumb a reason as well as a price.
-  //
-  // card 71: and the reason is a *reason*, not a refusal. This used to print
-  // the offer and "No combo uses exactly these dice" side by side, which
-  // reads as the tray offering something and denying it in one breath.
-  if (!fitsNothing(now.turn, selected, LADDER)) return offer
+  if (!fitsNothing(now.turn, selected, LADDER)) return null
   // arts 63, 65: **and the reason has to be the true one.** A selection down
   // to the floor because the dice make nothing and a selection down to the
   // floor because the horror sealed the line it makes look identical, and the
@@ -1566,8 +1654,109 @@ function claimOffer(): string | null {
   // clause, said about a line instead of a verb).
   const shut = withheld(now.turn, selected)
   return shut === null
-    ? `${offer} · ${NOTICES['claim.floor'] ?? ''}`
-    : `${offer} · ${saysWithheld(shut.line, shut.why)}`
+    ? (NOTICES['claim.floor'] ?? null)
+    : saysWithheld(shut.line, shut.why)
+}
+
+/**
+ * card 94: **one readout, two boxes — `sum × line`.**
+ *
+ * It is live *before* Attack: selecting dice moves it, so what a claim is
+ * worth is visible while the claim is still a question. That is art. 42's
+ * promise carried from the intent to your own side of the turn — the number
+ * is on the frame before the press, and choosing is planning.
+ *
+ * And it is the **only** running number in the fight. The wave's two rejected
+ * shapes both failed by putting the arithmetic somewhere other than where it
+ * came from (DESIGN.md records them), so the boxes hold the totals and every
+ * *source* speaks by popping its own amount on itself. Between them there is
+ * no ledger, no list, and nothing to read while the fight is happening.
+ *
+ * Through the cascade it reads art. 119's beats and computes nothing: the
+ * sum ticks as each claimed bone lifts, the multiplier lights when the line
+ * names itself, the two collapse into the blow, and the carried things add to
+ * that. Every number is a field off a frame that was settled before the first
+ * one was drawn.
+ */
+function theScore(now: Fight): HTMLDivElement {
+  const row = document.createElement('div')
+  row.className = 'score'
+  const running = shown !== null
+  const made = running ? lineNow : offered(now)
+  const sum = running ? (shown?.attack ?? 0) : (made?.sum ?? loose(now))
+  // The collapse: the two boxes become one number, and the one number is the
+  // blow. Past it the multiplier has been spent and says so by going dark.
+  const spent = running && collapsed
+  const times = spent ? null : (made?.times ?? null)
+
+  const op = document.createElement('div')
+  op.className = `op${times === null ? ' dead' : ''}`
+  op.textContent = '×'
+  row.append(
+    capped(
+      box(`${sum}`, sum === 0 && !running, pulsing()),
+      spent ? (READOUT.blow ?? '') : (READOUT.sum ?? ''),
+    ),
+    op,
+    capped(
+      box(times === null ? '—' : `${times}`, times === null, beatNow?.kind === 'line'),
+      spent || made === null ? '' : LADDER[made.line].name,
+    ),
+  )
+  // art. 69, one level down: the readout says the same thing in words to
+  // anyone reading the tray rather than looking at it, and it says it in the
+  // words the line's own beat uses (`saysLine`) rather than in a second set.
+  row.setAttribute(
+    'aria-label',
+    made === null ? `${sum}` : `${sum} · ${saysLine(made.line, made.times)}`,
+  )
+  return row
+}
+
+/** What the readout is showing: a line, its multiplier, and its raw sum. */
+interface Scored {
+  readonly line: Line
+  readonly times: number
+  readonly sum: number
+}
+
+/** What the current selection would claim, before it is claimed (arts 45, 53). */
+function offered(now: Fight): Scored | null {
+  const line = bestLine()
+  if (line === null) return null
+  const chosen = casting(now.turn).filter((one) => selected.includes(one.die))
+  const claim = assemble(line, chosen, LADDER, cursedValue(now.turn.intent), goods())
+  return { line, times: claim.tier.multiplier, sum: claim.sum }
+}
+
+/** Whether the sum box is on a beat that moved it (art. 119). */
+function pulsing(): boolean {
+  const kind = beatNow?.kind
+  return kind === 'lift' || kind === 'bond' || kind === 'climb' || kind === 'amend'
+}
+
+function box(text: string, dead: boolean, pulse: boolean): HTMLDivElement {
+  const el = document.createElement('div')
+  el.className = `box${dead ? ' dead' : ''}${pulse ? ' pulse' : ''}`
+  el.textContent = text
+  return el
+}
+
+function capped(el: HTMLElement, caption: string): HTMLDivElement {
+  const wrap = document.createElement('div')
+  const cap = document.createElement('span')
+  cap.className = 'cap2'
+  cap.textContent = caption
+  wrap.append(el, cap)
+  return wrap
+}
+
+/** What the selected dice are worth before any line is applied to them. */
+function loose(now: Fight): number {
+  const cursed = cursedValue(now.turn.intent)
+  return casting(now.turn)
+    .filter((one) => selected.includes(one.die))
+    .reduce((sum, one) => sum + worth(one.face.value, cursed, goods().talismans), 0)
 }
 
 /**
@@ -1584,13 +1773,6 @@ function bestLine(): Line | null {
   return lines.reduce((best, line) =>
     LADDER[line].multiplier > LADDER[best].multiplier ? line : best,
   )
-}
-
-function scoreOf(line: Line): number {
-  const now = fight
-  if (now === null) return 0
-  const chosenDice = casting(now.turn).filter((landed) => selected.includes(landed.die))
-  return harm(assemble(line, chosenDice, LADDER, cursedValue(now.turn.intent), goods()))
 }
 
 /**
@@ -1625,7 +1807,7 @@ function scoreOf(line: Line): number {
 function pouch(): void {
   pouchRegion.replaceChildren()
   const run = ledgers.run!
-  for (const die of run.hand.dice) pouchRegion.append(dieSlot(die, null, false))
+  for (const die of run.hand.dice) pouchRegion.append(dieReading(die, ''))
   // arts 55–56: the invitation, until the first find fills it.
   for (let n = run.hand.dice.length; n < ledgers.permanent.handSize; n++) {
     pouchRegion.append(emptySlot())
@@ -1633,10 +1815,18 @@ function pouch(): void {
 
   const spares = sparesOf(ledgers.permanent)
   if (spares.length > 0) {
-    const rule = document.createElement('div')
-    rule.className = 'rule'
-    pouchRegion.append(rule)
-    for (const die of spares) pouchRegion.append(spareSlot(die))
+    pouchRegion.append(hairline(''))
+    for (const die of spares) pouchRegion.append(dieReading(die, 'spare'))
+  }
+
+  // card 94: **and the carried things, where they can be read.** A trinket
+  // could be inspected in a fight and nowhere else, which is the one place a
+  // player is too busy to read six faces. The dashed hairline is the whole
+  // separator the two materials need now that they are two materials.
+  const trinkets = carriedTrinkets(goods())
+  if (trinkets.length > 0) {
+    pouchRegion.append(hairline('iron'))
+    for (const one of trinkets) pouchRegion.append(trinketReading(one))
   }
 
   // art. 68: what you carry is a possession and answers the same way.
@@ -1656,26 +1846,97 @@ function slot(className: string): HTMLButtonElement {
   return el
 }
 
-/** The pips, so a die reads as a die rather than as a number (art. 72). */
-const PIP_AT: Readonly<Record<number, readonly number[]>> = {
-  1: [4],
-  2: [0, 8],
-  3: [0, 4, 8],
-  4: [0, 2, 6, 8],
-  5: [0, 2, 4, 6, 8],
-  6: [0, 2, 3, 5, 6, 8],
+// ── The two materials (card 94, arts 100, 113) ─────────────────────────
+//
+// The playtest could not tell the six from the carried things, and the reason
+// was that they were the same box in two border colours. They are two
+// **objects** now: warm rounded pipped bone, cold bevelled glyphed iron. The
+// bar the wave set is that the rows are tellable apart with the screen upside
+// down, which a colour swap alone does not pass — so the silhouette and the
+// mark move as well as the hue.
+//
+// The drawings are content's (`src/content/faces.ts`) and are indices into a
+// ramp, never colours (art. 100). Everything below hands one to the painter
+// with the ramp the moment calls for, which is how one drawing lights two
+// ways without a second drawing existing (art. 115).
+
+/** How large a face is drawn in a tray slot, and in a row of an inspect. */
+const FACE_IN_SLOT = 32
+const FACE_IN_ROW = 24
+
+function faceCanvas(layers: readonly Layer[], size: number): HTMLCanvasElement {
+  const el = document.createElement('canvas')
+  el.className = 'mark'
+  // art. 25's reasoning, one level down: the tray is DOM and its sizes are
+  // CSS, but an authored pixel still may not land on half a device pixel —
+  // a face at a fractional scale is a face with soft pips.
+  paintFace(el, layers, size, window.devicePixelRatio > 0 ? window.devicePixelRatio : 1)
+  return el
 }
 
-function pips(value: number): HTMLSpanElement {
-  const grid = document.createElement('span')
-  grid.className = 'pips'
-  const at = new Set(PIP_AT[value] ?? [])
-  for (let cell = 0; cell < 9; cell++) {
-    const box = document.createElement('span')
-    if (at.has(cell)) box.append(document.createElement('i'))
-    grid.append(box)
+/**
+ * One bone, showing a value. `lit` is art. 119 §2's claimed die taking the top
+ * of its own ramp; `scar` is arts 54 and 86's cost face, **marked where it
+ * sits** — the pusher's price is on its 1, and this is how a player learns
+ * that it is on the 1.
+ */
+function boneFace(
+  value: number,
+  { lit = false, scar = false, size = FACE_IN_SLOT } = {},
+): HTMLCanvasElement {
+  const ramp = lit ? BONE_RAMP_LIT : BONE_RAMP
+  const layers: Layer[] = [
+    { draw: BONE_BODY, ramp },
+    { draw: pipsFor(value), ramp },
+  ]
+  if (scar) layers.push({ draw: BONE_SCAR, ramp })
+  return faceCanvas(layers, size)
+}
+
+/**
+ * One trinket, showing what it is holding. A face it has not rolled yet is a
+ * slot in the metal with nothing in it; a null is the same drawing gone dull,
+ * because *nothing happened* is a state of the thing rather than another thing.
+ */
+function ironFace(
+  face: Amend | null,
+  { lit = false, size = FACE_IN_SLOT } = {},
+): HTMLCanvasElement {
+  if (face === null) {
+    return faceCanvas(
+      [
+        { draw: IRON_BODY, ramp: IRON_RAMP },
+        { draw: IRON_EMPTY, ramp: IRON_RAMP },
+      ],
+      size,
+    )
   }
-  return grid
+  const ramp = face.kind === 'null' ? IRON_RAMP_NULL : lit ? IRON_RAMP_LIT : IRON_RAMP
+  return faceCanvas(
+    [
+      { draw: IRON_BODY, ramp },
+      { draw: glyphFor(face.kind), ramp },
+    ],
+    size,
+  )
+}
+
+/**
+ * arts 54, 86: whether this face is the one that costs. It is read off the
+ * rider the face declares rather than off a flag, so a die whose price is
+ * retuned cannot end up wearing its scar on the wrong face.
+ */
+function bites(face: Face): boolean {
+  if (face.rider === undefined) return false
+  const carried = ALL_RIDERS.find((one) => one.id === face.rider)
+  return carried !== undefined && carried.onUse.kind === 'wound'
+}
+
+/** What a bone's cost face says under it, in the same words the band uses. */
+function costSays(face: Face): string {
+  const carried = ALL_RIDERS.find((one) => one.id === face.rider)
+  if (carried === undefined || carried.onUse.kind !== 'wound') return ''
+  return (READOUT.costs ?? '').replace('{n}', `${carried.onUse.amount}`)
 }
 
 /**
@@ -1716,16 +1977,27 @@ function dieSlot(die: Die, landed: Landed | null, claimed: boolean): HTMLButtonE
   )
   if (landed !== null) {
     const face = air ? die.faces[tumblingFace(landed.die, spun, die.body)] : landed.face
-    el.append(pips(face?.value ?? landed.face.value))
+    // card 94: bone, and the scar on the face that costs — a die lying on the
+    // table says which of its faces this one is (arts 54, 86), so a player who
+    // is about to claim the pusher's 1 can see the price before they select it.
+    el.append(
+      boneFace(face?.value ?? landed.face.value, {
+        lit: lift,
+        scar: face !== undefined && bites(face),
+      }),
+    )
   }
   // …with its own small `+n`, in the moment it lifts and in no other. A
   // number that stood on every lifted die would be a column of arithmetic;
   // this is one die saying what it was worth.
+  //
+  // card 94: **and it pops off the die that made it.** The number leaves the
+  // thing it came from and the readout ticks at the same instant, so
+  // attribution is spatial and nothing has to be written down. Two earlier
+  // shapes were built and rejected and are recorded in DESIGN.md so neither
+  // returns: numbers that flew away from their source, and a written receipt.
   if (landed !== null && beatNow?.kind === 'lift' && beatNow.die === landed.die) {
-    const gain = document.createElement('span')
-    gain.className = 'gain'
-    gain.textContent = `+${beatNow.value}`
-    el.append(gain)
+    el.append(pop(`+${beatNow.value}`, KIND_INK.add))
   }
   el.setAttribute('aria-label', saysDie(die, landed?.face))
   // art. 69: silence is a bug. A die answers with its declared truth whether
@@ -1760,18 +2032,87 @@ function emptySlot(): HTMLButtonElement {
   return el
 }
 
+// ── A thing shows its faces (card 94, art. 54) ─────────────────────────
+//
+// **art. 54 asks for declaration on inspect, and a sentence is not a
+// declaration.** A die at rest used to be a hollow box and a trinket was a
+// name: seven identical boxes in the pouch, and the best die in the game
+// advertising itself as the worst on the choosing screen. So a thing at rest
+// draws **every face, in the order a roll indexes them** — with the cost face
+// marked where it sits (arts 54, 86) and every trinket face wearing its
+// plain-word label, in the same words the tray and the band use.
+//
+// It is not an inspect button and not a tooltip (art. 68 abolished both): it
+// is what the thing looks like when it is not on the table. The tap still
+// answers in the word band, exactly as every tap in the game does.
+
+/** The dashed hairline between two materials. It needs no heading (card 94). */
+function hairline(kind: string): HTMLDivElement {
+  const el = document.createElement('div')
+  el.className = `rule ${kind}`.trim()
+  return el
+}
+
+function readingRow(className: string, said: string, name: string): HTMLButtonElement {
+  const el = document.createElement('button')
+  el.className = `reading ${className}`.trim()
+  const label = document.createElement('span')
+  label.className = 'name'
+  label.textContent = name
+  el.append(label)
+  el.setAttribute('aria-label', said)
+  return el
+}
+
+function faceWell(mark: HTMLCanvasElement, label: string, ink?: string): HTMLSpanElement {
+  const well = document.createElement('span')
+  well.className = 'fw'
+  const said = document.createElement('span')
+  said.className = 'fl'
+  said.textContent = label
+  if (ink !== undefined && label !== '') said.style.color = ink
+  well.append(mark, said)
+  return well
+}
+
 /**
- * art. 60: a die you own and are not carrying. Tapping it answers with its
- * declared truth like any possession (art. 68) and commits nothing — which
- * dice descend is settled at the waking, not here.
+ * art. 60, art. 68: a die you own. Tapping it answers with its declared truth
+ * and commits nothing — which dice descend is settled at the waking, not here.
+ * What is new is that it no longer has to be tapped to be told apart.
  */
-function spareSlot(die: Die): HTMLButtonElement {
-  const el = slot('spare')
-  el.append(pips(die.faces[0]?.value ?? 1))
-  el.setAttribute('aria-label', saysDie(die))
+function dieReading(die: Die, kind: string, said = saysDie(die)): HTMLButtonElement {
+  const el = readingRow(`die ${kind}`.trim(), said, dieLabel(die))
+  const faces = document.createElement('span')
+  faces.className = 'faces'
+  for (const face of die.faces) {
+    faces.append(faceWell(
+      boneFace(face.value, { scar: bites(face), size: FACE_IN_ROW }),
+      costSays(face),
+      KIND_INK.cost,
+    ))
+  }
+  el.append(faces)
   el.onclick = () => {
     settle()
-    band = noticed(saysDie(die))
+    band = noticed(said)
+    paint()
+  }
+  return el
+}
+
+/** The same, for the other material: a glyph a face, and its own word under it. */
+function trinketReading(held: Trinket): HTMLButtonElement {
+  const says = saysGood(held, knownMarks(ledgers.permanent))
+  const el = readingRow('iron', says, LABELS[held.id as string] ?? (held.id as string))
+  const faces = document.createElement('span')
+  faces.className = 'faces'
+  for (const face of held.rolls) {
+    faces.append(faceWell(ironFace(face, { size: FACE_IN_ROW }), faceSays(face), KIND_INK[face.kind]))
+  }
+  el.append(faces)
+  el.onclick = () => {
+    settle()
+    band = noticed(says)
     paint()
   }
   return el
@@ -1959,15 +2300,19 @@ function doAct(one: Act): void {
  * outgrown the hand. Nothing about it is new vocabulary — the dice are
  * tapped the way every die in the game is tapped, the picks are staged the
  * way a claim is (art. 72), and one plain verb commits (art. 66).
+ *
+ * card 94: **and the screen whose whole job is telling dice apart now does
+ * it.** It drew every die as its first face, so a plain bone, the pusher and
+ * the careful all rendered as a 1 — a wall of ones, with the best die in the
+ * game advertising itself as the worst. Each is its name and its whole face
+ * set now, and the cost face wears its scar where it sits.
  */
 function choosingPanel(): void {
   const permanent = ledgers.permanent
   const size = permanent.handSize
   for (const die of permanent.pouch.dice) {
     const at = picked.indexOf(die.id)
-    const el = slot(`die${at < 0 ? ' rest' : ' sel'}`)
-    el.append(pips(die.faces[0]?.value ?? 1))
-    el.setAttribute('aria-label', saysDie(die))
+    const el = dieReading(die, at < 0 ? '' : 'sel')
     el.onclick = () => {
       settle()
       // art. 68: a tap answers first, always — the pick is what it leaves.
@@ -2418,8 +2763,23 @@ let beatNow: Beat | null = null
  * art. 119: **the line names itself**, and then stands. The name is a
  * readout and lives in the tray with the rest of art. 57's numbers; the
  * band is for prose, which in a cascade is what the riders say.
+ *
+ * card 94: it stands in the multiplier box of the score row, which is where
+ * the number it is about to multiply already is. Held as the line rather than
+ * as a sentence, so the box, its caption and the readout's own label are three
+ * views of one fact instead of three phrasings of it.
  */
-let named: string | null = null
+let lineNow: Scored | null = null
+/**
+ * card 94: **whether the two boxes have collapsed into the blow.**
+ *
+ * The multiplier is spent the moment the total starts climbing to what the
+ * line made of it, so it goes dark and the sum's caption becomes *the blow*.
+ * It is set by the beat rather than by a timer, and the beats it is set by are
+ * every beat that can follow the riders — a line at ×1 has nothing to climb,
+ * and its collapse still has to happen.
+ */
+let collapsed = false
 /**
  * art. 119 §3: **the blow.** Which body the beat now is flashing, how far
  * the lunge has knocked the horror back, and whether the frame is offset.
@@ -2437,6 +2797,22 @@ let moved = false
 const LUNGE = 0.14
 /** art. 22: the shake, in **game** pixels. `show` turns it into device ones. */
 const SHAKE_PIXELS = 2
+
+/**
+ * card 94: the beats past which the multiplier has been spent. `rider` and
+ * `bond` are deliberately absent — they fire between the line and the climb,
+ * and the line is still the thing being paid out while they do.
+ */
+const COLLAPSES: ReadonlySet<Beat['kind']> = new Set<Beat['kind']>([
+  'climb',
+  'amend',
+  'strike',
+  'fed',
+  'struck',
+  'bled',
+  'bound',
+  'ended',
+])
 
 function begin(frames: readonly Frame[], lands: () => void = paint): void {
   stopBeats()
@@ -2476,6 +2852,10 @@ function showFrame(frame: Frame, first: boolean): void {
   // and spending that gesture anywhere else spends it for nothing — so it is
   // the intent landing on you, and nothing else in the game, ever.
   jolted = frame.beat.kind === 'struck' && frame.beat.amount > 0
+  // card 94: the sum and the multiplier collapse into the blow, and they do
+  // it on the first beat that could follow the riders — the climb where there
+  // is one, and the thing that would have come after it where there is not.
+  if (COLLAPSES.has(frame.beat.kind)) collapsed = true
   speak(frame.beat)
   // The first frame gets the whole screen, because it is the answer to a
   // press: the strip has to lose the verb that started this in the same
@@ -2509,7 +2889,7 @@ function speak(beat: Beat): void {
       band = answered(saysAmend(beat.rolled))
       return
     case 'line':
-      named = saysLine(beat.line, beat.tier.multiplier)
+      lineNow = { line: beat.line, times: beat.tier.multiplier, sum: beat.sum }
       return
     case 'settled':
       if (resolving !== null) band = answered(saysExchange(resolving))
@@ -2560,7 +2940,8 @@ function settleMarks(): void {
   shown = null
   spun = 0
   beatNow = null
-  named = null
+  lineNow = null
+  collapsed = false
   flare = 'none'
   knocked = 0
   jolted = false

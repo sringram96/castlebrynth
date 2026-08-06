@@ -9,6 +9,7 @@ import {
   claim,
   decide,
   didFire,
+  loadedFaces,
   rollAmends,
   turnedBy,
   worthOf,
@@ -126,6 +127,66 @@ describe('card 93 §1 — carrying none draws nothing', () => {
       const was = before.depths[at]!
       expect(now.depths[at], `depth seed ${was.seed}`).toEqual(was)
     }
+  })
+})
+
+describe('card 94 §3 — the caption cannot lie about what is loaded', () => {
+  /**
+   * **The face was settled when the turn opened.** A turn's amend lot is a
+   * pure function of the seed, the step and the turn number, so reading the
+   * face before the press rolls nothing — and the caption in the tray is
+   * therefore the same face the beat lands on, by construction rather than by
+   * care. `rollAmends` is written on top of `loadedFaces` for exactly that
+   * reason: one statement of *which face*, and no second one to drift.
+   */
+  it('shows the face the beat will land on, face for face', () => {
+    const carrying: Goods = {
+      ...NOTHING,
+      trinkets: [
+        trinket('t.saint', [{ kind: 'block', amount: 6 }, { kind: 'null' }]),
+        trinket('t.sliver', [{ kind: 'per', amount: 2 }, { kind: 'cost', amount: 5 }]),
+      ],
+    }
+    for (const values of [[3, 3, 4, 5, 6, 6], [2, 2, 2, 4, 5, 6], [6, 6, 1, 2, 3, 4]]) {
+      for (const draws of [[0], [0.9], [0.2, 0.7]]) {
+        const turn = claimed(values)
+        // Two independent lots off the same stream: the caption's and the
+        // roll's. In the shell they are two calls to `turnLots(...)(AMEND_LOT)`
+        // and this is the same thing said in a fixture.
+        const rolled = rollAmends(turn, carrying, counting(draws))
+        const loaded = loadedFaces(carrying, counting(draws))
+        expect(loaded.map((one) => one.trinket)).toEqual(rolled.map((one) => one.trinket))
+        expect(loaded.map((one) => one.face)).toEqual(rolled.map((one) => one.face))
+      }
+    }
+  })
+
+  /**
+   * And it inherits the flexibility law rather than working around it: a run
+   * carrying nothing does not draw to find out what it is holding, because
+   * there is nothing to hold. This is the one that would have quietly broken
+   * every fight for almost every player if it had been written the other way.
+   */
+  it('draws nothing for a run carrying nothing', () => {
+    expect(loadedFaces(NOTHING, SCREAMS)).toEqual([])
+    expect(loadedFaces({ ...NOTHING, trinkets: [] }, SCREAMS)).toEqual([])
+  })
+
+  /**
+   * It is readable before anything has been claimed, which is the whole
+   * point — `rollAmends` refuses a turn with no claim because there is
+   * nothing to amend, and the caption has to stand from the top of the turn.
+   */
+  it('is readable before a line has been chosen', () => {
+    const carrying: Goods = {
+      ...NOTHING,
+      trinkets: [trinket('t.add', [{ kind: 'add', amount: 2 }])],
+    }
+    const bare = turnOf([3, 3, 4, 5, 6, 6])
+    expect(rollAmends(bare, carrying, FIRST)).toEqual([])
+    expect(loadedFaces(carrying, FIRST)).toEqual([
+      { trinket: 't.add', face: { kind: 'add', amount: 2 } },
+    ])
   })
 })
 

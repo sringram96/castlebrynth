@@ -108,10 +108,28 @@ describe('card 93 §4 — inspect declares every face and its number', () => {
     }
   })
 
-  it('draws a null rather than naming it — nothing is what it says', () => {
+  /**
+   * card 94 amends this and the amendment is the point of the wave.
+   *
+   * Card 93 wanted a null *drawn* rather than named, and set an em dash to do
+   * it, because a word for nothing would read as a fifth kind of face. The
+   * drawing arrived — a bar through dull metal on the iron face itself
+   * (`IRON_RAMP_NULL`, `glyphFor('null')`) — so the pixel half of that
+   * argument is now carried by a pixel, which is where it always belonged.
+   *
+   * What is left is the caption under the thing, and there an em dash is not
+   * the absence of a word, it is an unreadable word. *nothing* is what a plain
+   * man would say (rules/voice.md), and card 94's one-vocabulary rule needs it
+   * to be the same string in the tray, in the inspect and in the band.
+   */
+  it('says a null in the same plain word everywhere it is said', () => {
     expect(faceSays({ kind: 'null' })).toBe(READOUT.nothing)
-    // And it is not a word, so it cannot read as a fifth kind.
-    expect(faceSays({ kind: 'null' })).not.toMatch(/[a-z]/)
+    // Not a kind, and not a number: nothing to price and nothing to dread.
+    expect(faceSays({ kind: 'null' })).not.toMatch(/[0-9]/)
+    // And it is what `saysAmend` says too, so the beat and the caption agree.
+    expect(saysAmend({ trinket: THE_SLIVER.id, face: { kind: 'null' }, amount: 0 })).toContain(
+      READOUT.nothing!,
+    )
   })
 
   /** A `per` face says both numbers when it lands: what a die pays, and the total. */

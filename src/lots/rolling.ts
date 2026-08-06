@@ -71,12 +71,42 @@ export function rollAmends(turn: Turn, goods: Goods, lot?: Lot): readonly Rolled
   const held = carriedTrinkets(goods)
   if (held.length === 0) return []
   if (turn.claims.length === 0) return []
-  if (lot === undefined) throw new Error('a rolling good with nothing to roll it')
   const spent = claimedDice(turn).size
-  return held.map((trinket) => {
-    const face = faceOf(trinket, lot)
-    return { trinket: trinket.id, face, amount: worthOf(face, spent) }
-  })
+  return loadedFaces(goods, lot).map((one) => ({ ...one, amount: worthOf(one.face, spent) }))
+}
+
+/** card 94: a trinket and the face it is holding, before anything is claimed. */
+export interface Loaded {
+  readonly trinket: Trinket['id']
+  readonly face: Amend
+}
+
+/**
+ * card 94: **what the carried things are holding, readable before the press.**
+ *
+ * The roll was never made at the moment of pressing — a turn's amend lot is a
+ * pure function of the seed, the step and the turn number (`turnLot`,
+ * `AMEND_LOT`), so the face has been settled since the turn opened. What
+ * changed is that a player can now see it: the caption under a trinket says
+ * what it is loaded with **while the line is still being chosen**, which is
+ * the only moment the information can change a decision.
+ *
+ * That is art. 42's promise, said about a carried thing instead of about an
+ * intent: the number is on the frame from the top of the turn, and keeping is
+ * planning. It moves no number and changes no odds — the face was already
+ * decided, and this reads it rather than rolling it (art. 119: nothing is
+ * decided during an animation, and nothing is decided here either).
+ *
+ * `rollAmends` is written on top of it rather than beside it, so there is one
+ * statement of *which face this trinket is on* and no way for the caption and
+ * the beat to disagree. The flexibility law survives untouched, and it is why
+ * the empty check is still first: **nothing carried, nothing drawn.**
+ */
+export function loadedFaces(goods: Goods, lot?: Lot): readonly Loaded[] {
+  const held = carriedTrinkets(goods)
+  if (held.length === 0) return []
+  if (lot === undefined) throw new Error('a rolling good with nothing to roll it')
+  return held.map((trinket) => ({ trinket: trinket.id, face: faceOf(trinket, lot) }))
 }
 
 /**

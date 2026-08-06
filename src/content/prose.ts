@@ -1217,10 +1217,32 @@ export const READOUT: Readonly<Record<string, string>> = {
    * because *nothing* is what it says.
    */
   rolls: 'rolls',
-  block: 'block',
-  add: 'hit',
-  per: 'per die',
-  nothing: '—',
+  /**
+   * card 94: **one vocabulary, three places.** These five are the whole of
+   * what a rolling good's face is ever called, and the same string reaches the
+   * tray caption, the inspect and the word band — there is no second phrasing
+   * of any of them anywhere in the game.
+   *
+   * They carry their number rather than standing beside it (`{n}`, filled by
+   * `faceSays`), because *turns 6 aside* is a sentence a player can read and
+   * *block 6* is a field name. The words are a plain man's (rules/voice.md);
+   * the numbers are the good's, in `trinkets.ts`.
+   */
+  block: 'turns {n} aside',
+  add: '+{n}',
+  per: '+{n} per die',
+  bites: 'bites {n}',
+  nothing: 'nothing',
+  /**
+   * card 94, arts 54 and 86: what a bone's cost face says under it. The scar
+   * says *which* face and this says *how much*, and between them art. 54 is
+   * answered in pixels rather than in a sentence about the die in general.
+   */
+  costs: 'costs {n}',
+  /** card 94: the two boxes of the one readout — `sum × line`, then the blow. */
+  sum: 'sum',
+  line: 'line',
+  blow: 'the blow',
   corroded: 'corroded',
   next: 'next',
   ends: 'ends',

@@ -160,13 +160,17 @@ export {
  * `rollAmends` is the whole seam, and it draws nothing when nothing is
  * carried — which is the wave's own engineering requirement, not a nicety.
  */
-export type { TrinketAudit } from './rolling.js'
+export type { Loaded, TrinketAudit } from './rolling.js'
 export {
   addedBy,
   auditTrinket,
   bittenBy,
   carriedTrinkets,
   didFire,
+  // card 94: what a carried thing is holding, readable while the line is
+  // still being chosen. It rolls nothing — the face was settled at the top of
+  // the turn, and `rollAmends` reads it through here.
+  loadedFaces,
   rollAmends,
   turnedBy,
   worthOf,
