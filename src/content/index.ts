@@ -97,7 +97,20 @@ export {
   MARROW_SCRIPT,
   MARROW_ESCALATION,
   MARROW_HEALTH,
+  THE_SILT_MOTHER,
+  SILT_MOTHER_SCRIPT,
+  SILT_MOTHER_ESCALATION,
+  SILT_MOTHER_HEALTH,
+  THE_KINDLED,
+  KINDLED_SCRIPT,
+  KINDLED_ESCALATION,
+  KINDLED_HEALTH,
+  THE_WARDEN,
+  WARDEN_SCRIPT,
+  WARDEN_ESCALATION,
+  WARDEN_HEALTH,
   HORRORS,
+  HORROR_SCRIPTS,
   endLineOf,
   horrorById,
   loopOf,
@@ -114,11 +127,13 @@ export {
   FONT,
   GNAWING,
   IRON_KEY,
+  KINDLED,
   LEAVES_A_GOOD,
   LEECH_BONE,
   MARROW,
   MENDER,
   OSSUARY,
+  SILT_MOTHER,
   PLATE,
   PUSHER,
   RARITY,
@@ -128,6 +143,8 @@ export {
   SAVIOR_MERCY,
   SISTER_ELDER,
   SISTER_YOUNGER,
+  WARDEN_KEEPER,
+  encounterOfHorror,
   encounterProp,
   encounterWords,
   fillProps,
@@ -157,6 +174,7 @@ export {
   intentChip,
   itemLabel,
   originOf,
+  saysBound,
   saysClaim,
   saysDie,
   saysGood,
@@ -175,8 +193,12 @@ export {
   ROOMS,
   ROOM_BOOK,
   WARDEN,
+  WARDEN_DOWN,
   WARDEN_KEY,
   WARDEN_KEY_ITEM,
+  advanceBodyOf,
+  horrorIn,
+  keeperStanding,
   horrorOf,
   roomContent,
   roomName,
@@ -185,7 +207,7 @@ export {
 export type { Utterance, VoiceCategory, VoiceComplaint } from './voice.js'
 export { lintVoice, asBeats, asLabels, CANDLE_WORDS } from './voice.js'
 
-import { GNAWING_SCRIPT, MARROW_SCRIPT } from './horrors.js'
+import { HORROR_SCRIPTS } from './horrors.js'
 import { LADDER } from './ladder.js'
 import {
   ARRIVALS,
@@ -248,8 +270,10 @@ export function everyString(): readonly Utterance[] {
       // as one — not as a control, which is what art. 66 governs.
       ...Object.values(TABS),
       ...Object.values(LADDER).map((tier) => tier.name),
-      ...GNAWING_SCRIPT.map((intent) => intent.verb),
-      ...MARROW_SCRIPT.map((intent) => intent.verb),
+      // art. 58: every verb of every script that ships, walked rather than
+      // listed — a horror added to the catalog and forgotten here would be
+      // a horror the lint never saw.
+      ...HORROR_SCRIPTS.flat().map((intent) => intent.verb),
     ]),
   ]
 }

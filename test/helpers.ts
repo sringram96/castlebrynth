@@ -41,6 +41,8 @@ export function turnOf(
     readonly intent?: Intent
     readonly card?: Card
     readonly dice?: readonly Die[]
+    /** art. 65: dice a bind has taken off this turn, if the test wants any. */
+    readonly bound?: readonly DieId[]
   } = {},
 ): Turn {
   const dice = options.dice ?? values.map((_, i) => bone(i))
@@ -59,6 +61,8 @@ export function turnOf(
     castingsAllowed: 2,
     claims: [],
     card: options.card ?? freshCard(),
+    // art. 65: nothing bound. A turn that wants a short hand declares one.
+    bound: options.bound ?? [],
   }
 }
 

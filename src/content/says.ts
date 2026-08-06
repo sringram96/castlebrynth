@@ -59,6 +59,15 @@ export function saysDie(die: Die, showing?: Face, spentIn?: Line): string {
   return parts.join(' · ')
 }
 
+/**
+ * art. 65 (`bind`), and art. 69: a die taken out of your hand still answers,
+ * and what it answers with is who took it. Silence is a bug, and a die that
+ * is simply missing from the tray without saying why is worse than silence.
+ */
+export function saysBound(die: Die, horror: string): string {
+  return `${dieLabel(die)} · ${READOUT.bound} ${LABELS[horror] ?? horror}`
+}
+
 /** The chip an intent wears: a declared verb and a number (art. 58). */
 export function intentChip(intent: Intent): string {
   return `${intent.verb} ${intent.amount}`

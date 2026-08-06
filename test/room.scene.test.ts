@@ -256,7 +256,7 @@ describe('the world remembers — art. 70 (prose confirms, pixels prove)', () =>
   it('leaves an opened door standing open', () => {
     const room = 'room.trove.alcove' as RoomId
     const bareRoom = bare(room)
-    const way = { at: 0, open: false, locked: false, ends: false }
+    const way = { at: 0, open: false, locked: false, turned: false, ends: false }
     const shut: SceneState = { ...bareRoom, doors: [way] }
     const open: SceneState = {
       ...shut,
@@ -275,6 +275,7 @@ describe('the world remembers — art. 70 (prose confirms, pixels prove)', () =>
         at,
         open: at === open,
         locked: false,
+        turned: false,
         ends: false,
       })),
     })

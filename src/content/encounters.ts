@@ -27,8 +27,29 @@ import type { ItemId, RoomId } from '../state/index.js'
 import { THE_LEECH, THE_SISTERS } from './dice.js'
 import { RUSTED_PLATE, THE_CORD } from './items.js'
 import type { School } from './palettes.js'
-import { deadTraveler, goodOnFloor, leftMark, lurker, stillBasin, theKey, theMender } from './plates/props.js'
+import { KINDLED as KINDLED_BODY, SILT_MOTHER as SILT_MOTHER_BODY } from './plates/bestiary.js'
+import {
+  deadTraveler,
+  goodOnFloor,
+  leftMark,
+  lurker,
+  stillBasin,
+  theKey,
+  theMender,
+  thing,
+} from './plates/props.js'
 import { NOUNS, SOCKET_BEATS, VERBS } from './prose.js'
+
+/**
+ * art. 100: past this depth a horror's drawing is not placed. The far
+ * socket sits between 19 and 40 world units depending on the room's shape,
+ * so this reaches every one of them and stops short of turning a body into
+ * six grey pixels in the deepest hall.
+ */
+const HORROR_READABLE_TO = 46
+
+/** art. 100: what the Kindled's cracks burn as, in any school. */
+const EMBER_LIGHT = '#ff8a3c'
 import { THE_CAREFUL, THE_PUSHER, THE_RUNNER } from './travelers.js'
 
 /** The one lock in the depth, and the one key that opens it (arts 33, 80). */
@@ -46,6 +67,22 @@ export const OSSUARY = region('region.ossuary')
 
 export const GNAWING = who('enc.gnawing')
 export const MARROW = who('enc.marrow')
+/**
+ * art. 78, card 29: every region gets its unique. The Marrow was one
+ * region's, which meant most runs met the Gnawing and nothing else — so the
+ * drowned and the burnt get theirs, and arrival costs something everywhere.
+ */
+export const SILT_MOTHER = who('enc.silt-mother')
+export const KINDLED = who('enc.kindled')
+/**
+ * art. 37 (as amended 2026-08-06), card 31: the keeper the door was built
+ * for. It is deliberately **not** in `ENCOUNTERS` — it stands in no socket,
+ * is never dealt and is never weighted, because there is one hall and that
+ * is what makes it unique. The id exists so that art. 84 can remember
+ * meeting it, and for nothing else.
+ */
+export const WARDEN_KEEPER = who('enc.warden')
+
 export const IRON_KEY = who('enc.iron-key')
 export const BASIN = who('enc.basin')
 export const MENDER = who('enc.mender')
@@ -141,6 +178,27 @@ export const ENCOUNTERS: readonly Encounter[] = [
     region: OSSUARY,
     weight: 6,
     horror: 'horror.marrow',
+  },
+  // card 29: the Marrow's row, twice more. Same binding, same scope, same
+  // weight — the only thing that differs is which region has to lock before
+  // they are awake, which is the whole of what makes them a region's.
+  {
+    id: SILT_MOTHER,
+    kind: 'horror',
+    binding: 'floating',
+    scope: 'unique',
+    region: DROWNED,
+    weight: 6,
+    horror: 'horror.silt-mother',
+  },
+  {
+    id: KINDLED,
+    kind: 'horror',
+    binding: 'floating',
+    scope: 'unique',
+    region: BURNT,
+    weight: 6,
+    horror: 'horror.kindled',
   },
   {
     id: IRON_KEY,
@@ -282,6 +340,24 @@ export function leftBy(who: EncounterId): readonly Good[] {
   return LEFT_BY[who as string] ?? []
 }
 
+/**
+ * art. 84: which encounter a horror *is*, so that fighting one is meeting
+ * it. Most horrors are met by standing in the room with them (`meetings`);
+ * the Warden stands in no room until the key turns, so it is met by the
+ * only thing that ever puts it in front of you.
+ */
+const MET_BY: Readonly<Record<string, EncounterId>> = {
+  'horror.gnawing': GNAWING,
+  'horror.marrow': MARROW,
+  'horror.silt-mother': SILT_MOTHER,
+  'horror.kindled': KINDLED,
+  'horror.warden': WARDEN_KEEPER,
+}
+
+export function encounterOfHorror(id: string): EncounterId | null {
+  return MET_BY[id] ?? null
+}
+
 /** Which act picks up what an encounter left. One per encounter, by id. */
 export function takeActId(who: EncounterId): string {
   return `act.take.${(who as string).replace(/^enc\./, '')}`
@@ -412,6 +488,20 @@ export function encounterWords(
         tappables: [tappable('marrow.shape', { ...at, height: at.height * 1.35 })],
         acts: [],
       }
+    // card 29: a region's unique says its own candle and answers to its own
+    // noun, standing where the far socket is like everything else with teeth.
+    case SILT_MOTHER:
+      return {
+        beats: SOCKET_BEATS[SILT_MOTHER as string] ?? [],
+        tappables: [tappable('mother.shape', { ...at, height: at.height * 1.3 })],
+        acts: [],
+      }
+    case KINDLED:
+      return {
+        beats: SOCKET_BEATS[KINDLED as string] ?? [],
+        tappables: [tappable('kindled.shape', { ...at, height: at.height * 1.15 })],
+        acts: [],
+      }
     case IRON_KEY:
       return {
         beats: SOCKET_BEATS[IRON_KEY as string] ?? [],
@@ -488,6 +578,32 @@ export function encounterProp(
       return lurker(school, at, false)
     case MARROW:
       return lurker(school, at, true)
+    // art. 100, card 29: a unique is drawn, not scattered. The Gnawing and
+    // the Marrow are masses on purpose — they are what a shape at the far
+    // end looks like before it is anything — but a horror a run meets once
+    // has to be recognised the second time, and silhouette is most of
+    // legibility at this scale. The school colours them, so one drawing is
+    // one thing in whatever key the room is in.
+    case SILT_MOTHER:
+      return thing(
+        school,
+        SILT_MOTHER_BODY,
+        { ...at, height: at.height * 1.3 },
+        NOUNS['mother.shape'] ?? 'the shape',
+        HORROR_READABLE_TO,
+      )
+    case KINDLED:
+      return thing(
+        school,
+        KINDLED_BODY,
+        { ...at, height: at.height * 1.15 },
+        NOUNS['kindled.shape'] ?? 'the shape',
+        HORROR_READABLE_TO,
+        // art. 100: the cracks in it are a light that carries. Whatever is
+        // burning in there is not the room's light, so the room does not
+        // get to colour it — the burnt and the drowned alike.
+        EMBER_LIGHT,
+      )
     case IRON_KEY:
       return done.includes('act.take-key') ? null : theKey(school, at)
     // art. 70: a spent mercy stays spent, and it says so in pixels — the

@@ -20,7 +20,7 @@ import type { Brush, Drawn, Prop, View, WorldMark } from '../../room/index.js'
 import { Surface, mix, standing } from '../../room/index.js'
 import type { School } from '../palettes.js'
 import { alongSteps, lookOf } from '../palettes.js'
-import { AUTHORED_GRID } from '../render.js'
+import { AUTHORED_GRID, RENDER } from '../render.js'
 
 /** An authored pixel, on whatever grid the dial is set to (art. 23). */
 function pixel(view: View): (n: number) => number {
@@ -748,6 +748,50 @@ export function lurker(school: School, mark: WorldMark, tall: boolean): Prop {
   }
 }
 
+/**
+ * arts 19, 30, 100 (card 31): a drawn thing **coming close**.
+ *
+ * art. 30 says there is no battle screen — a fight is the room with the
+ * thing come close — and the advance is that sentence in pixels. The
+ * default body is a mass (`src/hinge`), which is art. 26's first tier and
+ * right for a shape at the end of a corridor. A horror that has been drawn
+ * brings its drawing instead, and it comes down the room at world
+ * coordinates like everything else: the depth falls from `from` to `to` and
+ * the projector does the growing, so it is honest perspective rather than a
+ * sprite being scaled up (art. 15).
+ *
+ * `wide` and `high` are world units, so a thing authored larger than the
+ * aperture behind it *is* larger than the aperture behind it — which is
+ * art. 30's advance done by something that was always too big for the room.
+ */
+export function comingCloser(
+  school: School,
+  art: Drawn,
+  name: string,
+  size: { readonly wide: number; readonly high: number; readonly from: number; readonly to: number },
+  glow?: string,
+): (closeness: number) => Prop {
+  const look = lookOf(school)
+  return (closeness) => {
+    const near = Math.min(1, Math.max(0, closeness))
+    const z = size.from + (size.to - size.from) * near
+    const standingThere = standing(
+      {
+        name,
+        at: { X: 0, Y: -RENDER.eye, z, width: size.wide, height: size.high },
+        art,
+        ramp: look.ramps.wall,
+        edge: school.edge,
+        glow: glow ?? look.light.tint,
+      },
+      look.light.station,
+    )
+    // `standing` only declines past a `readableTo`, and this declares none —
+    // a thing walking at you is readable by construction.
+    return standingThere ?? { name, z, paint: () => {} }
+  }
+}
+
 // ── The threshold (art. 97) ────────────────────────────────────────────
 
 /**
@@ -777,6 +821,14 @@ export interface ThresholdState {
   readonly open: boolean
   /** art. 97: locked with the lock *on* the frame, never inside it. */
   readonly locked: boolean
+  /**
+   * arts 70, 97 (card 67): the lock has been turned. It still wears one —
+   * a lock that vanishes is a lock that was never there — and what changed
+   * is that the shackle stands out of the plate and the keyhole is dark.
+   * That is what "the world remembers in pixels" means about a press whose
+   * whole subject is a small iron thing on a frame.
+   */
+  readonly turned: boolean
   /** art. 37: the Warden's, which is iron and does not open in this depth. */
   readonly warden: boolean
 }
@@ -950,6 +1002,18 @@ export function threshold(
       const at = near.y0 + (near.y1 - near.y0) * 0.58
       b.rect(school.iron, plate - g(2), at - g(3), g(5), g(7))
       b.rect(school.edge, plate - g(1), at - g(2), g(3), g(5))
+      if (state.turned) {
+        // card 67: it hangs open. The shackle is out of the plate and stands
+        // proud above it, the keyhole has gone dark, and the whole of it has
+        // dropped a little on the one hinge it has left. Prose confirms and
+        // pixels prove (art. 70) — this is the pixel.
+        b.rect(school.bone[0]!, plate - g(1), at - g(6), g(1), g(4))
+        b.rect(school.bone[0]!, plate - g(1), at - g(6), g(4), g(1))
+        b.px(school.edge, plate + g(2), at - g(5))
+        b.px(school.hollow, plate, at - g(1))
+        b.px(school.hollow, plate, at + g(1))
+        return
+      }
       b.px(school.coin, plate, at - g(1))
       b.px(school.accent[2]!, plate, at + g(1))
     },

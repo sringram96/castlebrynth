@@ -190,6 +190,15 @@
       .slot.spare.sel { opacity: 1; }
       .slot.carried { background: #2a2418; border-color: var(--gold); font-size: .7em;
         color: var(--gold); }
+      /* art. 65: a bound die is not in the turn at all — it never lands. It
+         is drawn anyway, and drawn shut: hand size is the thing the effect
+         attacks, so the hole it leaves has to be the visible part of it. The
+         bar across it is the one mark in the tray that means "not yours this
+         turn", and a tap says who took it (art. 69). */
+      .slot.bound { background: #191517; border-color: #4a2f33; opacity: .62; }
+      .slot.bound .pips i { background: #4a3f3a; }
+      .slot.bound::after { content: ''; position: absolute; left: -1px; right: -1px;
+        top: 50%; height: 3px; margin-top: -1px; background: #7a3b40; }
     </style>
   </head>
   <body>

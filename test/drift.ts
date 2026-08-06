@@ -18,11 +18,12 @@ import {
   PLAIN_POUCH,
   ROOM_BOOK,
 } from '../src/content/index.js'
-import { act, actsIn, chooseDoor, mayLeave, tappablesIn } from '../src/descent/index.js'
+import { act, actsIn, chooseDoor, mayLeave, opens, tappablesIn } from '../src/descent/index.js'
 import type { Catalog, Chain, ChainNode, Door, Grammar, RegionId } from '../src/gen/index.js'
 import { NO_HISTORY, deal, dealerOf, hereIn, lotFrom, meetings } from '../src/gen/index.js'
 import type { Ledgers, RunHistory, Seed } from '../src/state/index.js'
-import { firstPermanent, lookedAt, meet, movedTo, tookDoor, wake } from '../src/state/index.js'
+import { collect, firstPermanent, lookedAt, meet, movedTo, tookDoor, wake } from '../src/state/index.js'
+import type { Die, Wearable } from '../src/lots/index.js'
 
 export const DEALER = dealerOf(CATALOG, GRAMMAR)
 export const seedOf = (n: number): Seed => n as unknown as Seed
@@ -126,9 +127,25 @@ export function reportOf(chain: Chain): Report {
 
 // ── Walking with a run on the ledger, for art. 3 ───────────────────────
 
-/** A fresh run at the Crossing, and the chain as dealt for it. */
-export function opened(seed: number): { ledgers: Ledgers; chain: Chain } {
-  const ledgers = wake(firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY), seedOf(seed))
+/**
+ * A fresh run at the Crossing, and the chain as dealt for it.
+ *
+ * `carrying` is what the player wakes with — a pouch grown by earlier runs,
+ * and the wearables off them. Empty is a first waking (art. 55), which is
+ * what almost every test wants; the exception is the measurement that asks
+ * what a *taught* run's odds are, and that one has to be able to say so.
+ */
+export function opened(
+  seed: number,
+  carrying: { readonly dice?: readonly Die[]; readonly worn?: readonly Wearable[] } = {},
+): { ledgers: Ledgers; chain: Chain } {
+  let permanent = firstPermanent(
+    { dice: [...(carrying.dice ?? []), ...PLAIN_POUCH.dice] },
+    HAND_SIZE,
+    BARE_BODY,
+  )
+  for (const wearable of carrying.worn ?? []) permanent = collect(permanent, wearable)
+  const ledgers = wake(permanent, seedOf(seed))
   return { ledgers, chain: deal(seedOf(seed), 1, CATALOG, GRAMMAR, ledgers.run!.history) }
 }
 
@@ -188,9 +205,10 @@ export function playRun(
     const gate = node.doors[Math.min(Math.max(0, policy(node.doors, chain)), node.doors.length - 1)]
     if (gate === undefined) break
     if (gate.ends === true) {
-      // The Warden's door: it refuses when what it demands is not carried.
-      const held = new Set<string>(ledgers.run!.carried as readonly string[])
-      return { ledgers, chain, refused: !gate.demands.every((key) => held.has(key as string)) }
+      // The Warden's door: it refuses what it is not given, and — card 67 —
+      // what has not been turned. A greedy walk presses everything the room
+      // offers, so a run carrying the key has turned the lock by now.
+      return { ledgers, chain, refused: !opens(ledgers, ROOM_BOOK, node, gate) }
     }
     const walked = obeyTheLaw
       ? chooseDoor(ledgers, chain, ROOM_BOOK, gate, DEALER)

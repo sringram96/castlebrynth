@@ -260,6 +260,100 @@ export const WATCHER_DARK: Drawn = drawn([
   '..33....33....',
 ])
 
+/**
+ * THE SILT MOTHER — the drowned's unique (card 29).
+ *
+ * Only what the water gives back. She is drawn tall and narrow and given
+ * away by two lights: the eyes are `*`, so they burn at the top of the ramp
+ * whatever school she is standing in, and everything else takes the room's
+ * own light like the stone does. Nothing about her is hand-shaded — the way
+ * the silt catches down one side is the rim, derived (art. 115).
+ */
+export const SILT_MOTHER: Drawn = drawn([
+  '....455554....',
+  '...45566554...',
+  '...45*66*54...',
+  '...45666654...',
+  '...44566544...',
+  '....455554....',
+  '....455554....',
+  '..3455555543..',
+  '.345555555543.',
+  '.345566665543.',
+  '34556666665543',
+  '.345566665543.',
+  '.345555555543.',
+  '.345555555543.',
+  '..3455555543..',
+  '..3455555543..',
+  '..3445555443..',
+  '...34444443...',
+  '...3.3..3.3...',
+  '...3.3..3.3...',
+])
+
+/**
+ * THE KINDLED — the burnt's unique (card 29).
+ *
+ * Char over a fire that never went out. The cracks are `*`: the light in it
+ * is its own and not the room's, so it reads the same in a room lit from
+ * below as in one lit from ahead. Its plate is `+`, because whatever it was
+ * wearing is still on it.
+ */
+export const KINDLED: Drawn = drawn([
+  '.....333.....',
+  '....33333....',
+  '...3*333*3...',
+  '...3333333...',
+  '....33333....',
+  '.....222.....',
+  '...2222222...',
+  '..222*2*222..',
+  '..+2223222+..',
+  '..+222*222+..',
+  '..+2223222+..',
+  '...2*222*2...',
+  '...2222222...',
+  '...222.222...',
+  '...22...22...',
+  '..222...222..',
+  '..22.....22..',
+  '.222.....222.',
+])
+
+/**
+ * THE WARDEN — the keeper the door was built for (card 31).
+ *
+ * Hooded, and wider at the shoulder than the aperture it stands behind:
+ * art. 30's advance done by a thing that was always too big for the room.
+ * The iron is `+` — the bands of the door, worn — and the one light in it
+ * is what is under the hood, which is the only part of it there is to read.
+ */
+export const WARDEN_KEEPER: Drawn = drawn([
+  '.......5555.......',
+  '.....55666655.....',
+  '....5566666655....',
+  '...556611116655...',
+  '...56611**11665...',
+  '...566111111665...',
+  '...566611116665...',
+  '..55666666666655..',
+  '.5566666666666655.',
+  '556666666666666655',
+  '566+++666666+++665',
+  '5666++6666666++665',
+  '566666666666666665',
+  '.5666666666666665.',
+  '.5666666666666665.',
+  '.5666666666666665.',
+  '..56666666666665..',
+  '..566666..666665..',
+  '..56666....66665..',
+  '..5666......6665..',
+  '..555........555..',
+  '..44..........44..',
+])
+
 // ── The hoard ──────────────────────────────────────────────────────────
 
 /** A skull, and it is the plainest thing in this file on purpose. */

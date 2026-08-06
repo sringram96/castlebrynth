@@ -192,7 +192,7 @@ describe('art. 116 — a setting changes how the game is shown, never what is tr
         opened: [],
         horror: null,
         fills: [],
-        doors: [{ at: 0, open: false, locked: false, ends: false }],
+        doors: [{ at: 0, open: false, locked: false, turned: false, ends: false }],
       }
       const config = atGrid(GRID, 260)
       const once = renderRoom(held.scene(state), config).frame.pixels
@@ -206,7 +206,7 @@ describe('art. 116 — a setting changes how the game is shown, never what is tr
     const ledgers = fresh()
     save({ ...ledgers, permanent: preferring(ledgers.permanent, { reducedMotion: true }) }, vault)
     expect(load(vault)!.permanent.prefs.reducedMotion).toBe(true)
-    expect(VAULT_VERSION).toBe(9)
+    expect(VAULT_VERSION).toBe(10)
   })
 })
 

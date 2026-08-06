@@ -187,6 +187,10 @@ export const NOUNS: Readonly<Record<string, string>> = {
   // art. 83: what stands in a socket names itself, wherever it stands.
   'gnawing.shape': 'the wet shape',
   'marrow.shape': 'the tall shape',
+  // card 29: a region's own. Each names itself before it says anything
+  // atmospheric, and each names the one thing that gives it away (art. 111).
+  'mother.shape': 'the drowned woman',
+  'kindled.shape': 'the burnt figure',
   'key.iron': 'the iron key',
   'basin.water': 'the basin',
   'mender.figure': 'the mender',
@@ -246,10 +250,17 @@ export const LOOKS: Readonly<Record<string, string>> = {
   'bonefield.bone': 'Long bones, none of them a pair, none of them yours yet.',
   'tally.marks': 'Someone counts something here. The counting continues.',
   'font.step': 'Worn through in the middle. A great many knees, and no boots.',
-  'warden.lock': 'One keyhole, cut for three teeth.',
+  // card 67: the lock answers either way (art. 69), and which of the two it
+  // gives is the whole first half of the ceremony. Empty-handed it names
+  // what it wants; carrying the key it names what fits, and only then is
+  // there a verb (art. 68).
+  'warden.lock': 'One keyhole, cut for three teeth. Nothing on you is cut that way.',
+  'warden.lock.fits': 'One keyhole, cut for three teeth. The iron in your hand is cut for this.',
   'warden.door': 'Black iron. The stone around it is scored where it swings.',
   'gnawing.shape': 'It keeps to the far end. When you stop, the scratching stops.',
   'marrow.shape': 'It stands a head above the door beside it, and it does not lean.',
+  'mother.shape': 'A woman, and the water is still coming off her. Her eyes hold a light the room does not.',
+  'kindled.shape': 'A figure of char, and the cracks in it are lit. Nothing here is burning.',
   'key.iron': 'Iron, long as your palm, cut with three teeth.',
   'basin.water': 'Copper, full to the lip, and still. It costs nothing.',
   'mender.figure': 'It sits with its hands open. Nothing about it moves but the breath.',
@@ -302,6 +313,10 @@ export const ORIGINS: Readonly<Record<string, string>> = {
 export const SOCKET_BEATS: Readonly<Record<string, readonly string[]>> = {
   'enc.gnawing': ['Something wet scratches at the far end, and stops when you stop.'],
   'enc.marrow': ['A tall shape waits in the dark ahead. It does not narrow as you near it.'],
+  // card 29: the drowned's and the burnt's. Each says what its region gives
+  // back, and neither says what it is going to do about you.
+  'enc.silt-mother': ['Something stands at the far end with the water running off it, and stays standing.'],
+  'enc.kindled': ['A shape of char waits ahead. The cracks across it are lit, and nothing here burns.'],
   'enc.iron-key': ['An iron key lies where the floor is worn, cut with three teeth.'],
   // art. 40: the place, and the being. Neither asks for anything.
   'enc.basin': ['A copper basin stands full at the foot of the steps. Nothing guards it.'],
@@ -379,7 +394,12 @@ export const END_LINES: Readonly<Record<string, string>> = {
   scrawl: 'Find your brother. Whatever else goes, keep this.',
   'end.gnawing': 'The Gnawing opens you and goes back to its corner.',
   'end.marrow': 'The Marrow closes over you. The scratching starts again behind it.',
-  'end.warden': 'The Warden stands aside. The stair keeps going down.',
+  'end.silt-mother': 'The Silt Mother puts a hand on your chest, and the water comes up over it.',
+  'end.kindled': 'The Kindled takes hold of you, and what is left of it goes out.',
+  // card 31, art. 37 as amended: the Warden is a being, so the line for
+  // going through its door is the line for having got past it.
+  'end.warden': 'The Warden goes down, and stays down. The stair keeps going.',
+  'end.warden.keeper': 'The Warden takes the key back out of the lock, and sets you down beside its door.',
   'end.kept': 'The door does not open, and the corridor behind you is stone.',
   // Giving a run up is an ending like any other, and the Book takes its line
   // like any other — so the line exists. It never had one.
@@ -398,6 +418,26 @@ export const INTENT_SAYS: Readonly<Record<string, string>> = {
   CORRODE: 'It spits something corrosive. Your armor does nothing this turn.',
   BELLOW: 'It takes a long breath.',
   REND: 'It opens you from the shoulder down.',
+  // card 29–30: the three new kinds, said in plain words. Each names what
+  // the number does to the plan, because art. 73 makes the intent tappable
+  // and this is the whole of what a tap on it gets back.
+  DRAG: 'It reaches for your highest bone. That die stays under, and does not cast next turn.',
+  CHILL: 'The cold gets into you. It takes a little at the start of each of your next three turns.',
+  SILT: 'It pushes the whole floor at you.',
+  UNDERTOW: 'The water goes out from under you.',
+  SEAR: 'It burns you, and the burn keeps going for three turns.',
+  GAPE: 'It opens. Any turn of yours that claims nothing puts some of it back.',
+  CHAR: 'It lays a hand flat on you.',
+  GUTTER: 'It draws the fire back in, and swings.',
+  // card 31: the depth's exam. Every kind it has taught, said in the same
+  // plain words the room that taught it used (art. 73).
+  JUDGE: 'It reads you. Pair-shaped lines are shut this turn.',
+  BIND: 'It takes your highest bone off the table. That die does not cast next turn.',
+  TITHE: 'It counts your sixes as owed. Sixes count as nothing this turn.',
+  FLENSE: 'It opens a long cut. That cut takes a little at the start of each of your next three turns.',
+  STRIP: 'It goes through your armor. Your armor does nothing this turn.',
+  WAIT: 'It waits. A turn of yours that claims nothing gives it back some of its own.',
+  KEEP: 'It brings the whole door down on you.',
 }
 
 /**
@@ -430,6 +470,14 @@ export const NOTICES: Readonly<Record<string, string>> = {
   'door.blind': 'Shut, and giving nothing away. The road is what you pick.',
   // arts 3 and 9: a stop, not a hint. It names nothing and points at nothing.
   'door.held': 'Something here is still yours to take.',
+  // card 67: what a turned lock answers with. It is keyed on the act rather
+  // than on the door, so every future lock gets its own sentence and none of
+  // them has to be written in the shell.
+  'answer.act.unlock': 'The key goes in and the wards give, one after another. The lock hangs open.',
+  // card 31: what the hall answers with when the lock it was built around
+  // is turned. One candle: the key, and the thing the door was for.
+  'warden.wakes':
+    'The wards give, one after another, and the lock hangs open. At the far end of the hall something that has been standing there the whole time takes a step.',
   // art. 40: what the breath answers with. The poetry is the response to the
   // button, never the button (art. 66).
   'mercy.breath': 'The cold of it goes through you, and some of what is open closes.',
@@ -537,6 +585,9 @@ export const NOTICES: Readonly<Record<string, string>> = {
 export const LABELS: Readonly<Record<string, string>> = {
   'horror.gnawing': 'the gnawing',
   'horror.marrow': 'the marrow',
+  'horror.silt-mother': 'the silt mother',
+  'horror.kindled': 'the kindled',
+  'horror.warden': 'the warden',
   'room.crossing': 'the crossing',
   'room.trove.alcove': 'the alcove',
   'room.passage.stair': 'the stair',
@@ -594,6 +645,10 @@ export const READOUT: Readonly<Record<string, string>> = {
   unused: 'unused',
   // art. 86: what the cost faces on your own dice will charge this turn.
   cost: 'cost',
+  // art. 65: what a bleed will take at the top of the next turn, and who
+  // took a die out of your hand.
+  bleeding: 'bleeding',
+  bound: 'bound by',
   showing: 'showing',
   faces: 'faces',
   spent: 'spent in',
@@ -618,6 +673,9 @@ export const READOUT: Readonly<Record<string, string>> = {
  */
 export const VERBS: Readonly<Record<string, string>> = {
   'act.take-key': 'Take',
+  // card 67: the press the whole depth is built around. One plain word —
+  // the poetry is what the hall says back, never the button (art. 66).
+  'act.unlock': 'Unlock',
   // art. 40's two mercies, as plain as the article is. Not "Rest", not
   // "Receive the mercy" — the verb is what the thumb does.
   'act.drink': 'Drink',

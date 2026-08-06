@@ -1547,7 +1547,10 @@ ordinary rooms are art. 26's first tier and not its second, and phase
 | `lots.loop` | the three endings, the hand whole, the card refilled at the door (arts 44, 63) |
 | `lots.floor` | all 7776 hands of five leave a line to claim, and a shape above the floor: a pair or a run of 3, tight at ×2; the three lines a hand of five can never reach (arts 46, 48, 55, 63, 64) |
 | `lots.invariants` | a die never twice, a line never twice, damage floors, the recast odds |
-| `lots.fairness` | a bare five-die player beats the Gnawing rarely and not never; a found bone moves that past a coin flip, and moves it further than the Rusted Plate does (arts 33, 55, 86) |
+| `lots.fairness` | a bare five-die player beats the Gnawing rarely and not never; a found bone moves that past a coin flip, and moves it further than the Rusted Plate does; and each new effect kind priced alone against a Gnawing-statted probe with every effect stripped (arts 33, 55, 65, 86) |
+| `lots.effects` | the three kinds the company wave adds: the declared rule a bind reads and the die it takes at the cast, a bleed that ticks before the intent shows and refreshes rather than adds, hunger charged for the choice not to claim and for nothing else, and the one order all six resolve in (art. 65) |
+| `horrors.regions` | 1000 runs: each region's unique awake only when that region locks, dealt at most once, never two in a run, and a commitment that meets its own; and the whole-depth model — every lean survivable down to the last door, nothing stranded, nothing refused (arts 78, 83–84) |
+| `warden` | the ceremony and the keeper: a lock that answers either way, a verb summoned only by looking *and* only by carrying, a deed written per instance, a door that offers nothing until it is written — with the control that walks straight through the moment the gate is removed — and then the beat, headless, from the turn of the key to the thing that goes down (arts 37, 68–70, 82, 97) |
 | `lots.fight` | `reference/the-gnawing-fight.md`, turn for turn |
 | `gen` | the dealer run by run: lazy dealing, one-to-three doors, the instance, the prefix property, winnability by construction (arts 31, 33, 36, 79–82) |
 | `gen.drift` | 1000 runs per policy: every run locks and announces, a committed policy locks its own region, a coin flip still arrives, the fight band, the bans, the repeats, the tendencies (arts 31, 36–39, 77–78, 82) |
@@ -1564,7 +1567,7 @@ ordinary rooms are art. 26's first tier and not its second, and phase
 | `travelers` | three travelers on both of art. 83's axes, each die shaped like its death, every face 1–6, the catalog priced against the plain bone with the Orphan as the die that fails it, cost faces firing only when spent and never eaten by armor, an origin sentence per good linted as prose, the signature named by the first bone and the slot filled the moment it is taken (arts 50–51, 54–56, 60, 86–87) |
 | `goods` | the Sisters, the cord and the plate placed through the registry, the halves banded apart across 400 runs, no good dealt twice, a seeded run that meets a traveler and walks out with three goods, builds that differ run to run; and the fork — both goods in one socket, the terms said first and once, two verbs the thumb can tell apart, taking one closing the other irrevocably and showing the loss in the scene (arts 52–53, 70, 83, 89) |
 | `swap` | the hand as a chosen six: five bones and one free slot, the first find filling it and asking nothing, the second going spare, the exchange both ways round and reversible, the pouch whole across it, a chosen hand carried through a death by the order alone, and the hand refusing to move while a fight is paused (arts 55, 60, 63, 86) |
-| `walkthrough` | the wave's acceptance walk end to end: five dice and an empty slot, a traveler met, their die taken and signed and slotted, a tap that answers with the distribution *and* the origin, a fork that closes what you leave, and a death that keeps both the die and the meeting — through the vault (arts 11, 32, 54–56, 84, 86–87, 89) |
+| `walkthrough` | the wave's acceptance walk end to end: five dice and an empty slot, a traveler met, their die taken and signed and slotted, a tap that answers with the distribution *and* the origin, a fork that closes what you leave, a death that keeps both the die and the meeting — and the last leg, the key carried to the bottom, the lock answering differently for a hand holding it, the turn, the keeper, and its own line in the Book — all of it through the vault (arts 11, 32, 37, 54–56, 68, 84, 86–87, 89, 97) |
 | `vault` | a v1 snapshot with two Book lines loading clean at version 3; the ladder with no gap in it; a current snapshot untouched; and quarantine rather than destruction for unreadable bytes, an unknown version, a newer build's snapshot, and a step that refuses (art. 11) |
 | `content.voice` | every player-facing string, in its category — origins included; every control against art. 66 |
 
@@ -1723,6 +1726,70 @@ Named, not hidden. Each of these is a task, not an accident.
   if run one reads as unfair rather than as the beginning, the number to
   turn is the Gnawing's, not the hand's.
 
+  **The company wave: five horrors, and one of them at the bottom.** The
+  depth had one bad guy — technically two, but the Marrow woke only in the
+  ossuary — and its last room was a door that opened itself. It now has a
+  unique per region and a keeper behind the last door (cards 29, 31,
+  art. 37 as amended). Every number below comes from one model,
+  `test/policy.ts` playing turns and `test/depth.ts` playing runs, so two
+  numbers beside each other always mean the same thing.
+
+  **One fight, at full health**, 1000 seeds:
+
+  | horror | health | bare five | found six | found six + plate |
+  | --- | --- | --- | --- | --- |
+  | the Gnawing | 150 | 0.283 | 0.813 | 0.938 |
+  | the Marrow | 120 | 0.530 | 0.939 | 0.986 |
+  | the Silt Mother | 112 | 0.354 | 0.872 | 1.000 |
+  | the Kindled | 128 | 0.371 | 0.896 | 0.990 |
+  | **the Warden** | 168 | **0.134** | **0.673** | **0.874** |
+
+  The two new region uniques sit between the Marrow and the Gnawing, which
+  is what the card asked for: *slightly under the Gnawing's numbers, rarer
+  rather than merely bigger.* The Warden is the hardest thing in the depth
+  at every hand it is measured with, and `test/warden.test.ts` asserts that
+  rather than hoping it.
+
+  **A whole depth**, 800 seeds, by what the player woke with — *reached the
+  last door* / *finished*:
+
+  | woke with | coin flip | first door | last door |
+  | --- | --- | --- | --- |
+  | five bones | 0.269 / 0.049 | 0.255 / 0.034 | 0.253 / 0.035 |
+  | one traveler's bone | 0.425 / 0.076 | 0.407 / 0.063 | 0.424 / 0.070 |
+  | two bones and the plate | 0.885 / 0.484 | 0.885 / 0.472 | 0.880 / 0.468 |
+
+  **The sentence the engagement file asks for: a taught run wins about half
+  the time.** A player carrying what two earlier runs found reaches the
+  bottom nearly always and beats the keeper in a bit under half of those —
+  0.48 end to end. A first waking reaches the door about a quarter of the
+  time and takes the depth about one run in twenty. Before the keeper
+  existed, reaching the door *was* finishing, so the left column of that
+  table is the like-for-like number and it has not moved: what changed is
+  that there is now something behind the door, and it is the thing the run
+  behind you was for.
+
+  Three findings, reported rather than smoothed over.
+
+  - **The depth got much harder at the bottom and not on the road.** A bare
+    run's end-to-end survival fell from about 0.24 to 0.049. That is the
+    keeper and nothing else — the road costs what it always did. If one run
+    in twenty reads as unfair rather than as the beginning, the number to
+    turn is `WARDEN_HEALTH`, and nothing else has to move with it.
+  - **Locking a region makes a depth slightly *safer*.** Reaching the last
+    door by lean: drowned 0.320, ossuary 0.214, burnt 0.194, against 0.269
+    for a coin flip. No region became a death sentence — the failure the
+    card was watching for — but a region's unique is authored *under* the
+    ordinary teeth, which is what the card asked for and the precedent the
+    Marrow set, so arrival buys a different fight rather than a worse one.
+    The knob is the uniques' health, at 112 and 128 against the Gnawing's
+    150.
+  - **`hunger` is worth exactly zero against the model.** The greedy player
+    never once ends a turn without a claim, so the Kindled measures as
+    softer than it plays for anybody who hesitates. That is the kind
+    working, not the horror being soft — it is measured against a turtle
+    instead, where it moves the number.
+
   So: **survival roughly doubles, and a depth is still lost more often
   than it is won.** Say it plainly — this did not make depth one
   survivable, it made it survivable *sometimes*. About a third of the
@@ -1771,7 +1838,15 @@ Named, not hidden. Each of these is a task, not an accident.
   not being in register. The arrivals are the most exposed of these: an
   arrival is the payoff of a whole depth of committing, and it is
   currently one flat sentence.
-- **One depth, one horror, no economy.** The phase-0 non-goals still hold.
+- **One depth, five horrors, no economy.** The phase-0 non-goals hold minus
+  one: the company wave took "one horror" off the list. A unique per region
+  and a keeper at the bottom (cards 29, 31). The economy is untouched.
+- **New: the Warden's body does not thin as it is hurt.** art. 70 wants a
+  wounded horror to stay wounded, and the hinge's default mass does that —
+  it dithers thinner as health goes. A drawn body cannot, so the keeper's
+  wounds are readable only from the bar above it (art. 57) and not from the
+  thing itself. The fix belongs with the motion budget (card 64), where a
+  drawn thing gets states rather than a single frame.
 - **The renderer is the shell's slow part.** The box is computed per pixel,
   so `src/main.ts` caches every rendered frame by scene state and height.
   A room first seen costs about a second, and a *state* first seen costs
@@ -1789,15 +1864,14 @@ Named, not hidden. Each of these is a task, not an accident.
   one verb in the act strip doing what art. 74's glyph does for the card;
   whether the Book deserves its own glyph is a design question, not a
   law one.
-- **New: at the Warden's door, the lock covers the door's tap region.**
-  Found by walking the real app. Art. 69 puts the small thing on the
-  large thing it is part of, so `warden.lock` is laid over `warden.door`
-  — and a single door is centred on the same mark, so the middle of the
-  one door in that room answers "the lock" rather than picking the door.
-  Nothing is unreachable: `Descend` is in the act strip, the door is
-  already the chosen one, and the door's edge still answers. It predates
-  the drift, and a corridor moment being a single centred door makes it
-  easier to meet.
+- ~~**At the Warden's door, the lock covers the door's tap region.**~~ Was
+  a defect; card 67 made it the point. The lock is what the hall is for
+  now — looking at it is the first half of the ceremony and the only thing
+  that summons `Unlock` — so a thumb that lands on the lock rather than on
+  the door has landed on the right thing. The door's edge still answers.
+  What is worth watching instead is the opposite risk: a player who never
+  taps the lock finds a hall with no verbs in it at all, and the only
+  thing pointing at the lock is that it is one of two things in the room.
 - **The trail is PARKED.** Art. 85 says the run's history graph could
   someday be shown as where you have been, and that showing it still
   requires an amendment. The graph now exists and is trivially
@@ -1835,8 +1909,13 @@ Named, not hidden. Each of these is a task, not an accident.
   identify — so the question is no longer whether a light is a sprite. It
   is what the paint order is when a drawn thing and a field share a depth,
   and the law still does not say.
-- **The Warden is a door, not a being.** Art. 37 names the Warden's door as
-  the anchor that ends a depth; nothing says what the Warden is.
+- ~~**The Warden is a door, not a being.**~~ **Closed** by the company
+  wave (card 31): art. 37 is amended, and the Warden is the keeper the
+  door was built for. Turning the key is what wakes it. What the article
+  now leaves open is smaller and worth naming: it says a region *has* a
+  unique and says nothing about how hard one may be relative to the
+  ordinary teeth, which is why the finding above is a finding and not a
+  bug.
 - **Ladder modifiers are read as one multiplier per tier, and now one
   ships.** Art. 53 names the species and says "a tier higher" without
   saying what a tier is worth. The counting cord is the first content to

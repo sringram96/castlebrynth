@@ -62,6 +62,7 @@ function standing(room: RoomId, doors = 1): SceneState {
       at,
       open: false,
       locked: false,
+      turned: false,
       ends: false,
     })),
   }
@@ -323,7 +324,7 @@ describe('art. 110 — overlay repaint, and the pixels that may not move', () =>
     const open: SceneState = {
       ...standing(throne),
       opened: [`${instanceOf(throne, 0)}→0`],
-      doors: [{ at: 0, open: true, locked: false, ends: false }],
+      doors: [{ at: 0, open: true, locked: false, turned: false, ends: false }],
     }
     const scene = roomContent(throne).scene(open)
     const cast = renderRoom(scene, CONFIG)

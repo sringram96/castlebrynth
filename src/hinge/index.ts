@@ -67,13 +67,24 @@ export function openFightDoor(
 }
 
 /**
+ * What a horror looks like coming at you, as a function of how far in it
+ * has come. Content may hand one over (art. 100: a thing meant to be
+ * recognised is drawn once, by hand); what it hands over is a `Prop`, so
+ * this module still knows nothing about drawings, ramps or schools.
+ */
+export type ComingCloser = (fight: Fight, closeness: number) => Prop
+
+/**
  * art. 28: the advance is a motion that matters, so it never undoes itself.
  * art. 1: any pulse in presentation is skin — the caller may hand it a
  * closeness of 1 at any moment and the end state is settled and the same.
+ *
+ * art. 26's first tier is the default body: a mass, deliberately basic and
+ * improved over time. A horror that has been drawn brings its own.
  */
-export function advance(fight: Fight, closeness = 1): Advance {
+export function advance(fight: Fight, closeness = 1, body: ComingCloser = horrorProp): Advance {
   const settled = fight.outcome === 'fighting' ? Math.min(1, Math.max(0, closeness)) : 0
-  return { closeness: settled, prop: horrorProp(fight, settled) }
+  return { closeness: settled, prop: body(fight, settled) }
 }
 
 /**
@@ -181,6 +192,10 @@ export function saveFight(
     turnNumber: fight.turnNumber,
     kept: keptAtRecast(turn),
     castingsSpent: turn.castings.length,
+    // art. 65: what the last intent took off this turn, and what is still
+    // running in you. Neither derives from the seed, so both are written.
+    bound: turn.bound,
+    bleed: fight.bleed,
     card: turn.card,
     claims: turn.claims.map((made) => ({
       line: made.line,
@@ -218,7 +233,9 @@ export function restoreFight(
   for (const made of save.claims) opening = refill(opening, made.line)
 
   const intent = horror.intentFor(save.turnNumber)
-  let turn: Turn = openTurn(run.hand, intent, opening)
+  // art. 65: the turn re-opens as short as it was. The bound set is replayed
+  // before the cast, so the dice that land are the dice that landed.
+  let turn: Turn = openTurn(run.hand, intent, opening, save.bound)
   if (save.castingsSpent >= 1) turn = cast(turn, lots(1))
   if (save.castingsSpent >= 2) turn = recast(keep(turn, save.kept), lots(2))
   else if (save.castingsSpent === 1) turn = keep(turn, save.kept)
@@ -232,6 +249,10 @@ export function restoreFight(
     yourHealthMax: run.healthMax,
     turnNumber: save.turnNumber,
     card: turn.card,
+    // art. 65: a bleed outlasts a turn and outlasts a lock screen. It has
+    // already ticked for this turn — the tick happens where the turn opens
+    // (`advanceFight`) — so what is restored is what is left of it.
+    bleed: save.bleed,
     turn,
     events: [],
   }

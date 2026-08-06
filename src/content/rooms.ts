@@ -31,6 +31,7 @@ import type {
 import type {
   Catalog,
   DepthPlan,
+  Door,
   Fill,
   Grammar,
   KeyId,
@@ -40,7 +41,7 @@ import type {
   SocketId,
 } from '../gen/index.js'
 import type { Horror } from '../lots/index.js'
-import type { RoomId } from '../state/index.js'
+import type { ItemId, RoomId } from '../state/index.js'
 import type {
   Blink,
   Drawn,
@@ -67,7 +68,7 @@ import {
   fillProps,
   fillWords,
 } from './encounters.js'
-import { horrorById } from './horrors.js'
+import { THE_WARDEN, horrorById } from './horrors.js'
 import type { School } from './palettes.js'
 import {
   sandOf,
@@ -103,6 +104,7 @@ import {
   alcove,
   ashBanks,
   boneDrifts,
+  comingCloser,
   dragMark,
   dust,
   fontSteps,
@@ -148,11 +150,12 @@ import {
   STATUE,
   THRONE,
   URN,
+  WARDEN_KEEPER as WARDEN_KEEPER_BODY,
   WATCHER,
   WATCHER_DARK,
 } from './plates/bestiary.js'
 import { WAKE, masonry, wakeProps } from './plates/wake.js'
-import { ARRIVALS, BEATS, LABELS, LOOKS, NOUNS } from './prose.js'
+import { ARRIVALS, BEATS, LABELS, LOOKS, NOUNS, VERBS } from './prose.js'
 import { MOTION, RENDER } from './render.js'
 
 export { WARDEN_KEY, WARDEN_KEY_ITEM } from './encounters.js'
@@ -398,6 +401,39 @@ function backWallMarks(kind: ShapeKind, n: number): readonly WorldMark[] {
 
 /** art. 37: the Warden's door, which is the one door its hall ever offers. */
 const WARDEN_DOOR = doorMarks('hall', 1)[0]!
+
+/**
+ * card 67, arts 66–68: **the key is turned.**
+ *
+ * The defect this closes is that the iron key opened this door by sitting
+ * in a pocket. art. 80 builds the entire depth around placing that key and
+ * the payoff was a passive inventory check — looking is free and commitment
+ * is drama, and a lock that opens itself is neither of them.
+ *
+ * The ceremony is made of machinery that already existed. The lock is
+ * already a tappable on the frame (art. 97): **look at it**, and it names
+ * what it wants, or, carrying the key, names what fits (art. 69 — it
+ * answers either way). Only then, and only carrying, is `Unlock` summoned:
+ * `about` is art. 68's own law applied to the one act it was not, and
+ * `needs` is what makes "only carrying" true of the tray and not only of
+ * the press. The press writes a deed against this instance (art. 82), the
+ * lock hangs open in pixels (art. 70), and `unlocks` is what the door reads
+ * before it offers any way on at all.
+ *
+ * It is authored on the room rather than in a socket because the lock
+ * belongs to the door, and the door belongs to the hall.
+ */
+const UNLOCK: Act = {
+  id: 'act.unlock',
+  verb: VERBS['act.unlock'] ?? 'Unlock',
+  needs: [WARDEN_KEY_ITEM],
+  gives: [],
+  // art. 4: nothing holds this room's door but the lock itself, and the
+  // lock is not a thing lying on the floor to be walked past.
+  required: false,
+  about: 'warden.lock',
+  unlocks: 0,
+}
 
 /**
  * art. 97: the lock lives *on* the frame, so the thing that answers for it
@@ -1327,6 +1363,9 @@ const AUTHORED: readonly Authored[] = [
       ['warden.lock', lockOn(WARDEN_DOOR)],
       ['warden.door', WARDEN_DOOR],
     ],
+    // card 67: the one act in the hall, and it is not offered until the lock
+    // has been looked at with the key on you.
+    acts: [UNLOCK],
     // The Warden's door ends the depth. Nothing stands in front of it.
     teeth: NEVER,
     mercy: NEVER,
@@ -1371,7 +1410,9 @@ function thresholds(one: Authored, state: SceneState, stir = 0): readonly Prop[]
           threshold(
             one.school,
             marks[i]!,
-            { open: door.open, locked: door.locked, warden: door.ends },
+            // card 67: and whether its lock has been turned, which is a
+            // pixel like the rest of its state (art. 70).
+            { open: door.open, locked: door.locked, turned: door.turned, warden: door.ends },
             stir,
           ),
         ],
@@ -1414,7 +1455,7 @@ function motionOf(one: Authored, state: SceneState): Motion {
 function waysOf(state: SceneState): readonly DoorState[] {
   return state.doors.length > 0
     ? state.doors
-    : [{ at: 0, open: false, locked: false, ends: false }]
+    : [{ at: 0, open: false, locked: false, turned: false, ends: false }]
 }
 
 /** art. 96: whether this door of this room is a direction rather than a door. */
@@ -1682,18 +1723,117 @@ export function horrorOf(fills: readonly Fill[]): Horror | null {
 }
 
 /**
+ * arts 30, 37 (as amended 2026-08-06): the same question, asked of a room
+ * rather than of its sockets — because the last one has a keeper that
+ * stands in no socket.
+ *
+ * The Warden is not dealt, so nothing about the drift, the weights or the
+ * scopes reaches it: it is in the hall because the hall is what it keeps.
+ * Everything the engine then does with it is what it does with any horror.
+ */
+export function horrorIn(node: { readonly type: RoomType; readonly fills: readonly Fill[] }): Horror | null {
+  return horrorOf(node.fills) ?? (node.type === 'warden' ? THE_WARDEN : null)
+}
+
+/**
+ * card 31: the deed a beaten keeper leaves.
+ *
+ * It is a deed and not an act — nothing presses it — written against the
+ * instance like every other (art. 82). It is what the hall reads to know
+ * whether its door is still a fight or is a way down at last, and it lives
+ * in content because it is the Warden's, not the engine's.
+ */
+export const WARDEN_DOWN = 'deed.warden-down'
+
+/**
+ * card 31: whether the keeper this door was built for is still standing.
+ *
+ * Three states and one predicate, because the door's verb is a different
+ * word in each of them and art. 71 says no press may lie about where it
+ * takes you. Nothing until the key turns — the hall is empty and the lock
+ * is what answers — a **fight** while the keeper is up, including after you
+ * have run out of it (art. 63: coming back resumes), and a way **down**
+ * once the deed says it is beaten.
+ *
+ * It takes the deeds rather than a ledger so that it stays a fact about the
+ * room: the shell reads it, the tests read it, and neither of them has to
+ * reimplement it.
+ */
+export function keeperStanding(
+  door: Door,
+  node: { readonly type: RoomType; readonly fills: readonly Fill[] },
+  turned: boolean,
+  done: readonly string[],
+): boolean {
+  if (door.ends !== true) return false
+  if (horrorIn(node) === null) return false
+  return turned && !done.includes(WARDEN_DOWN)
+}
+
+/**
+ * arts 30, 100 (card 31): how the Warden comes down its hall.
+ *
+ * Wider and taller than the aperture it steps out of — the door plans a
+ * hall's threshold at nine world units by nineteen, and this is thirteen by
+ * twenty-four — so art. 30's advance is done by a thing that was always too
+ * big for the room. It walks from the far wall to the lens at world
+ * coordinates, so the growing is the projector's and not a sprite's
+ * (art. 15).
+ *
+ * Every other horror keeps the mass the hinge draws by default (art. 26's
+ * first tier). This is the one thing in the depth the game has decided the
+ * player must recognise before it is in the lens.
+ */
+const WARDEN_COMING = comingCloser(IRON, WARDEN_KEEPER_BODY, 'the keeper', {
+  wide: 13,
+  high: 24,
+  from: 38,
+  to: 11,
+})
+
+/**
+ * The body a horror advances with, if it has one drawn. `null` is the
+ * ordinary answer, and the hinge's own mass is what it means.
+ */
+export function advanceBodyOf(horror: string): ((closeness: number) => Prop) | null {
+  return horror === 'horror.warden' ? WARDEN_COMING : null
+}
+
+/**
  * The book the descent reads from. Content answers what a room says; the
  * engine only decides when it is said.
  */
 export const ROOM_BOOK: RoomBook = {
   beats: (id) => BEATS[id as string] ?? [],
   tappables: (id) => roomContent(id).tappables,
-  look: (_id, target) => LOOKS[target] ?? '',
+  // art. 69, card 67: it answers either way, and one thing in the depth
+  // answers differently depending on what is on you. Which things care is
+  // content's business; the engine hands over the pocket and reads nothing.
+  look: (_id, target, carried = []) => LOOKS[lookKey(target, carried)] ?? LOOKS[target] ?? '',
   acts: (id) => roomContent(id).acts,
   // art. 83: the room is handed over so the thing can stand somewhere, and
   // for nothing else — every word below comes from the encounter.
   socket: (id, fill): SocketWords => fillWords(fill, socketMark(id, fill.socket)),
   arrival: (region) => ARRIVALS[region as string] ?? [],
+}
+
+/**
+ * card 67: which answer a tap gets, given what is carried.
+ *
+ * One entry, and the shape it makes is the general one: a thing may author
+ * a second line under `<thing>.<suffix>`, and it is given when the run holds
+ * the item that suffix stands for. Everything else falls through to its one
+ * answer, which is nearly everything (art. 69: a thing answers either way,
+ * and for most things "either way" is the same sentence).
+ */
+const ANSWERS_WHEN_CARRYING: Readonly<Record<string, readonly [ItemId, string]>> = {
+  'warden.lock': [WARDEN_KEY_ITEM, 'warden.lock.fits'],
+}
+
+function lookKey(target: string, carried: readonly ItemId[]): string {
+  const held = ANSWERS_WHEN_CARRYING[target]
+  if (held === undefined) return target
+  return carried.includes(held[0]) ? held[1] : target
 }
 
 /** The name a room answers to, for the beat that opens it (art. 34). */

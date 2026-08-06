@@ -200,11 +200,42 @@ export type Card = Readonly<Record<Line, boolean>>
  * art. 65: an intent may attack the plan, not just the body — sealing lines,
  * cursing a value, corroding armor. Each is declared on the intent like any
  * number (art. 58); which horror declares which is content, not law.
+ *
+ * **Three more, by the company wave (card 30).** The first three all attack
+ * one turn's arithmetic. These attack three things the arithmetic sits on —
+ * the hand, time, and hesitation — and each is declared and tappable like
+ * everything else (arts 42, 65, 73). Every number in them is content's.
+ *
+ * - `bind` attacks the **hand**: one die, chosen by the declared rule, is
+ *   not cast next turn. It is the first effect that makes hand *size* a
+ *   battlefield, which is what the whole collection game is about (art. 60).
+ * - `bleed` attacks **time**: `amount` at the start of each of the next
+ *   `turns` turns, armor applying each tick. Stacks refresh, never add — so
+ *   a long careful fight costs something, which prices turtling.
+ * - `hunger` attacks **hesitation**: a turn that ends with no claim landed
+ *   feeds the horror `amount`. art. 46 keeps a claim possible, so this
+ *   charges only the choice not to make one.
  */
 export type IntentEffect =
   | { readonly kind: 'seal'; readonly lines: readonly Line[] }
   | { readonly kind: 'curse'; readonly value: Value }
   | { readonly kind: 'corrode' }
+  | { readonly kind: 'bind'; readonly rule: BindRule }
+  | { readonly kind: 'bleed'; readonly amount: number; readonly turns: number }
+  | { readonly kind: 'hunger'; readonly amount: number }
+
+/**
+ * art. 65: *which* die a bind takes is declared, never chosen at random —
+ * "your highest" is a fact the player can read off the table before the
+ * intent lands, which is the whole of art. 42's promise about keeping.
+ */
+export type BindRule = 'highest' | 'lowest'
+
+/** art. 65: a bleed in force — what it takes, and for how many more turns. */
+export interface Bleeding {
+  readonly amount: number
+  readonly turns: number
+}
 
 /** art. 58: a declared verb + number + optional effect. Taxonomy is content. */
 export interface Intent {
@@ -262,6 +293,13 @@ export interface Turn {
   readonly claims: readonly Claim[]
   /** art. 63: the fight's card as this turn has spent it. */
   readonly card: Card
+  /**
+   * art. 65 (`bind`): the dice this turn cannot cast. They are excluded at
+   * the **cast** and not at the claim — a bound die never lands, so it is
+   * not a die you can see and not use, it is a die you do not have. That is
+   * what makes the effect an attack on the hand rather than on the turn.
+   */
+  readonly bound: readonly DieId[]
 }
 
 /** A source of chance. Seeded, because a run is seeded at waking (art. 36). */
@@ -291,6 +329,23 @@ export interface Resolution {
   /** art. 63: the lines this turn burned off the card. */
   readonly linesSpent: readonly Line[]
   readonly fled: boolean
+  /**
+   * art. 65 (`bind`): which dice this turn's intent takes out of the next
+   * turn's hand. Named here rather than chosen in the fight, because the
+   * rule is declared and the dice as they lie are what it reads.
+   */
+  readonly binds: readonly DieId[]
+  /**
+   * art. 65 (`bleed`): the bleed this intent opens. It **replaces** whatever
+   * was running rather than adding to it — stacks refresh, never add — so a
+   * horror that bleeds every other turn is a steady tax and not a spiral.
+   */
+  readonly bleeds: Bleeding | null
+  /**
+   * art. 65 (`hunger`): what a turn that claimed nothing gives back to the
+   * horror. Zero on every turn that landed a claim, which is nearly all.
+   */
+  readonly fed: number
 }
 
 // ── The fight ──────────────────────────────────────────────────────────
@@ -317,6 +372,12 @@ export type FightEvent =
   | { readonly kind: 'cost'; readonly amount: number }
   | { readonly kind: 'blocked'; readonly amount: number }
   | { readonly kind: 'struck'; readonly amount: number }
+  /** art. 65 (`hunger`): a turn that landed nothing, and what it gave back. */
+  | { readonly kind: 'fed'; readonly amount: number }
+  /** art. 65 (`bleed`): a tick, after armor, at the top of a turn. */
+  | { readonly kind: 'bled'; readonly amount: number }
+  /** art. 65 (`bind`): the dice the next turn will not be cast with. */
+  | { readonly kind: 'bound'; readonly dice: readonly DieId[] }
   | { readonly kind: 'ended'; readonly outcome: Outcome }
 
 export interface Fight {
@@ -329,6 +390,13 @@ export interface Fight {
   readonly armor: Armor
   /** art. 63: one card per fight, refilled at the door. */
   readonly card: Card
+  /**
+   * art. 65 (`bleed`): what is still running in you, if anything. It lives
+   * on the fight rather than on the turn because it outlasts a turn — and it
+   * is written down with the fight (art. 75), so running out of the door
+   * does not run out of the bleeding.
+   */
+  readonly bleed: Bleeding | null
   readonly turnNumber: number
   readonly turn: Turn
   readonly hand: Hand
