@@ -23,7 +23,7 @@
  * Carrying none draws no randomness. Not *draws and discards* — that would
  * silently change every fight for every player carrying nothing, which is
  * almost every player almost all of the time. So every function here answers
- * before it looks at a lot, and `test/rolling.test.ts` holds a whole
+ * before it looks at a lot, and `test/rolling.seam.test.ts` holds a whole
  * transcript of the pre-wave build to prove it.
  */
 
@@ -166,7 +166,7 @@ export function didFire(one: Rolled): boolean {
  * charges for the rest.
  *
  * Like `audit` on a die, this reports rather than judges, except for the one
- * line that is a verdict. `test/rolling.test.ts` holds the shipped catalog to
+ * line that is a verdict. `test/rolling.faces.test.ts` holds the shipped catalog to
  * it, so a trinket that gives without whiffing cannot reach a player.
  */
 export interface TrinketAudit {

@@ -161,7 +161,7 @@ export type Armor = number
  * **The nulls are the feature.** They are what keeps a rolling good from
  * being flat power — a thing that always fires is a number on the body, and
  * a number on the body is a wearable (art. 47). Every rolling good therefore
- * carries at least two nulls and one cost face, and `test/rolling.test.ts`
+ * carries at least two nulls and one cost face, and `test/rolling.faces.test.ts`
  * holds the catalog to it.
  */
 export type Amend =
@@ -501,7 +501,7 @@ export interface Resolution {
    *
    * Empty is the normal state, and empty means *nothing was drawn*: a run
    * carrying none never touches a lot here, so its stream is the stream it
-   * was before the wave (`test/rolling.test.ts`). What the faces did is
+   * was before the wave (`test/rolling.seam.test.ts`). What the faces did is
    * already inside the three numbers above — `harmDealt` carries the `add`
    * and the `per`, `blocked` and `harmTaken` carry the `block`, `hurt`
    * carries the `cost` — so this is the *itemisation* and not a second
