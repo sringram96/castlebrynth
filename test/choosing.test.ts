@@ -44,38 +44,42 @@ const bare = () => firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY)
 const ids = (dice: readonly { readonly id: string }[]): readonly string[] =>
   dice.map((die) => die.id as string)
 
-describe('arts 55, 60 — five bones, a hand of six, and the one free slot', () => {
-  it('wakes five against a hand size of six, with nothing spare', () => {
+describe('arts 55, 60 — six bones, a hand of six, and the first find', () => {
+  it('wakes six against a hand size of six, with nothing spare', () => {
     const permanent = bare()
-    expect(permanent.pouch.dice).toHaveLength(5)
+    expect(permanent.pouch.dice).toHaveLength(HAND_SIZE)
     expect(permanent.handSize).toBe(6)
-    expect(handFrom(permanent)).toHaveLength(5)
+    expect(handFrom(permanent)).toHaveLength(HAND_SIZE)
     expect(sparesOf(permanent)).toEqual([])
   })
 
-  it('fills the empty slot with the first find, and asks nothing', () => {
+  /**
+   * art. 55 as amended 2026-08-06: the hand is full at the waking, so the
+   * first find is the first *decision* rather than the first completion. It
+   * is owned the moment it is taken and it descends when the player says so
+   * (art. 60), which is the article this whole file is about.
+   */
+  it('leaves the first find spare rather than in the hand', () => {
     const found = collect(bare(), THE_PUSHER)
-    // Six is the standard, so the first bone completes the hand rather than
-    // displacing anything. There is no decision here to make.
-    expect(handFrom(found)).toHaveLength(HAND_SIZE)
-    expect(ids(handFrom(found))).toContain(THE_PUSHER.id as string)
-    expect(sparesOf(found)).toEqual([])
-  })
-
-  it('leaves the second find spare rather than in the hand', () => {
-    const found = collect(collect(bare(), THE_PUSHER), THE_RUNNER)
-    expect(found.pouch.dice).toHaveLength(7)
+    expect(found.pouch.dice).toHaveLength(HAND_SIZE + 1)
     expect(handFrom(found)).toHaveLength(HAND_SIZE)
     // Owned, and not in play. That is the decision the swap exists for.
-    expect(ids(sparesOf(found))).toEqual([THE_RUNNER.id as string])
+    expect(ids(sparesOf(found))).toEqual([THE_PUSHER.id as string])
+  })
+
+  it('leaves the second find spare too, and destroys neither', () => {
+    const found = collect(collect(bare(), THE_PUSHER), THE_RUNNER)
+    expect(found.pouch.dice).toHaveLength(HAND_SIZE + 2)
+    expect(handFrom(found)).toHaveLength(HAND_SIZE)
+    expect(ids(sparesOf(found))).toEqual([THE_PUSHER.id as string, THE_RUNNER.id as string])
   })
 })
 
 describe('art. 60 — the choosing', () => {
   it('asks only when the pouch has outgrown the hand', () => {
+    // Six bones is exactly a hand: nothing to decide until something is found.
     expect(mustChoose(bare())).toBe(false)
-    // Five bones and one find is exactly a hand: nothing to decide.
-    expect(mustChoose(collect(bare(), THE_PUSHER))).toBe(false)
+    expect(mustChoose(collect(bare(), THE_PUSHER))).toBe(true)
     expect(mustChoose(collect(collect(bare(), THE_PUSHER), THE_RUNNER))).toBe(true)
   })
 
@@ -87,8 +91,8 @@ describe('art. 60 — the choosing', () => {
     expect(ids(handFrom(chosen))).toEqual(keep)
     expect(handFrom(chosen)).toHaveLength(HAND_SIZE)
     // What was not chosen is spare, not gone: the pouch is the collection.
-    expect(chosen.pouch.dice).toHaveLength(7)
-    expect(sparesOf(chosen)).toHaveLength(1)
+    expect(chosen.pouch.dice).toHaveLength(HAND_SIZE + 2)
+    expect(sparesOf(chosen)).toHaveLength(2)
   })
 
   it('destroys nothing and invents nothing', () => {
@@ -96,7 +100,7 @@ describe('art. 60 — the choosing', () => {
     const before = new Set(ids(found.pouch.dice))
     const chosen = chooseHand(found, [THE_CAREFUL.id, THE_RUNNER.id] as never)
     expect(new Set(ids(chosen.pouch.dice))).toEqual(before)
-    expect(chosen.pouch.dice).toHaveLength(8)
+    expect(chosen.pouch.dice).toHaveLength(HAND_SIZE + 3)
   })
 
   it('ignores what is not owned, and a name said twice', () => {
@@ -109,7 +113,7 @@ describe('art. 60 — the choosing', () => {
     ] as never)
     expect(ids(chosen.pouch.dice)).not.toContain(THE_LEECH.id as string)
     expect(ids(chosen.pouch.dice)[0]).toBe(THE_PUSHER.id as string)
-    expect(chosen.pouch.dice).toHaveLength(7)
+    expect(chosen.pouch.dice).toHaveLength(HAND_SIZE + 2)
     // A short choice is honoured as far as it goes; the rest fill behind it.
     expect(handFrom(chosen)).toHaveLength(HAND_SIZE)
   })

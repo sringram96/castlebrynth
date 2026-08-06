@@ -1,11 +1,11 @@
 import type { BondId, Die, DieId, Face, Pouch, RiderId, Value } from '../lots/index.js'
 
 /**
- * art. 55 (amended 2026-08-05): the start is bare — **five** plain bones, no
+ * art. 55 (amended 2026-08-06): the start is bare — **six** plain bones, no
  * riders, no bonds, no talismans. art. 50: shapes are free, values are law —
  * every face shows a value 1–6, whatever the body.
  *
- * art. 86: every die past the bare five belonged to someone who came down
+ * art. 86: every die past the bare six belonged to someone who came down
  * here and did not come back. Those live in `travelers.ts`, beside the
  * people they came off; nothing in this file has an owner.
  */
@@ -24,19 +24,34 @@ function plainBone(n: number): Die {
 export const PLAIN_BONE: Die = plainBone(0)
 
 /**
- * arts 55, 60: v1 ships a pouch of five plain bones against a hand size of
- * six. The pouch is one short of the hand on purpose — the empty slot is
- * visible from the first waking, and art. 56 makes the first traveler's die
- * the thing that fills it.
+ * arts 55, 60 (amended by the ruling of 2026-08-06): v1 ships a pouch of
+ * **six** plain bones against a hand size of six. The hand is full at the
+ * waking and there is nothing to pick up to make it so — a plain bone is
+ * equipment, not a find, and only a *special* die is ever discovered
+ * (art. 86 unchanged: every die past the bare six belonged to somebody).
+ *
+ * (Superseded: five bones against a hand of six, with the empty slot as the
+ * invitation. The hole read as a bug rather than an invitation — the room
+ * you wake in has a body lying in it, and a player who taps it and gets
+ * nothing concludes the game is broken, not that it is asking them
+ * something.)
  */
 export const PLAIN_POUCH: Pouch = {
-  dice: [plainBone(1), plainBone(2), plainBone(3), plainBone(4), plainBone(5)],
+  dice: [
+    plainBone(1),
+    plainBone(2),
+    plainBone(3),
+    plainBone(4),
+    plainBone(5),
+    plainBone(6),
+  ],
 }
 
 /**
  * art. 60: hand size is a body stat, and it is six. It is deliberately not
- * `PLAIN_POUCH.dice.length` — the gap between the two is art. 55's
- * invitation, and deriving one from the other would quietly close it.
+ * `PLAIN_POUCH.dice.length` — the two agree at the waking and are still
+ * different questions, because a mercy may grow the hand past the pouch and
+ * a wound may shrink it below.
  */
 export const HAND_SIZE = 6
 

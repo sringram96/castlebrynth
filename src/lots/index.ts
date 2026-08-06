@@ -28,7 +28,9 @@
  * goods)` takes one; `disband(turn, line)` gives it back; `unused(turn)`
  * is what fit nothing (art. 45). `attack(turn, goods)` is the whole turn's
  * harm. `fitsNothing(turn, dice, ladder)` is art. 72's other half: whether
- * a selection owes the thumb an explanation instead of an offer.
+ * a selection owes the thumb an explanation instead of an offer, and
+ * `withheld(turn, dice)` is what that explanation is when the dice make a
+ * line the card has spent or the intent has sealed (arts 63, 65).
  *
  * **The end of the turn** — `decide(turn, 'end-turn' | 'flee', armor,
  * goods)` yields a `Resolution`; `advanceFight(fight, resolution)` applies
@@ -122,6 +124,7 @@ export {
   spend,
   unspent,
   unused,
+  withheld,
 } from './card.js'
 
 export type { Audit } from './goods.js'

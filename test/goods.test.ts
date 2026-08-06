@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   CATALOG,
   LEAVES_A_GOOD,
+  PLAIN_POUCH,
   PLATE,
   ROOM_BOOK,
   RUSTED_PLATE,
@@ -169,9 +170,12 @@ describe('cards 19–20 — the goods are found rather than fixtured', () => {
       const { ledgers, chain } = greedyRun(seed)
       const met = LEAVES_A_GOOD.filter((who) => ledgers.permanent.met.includes(who))
       if (met.some((who) => (who as string).startsWith('enc.traveler.'))) withATraveler++
+      // The bare pouch is what you woke with, so what you *found* is
+      // everything past it — read off the pouch rather than written down,
+      // because art. 55's number is content's and has moved once already.
       const carried =
         ledgers.permanent.pouch.dice.length -
-        5 +
+        PLAIN_POUCH.dice.length +
         ledgers.permanent.keepsakes.length +
         ledgers.permanent.wearables.length
       if (carried > best) {

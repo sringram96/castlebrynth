@@ -87,11 +87,11 @@ describe('state — art. 36 (every mutation persists, boot restores exactly), ar
     // The run burns; the permanent survives. Nothing crosses but by ritual.
     expect(ledgers.permanent.pouch.dice).toHaveLength(PLAIN_POUCH.dice.length)
     expect(ledgers.run).not.toBeNull()
-    // arts 55, 60: a first waking is five bones against a hand size of six.
-    // The hand is what the pouch can fill, and the shortfall is art. 55's
-    // invitation rather than a bug in the assembly.
+    // arts 55, 60 (amended 2026-08-06): a first waking is six bones against a
+    // hand size of six. The hand is what the pouch can fill, and at the
+    // waking the pouch fills it exactly.
     expect(ledgers.run!.hand.dice).toHaveLength(PLAIN_POUCH.dice.length)
-    expect(permanent.handSize).toBeGreaterThan(ledgers.run!.hand.dice.length)
+    expect(permanent.handSize).toBe(ledgers.run!.hand.dice.length)
   })
 
   /**
@@ -103,13 +103,16 @@ describe('state — art. 36 (every mutation persists, boot restores exactly), ar
   it('takes a traveler’s die into the pouch and the next hand (arts 56, 60, 86)', () => {
     const permanent = firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY)
     const ledgers = wake(permanent, 1 as unknown as Seed)
-    expect(ledgers.run!.hand.dice).toHaveLength(5)
+    expect(ledgers.run!.hand.dice).toHaveLength(PLAIN_POUCH.dice.length)
 
     const found = collect(ledgers.permanent, THE_PUSHER)
     expect(found.signature).toBe(THE_PUSHER.id)
-    // The run in flight keeps the hand it went down with.
-    expect(ledgers.run!.hand.dice).toHaveLength(5)
-    // The next one does not.
-    expect(wake(found, 2 as unknown as Seed).run!.hand.dice).toHaveLength(HAND_SIZE)
+    // The run in flight keeps the hand it went down with, and so does the
+    // next: art. 55 wakes you full, so a find is a spare until the choosing
+    // screen puts it in (art. 60).
+    expect(ledgers.run!.hand.dice).toHaveLength(PLAIN_POUCH.dice.length)
+    const next = wake(found, 2 as unknown as Seed)
+    expect(next.run!.hand.dice).toHaveLength(HAND_SIZE)
+    expect(next.permanent.pouch.dice).toHaveLength(HAND_SIZE + 1)
   })
 })

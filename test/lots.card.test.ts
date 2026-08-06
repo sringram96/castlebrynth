@@ -11,6 +11,7 @@ import {
   sealed,
   unspent,
   unused,
+  withheld,
 } from '../src/lots/index.js'
 import { idsOf, turnOf } from './helpers.js'
 
@@ -68,5 +69,63 @@ describe('lots — art. 63 (once per fight), art. 64 (one line per composite), a
     const spentAll = Object.fromEntries(LINES.map((line) => [line, true]))
     const turn = turnOf([6, 6, 6, 6, 6, 6], { card: spentAll as never })
     expect(claimable(turn, idsOf(turn, 0, 1), LADDER)).toEqual([])
+  })
+})
+
+/**
+ * arts 63, 65, 72, 118 — **what is holding this shape shut.**
+ *
+ * The playtest defect: a full house lying on the table on a SEAL turn is
+ * offered as ANY DICE, and the tray called that *the best these make* — a
+ * sentence that is true of dice that make nothing and false about a full
+ * house. `claimable` cannot tell the two apart because both come back as the
+ * floor alone; this is the question that can.
+ */
+describe('lots — arts 63, 65: why a shape is not on offer', () => {
+  it('says nothing when the line these dice make is claimable', () => {
+    const turn = turnOf([4, 4, 4, 2, 2, 1])
+    expect(withheld(turn, idsOf(turn, 0, 1, 2, 3, 4))).toBeNull()
+    expect(claimable(turn, idsOf(turn, 0, 1, 2, 3, 4), LADDER)).toContain('full-house')
+  })
+
+  it('says nothing when the dice make no line above the floor', () => {
+    const turn = turnOf([1, 2, 4, 6, 3, 5])
+    // A stray pair of values with nothing between them: the floor, honestly.
+    expect(withheld(turn, idsOf(turn, 0, 3))).toBeNull()
+  })
+
+  it('names the seal when this turn’s intent shut the shape (art. 65)', () => {
+    const turn = turnOf([4, 4, 4, 2, 2, 1], { intent: SEAL })
+    const shape = idsOf(turn, 0, 1, 2, 3, 4)
+    // The shape is there, and the only thing on offer is the floor.
+    expect(claimable(turn, shape, LADDER)).toEqual(['any-dice'])
+    expect(withheld(turn, shape)).toEqual({ line: 'full-house', why: 'sealed' })
+  })
+
+  it('names the card when the line is already spent this fight (art. 63)', () => {
+    const spent = { ...freshCard(), 'full-house': true }
+    const turn = turnOf([4, 4, 4, 2, 2, 1], { card: spent })
+    const shape = idsOf(turn, 0, 1, 2, 3, 4)
+    expect(claimable(turn, shape, LADDER)).toEqual(['any-dice'])
+    expect(withheld(turn, shape)).toEqual({ line: 'full-house', why: 'spent' })
+  })
+
+  it('names the seal first when both hold — one of them lifts next turn', () => {
+    const spent = { ...freshCard(), 'full-house': true }
+    const turn = turnOf([4, 4, 4, 2, 2, 1], { card: spent, intent: SEAL })
+    expect(withheld(turn, idsOf(turn, 0, 1, 2, 3, 4))?.why).toBe('sealed')
+  })
+
+  it('reads the shape and not the hand — the exact selection (art. 72)', () => {
+    const turn = turnOf([4, 4, 4, 2, 2, 1], { intent: SEAL })
+    // All six make nothing, so nothing is being withheld from them.
+    expect(withheld(turn, idsOf(turn, 0, 1, 2, 3, 4, 5))).toBeNull()
+    // The pair inside them is sealed, and named as the pair it is.
+    expect(withheld(turn, idsOf(turn, 3, 4))).toEqual({ line: 'pair', why: 'sealed' })
+  })
+
+  it('says nothing about a selection with no dice in it', () => {
+    const turn = turnOf([4, 4, 4, 2, 2, 1], { intent: SEAL })
+    expect(withheld(turn, [])).toBeNull()
   })
 })

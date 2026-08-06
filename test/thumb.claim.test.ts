@@ -149,30 +149,30 @@ function thumb(opened: Fight, lot: Lot) {
 }
 
 /**
- * The fight-door of the dealt chain, opened the way the shell opens it —
- * with one traveler's bone already in the pouch.
+ * The fight-door of the dealt chain, opened the way the shell opens it.
  *
- * arts 55, 86: a bare hand is five now, and five dice of signature 3-2 *are*
- * a full house, so the defect art. 72 is about cannot be staged on one. It
- * needs a hand holding one die more than the shape in it, and under the
- * travelers ruling the only way a hand is six is that somebody down here
- * already died for it. That is the run this test is standing in.
+ * arts 55, 60 (amended 2026-08-06): a bare hand is six, so the defect
+ * art. 72 is about can be staged on the hand a player actually wakes with —
+ * five dice of signature 3-2 are a full house, and the sixth die on the
+ * table is the one that stops the *whole selection* from being one. Under
+ * the superseded five-bone start this fixture had to buy its sixth die off a
+ * dead traveler first; it no longer does.
  */
 function atTheFightDoor() {
   // art. 83: the fight is wherever this run's choices put teeth.
   const { ledgers, door } = atAFight(4)
-  // art. 11: the bone crosses to the permanent by the ritual, and art. 60
-  // reassembles the hand from the pouch it now sits in.
-  const permanent = collect(ledgers.permanent, THE_CAREFUL)
   const found: Ledgers = {
-    permanent,
-    run: { ...ledgers.run!, hand: assembleHand(permanent.pouch, permanent.handSize) },
+    permanent: ledgers.permanent,
+    run: {
+      ...ledgers.run!,
+      hand: assembleHand(ledgers.permanent.pouch, ledgers.permanent.handSize),
+    },
   }
   return openFightDoor(found, { door, horror: THE_GNAWING }, GOODS)
 }
 
 /**
- * Seed 6 casts 4-1-4-2-4-2 off that hand: three fours, two twos, and a one
+ * Seed 6 casts 4-1-4-2-4-1 off that hand: three fours, two ones, and a two
  * that belongs to nothing. It is the playtest's hand — a full house you can
  * see, one die away from being the whole hand.
  */
@@ -183,15 +183,15 @@ describe('the thumb — art. 72 (the exact selection, and why it fits nothing)',
     const play = thumb(atTheFightDoor(), lotFrom(seedOf(FULL_HOUSE_SEED)))
 
     play.roll()
-    expect(play.values()).toEqual([4, 1, 4, 2, 4, 2])
+    expect(play.values()).toEqual([4, 1, 4, 2, 4, 1])
 
     // Keeping is planning (art. 42), and this hand is already what it wants.
     play.holdAll()
     expect(play.phase).toBe('claim')
 
-    // The exact five: three fours and two twos, leaving the one behind.
+    // The exact five: three fours and two ones, leaving the two behind.
     const laid = play.laid()
-    const five = laid.filter((landed) => landed.face.value !== 1)
+    const five = laid.filter((landed) => landed.face.value !== 2)
     for (const landed of five) play.tap(landed.die)
     expect(play.selected()).toHaveLength(5)
 
@@ -204,12 +204,12 @@ describe('the thumb — art. 72 (the exact selection, and why it fits nothing)',
 
     const made = claimed.claims[0]!
     expect(made.line).toBe('full-house')
-    expect(made.sum).toBe(4 * 3 + 2 * 2)
-    expect(harm(made)).toBe(16 * LADDER['full-house'].multiplier)
+    expect(made.sum).toBe(4 * 3 + 1 * 2)
+    expect(harm(made)).toBe(14 * LADDER['full-house'].multiplier)
 
     // The card burns the line, and the horror wears the harm (arts 45, 63).
     expect(claimed.card['full-house']).toBe(true)
-    expect(resolution.harmDealt).toBe(16 * LADDER['full-house'].multiplier)
+    expect(resolution.harmDealt).toBe(14 * LADDER['full-house'].multiplier)
     expect(play.fight.horrorHealth).toBe(before - resolution.harmDealt)
   })
 
@@ -231,7 +231,7 @@ describe('the thumb — art. 72 (the exact selection, and why it fits nothing)',
     expect(play.says()).not.toBe(NOTICES['claim.exact'])
 
     // Releasing the one die that fits nothing turns the message into an offer.
-    const stray = play.laid().find((landed) => landed.face.value === 1)!
+    const stray = play.laid().find((landed) => landed.face.value === 2)!
     play.tap(stray.die)
     expect(play.offers()).toContain('full-house')
     expect(play.says()).toBeNull()

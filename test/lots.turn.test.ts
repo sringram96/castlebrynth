@@ -101,23 +101,25 @@ describe('lots — art. 41 (two castings), art. 42 (intent first), arts 43–44,
   })
 
   /**
-   * arts 55, 60 (amended 2026-08-05): the start is five bones against a hand
-   * size of six, so the first waking assembles a hand of five and the sixth
-   * slot stands empty. The gap is the law, not an accident of the pouch —
-   * these two numbers may never be derived from each other.
+   * arts 55, 60 (amended 2026-08-06): the start is six bones against a hand
+   * size of six, so the first waking assembles a full hand and nothing has
+   * to be picked up to make it one. The two numbers agree here and are still
+   * different questions — they may never be derived from each other, because
+   * a mercy moves one of them and a find moves the other.
    */
-  it('leaves the sixth slot empty at a first waking (arts 55, 60)', () => {
-    expect(PLAIN_POUCH.dice).toHaveLength(5)
+  it('wakes with a full hand and nothing spare (arts 55, 60)', () => {
+    expect(PLAIN_POUCH.dice).toHaveLength(6)
     expect(HAND_SIZE).toBe(6)
-    expect(assembleHand(PLAIN_POUCH, HAND_SIZE).dice).toHaveLength(5)
-    expect(HAND_SIZE - assembleHand(PLAIN_POUCH, HAND_SIZE).dice.length).toBe(1)
+    expect(assembleHand(PLAIN_POUCH, HAND_SIZE).dice).toHaveLength(HAND_SIZE)
+    expect(HAND_SIZE - assembleHand(PLAIN_POUCH, HAND_SIZE).dice.length).toBe(0)
   })
 
-  /** art. 86: and one traveler's bone is what closes it. */
-  it('fills the sixth slot with the first die collected (arts 56, 86)', () => {
+  /** art. 60: and a die found past that is a spare, not a seventh in hand. */
+  it('keeps the hand at its size when the pouch outgrows it (arts 56, 60, 86)', () => {
     const found: Pouch = { dice: [...PLAIN_POUCH.dice, THE_PUSHER] }
     expect(assembleHand(found, HAND_SIZE).dice).toHaveLength(HAND_SIZE)
-    expect(assembleHand(found, HAND_SIZE).dice.at(-1)).toBe(THE_PUSHER)
+    expect(assembleHand(found, HAND_SIZE).dice).not.toContain(THE_PUSHER)
+    expect(assembleHand(found, HAND_SIZE + 1).dice.at(-1)).toBe(THE_PUSHER)
   })
 
   it('throws only values the die declares (art. 50)', () => {

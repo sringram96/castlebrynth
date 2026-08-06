@@ -194,6 +194,7 @@ export {
   saysGood,
   saysIntent,
   saysItem,
+  saysWithheld,
 } from './says.js'
 export type { RoomContent } from './rooms.js'
 export {

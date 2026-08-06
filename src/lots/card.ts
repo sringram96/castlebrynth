@@ -89,6 +89,38 @@ export function claimable(turn: Turn, dice: readonly DieId[], ladder: Ladder): r
 }
 
 /**
+ * art. 63 / art. 65: **what shape these dice actually make, and what is
+ * holding it shut.**
+ *
+ * `claimable` answers what may be claimed; this answers the other half —
+ * when a selection *is* a line of the ladder and that line is not on offer,
+ * which of the two things took it. `null` when the selection makes no line
+ * above the floor, or when the line it makes is claimable after all.
+ *
+ * It exists because art. 72's DEFAULT ("a selection that fits nothing says
+ * why") had no way to tell the two silences apart. A selection down to the
+ * floor because the dice make nothing and a selection down to the floor
+ * because the horror sealed the line it makes are the same picture and
+ * completely different facts, and the tray was calling both of them *the
+ * best these make* — which is true of the first and a lie about the second.
+ * This is art. 118's second clause applied to a line instead of a verb: what
+ * withholds it is said, and it is said where the thumb already is.
+ */
+export function withheld(turn: Turn, dice: readonly DieId[]): { line: Line; why: 'spent' | 'sealed' } | null {
+  const chosen = selection(turn, dice)
+  if (chosen.length === 0) return null
+  const line = shapesOf(chosen.map((landed) => landed.face.value)).find(
+    (made) => made !== 'any-dice',
+  )
+  if (line === undefined) return null
+  // The seal is named first: it is this turn's doing and it lifts next turn,
+  // where a spent line is gone for the rest of the fight. When both hold, the
+  // one the player can still do something about is the one worth saying.
+  if (sealed(turn.intent).includes(line)) return { line, why: 'sealed' }
+  return turn.card[line] ? { line, why: 'spent' } : null
+}
+
+/**
  * art. 72 (DEFAULT): claim offers match the exact selection, and a selection
  * that fits nothing says why. This is the "says why" half's predicate — true
  * when there are dice on the table and no combo is on offer for them.

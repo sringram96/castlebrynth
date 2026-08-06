@@ -170,6 +170,23 @@ export function saysClaim(line: Line, harm: number): string {
 }
 
 /**
+ * arts 63, 65, 72: **the line these dice make, and what is holding it
+ * shut.** A readout in the card's own register — the line's name, and the
+ * two words that say why it is not on the strip.
+ *
+ * It names the line the player is looking at rather than the floor they are
+ * being offered, because that is the fact they are missing: the dice are a
+ * full house, the game knows it, and the reason it is scoring them as loose
+ * dice is a seal that lifts next turn or a line already burned off the card.
+ * Art. 42's promise is that a turn can be planned; a shape silently worth
+ * nothing is the one thing that cannot be.
+ */
+export function saysWithheld(line: Line, why: 'spent' | 'sealed'): string {
+  const said = NOTICES[why === 'sealed' ? 'claim.sealed' : 'claim.spent'] ?? ''
+  return `${LADDER[line].name} · ${said}`
+}
+
+/**
  * art. 119: **the line names itself, with its multiplier.**
  *
  * A readout and not prose — a name and a number, in the tray with art. 57's

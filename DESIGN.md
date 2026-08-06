@@ -50,9 +50,10 @@ all state client-side.
 - **Dice are the loot, and the loot belonged to somebody** — shape,
   riders, bonds, talismans, wearables; every power declared and budgeted;
   every good carrying one sentence of origin that explains its rules, or
-  it does not ship. You start with five bare bones against a hand of six,
-  and every die that closes that gap came off someone who came down here
-  and did not come back. (arts 49–56, 60, 86–88)
+  it does not ship. You start with six bare bones and a full hand, and
+  every die past those six came off someone who came down here and did
+  not come back — only a *special* die is ever discovered. (arts 49–56,
+  60, 86–88)
 - **No battle screen** — a fight is the room with the thing come close.
   (art. 30)
 - **A room is six parts, and what stands in it is drawn, scattered or
@@ -108,7 +109,7 @@ keep choosing → a region locks and the depth announces where you have arrived
 → the rest of the depth deals from that region and its encounters wake → the
 Warden's door, and the keeper behind it once the key turns. Every doorway
 breathes while you stand there, and seven rooms will do one thing of their own
-accord if you stand there long enough. `npm test` is green: 50 files, 557
+accord if you stand there long enough. `npm test` is green: 50 files, 571
 tests.
 
 **And the doors say something, and curiosity costs something.** The descent
@@ -141,6 +142,91 @@ multiplier, each rider fires alone, the total climbs, and then the blow.
 **Timings are still owed a phone.** The section at the foot of this file —
 **The fight wave** — records what was settled, what was measured in a browser
 at 390×844, and what a hand still has to decide.
+
+**And you wake whole, and the tray stops lying about the card.** The fixes
+wave answered a player report with three findings, one of them an amendment:
+art. 55 now wakes you with **six** plain bones and a full hand, the tray names
+the line a seal or the card is holding shut instead of calling the floor *the
+best these make*, and a boot no longer throws the permanent ledger away when
+the migration ladder hands it a snapshot with no run. One section down: **The
+fixes wave**.
+
+## The fixes wave (art. 55 amended · arts 11, 63, 65, 72, 118)
+
+Three findings, from one player report: *I can't pick up the 6th die in the
+first screen, and the scoring is broken — it's not scoring full houses.*
+
+**The sixth die: art. 55 is amended, and the hole is closed.** The five-bone
+start called its empty slot "the invitation", and the room you wake in has a
+dead traveler lying against the wall. A player taps the body, gets one line of
+description and no verb, and concludes the game is broken — which is what
+happened. The Crossing's traveler was authored as scenery on purpose (the
+first room may not be the room that hands you your sixth bone), and that is
+exactly the reading no player can be expected to arrive at. **Ruled: the start
+is six plain bones and a full hand, and only a *special* die is ever
+discovered.** A plain bone is the body you wake in, not a find.
+
+Two consequences, and both are the amendment rather than a bug:
+
+- **Every find is a swap now, including the first.** `tookIntoRun`'s
+  fill-the-hand clause fires only where a mercy has grown the hand past the
+  pouch; a die found mid-descent is a spare and comes down at the next waking,
+  through the choosing screen (art. 60, untouched).
+- **The whole ladder is spendable from the waking.** The straight, three pairs
+  and two triples want six dice and were out of a bare hand's reach under the
+  five-bone start. `lots.floor` is restated around that: the guarantee is still
+  *a pair or a run of 3*, still tight at ×2, and now nothing on the card is
+  unreachable.
+
+**And it moves the arithmetic. This is the debt the wave leaves.** Measured
+against the Gnawing over 2000 runs with the policy in `test/policy.ts`:
+
+| hand | armor | win rate |
+|---|---|---|
+| six plain bones | none | 0.784 |
+| six plain bones | Rusted Plate | 0.931 |
+| a traveler's die swapped for a bone | none | 0.81–0.83 |
+
+The first fight is comfortable again — it was ~0.28 under five bones — and
+**art. 89's first fork is inverted**: *a bone or the plate* now has a right
+answer, because a die is no longer a whole extra shape but a better face on a
+shape you already had. `lots.fairness` asserts the inversion rather than the
+intent, so the gap is in the suite instead of in somebody's head. The levers
+are the plate's armor, the Gnawing's health, and the travelers' distributions,
+and none of them was pulled here: that is an arithmetic pass and a decision
+nobody has made yet.
+
+**The scoring: the tray was telling the truth about the wrong thing.** The
+combo engine was never wrong — `shapesOf` names FULL HOUSE for every 3-2
+selection there is, and the suite proves it exhaustively. What was wrong was
+the sentence beside it. The Gnawing's SEAL intent shuts art. 65's pair-shaped
+lines, and **full house is one of them**; a line already claimed is shut too
+(art. 63). In both cases `claimable` comes back with the floor alone, and the
+tray printed *any dice 19 · the best these make* over a full house on the
+table. True of dice that make nothing; a lie about a full house.
+
+`withheld(turn, dice)` (`src/lots/card.ts`) is the question that can tell them
+apart: the line these dice actually make, and which of the two things is
+holding it. The tray now says **full house · sealed this turn** or **pair ·
+already spent**, and *the best these make* is left for selections that really
+do make nothing. It is art. 118's second clause — when something is withheld,
+say what withholds it — applied to a line instead of a verb, and art. 72's
+"says why" finally saying which why.
+
+**The permanent ledger: a boot could wipe it.** Found while reproducing the
+first report. The migration ladder's `keepingOnlyThePermanent` drops a run it
+cannot replay and keeps the pouch, the knowledge and the Book — its docstring
+says "the boot then wakes a fresh run from the permanent it kept". The boot did
+not: it read `run === null` as *nothing here* and woke from `PLAIN_POUCH`,
+which is every die, every meeting and the whole Book of Ends gone, one schema
+change after the ladder was written to prevent exactly that. The decision is
+`woken(found, bare, seed)` in `src/state` now, with `vault` standing over it.
+
+**What this wave did not touch.** The Crossing's traveler is still scenery and
+still says only what it says — with a full hand there is nothing it is
+withholding. `PAIRISH` still includes `full-house`, because which lines a seal
+shuts is content and tuning (art. 65) and the report was about legibility, not
+about the seal being wrong. And nothing was rebalanced: see the debt above.
 
 ## The descent wave (arts 31, 84, 120 · cards 49, 86–88)
 
@@ -638,7 +724,7 @@ wrote — which he does not remember writing.**
 | before | *The Crossing. You wake with the ceiling close enough to touch and your brother's name already in your mouth.* |
 | after | *My writing. When did I write that.* |
 | before | *Five bones lie in your open hand. Your hand holds six.* |
-| after | *The Crossing. Low ceiling, cold floor. Five bones in my hand and my hand holds six.* |
+| after | *The Crossing. Low ceiling, cold floor. Six bones in my hand and nothing else on me.* |
 | before | *The traveler against the wall is not the one you are looking for. You check anyway. You check every one.* |
 | after | *The traveler by the wall is not him. I check anyway. I check every one.* |
 | before | *The corridor goes down. Behind you the stone is unbroken, and down is where the name goes.* |
@@ -1856,6 +1942,13 @@ something true about the place. So the ruling of 2026-08-05:
   hand is the invitation — and once it is filled, **six is the standard
   and every further find is a swap**, never an addition (art. 60, amended
   the same day).
+
+  > **Superseded by the ruling of 2026-08-06.** The start is **six** plain
+  > bones and a full hand: nothing has to be picked up to make the hand a
+  > hand, and only a *special* die is ever discovered. The hole read as a
+  > bug rather than as an invitation — the room you wake in has a body
+  > lying in it, and a player who taps it and gets nothing concludes the
+  > game is broken. Every find is now a swap, including the first.
 - **Every die past those five belonged to someone who came down here and
   did not come back** (art. 86). Each rare individual leaves exactly one
   unique die, and a die's shape is how its owner died: the distribution is
@@ -1943,10 +2036,17 @@ the offer, and its loss, which is what the floor remembers. The room says
 the terms in one candle before either verb reaches the strip, and the good
 you left leaves its shape in the dust.
 
-**A found thing is worth something now.** A die fills the empty slot the
+**A found thing is worth something now.** A die fills an empty slot the
 moment it is taken rather than at the next waking, a wearable arms you
 from the next blow, and a talisman is in the next fight because the fight
 reads the permanent at the door.
+
+> **Narrowed by the ruling of 2026-08-06.** With the hand full at the
+> waking (art. 55 as amended) there is no slot for a die to fill, so the
+> clause now fires only where a mercy has grown the hand past the pouch. A
+> die found mid-descent is a spare, and it comes down at the next waking
+> by way of the choosing screen. The wearable and the talisman are
+> untouched.
 
 **And past a full hand, a find is a swap** (art. 60, amended by the
 ruling of 2026-08-05). The first version of this wave let a find *fill*
@@ -2172,9 +2272,9 @@ ordinary rooms are art. 26's first tier and not its second, and phase
 | `lots.armor` | corrode for one turn, the floor of nothing, resolution order (arts 46–47) |
 | `lots.items` | riders, the Sisters' ghost, the Ossuary, the Zealot, the audit (arts 49–56) |
 | `lots.loop` | the three endings, the hand whole, the card refilled at the door (arts 44, 63) |
-| `lots.floor` | all 7776 hands of five leave a line to claim, and a shape above the floor: a pair or a run of 3, tight at ×2; the three lines a hand of five can never reach (arts 46, 48, 55, 63, 64) |
+| `lots.floor` | every bare hand leaves a line to claim, and a shape above the floor: a pair or a run of 3, tight at ×2; and no line of the ladder out of a bare hand's reach, with the three six-die lines shut again the moment a wound shortens it (arts 46, 48, 55, 63, 64) |
 | `lots.invariants` | a die never twice, a line never twice, damage floors, the recast odds |
-| `lots.fairness` | a bare five-die player beats the Gnawing rarely and not never; a found bone moves that past a coin flip, and moves it further than the Rusted Plate does; and each new effect kind priced alone against a Gnawing-statted probe with every effect stripped (arts 33, 55, 65, 86) |
+| `lots.fairness` | a bare six-die player is expected to beat the Gnawing and not certain to; a traveler's die swapped in is worth a few points rather than half the fight; art. 89's fork recorded **inverted** — the plate now outrates any bone, which is a named debt and not a rule; and each new effect kind priced alone against a Gnawing-statted probe with every effect stripped (arts 33, 55, 65, 86, 89) |
 | `lots.effects` | the three kinds the company wave adds: the declared rule a bind reads and the die it takes at the cast, a bleed that ticks before the intent shows and refreshes rather than adds, hunger charged for the choice not to claim and for nothing else, and the one order all six resolve in (art. 65) |
 | `horrors.regions` | 1000 runs: each region's unique awake only when that region locks, dealt at most once, never two in a run, and a commitment that meets its own; and the whole-depth model — every lean survivable down to the last door, nothing stranded, nothing refused (arts 78, 83–84) |
 | `warden` | the ceremony and the keeper: a lock that answers either way, a verb summoned only by looking *and* only by carrying, a deed written per instance, a door that offers nothing until it is written — with the control that walks straight through the moment the gate is removed — and then the beat, headless, from the turn of the key to the thing that goes down (arts 37, 68–70, 82, 97) |
@@ -2191,11 +2291,11 @@ ordinary rooms are art. 26's first tier and not its second, and phase
 | `room.scene` | a look and a prop per room, ramps that only ever dither between adjacent steps, distinct pixels, the name in the first candle, the taken key gone, the opened door open (arts 17, 19, 21, 34, 70) |
 | `fight.persist` | the round trip at every point in a turn over 30 seeds, and the card that flight can never refresh (arts 63, 75) |
 | `descent.required` | the key unbound from rooms, placed once and before its lock across 7000 runs of adversarial policies; no legal walk reaches the lock keyless — with the control that proves the law is doing the work (arts 3, 4, 9, 80) |
-| `travelers` | three travelers on both of art. 83's axes, each die shaped like its death, every face 1–6, the catalog priced against the plain bone with the Orphan as the die that fails it, cost faces firing only when spent and never eaten by armor, an origin sentence per good linted as prose, the signature named by the first bone and the slot filled the moment it is taken (arts 50–51, 54–56, 60, 86–87) |
+| `travelers` | three travelers on both of art. 83's axes, each die shaped like its death, every face 1–6, the catalog priced against the plain bone with the Orphan as the die that fails it, cost faces firing only when spent and never eaten by armor, an origin sentence per good linted as prose, the signature named by the first bone, the hand left alone by a find, and a slot a mercy opened filled the moment one is taken (arts 50–51, 54–56, 60, 86–87) |
 | `goods` | the Sisters, the cord and the plate placed through the registry, the halves banded apart across 400 runs, no good dealt twice, a seeded run that meets a traveler and walks out with three goods, builds that differ run to run; and the fork — both goods in one socket, the terms said first and once, two verbs the thumb can tell apart, taking one closing the other irrevocably and showing the loss in the scene (arts 52–53, 70, 83, 89) |
-| `swap` | the hand as a chosen six: five bones and one free slot, the first find filling it and asking nothing, the second going spare, the exchange both ways round and reversible, the pouch whole across it, a chosen hand carried through a death by the order alone, and the hand refusing to move while a fight is paused (arts 55, 60, 63, 86) |
-| `walkthrough` | the wave's acceptance walk end to end: five dice and an empty slot, a traveler met, their die taken and signed and slotted, a tap that answers with the distribution *and* the origin, a fork that closes what you leave, a death that keeps both the die and the meeting — and the last leg, the key carried to the bottom, the lock answering differently for a hand holding it, the turn, the keeper, and its own line in the Book — all of it through the vault (arts 11, 32, 37, 54–56, 68, 84, 86–87, 89, 97) |
-| `vault` | a v1 snapshot with two Book lines loading clean at version 3; the ladder with no gap in it; a current snapshot untouched; and quarantine rather than destruction for unreadable bytes, an unknown version, a newer build's snapshot, and a step that refuses (art. 11) |
+| `swap` | the hand as a chosen six: six bones and no free slot, every find going spare, the exchange both ways round and reversible, the pouch whole across it, a chosen hand carried through a death by the order alone, and the hand refusing to move while a fight is paused (arts 55, 60, 63, 86) |
+| `walkthrough` | the wave's acceptance walk end to end: a full hand of six, a traveler met, their die taken and signed and set aside as a spare, a tap that answers with the distribution *and* the origin, a fork that closes what you leave, a death that keeps both the die and the meeting — and the last leg, the key carried to the bottom, the lock answering differently for a hand holding it, the turn, the keeper, and its own line in the Book — all of it through the vault (arts 11, 32, 37, 54–56, 68, 84, 86–87, 89, 97) |
+| `vault` | a v1 snapshot with two Book lines loading clean at version 3; the ladder with no gap in it; a current snapshot untouched; the boot waking a ladder-dropped run off the permanent the ladder kept rather than off the bare pouch; and quarantine rather than destruction for unreadable bytes, an unknown version, a newer build's snapshot, and a step that refuses (art. 11) |
 | `content.voice` | every player-facing string, in its category — origins included; every control against art. 66 |
 
 ### Debt

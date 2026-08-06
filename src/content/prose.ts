@@ -35,9 +35,10 @@ export const BEATS: Readonly<Record<string, readonly string[]>> = {
   'room.crossing': [
     'My writing. When did I write that.',
     // art. 34: the room says its own name in its first candle, so a room the
-    // player cannot name is a room they cannot learn. arts 55–56: five bones
-    // against a hand that holds six, and the room does not explain the hole.
-    'The Crossing. Low ceiling, cold floor. Five bones in my hand and my hand holds six.',
+    // player cannot name is a room they cannot learn. art. 55 as amended:
+    // six bones and a full hand, so the line counts what he has instead of
+    // pointing at a hole he cannot fill here.
+    'The Crossing. Low ceiling, cold floor. Six bones in my hand and nothing else on me.',
     // art. 86: every die down here came off somebody, so he checks every body
     // he passes. The traveler is the room's own scenery, not a socket, so the
     // room may speak of it (art. 83 untouched).
@@ -232,7 +233,7 @@ export const NOUNS: Readonly<Record<string, string>> = {
 /** What looking answers. Looking is free and always answers (art. 6). */
 export const LOOKS: Readonly<Record<string, string>> = {
   'crossing.grate': 'Light comes down through iron you cannot reach.',
-  'crossing.bones': 'Five bones, worn smooth. Nothing is written on any of them.',
+  'crossing.bones': 'Six bones, worn smooth. Nothing is written on any of them.',
   'crossing.traveler': 'A traveler lies along the wall. The cloak has gone stiff.',
   'crossing.chain': 'A chain comes out of the dark above and stops short of the floor.',
   'drip.water': 'The water goes under the wall and keeps going.',
@@ -360,7 +361,7 @@ export const LOOKS: Readonly<Record<string, string>> = {
   'crossing.grate.knows': 'Light through iron I cannot reach. Whatever falls through here is going the same way I am.',
   'pyre.timber.knows': 'Charred through and still square. It burned somewhere with a flue in it, and then somebody carried it here.',
   'tally.marks.knows': 'Cut in fives, and the last group stops at four. The same hand cut the inside of that basin.',
-  'crossing.bones.knows': 'Five bones, worn smooth. Somebody was counting these too, and they got further than I have.',
+  'crossing.bones.knows': 'Six bones, worn smooth. Somebody was counting these too, and they got further than I have.',
 
   // ── What he has walked past (art. 84 as extended) ────────────────────
   //
@@ -971,6 +972,24 @@ export const NOTICES: Readonly<Record<string, string>> = {
    * statement, so it is said as one.
    */
   'claim.floor': 'the best these make',
+  /**
+   * arts 63, 65, 72: **and when the floor is not the best these make, it
+   * says what is holding the better line shut.**
+   *
+   * Card 71 was right that the floor is an offer rather than a refusal, and
+   * it left one case behind: a selection that *is* a full house on a turn
+   * the horror sealed reads exactly like a selection that is nothing, and
+   * the tray called both of them the best these make. That is the sentence
+   * that made the scoring look broken — the dice on the table plainly made
+   * a full house and the game was quietly scoring them as loose dice.
+   *
+   * Two words, because the tray is a readout and the line's own name is
+   * already beside them (`saysWithheld`). They are not controls (art. 66)
+   * and not the protagonist thinking (rules/voice.md) — they are the state
+   * of a line on the card, in the register the card itself is written in.
+   */
+  'claim.sealed': 'sealed this turn',
+  'claim.spent': 'already spent',
   'claim.none': 'Nothing is chosen yet.',
   // arts 60, 86: the hand is a chosen six, and choosing is a swap. Neither
   // of these instructs — they say what is true of the tray right now, and

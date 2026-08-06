@@ -17,21 +17,26 @@ import { assembleHand } from '../src/lots/index.js'
 import { claimIfWorth, winRateOf } from './policy.js'
 
 /**
- * Is it fair? — restated for the five-die start (arts 55, 86).
+ * Is it fair? — restated for the six-die start (arts 55, 86).
  *
- * This file used to assert that a bare player beats the Gnawing more often
- * than not. Under the travelers ruling that is simply no longer true, and
- * saying so is the point: the amendment took a die out of the starting hand
- * and the measured win rate against the depth's ordinary teeth fell from
- * about 0.78 to about 0.28. A first waking is now expected to die.
+ * **The ruling of 2026-08-06 moved this file twice over.** art. 55 now wakes
+ * the player with a full hand of six, and the measured win rate against the
+ * depth's ordinary teeth goes back to about 0.78 — where it was before the
+ * five-bone ruling took it down to about 0.28. A first waking is expected to
+ * *win* again, and this file says so rather than hoping otherwise.
  *
- * That is the progression the ruling installs rather than a regression it
- * caused. A found bone reaches the hand at the *next* waking (art. 60
- * assembles the hand for the descent), so the shape of the game is: the
- * first run is desperate, and the run after the one where you found
- * somebody is the run you can win. What this file holds is that shape —
- * that five is survivable but rarely, that six is comfortable, and that the
- * sixth bone is worth more than the armor you could have worn instead.
+ * **And a found bone is a different kind of thing now.** It no longer fills
+ * a hole: the hand is full, so a traveler's die comes down only by taking a
+ * plain bone's place at the choosing screen (art. 60), and what it is worth
+ * is the difference between the two dice rather than the difference between
+ * five dice and six. Measured, that is a step of three to five points
+ * instead of the fifty the empty slot was worth.
+ *
+ * **The debt that leaves is named at the foot of this file.** art. 89's
+ * first fork is *a bone or the plate*, and the two sides of it have swapped
+ * places: the plate is worth more than any die in the game right now. That
+ * is an arithmetic question — the plate's armor, the Gnawing's health, or
+ * the travelers' distributions — and it is not settled here.
  *
  * It plays the Gnawing well rather than perfectly: hunt the biggest set on
  * the recast, then take the best-scoring claims until the hand is dry. The
@@ -39,34 +44,44 @@ import { claimIfWorth, winRateOf } from './policy.js'
  * opinion about it.
  */
 
-/** art. 55: the bare hand. art. 86: the same hand, one traveler's bone on. */
+/**
+ * art. 55: the bare hand. art. 86 as it now lands: the same hand with a
+ * traveler's bone **in place of** a plain one, because a full hand is what a
+ * find has to displace something out of (art. 60).
+ */
 const BARE_HAND = assembleHand(PLAIN_POUCH, HAND_SIZE)
-const FOUND_HAND = assembleHand({ dice: [...PLAIN_POUCH.dice, THE_CAREFUL] }, HAND_SIZE)
+const FOUND_HAND = assembleHand(
+  { dice: [...PLAIN_POUCH.dice.slice(0, HAND_SIZE - 1), THE_CAREFUL] },
+  HAND_SIZE,
+)
 
 function winRate(armor: Armor, runs: number, hand = BARE_HAND): number {
   return winRateOf(THE_GNAWING, hand, armor, runs)
 }
 
 describe('lots — is it fair? (art. 33, and the arithmetic agent)', () => {
-  it('leaves a bare five-die player able to beat the Gnawing, and rarely (arts 55, 86)', () => {
+  it('leaves a bare six-die player expected to beat the Gnawing (arts 55, 86)', () => {
     const bare = winRate(BARE_BODY.armor, 400)
-    // Winnable: the loop still closes on five bones and no armor, so a first
-    // waking is a fight and not a formality in the other direction.
-    expect(bare).toBeGreaterThan(0.15)
-    // And expected to lose. This is the number the ruling moved — it was
-    // above 0.5 at six dice — and it is asserted rather than hoped.
-    expect(bare).toBeLessThan(0.45)
+    // Expected to win: art. 55 as amended wakes the hand full, and the loop
+    // closes comfortably on six bones and no armor.
+    expect(bare).toBeGreaterThan(0.6)
+    // And not a formality — the depth's ordinary teeth still take a run in
+    // roughly one fight in five, which is what keeps art. 32 meaning
+    // anything.
+    expect(bare).toBeLessThan(0.9)
   })
 
-  it('makes the sixth bone the biggest thing that ever happens to a run (art. 86)', () => {
+  it('leaves a traveler’s die worth swapping in, and only just (art. 86)', () => {
     const bare = winRate(BARE_BODY.armor, 400)
     const found = winRate(BARE_BODY.armor, 400, FOUND_HAND)
-    // A traveler's die turns a run you expect to lose into one you expect to
-    // win. Nothing else in the game moves the number this far, which is what
-    // art. 86 is for: your build is who you have found.
-    expect(bare).toBeLessThan(0.5)
-    expect(found).toBeGreaterThan(0.5)
-    expect(found - bare).toBeGreaterThan(0.3)
+    // Still an upgrade: a traveler's distribution beats a plain bone's, which
+    // is the whole of what art. 86 promises now that the hand starts full.
+    expect(found).toBeGreaterThan(bare)
+    // **And a small one.** Under the five-bone start this step was worth more
+    // than half the fight; it is now worth a few points, because a find
+    // displaces a plain bone instead of filling a hole. Asserted so that a
+    // future tuning pass has to come here and move it deliberately.
+    expect(found - bare).toBeLessThan(0.2)
   })
 
   it('makes armor worth wearing without making the fight a formality (art. 47)', () => {
@@ -76,13 +91,29 @@ describe('lots — is it fair? (art. 33, and the arithmetic agent)', () => {
     expect(plated).toBeLessThanOrEqual(1)
   })
 
-  it('rates a found bone above the plate it could have been (arts 47, 86)', () => {
-    // art. 89's first fork is exactly this trade, so the two sides of it had
-    // better not be the same size. The bone wins, and it should: armor is
-    // three off every blow, and a sixth die is a whole extra shape.
+  /**
+   * **art. 89's fork, inverted — an open arithmetic question, not a rule.**
+   *
+   * The fork is *a bone or the plate*, and it was designed around the bone
+   * being the bigger of the two: armor is three off every blow, and the
+   * sixth die used to be a whole extra shape. With the hand full at the
+   * waking (art. 55 as amended 2026-08-06) the die is no longer an extra
+   * shape — it is a better face on a shape you already had — and the plate
+   * now wins the fork outright.
+   *
+   * This test asserts the state of things rather than the intent, so that
+   * the gap is visible in the suite instead of living in somebody's head. It
+   * is a tripwire under a decision the arithmetic agent has not made yet:
+   * the levers are the plate's armor, the Gnawing's health, and the
+   * travelers' distributions, and none of them is this file's to pull.
+   */
+  it('rates the plate above a found bone — art. 89’s fork, inverted (debt)', () => {
     const plated = winRate(RUSTED_PLATE.armor, 400)
     const found = winRate(BARE_BODY.armor, 400, FOUND_HAND)
-    expect(found).toBeGreaterThan(plated)
+    expect(plated).toBeGreaterThan(found)
+    // Both sides are still worth taking, which is what keeps it a fork and
+    // not a right answer wearing a question's coat.
+    expect(found).toBeGreaterThan(winRate(BARE_BODY.armor, 400))
   })
 })
 

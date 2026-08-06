@@ -189,20 +189,20 @@ describe('art. 87 — the item law is an acceptance test', () => {
 })
 
 describe('arts 56, 86 — the first die you collect is a dead traveler’s', () => {
-  it('names no signature at a first waking, and five bones in the pouch', () => {
+  it('names no signature at a first waking, and six bones in the pouch', () => {
     const permanent = firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY)
     expect(permanent.signature).toBeNull()
-    expect(permanent.pouch.dice).toHaveLength(5)
+    expect(permanent.pouch.dice).toHaveLength(HAND_SIZE)
   })
 
   it('makes the first traveler’s bone the signature, and only the first', () => {
     const bare = firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY)
     const first = collect(bare, THE_PUSHER)
     expect(first.signature).toBe(THE_PUSHER.id)
-    expect(first.pouch.dice).toHaveLength(6)
+    expect(first.pouch.dice).toHaveLength(HAND_SIZE + 1)
     const second = collect(first, THE_RUNNER)
     expect(second.signature).toBe(THE_PUSHER.id)
-    expect(second.pouch.dice).toHaveLength(7)
+    expect(second.pouch.dice).toHaveLength(HAND_SIZE + 2)
   })
 
   it('presses one authored plain verb to take a bone (arts 66, 68)', () => {
@@ -216,25 +216,41 @@ describe('arts 56, 86 — the first die you collect is a dead traveler’s', () 
   })
 
   /**
-   * arts 55–56: the empty slot is the invitation, and taking a bone accepts
-   * it now rather than at the next waking. Past six the hand is full and
-   * art. 60 stands — the pouch grows and the descent settles the rest.
+   * art. 55 as amended 2026-08-06: the hand is full at the waking, so a bone
+   * taken mid-descent has nowhere to go but the pouch, and art. 60 settles
+   * the rest at the next waking. The hand you went down with is the hand you
+   * come back up with, which is what art. 75's replay rests on.
+   *
+   * The slot-filling clause of `tookIntoRun` is not dead — a mercy that grows
+   * the hand past the pouch opens a slot mid-run, and it is what closes it —
+   * it is simply no longer what a first waking is about.
    */
-  it('fills the empty slot the moment a bone is taken, and stops at six', () => {
+  it('leaves the hand alone when a bone is taken, and never overfills it', () => {
     const bare = wake(firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY), 1 as never)
-    expect(bare.run!.hand.dice).toHaveLength(5)
+    expect(bare.run!.hand.dice).toHaveLength(HAND_SIZE)
 
     const first = tookIntoRun(bare.run!, collect(bare.permanent, THE_PUSHER))
-    expect(first.hand.dice).toHaveLength(6)
-    expect(first.hand.dice.at(-1)).toBe(THE_PUSHER)
-    // The five you woke with keep their places, so a fight in flight can
+    expect(first.hand.dice).toHaveLength(HAND_SIZE)
+    // The six you woke with keep their places, so a fight in flight can
     // still replay itself off the same identities (art. 75).
-    expect(first.hand.dice.slice(0, 5)).toEqual(bare.run!.hand.dice)
+    expect(first.hand.dice).toEqual(bare.run!.hand.dice)
 
-    // A second bone has nowhere to go: the pouch takes it, the hand does not.
+    // A second bone likewise: the pouch takes it, the hand does not.
     const full = collect(collect(bare.permanent, THE_PUSHER), THE_RUNNER)
-    expect(full.pouch.dice).toHaveLength(7)
+    expect(full.pouch.dice).toHaveLength(HAND_SIZE + 2)
     expect(tookIntoRun(first, full).hand.dice).toHaveLength(HAND_SIZE)
+  })
+
+  /** …and the clause that is still load-bearing: a hand grown past its pouch. */
+  it('fills a slot a mercy opened, the moment a bone is taken (arts 56, 60)', () => {
+    const grown = { ...firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY), handSize: HAND_SIZE + 1 }
+    const bare = wake(grown, 1 as never)
+    expect(bare.run!.hand.dice).toHaveLength(HAND_SIZE)
+
+    const first = tookIntoRun(bare.run!, collect(bare.permanent, THE_PUSHER))
+    expect(first.hand.dice).toHaveLength(HAND_SIZE + 1)
+    expect(first.hand.dice.at(-1)).toBe(THE_PUSHER)
+    expect(first.hand.dice.slice(0, HAND_SIZE)).toEqual(bare.run!.hand.dice)
   })
 
   it('never lets a bone hold a door — a traveler is optional treasure (art. 4)', () => {

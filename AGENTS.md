@@ -61,7 +61,8 @@ art. 47's BRACE is repealed. The rest:
   light a station and a colour whose region is known by it, with the rim
   derived and nothing hand-shaded (113–115)
 - **the-lots.md** — the dice: turn, duel, the card, collection, armor, and
-  the travelers (arts 86–88): the start is five bones, every other die
+  the travelers (arts 86–88): the start is six plain bones and a full
+  hand, only a special die is ever discovered, every one of those
   belonged to somebody, and an item's origin explains its rules in one
   sentence or the item does not ship — and the beat law (art. 119): a
   fight event resolves in beats, each saying one thing; the outcome is

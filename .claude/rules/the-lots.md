@@ -2,8 +2,9 @@
 Articles keep their numbers; cite as "art. N". Statuses as in
 the-world.md. Amended by the demo ruling of 2026-08-04: dice attack,
 armor defends, the card is the fuse. Amended again by the travelers
-ruling of 2026-08-05: the start is five bones, and every other die in
-the game belonged to somebody (arts 86–88).
+ruling of 2026-08-05: every die past the plain ones belonged to somebody
+(arts 86–88). Amended by the ruling of 2026-08-06: the start is **six**
+plain bones and a full hand — only a special die is discovered (art. 55).
 Playable spec: `reference/castlebrynth-lots-demo.html` — where prose
 and code disagree, the demo's behavior wins until the re-authored
 fixture lands (tracked on the board).
@@ -111,19 +112,33 @@ fixture lands (tracked on the board).
 54. SETTLED — Every power pays: everything declared on inspect; every
     die audited against the plain bone's power budget; every rare
     carries a cost face, a carry tax, or a price.
-55. SETTLED (amended by ruling of 2026-08-05) — The start is bare:
-    **five** plain bones, no riders, no bonds, no talismans, base armor
-    only. Hand size stays six (art. 60), so the tray shows one empty
-    slot from the first waking — the hole in your hand is the
-    invitation. Everything else is discovered in the labyrinth or
-    bought — new dice that act on the scoring the way jokers act on a
-    deck, talismans, wearables. The sockets ship first; the goods ship
-    as content. (Superseded: six plain bones. A full hand at waking
-    asks for nothing.)
-56. DEFAULT (amended by ruling of 2026-08-05) — The signature is simply
+55. SETTLED (amended by ruling of 2026-08-06) — The start is bare:
+    **six** plain bones, no riders, no bonds, no talismans, base armor
+    only. Hand size is six (art. 60), so **the hand is full at the
+    waking and nothing has to be picked up to make it so**. Everything
+    else is discovered in the labyrinth or bought — new dice that act on
+    the scoring the way jokers act on a deck, talismans, wearables. The
+    sockets ship first; the goods ship as content.
+
+    **Only a special die is ever discovered.** A plain bone is the body
+    you wake in, not a find; what the labyrinth hands you is a die that
+    *does* something, and it is always somebody's (art. 86 unchanged).
+
+    (Superseded: five bones against a hand of six, with the empty slot
+    named "the invitation". The playtest verdict is why: the room you
+    wake in has a body lying in it and a hole in your hand, and a player
+    who taps the body and gets nothing back reads a broken game rather
+    than an invitation. An invitation nobody can accept where they are
+    standing is not one — and the fix belongs at the start, because
+    art. 118's remedy for a thing that withholds is a sentence, and the
+    hole did not want a sentence, it wanted filling.)
+56. DEFAULT (amended by ruling of 2026-08-06) — The signature is simply
     the first die you collect, and under art. 86 that is a dead
-    traveler's — so the signature is the die that fills the slot art. 55
-    leaves empty. (The curated-starting-hand clause dies with art. 12.)
+    traveler's. It no longer *fills* anything: art. 55 wakes you whole,
+    so the first die you find is the first die that was ever worth
+    finding, which is what a signature should have been all along. Where
+    it goes is art. 60's question and not this one. (The
+    curated-starting-hand clause dies with art. 12.)
 
 ## Display & the pouch
 57. DEFAULT (amended) — Combat display: everything visible. The
@@ -136,9 +151,11 @@ fixture lands (tracked on the board).
     pouch, on the permanent ledger. The hand is assembled from it for
     the descent; hand size is a body stat — grown by mercies, shrunk by
     wounds and curses. Composition is the build: distributions and
-    riders aim the hand. v1 ships a pouch of five plain bones against a
+    riders aim the hand. v1 ships a pouch of six plain bones against a
     hand size of six (art. 55): the hand is what the pouch can fill, and
-    what it cannot fill shows as an empty slot.
+    what it cannot fill shows as an empty slot — which at a first waking
+    is nothing, and after a mercy grows the hand is one slot until the
+    next find.
 
     **Amended by ruling of 2026-08-05 (the chosen hand).** The hand is a
     *chosen* set, not the first thing that fills it, and it is chosen
