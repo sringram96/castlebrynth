@@ -156,6 +156,8 @@ export {
 export {
   ARRIVALS,
   BEATS,
+  DEATHS,
+  EXCHANGE,
   NOUNS,
   LOOKS,
   ORIGINS,
@@ -173,11 +175,14 @@ export {
   dieLabel,
   intentChip,
   itemLabel,
+  endLineFor,
   originOf,
   saysAct,
   saysBound,
   saysClaim,
+  saysDeath,
   saysDie,
+  saysExchange,
   saysGood,
   saysIntent,
   saysItem,
@@ -222,7 +227,9 @@ import { CROSSING as THE_CROSSING } from './rooms.js'
 import {
   ARRIVALS,
   BEATS,
+  DEATHS,
   END_LINES,
+  EXCHANGE,
   INTENT_SAYS,
   LABELS,
   LOOKS,
@@ -329,6 +336,11 @@ export function everyString(): readonly Utterance[] {
       ...Object.values(ARRIVALS).flat(),
       ...noticesIn(true),
       ...looksIn(true),
+      // card 69: what a turn did, and the candle before the scrawl. Both are
+      // him in live play, so both are thoughts — the `{dealt}` tokens are
+      // filled by `saysExchange` and are words like any other to the lint.
+      ...Object.values(EXCHANGE),
+      ...Object.values(DEATHS),
     ]),
     // The Book of Ends is the pile of things he wrote down, and the line at
     // the head of it is the oldest of them.

@@ -413,6 +413,53 @@ export const END_LINES: Readonly<Record<string, string>> = {
   // The Kindled's hunger is the one intent in the depth that charges for a
   // turn spent doing nothing: it heals on the empty ones.
   'end.kindled': 'claim something every turn. it feeds on the empty ones',
+  /**
+   * **Keyed on the blow** (the answer wave, card 69).
+   *
+   * The scrawls above are keyed on the horror, and the playtest caught what
+   * that costs: a run killed by the Gnawing's CORRODE — its fourth intent —
+   * was told *"the fifth one is the big one. count them"*, which is a note
+   * about something that did not happen. A note that teaches the wrong turn
+   * is worse than no note, and this map is the same article the horror lines
+   * were written under, applied one level down.
+   *
+   * Every line is **true of the intent it names**, whichever horror is
+   * carrying it, because an intent kind means the same thing everywhere it
+   * appears — that is what makes the Warden's script an exam (card 31) and
+   * what makes these worth learning. Where a run ends some other way — a
+   * cost face, a bleed still ticking — the horror's own line is still the
+   * fallback, because there is no blow to name.
+   */
+  // The plain ones. Nothing to read but the number, which is the lesson.
+  'end.swipe': 'the plain ones add up. do not save the card for later',
+  'end.silt': 'that one is just weight. armour is worth something here',
+  'end.char': 'the flat hand is plain damage. nothing clever about it',
+  // The big ones, and where in a script they sit.
+  'end.bellow': 'the long breath is the big one. spend everything before it',
+  'end.rend': 'the second time it rends, it rends deeper. count them',
+  'end.undertow': 'her last one is the worst. do not meet it low',
+  'end.gutter': 'it draws the fire in first. the swing after is the one',
+  'end.keep': 'the seventh is the door coming down. do not still be there',
+  // The plan-attacks (art. 65). Each says what the effect actually does.
+  'end.seal': 'when the pairs shut, look for a run instead',
+  'end.judge': 'it shuts the pairs like the gnawing. it knows that one',
+  'end.covet': 'it eats the sixes. score off the low faces that turn',
+  'end.tithe': 'sixes count for nothing that turn. do not build on them',
+  'end.corrode': 'armour is nothing that turn. be whole before it',
+  'end.strip': 'it goes through armour. be whole before that turn',
+  'end.drag': 'it takes whatever you hold highest. so do not hold',
+  'end.bind': 'it takes your highest off the table. spend it first',
+  'end.chill': 'the cold keeps taking for three turns. finish inside three',
+  'end.sear': 'the burn keeps burning. three turns of it',
+  'end.flense': 'the cut keeps taking for three turns. be quick after it',
+  'end.gape': 'claim something. any turn you claim nothing feeds it',
+  'end.wait': 'when it waits, claim something. an empty turn gives it back',
+  // Two ends that are nobody's intent. A bleed lands after the blow and can
+  // finish a turn the blow did not, and a cost face is a price you chose
+  // (arts 65, 86) — so neither has a verb to name, and each teaches its own
+  // thing rather than borrowing the horror's.
+  'end.bleed': 'it was the cut, not the swing. finish before it runs out',
+  'end.cost': 'your own bone did that. read the low face first',
   // card 31: the Warden is a being now, so going through its door is having
   // put it down. He writes it because the stair does not stop.
   'end.warden': 'the warden goes down. keep going down',
@@ -424,6 +471,58 @@ export const END_LINES: Readonly<Record<string, string>> = {
   // Giving a run up is an ending like any other, and the Book takes its line
   // like any other. What he writes down is why it was pointless.
   'end.abandoned': 'you turned back. he is still down there',
+}
+
+/**
+ * **What a turn did** (the answer wave, card 69).
+ *
+ * The playtest traced one turn with nothing skipped: the offer read *pair
+ * 20*, Attack was pressed, and the word band went straight on to the next
+ * intent while two numbers moved quietly under it. Nothing ever said the
+ * player hit for 20, or that it hit back for 7. Both halves of the exchange
+ * were communicated entirely by arithmetic, which is the whole reason the
+ * duel read as a spreadsheet — the band is his mind, and in a fight his mind
+ * never once reacted to being hit.
+ *
+ * So a turn answers, and its answer carries **both halves**. `{dealt}`,
+ * `{taken}` and `{hurt}` are filled by `saysExchange`; the sentences are
+ * authored here like every other line in the game.
+ *
+ * Which of the four he thinks is chosen by what actually happened, and the
+ * distinction that matters is the third one: armour eating a blow is a
+ * different beat from nothing having been thrown at him.
+ */
+export const EXCHANGE: Readonly<Record<string, string>> = {
+  both: 'I open it for {dealt}. It comes back and takes {taken} out of me.',
+  dealt: 'I open it for {dealt}, and nothing of its own gets through.',
+  blocked: 'I open it for {dealt}. What comes back stops at the iron.',
+  taken: 'Nothing of mine lands. It takes {taken} out of me.',
+  nothing: 'Nothing of mine lands, and nothing of its own gets through.',
+  // arts 54, 86: a cost face is a price he chose to pay, so it is said in
+  // the same breath and never buried in a readout.
+  cost: 'The bone I spent takes {hurt} of its own.',
+  // art. 51: and the other direction, when a rider gives something back.
+  healed: 'Something of what I took off it comes back into me.',
+}
+
+/**
+ * **What dying is** (card 69). Death was not an event: the turn resolved,
+ * and the next thing on screen was the following run's Crossing, fully lit,
+ * with the health bar full again and one lowercase line at the top.
+ *
+ * The scrawl was being asked to carry both *the run is over* and *here is
+ * what killed you*, and it was written to carry only the second. So the
+ * ending gets a candle of its own first — him, having it — and the scrawl is
+ * the candle after it, which is also what makes the scrawl legible as a
+ * thing he wrote rather than as a caption.
+ *
+ * Keyed by cause with `end.death` as the one every killing blow falls to:
+ * the specificity belongs in the scrawl, where the lesson is.
+ */
+export const DEATHS: Readonly<Record<string, string>> = {
+  'end.death': 'That is it. I am not getting up from this one. Write it down. Write anything down, while I still have it.',
+  // art. 3's valve: the run ended standing at a door that would not open.
+  'end.kept': 'The door does not give and there is nothing left to try. I sit down against it. Write it down.',
 }
 
 /**
@@ -544,6 +643,11 @@ export const NOTICES: Readonly<Record<string, string>> = {
   // retired the other half of the old pair: `mercy.whole` was what a whole
   // body got back for pressing Drink, and that press is not offered at all.
   'fight.won': 'The room goes quiet. The door gives.',
+  // art. 37, card 69: the keeper the depth was built around does not fall to
+  // the same six words as a stray in a corridor. Unlocking is ceremonial and
+  // the fall was not, which left the whole of the depth's last beat flat.
+  'warden.fell':
+    'It comes down all at once, the way a wall does, and the hall keeps the sound for a while. Whatever it was standing between me and, it is not standing there now.',
   // art. 63: a fled fight pauses. Nothing about it refills.
   'fight.fled': 'You back out of the door. It waits where you leave it.',
   'fight.resumed': 'It is where you leave it, and it remembers the rest.',

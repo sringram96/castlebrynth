@@ -47,11 +47,14 @@ import {
   itemLabel,
   roomContent,
   type RoomContent,
+  endLineFor,
+  saysAct,
   saysBound,
   saysClaim,
+  saysDeath,
   saysDie,
+  saysExchange,
   saysIntent,
-  saysAct,
   saysItem,
 } from './content/index.js'
 import type { Act, Bands, Pick, Tappable } from './descent/index.js'
@@ -731,11 +734,15 @@ let fadeTimer: number | undefined
 
 function say(): void {
   // card 69: the priority, and the only place it is resolved.
-  const said = bandLine(band, wordOf())
-  wordBand.replaceChildren(document.createTextNode(said))
-  const browsing = screen.kind === 'room'
-  const left = bands.beats.length - 1 - (bands.word?.index ?? 0)
-  if (!holding(band) && browsing && left > 0) {
+  const ambient = wordOf()
+  wordBand.replaceChildren(document.createTextNode(bandLine(band, ambient)))
+  // card 69: a held line is the same promise a candle-still-to-come is —
+  // there is something underneath this, and one tap gets to it — so it wears
+  // the same mark. Without it the exchange would sit on the band looking
+  // like the last word there is, and the intent behind it would never be
+  // read by anybody who did not think to tap.
+  const left = holding(band) ? (bandLine(band, ambient) === ambient ? 0 : 1) : candlesLeft()
+  if (left > 0) {
     const more = document.createElement('span')
     more.className = 'more'
     // Not a word: a mark, so the candle that is still to come is visible
@@ -754,6 +761,20 @@ function say(): void {
   fadeTimer = setTimeout(() => wordBand.classList.add('faded'), 4000) as unknown as number
 }
 
+/**
+ * How many candles are still to come under whatever is showing.
+ *
+ * A room's are its beats (art. 29). An ending's are its own two — the death
+ * and the scrawl — which are not in `bands` at all, because the room behind
+ * the dead screen is the *next* run's Crossing and its candles are not what
+ * is being read (card 69).
+ */
+function candlesLeft(): number {
+  if (screen.kind === 'dead') return Math.max(0, ending.length - 1 - endingAt)
+  if (screen.kind !== 'room') return 0
+  return bands.beats.length - 1 - (bands.word?.index ?? 0)
+}
+
 wordBand.onclick = () => {
   settle()
   // art. 29: presentation fades, knowledge doesn't. One tap recalls the
@@ -761,6 +782,9 @@ wordBand.onclick = () => {
   // the beat advance out of the tray).
   if (holding(band)) {
     band = HUSHED
+  } else if (screen.kind === 'dead') {
+    // card 69: the ending turns its own candles — the death, then the scrawl.
+    if (endingAt < ending.length - 1) endingAt += 1
   } else if (bands.word !== null && !bands.word.last) {
     bands = nextBeat(bands)
     persist()
@@ -775,15 +799,19 @@ function wordOf(): string {
     case 'settings':
       return settingsWord(theSettings())
     /**
-     * The scrawl he leaves, and nothing else. A dying man does not compose a
-     * sentence about his pouch, so art. 60's clause — an ending with a
-     * choice behind it says so — is carried here by the verb instead of by
-     * the word: the strip says Choose, and the screen behind it states the
-     * situation (`choose.which`). It is the one place the mind wave moved
-     * that article's weight from the prose to the control.
+     * **The ending, in two candles** (card 69): him having it, then the
+     * scrawl he gets down before it all goes. The second one is the one that
+     * survives — the next waking opens on it (`RoomBook.scrawl`) — and the
+     * first is what makes it read as a thing he wrote rather than as a
+     * caption on a corridor that is already the next run's.
+     *
+     * A dying man does not compose a sentence about his pouch, so art. 60's
+     * clause — an ending with a choice behind it says so — is carried by the
+     * verb instead of by the word: the strip says Choose, and the screen
+     * behind it states the situation (`choose.which`).
      */
     case 'dead':
-      return END_LINES[screen.cause] ?? ''
+      return ending[Math.min(endingAt, ending.length - 1)] ?? END_LINES[screen.cause] ?? ''
     case 'finished':
       return (
         (mustChoose(ledgers.permanent) ? NOTICES['run.finished.choose'] : NOTICES['run.finished']) ??
@@ -1480,13 +1508,21 @@ function acts(): void {
     // waiting it opens the question rather than the labyrinth, so it says
     // Choose — art. 71's rule that no press lies about where it takes you.
     case 'dead':
+      // card 69: **Wake, not Descend.** art. 71 says no press may lie about
+      // where it takes you, and after a death the two words mean different
+      // things: death is forgetting (rules/voice.md), and what comes next is
+      // waking up at the Crossing again with nothing but what is written
+      // down. Descend was the front door's word standing on a death screen,
+      // which was most of why dying read as arriving.
       return actStrip.append(
-        verb(mustChoose(ledgers.permanent) ? 'choose' : 'descend', beginDescent),
+        verb(mustChoose(ledgers.permanent) ? 'choose' : 'wake', beginDescent),
         verb('read', () => { sheet = 'book'; paint() }),
       )
     case 'finished':
+      // And the other way round: the Warden's door is walked through, not
+      // died at. He is going down a floor, so the word is Descend.
       return actStrip.append(
-        verb(mustChoose(ledgers.permanent) ? 'choose' : 'wake', beginDescent),
+        verb(mustChoose(ledgers.permanent) ? 'choose' : 'descend', beginDescent),
         verb('read', () => { sheet = 'book'; paint() }),
       )
     case 'choosing':
@@ -2119,6 +2155,11 @@ function endTurn(): void {
   if (now === null) return
   resolving = decide(now.turn, 'end-turn', now.armor, goods())
   selected = []
+  // card 69: **the turn says what it did**, both halves, and it holds the
+  // band until the player turns it. Before this, pressing Attack moved two
+  // numbers and then talked about the next intent: nothing on screen ever
+  // said you hit it for twenty, or that it took seven out of you.
+  band = answered(saysExchange(resolving))
   // art. 116: the resolve is a beat of presentation and nothing else — no
   // decision waits on it (art. 1) — so with the world held still it is
   // skipped and the turn lands. What the dimming would have shown is what
@@ -2140,7 +2181,10 @@ function settleTurn(): void {
   selected = []
   switch (routeTurn(advancedFight, resolution)) {
     case 'fight-continues':
-      band = HUSHED
+      // card 69: **the band keeps what the turn did.** It used to be hushed
+      // here, which is why the only thing the player ever read in a fight
+      // was the next intent — the exchange had already been thrown away by
+      // the time the turn settled.
       persist()
       paint()
       return
@@ -2149,8 +2193,36 @@ function settleTurn(): void {
     case 'fled':
       return runFromTheFight()
     case 'death':
-      return died()
+      // card 69: the scrawl keys on the blow that landed, not on the horror
+      // that was carrying it. A run killed by CORRODE was being told to
+      // count to the fifth intent, which is a note about something that did
+      // not happen.
+      return died(endLineFor(theBlow(now, advancedFight), now.horror.id))
   }
+}
+
+/**
+ * card 69: what finished the run, as the stem its scrawl is keyed on.
+ *
+ * The turn's own intent is not always the answer, and the playtest's own
+ * death was one of the exceptions: a bleed opened three turns earlier ticked
+ * after the blow landed and finished a turn the blow had not. A cost face
+ * (art. 86) does the same on the other side of the beat. So the events the
+ * advance just wrote are read back, and the *last* thing that took health is
+ * what the Book records — none of the three borrows another's lesson, and
+ * empty falls back to the horror's own line.
+ */
+function theBlow(before: Fight, after: Fight): string {
+  const fresh = after.events.slice(before.events.length)
+  for (let at = fresh.length - 1; at >= 0; at--) {
+    const event = fresh[at]
+    if (event === undefined) continue
+    if (event.kind === 'struck') return before.turn.intent.verb
+    // Neither of these is an intent, and neither is the horror's doing.
+    if (event.kind === 'bled') return 'bleed'
+    if (event.kind === 'cost') return 'cost'
+  }
+  return ''
 }
 
 function wonTheFight(): void {
@@ -2172,7 +2244,11 @@ function wonTheFight(): void {
     // art. 71 as strengthened (card 63): a fight ending is an arrival in the
     // room it was fought at the door of, and an arrival picks the way on.
     pick = onArrival(doors(bands))
-    band = answered(NOTICES['fight.won'] ?? null)
+    // art. 37, card 69: the keeper the depth was built around gets its own
+    // line. Unlocking the door is ceremonial and the fall was not — it said
+    // the same six words a stray in a corridor says, which left the depth's
+    // last beat flatter than its second-to-last.
+    band = answered(NOTICES['warden.fell'] ?? NOTICES['fight.won'] ?? null)
     persist()
     paint()
     return
@@ -2208,6 +2284,23 @@ function runFromTheFight(): void {
   paint()
 }
 
+/**
+ * card 69: **the ending's own candles.**
+ *
+ * Death was not an event. The turn resolved and the next thing on screen was
+ * the following run's Crossing, fully lit, with the vitals back to full and
+ * one lowercase line at the top — nothing said the run had ended, and the
+ * verb underneath said Descend, which is what the front door says.
+ *
+ * The scrawl was being asked to carry both *the run is over* and *here is
+ * what killed you*, and it was written to carry only the second. So the
+ * ending is two candles: him having it, then the thing he gets down before
+ * it goes. Turning between them is the word band's own tap (art. 29), which
+ * is the vocabulary a room's candles already use.
+ */
+let ending: readonly string[] = []
+let endingAt = 0
+
 function died(cause: string = endLineOf(fight?.horror.id ?? '')): void {
   clearTimeout(advanceTimer)
   clearTimeout(resolveTimer)
@@ -2224,6 +2317,10 @@ function died(cause: string = endLineOf(fight?.horror.id ?? '')): void {
   refused = false
   screen = { kind: 'dead', cause }
   focus(panelAfter('died'))
+  // The run ends, and is seen to end. The scrawl is the second candle, so it
+  // reads as a thing he wrote rather than as a caption on a fresh corridor.
+  ending = [saysDeath(cause), ROOM_BOOK.scrawl(cause)].filter((said) => said !== '')
+  endingAt = 0
   band = HUSHED
   persist()
   paint()
