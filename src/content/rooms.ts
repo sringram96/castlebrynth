@@ -439,7 +439,10 @@ const SOCKET_AT: Readonly<Record<ShapeKind, Readonly<Record<string, WorldMark>>>
   hall: {
     [FAR_SOCKET]: { X: 0, Y: FLOOR, z: 31, width: 6.5, height: 9 },
     [FLOOR_SOCKET]: { X: 8.5, Y: FLOOR + 1.5, z: 19, width: 3.4, height: 2 },
-    [MERCY_SOCKET]: { X: -8.6, Y: FLOOR, z: 22, width: 5, height: 8 },
+    // Brought forward from 22 by the threshold wave: it stood across the
+    // middle of the watcher, so anything dealt into it covered the room's
+    // one thing and the neck stopped answering (arts 69, 104–105).
+    [MERCY_SOCKET]: { X: -9.5, Y: FLOOR, z: 15, width: 5, height: 8 },
   },
   great: {
     [FAR_SOCKET]: { X: 0, Y: FLOOR, z: 40, width: 8, height: 11 },
@@ -449,7 +452,12 @@ const SOCKET_AT: Readonly<Record<ShapeKind, Readonly<Record<string, WorldMark>>>
   vault: {
     [FAR_SOCKET]: { X: 0, Y: FLOOR, z: 19, width: 3.6, height: 4.6 },
     [FLOOR_SOCKET]: { X: 5, Y: FLOOR + 1.2, z: 14, width: 3, height: 1.8 },
-    [MERCY_SOCKET]: { X: -5, Y: FLOOR, z: 16, width: 3.2, height: 4.2 },
+    // Moved back from 16 by the threshold wave: it stood exactly where the
+    // sewer's caps stand, so anything the dealer put in it covered the
+    // middle of them and the caps stopped answering (arts 69, 105). Nothing
+    // has ever been dealt into it — the Savior is that rare — which is
+    // precisely why nobody had run into it.
+    [MERCY_SOCKET]: { X: -5, Y: FLOOR, z: 21, width: 3.2, height: 4.2 },
   },
   open: {
     [FAR_SOCKET]: { X: 0, Y: FLOOR, z: 26, width: 7, height: 9.5 },
@@ -733,7 +741,7 @@ const AUTHORED: readonly Authored[] = [
       thing(
         school,
         BEARER,
-        { X: -8.4, Y: FLOOR, z: 14, width: 4.4, height: 6.2 },
+        { X: 8.4, Y: FLOOR, z: 14, width: 4.4, height: 6.2 },
         'the lantern-bearer',
         40,
         FIRE,
@@ -741,7 +749,7 @@ const AUTHORED: readonly Authored[] = [
     ].filter((one): one is NonNullable<typeof one> => one !== null),
     tappables: [
       ['ash.ash', { X: -8.5, Y: FLOOR, z: 15, width: 5, height: 2 }],
-      ['ash.bearer', { X: -8.4, Y: FLOOR, z: 14, width: 4.4, height: 6.2 }],
+      ['ash.bearer', { X: 8.4, Y: FLOOR, z: 14, width: 4.4, height: 6.2 }],
     ],
   },
   {
@@ -761,7 +769,7 @@ const AUTHORED: readonly Authored[] = [
       thing(
         school,
         BRAZIER,
-        { X: 7.6, Y: FLOOR, z: 16, width: 4.2, height: 5.4 },
+        { X: -4.5, Y: FLOOR, z: 11, width: 4, height: 5.2 },
         'the brazier',
         44,
         FIRE,
@@ -769,7 +777,7 @@ const AUTHORED: readonly Authored[] = [
     ].filter((one): one is NonNullable<typeof one> => one !== null),
     tappables: [
       ['kiln.mouth', { X: -12, Y: FLOOR + 2, z: 19, width: 3, height: 7 }],
-      ['kiln.brazier', { X: 7.6, Y: FLOOR, z: 16, width: 4.2, height: 5.4 }],
+      ['kiln.brazier', { X: -4.5, Y: FLOOR, z: 11, width: 4, height: 5.2 }],
     ],
     teeth: LAIR_CHANCE,
   },
@@ -907,11 +915,11 @@ const AUTHORED: readonly Authored[] = [
       right: pilasters(9, 1.8, 3),
     },
     dressing: (school) => [
-      thing(school, CAGE, { X: -8.8, Y: FLOOR, z: 27, width: 4.6, height: 5.2 }, 'the cage'),
+      thing(school, CAGE, { X: -8.8, Y: FLOOR, z: 15, width: 4.6, height: 5.2 }, 'the cage'),
       thing(school, CHOIR, { X: 8.6, Y: FLOOR, z: 24, width: 7.5, height: 9.5 }, 'the choir', 50),
     ].filter((one): one is NonNullable<typeof one> => one !== null),
     tappables: [
-      ['choir.cage', { X: -8.8, Y: FLOOR, z: 27, width: 4.6, height: 5.2 }],
+      ['choir.cage', { X: -8.8, Y: FLOOR, z: 15, width: 4.6, height: 5.2 }],
       ['choir.faces', { X: 8.6, Y: FLOOR, z: 24, width: 7.5, height: 9.5 }],
     ],
     teeth: LAIR_CHANCE,

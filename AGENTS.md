@@ -22,7 +22,7 @@ Never: filler, grind, a punished tap, one optimal play.
 ### design — "is it ours?"
 Owns theme, story, voice, and the look.
 Law: rules/voice.md, rules/the-room.md (arts 13–30, 93–112),
-rules/the-thumb.md (arts 66–76, 90–92).
+rules/the-thumb.md (arts 66–76, 90–92, 116).
 Test: `reference/castlebrynth-wake-v3.html` and the hero-density image.
 Never: explanation, comfort, early spoilers, out-of-register art.
 
@@ -35,7 +35,7 @@ Test: kill the process anywhere; restart; nothing is lost.
 Never: unresumable state, a hardcoded pixel, content logic in the engine.
 
 ## The law
-`.claude/rules/` holds 115 numbered articles, cited in tasks as "art. N".
+`.claude/rules/` holds 116 numbered articles, cited in tasks as "art. N".
 Two are spent: art. 12 is repealed (there are no classes, ever) and
 art. 47's BRACE is repealed. The rest:
 - **the-world.md** — time, touch, structure, the chain, room grammar, the
@@ -69,7 +69,10 @@ art. 47's BRACE is repealed. The rest:
   interaction budget — and panels & focus (arts 90–92): tabs are taps
   and are labels rather than controls, panel focus is state moved only
   by declared events, and the map tab is a disabled socket with no
-  pixels behind it
+  pixels behind it; and settings (art. 116): a setting may change how the
+  game is presented and may never change what is true, preferences are
+  permanent state, and reduced motion is the test of whether art. 107's
+  settled states were honest
 - **voice.md** — every player-facing string
 
 Statuses: SETTLED binds. STANDING is inherited from GAME.md, unamended.

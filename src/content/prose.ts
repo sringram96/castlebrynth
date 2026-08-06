@@ -76,7 +76,7 @@ export const BEATS: Readonly<Record<string, readonly string[]>> = {
   ],
   'room.lair.choir': [
     'The choir. Small faces crowd the far wall, at the height a child stands.',
-    'A cage sits open beside them. Whatever it held is out.',
+    'A cage stands open on the near floor. Whatever it held is out.',
   ],
   'room.trove.hoard': [
     'The hoard. Coins lie spilled across the floor and nobody is coming for them.',
@@ -395,6 +395,34 @@ export const NOTICES: Readonly<Record<string, string>> = {
   'swap.done': 'The bone goes into your hand. The other one keeps.',
   'swap.locked': 'Something is waiting behind that door. Your hand stays as it is.',
   'pouch.spare': 'Yours, and not in your hand.',
+  // The threshold — the front door. The first pixels a new player sees, so
+  // it is in register like everything else: it states where you are standing
+  // and never instructs, and the verbs on the strip are what tell you.
+  'gate.cold': 'The way down. Stone stops at a shut door, and what comes up under it is colder than the room.',
+  // art. 71: a press may not lie about where it takes you, so the line says
+  // plainly that there is something to go back to.
+  'gate.held': 'The way down. The door stands as you left it, and the run behind it is still yours.',
+  // Abandoning is never quiet: what it costs is said before the press, and
+  // the press that costs it is not the press that starts a new one.
+  'gate.abandon.asked':
+    'The run ends here, unfinished. The depth behind it goes with it, and the Book takes the line.',
+  'gate.abandoned': 'The door shuts on it. What you carried down is down there.',
+  // art. 116: settings. These change how the game is presented and never
+  // what is true, and the screen says so in the only way that matters —
+  // there is nothing on it that could change what is true.
+  'settings.here': 'What is here changes how the labyrinth is shown to you. None of it changes what is down there.',
+  'motion.label': 'Reduced motion',
+  'motion.says':
+    'With this on, nothing loops and nothing plays out. What a motion would have ended at is what is there.',
+  'setting.on': 'on',
+  'setting.off': 'off',
+  'vault.says': 'Everything the labyrinth remembers about you, as text. What is in the box is what is kept.',
+  'vault.set-aside': 'Something here is unreadable to this build. It stays exactly as it stands.',
+  'vault.took': 'What is in the box is what is kept now.',
+  'vault.refused': 'Nothing in the box can be read. What is kept is untouched.',
+  'wipe.asked': 'Everything below goes, and nothing of it is kept anywhere.',
+  'wipe.ends':
+    'Every ending in the Book goes. The dice go with it, and the names, and the marks. What is in the box is the last copy.',
 }
 
 /**
@@ -506,6 +534,21 @@ export const VERBS: Readonly<Record<string, string>> = {
   // It names what the press does — it opens the question, it does not descend.
   choose: 'Choose',
   read: 'Read',
+  // The threshold's four. `continue` is offered only for a run in flight and
+  // `descend` only when there is none, because art. 71 says no press may lie
+  // about where it takes you and those two words mean different journeys.
+  continue: 'Continue',
+  // Abandoning is its own verb and never the same button as Descend: a run
+  // is not a thing to lose by mis-tapping (arts 5, 71).
+  abandon: 'Abandon',
+  'abandon.all': 'Abandon run',
+  settings: 'Settings',
+  // art. 116's vault. Wiping is the most dangerous press in the game, so it
+  // is two of them with the loss stated between — the same shape as starting
+  // over, because it is the same act with export standing beside it.
+  bring: 'Bring in',
+  wipe: 'Wipe',
+  'wipe.all': 'Wipe all',
   // The way back to the Book from the card, so the persistent glyph
   // (art. 74) reaches both sheets and not only one.
   book: 'Book',

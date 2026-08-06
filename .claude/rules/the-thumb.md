@@ -155,3 +155,38 @@ skeleton playtest.
     game only by winning a stand-up with a stated, compelling reason,
     and its admission is recorded as an article in this file. The
     parallax lean (art. 8) remains parked and remains eligible.
+
+## Settings (ratified 2026-08-05)
+116. SETTLED (ruled) — **A setting may change how the game is presented. A
+     setting may never change what is true.** No difficulty, no arithmetic,
+     no drift weighting, no rarity, no palette override that defeats
+     art. 114 — anything that would make two players' Books incomparable is
+     not a setting, and calling it one does not make it one. Where a
+     setting would fix something, the fix belongs in the thing: a ramp
+     without enough contrast is corrected in the ramp, where it helps
+     everybody, rather than behind a switch that helps whoever finds it.
+
+     **Preferences are permanent state, not run state.** They survive a
+     death, because a player who dies has not changed their mind about
+     motion. They ride the vault beside the Book (art. 11) and they are
+     reachable from nothing that deals, rolls or scores.
+
+     **Reduced motion is the test of art. 107.** With it on, loops stop,
+     the blink does not fire, and one-shots resolve at once to their
+     settled state — which art. 107 already says is the whole truth, so a
+     player who never sees a frame of motion has missed nothing. Anything
+     that turns out to be legible only while moving is a bug in that thing
+     and not a reason to weaken the setting.
+
+     **The vault is the player's.** A snapshot may be exported as text,
+     brought back in as text, and wiped. Import is refused rather than
+     half-applied. Wiping is the most dangerous press in the game: it
+     states plainly what it ends, it is confirmed, and export stands beside
+     it, because a player about to lose their Book should be one press from
+     keeping a copy of it (art. 71, and the reasoning of the start-over
+     ruling).
+
+     What a settings screen may hold is settled by the first sentence and
+     by nothing else. A new knob does not need a stand-up under art. 76 —
+     it spends no interaction — but it does need to be presentation, and
+     the burden is on the knob.

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { GRID, RENDER, ROOMS, ROOM_BOOK, atGrid, masonry, roomContent } from '../src/content/index.js'
 import type { SceneState } from '../src/descent/index.js'
-import { renderRoom, Surface, viewOf } from '../src/room/index.js'
+import { markRect, renderRoom, Surface, viewOf } from '../src/room/index.js'
 import type { RoomId } from '../src/state/index.js'
 import { instanceOf } from '../src/state/index.js'
 
@@ -195,6 +195,81 @@ describe('the fourteen, re-authored — arts 69, 99, 104', () => {
         // art. 111: and the answer names the thing before it says anything
         // atmospheric, so the noun is there to be named.
         expect(target.noun, target.id).not.toBe(target.id)
+      }
+    }
+  })
+
+  /**
+   * art. 105, asked of the thumb rather than of the eye.
+   *
+   * "No object may be placed where it would stand in front of another." The
+   * shell lays a tap region over every thing at the coordinates it is
+   * painted at (art. 68), so two things that overlap are two things where
+   * one of them cannot be pressed — and this wave put a hero straight under
+   * a socket in the kiln and made the brazier unreachable. A thing nobody
+   * can tap is a thing that does not answer, which is art. 69 as well.
+   *
+   * Containment is allowed and is the one exception art. 6 names: the small
+   * thing sits on the large thing it is part of, and the shell sorts by area
+   * so the small one wins the tap.
+   */
+  it('lets the thumb reach every thing in a room (arts 68, 69, 105)', () => {
+    /**
+     * The thumb minimum, in frame pixels. The shell floors every region at
+     * 40 device pixels and a phone shows the 240 frame at about 1.6×, so a
+     * mark is never smaller than this however far away the thing is — which
+     * is what turns a near miss in world space into a thing you cannot press.
+     */
+    const THUMB = 25
+    for (const held of ROOMS) {
+      const scene = held.scene(standing(held.id, 1))
+      const view = viewOf(scene.shape, CONFIG)
+      // What can stand in this room and be tapped: its own things, and
+      // whatever the two takeable sockets are holding. The far socket is
+      // deliberately left out — a horror stands at the end of the room, in
+      // front of the door, and that is art. 30 rather than a collision.
+      const laid = [
+        ...held.tappables.map((one) => ({ id: one.id, at: one.at })),
+        ...['socket.floor', 'socket.mercy'].flatMap((socket) =>
+          held.sockets[socket] === undefined ? [] : [{ id: socket, at: held.sockets[socket]! }],
+        ),
+      ].map((one) => {
+        const rect = markRect(view, one.at)
+        const width = Math.max(THUMB, rect.width)
+        const height = Math.max(THUMB, rect.height)
+        return {
+          id: one.id,
+          x: rect.x + rect.width / 2 - width / 2,
+          y: rect.y + rect.height / 2 - height / 2,
+          width,
+          height,
+        }
+      })
+
+      /**
+       * The shell lays the largest region first and the smallest last, so a
+       * small thing standing on a large one is always the one the tap
+       * reaches — art. 6, and the lock on the door. What that ordering
+       * cannot save is the *larger* thing when a smaller one covers the
+       * middle of it: there is then nowhere on it left to press.
+       */
+      for (const one of laid) {
+        const cx = one.x + one.width / 2
+        const cy = one.y + one.height / 2
+        for (const other of laid) {
+          if (other === one) continue
+          if (other.width * other.height >= one.width * one.height) continue
+          // art. 6's one exception, and the article names it: the small
+          // thing sits on the large thing *it is part of*. That relationship
+          // is authored and cannot be derived from two rectangles, so the
+          // one pair the game has is named here rather than guessed at.
+          if (one.id === 'warden.door' && other.id === 'warden.lock') continue
+          const covered =
+            cx >= other.x && cx <= other.x + other.width && cy >= other.y && cy <= other.y + other.height
+          expect(covered, `${held.id as string}: ${other.id} sits on the middle of ${one.id}`).toBe(
+            false,
+          )
+        }
       }
     }
   })

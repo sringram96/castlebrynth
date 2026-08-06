@@ -127,6 +127,25 @@
       .panel .aside { flex: 1 0 100%; color: var(--dim); font-size: .82em; margin-top: 2px; }
       .panel .rule { flex: 1 0 100%; height: 1px; background: var(--line); margin: 2px 0; }
 
+      /* art. 116: settings. A setting names a thing and shows its state, so
+         it is a full-width row with the state at the end of it rather than a
+         control among controls (art. 90 governs it, not art. 66). */
+      .panel .setting { flex: 1 0 100%; display: flex; justify-content: space-between;
+        align-items: center; text-align: left; }
+      .panel .setting b { font-weight: normal; color: var(--dim); }
+      .panel .setting.on b { color: var(--gold); }
+      /* The vault, as text you can carry off. Read-through, not decoration:
+         it has to be selectable and it has to hold a whole snapshot. */
+      .panel .vault { flex: 1 0 100%; font: 12px/1.35 ui-monospace, Menlo, Consolas, monospace;
+        color: var(--dim); background: var(--sunk); border: 1px solid var(--line);
+        padding: 6px 8px; resize: vertical; width: 100%; }
+      .panel .strip { flex: 1 0 100%; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+
+      /* art. 116: with the world held still, nothing eases into anything.
+         The settled state is unchanged — art. 29's word band is still faded
+         after its beat — so what goes is the travel, not the truth. */
+      .still, .still * { transition: none !important; animation: none !important; }
+
       button { font: inherit; background: var(--raised); color: var(--ink);
         border: 1px solid #55504a; padding: 9px 12px; min-height: 42px; cursor: pointer; }
       button:disabled { opacity: .35; cursor: default; }
