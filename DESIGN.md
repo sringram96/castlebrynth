@@ -207,57 +207,71 @@ what a depth-one ending actually is, and it costs one sentence to say.
 | | |
 |---|---|
 | before | *The Book of Ends.* |
-| after | *The Book of Ends. Every ending is written here, oldest first.* |
+| after | *The Book of Ends. Every ending is written here, under the first line.* |
 
 A line of the Book used to be a depth and a seed — a receipt rather than a
 record. The `END_LINES` sentences were authored for this sheet and had never
 reached it, so a line is now **the ending's own sentence**, with the numbers
 dim beside it. Two of those sentences are new: `end.abandoned` never had one
 at all (giving a run up writes a Book line and the Book had nothing to write
-for it), and `end.gone` is the straw ruling below.
+for it), and `scrawl` is the ruling below — which is in the same map and is
+the one thing in it that is not an ending.
 
-### The straw ruling — **flagged for veto**
+### The ruling, as it stands — the scrawl (ratified 2026-08-06)
 
 **The Book of Ends is not empty at the first waking.** One line already
-stands in it, and it is not yours:
+stands in it, and it is not an ending:
 
-> 1 · *Gone down, and not back up.*     depth unknown · seed unknown
+> *Find your brother. Whatever else goes, keep this.*
 
-Every death writes your line beneath it. It is the cheapest sentence in the
-game that makes the Book mean something before the player has died once — the
-record you spend the whole game adding yourself to was already open, and the
-line at the top of it has no seed because nothing here dealt that run and no
-depth because nobody came back to say how far it went. It is also the one
-line in the Book with no *you* in it.
+Every ending is written underneath it, numbered from one. It is the cheapest
+sentence in the game that makes the Book mean something before the player has
+died once: the first thing you read, every time you open it after a death, is
+your own order to yourself.
 
-Built as the card specified:
+**It changed shape after the merge, and the change is the whole point.** The
+straw ruling shipped it as somebody else's ending — *Gone down, and not back
+up* — a death that happened before yours, at the head of the record you were
+adding yourself to. The direction taken instead is that the line is **your own
+hand**: an order scrawled in a hurry, at the top of the Book, for whoever
+opens it next, which is you. What it costs is one dead stranger's line; what
+it buys is that death stops being the only thing the Book is about. The scrawl
+is the reason, and the endings are what the reason costs.
 
-- `FIRST_END` is seeded on `firstPermanent`, so there is no "new game" path
+Consequences worth naming:
+
+- **A line with no run behind it is not an ending**, and the reader says so by
+  giving it no ordinal and no numbers. That is not an is-it-this-one check —
+  nothing anywhere asks which line the scrawl is. It is `seed === null &&
+  depth === null`, which is the same fact stated in the data, and the endings
+  number themselves among themselves.
+- **The Book's framing changed with it.** *"Every ending is written here,
+  under the first line"* — which says the thing at the top is not one of them
+  without saying what it is instead. The line says that itself.
+- **It is the one place in the game where prose carries an imperative**, and
+  it is not the breach of art. 66 it looks like: the labyrinth is not telling
+  the player what to do, the player is. It commits nothing, it is not on the
+  strip, and there is no press behind it.
+
+Built:
+
+- `THE_SCRAWL` is seeded on `firstPermanent`, so there is no "new game" path
   where it could be forgotten — `erase` boots through the same function.
 - `EndLine.seed` and `EndLine.depth` are `Seed | null` / `number | null`.
-  That is the honest field rather than a flag: "not yours" and "no seed" are
-  the same fact here, and the reader prints what it is given.
-- `VAULT_VERSION` is 8, with a `fillingThePermanent` rung that puts the line
-  **above** an existing Book's own lines. A player mid-collection gets the
-  premise and loses nothing; the rung is idempotent by the cause.
-- The reader draws it with the same code and the same class as every other
-  line. What marks it out is its content — no numbers, and a sentence with
-  nobody in it. Never styling.
-
-**If vetoed**, the fact moves into the threshold's prose and the Book is born
-empty again: revert `FIRST_END` out of `firstPermanent`, drop rung 7 → 8, and
-the nullable fields can stay or go with it.
+  The honest field rather than a flag: no run behind it, so nothing to print.
+- `VAULT_VERSION` is 9. Rung 7 → 8 puts the line at the head of an existing
+  Book (idempotent by the cause, nothing else moves); rung 8 → 9 rewrites the
+  line the merged v8 build wrote, because an id whose words have been retired
+  would otherwise print itself at the player.
+- **A law was edited, once.** art. 11 in `.claude/rules/the-world.md` gains a
+  single clarifying sentence and nothing else: *the Book does not open empty:
+  one line stands in it from the first waking — the player's own scrawl, not
+  an ending — and every ending is written beneath it.*
 
 **What it changes elsewhere, and this is on purpose:** the door's Read verb
 is offered from the very first boot, because `hasBook` is now always true.
 The Book was previously unreachable until you had died, which meant the one
 screen that explains what death is *for* was gated behind dying.
-
-**No law was edited.** art. 86 already says what the dice are, and the ruling
-is content behaviour under art. 11's existing text. If it survives veto, the
-sentence to add to `.claude/rules/the-world.md` under art. 11 is: *the Book
-does not open empty — one ending stands in it from the first waking, and it
-is not the player's.* Nothing more.
 
 ### What the frame still cannot carry
 

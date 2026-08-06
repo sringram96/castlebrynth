@@ -364,13 +364,19 @@ export const ARRIVALS: Readonly<Record<string, readonly string[]>> = {
  * receipt rather than a record — so a line of the Book is this sentence, and
  * the numbers ride beside it.
  *
- * `end.gone` is the line that is already there at the first waking, and it
- * is the one line in the Book with no *you* in it. It is authored here like
- * any other ending because that is what it is: an ending, written down
- * before yours, by nobody who is left to write it.
+ * `scrawl` is the line that is already there at the first waking, and it is
+ * the only one of these that is **not an ending**. It is your own hand: an
+ * order left at the top of the Book for whoever opens it next, which is you,
+ * and it is short because it was written in a hurry. Every ending is written
+ * underneath it.
+ *
+ * It is the one place in the game where prose carries an imperative, and it
+ * is not the breach of art. 66 it looks like: the labyrinth is not telling
+ * the player what to do, the player is. It commits nothing, it is not on the
+ * strip, and there is no press behind it.
  */
 export const END_LINES: Readonly<Record<string, string>> = {
-  'end.gone': 'Gone down, and not back up.',
+  scrawl: 'Find your brother. Whatever else goes, keep this.',
   'end.gnawing': 'The Gnawing opens you and goes back to its corner.',
   'end.marrow': 'The Marrow closes over you. The scratching starts again behind it.',
   'end.warden': 'The Warden stands aside. The stair keeps going down.',
@@ -429,9 +435,10 @@ export const NOTICES: Readonly<Record<string, string>> = {
   // holds nothing, and not a state the game deals.
   'book.empty': 'Nothing is written here yet.',
   // art. 111: the sheet names itself, and then says how to read down it.
-  // "Oldest first" is the whole of what the framing has to do: it dates the
-  // line at the top as an ending that happens before any of yours.
-  'book.title': 'The Book of Ends. Every ending is written here, oldest first.',
+  // "Under the first line" is the whole of what the framing has to do: it
+  // says the thing at the top is not one of the endings, without saying what
+  // it is instead. The line says that itself, in your own hand.
+  'book.title': 'The Book of Ends. Every ending is written here, under the first line.',
   // art. 66: the prose states what is true and never instructs. The verb on
   // the strip is the only thing that says what pressing it does.
   'forget.asked':
