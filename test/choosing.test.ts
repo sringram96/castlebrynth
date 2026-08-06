@@ -163,6 +163,8 @@ describe('arts 60, 63 — the hand and the run in flight', () => {
         turnNumber: 2,
         kept: [],
         castingsSpent: 1,
+        bound: [],
+        bleed: null,
         card: {} as never,
         claims: [],
         phase: 'keep' as const,

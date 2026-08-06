@@ -95,6 +95,7 @@ function turnOf(values: readonly Value[] | readonly number[], spent: readonly Li
     castingsAllowed: 2,
     claims: [],
     card: card(spent),
+    bound: [],
   }
 }
 

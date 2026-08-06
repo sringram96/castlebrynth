@@ -89,9 +89,27 @@ skeleton playtest.
     state changes the scene: the taken key is gone from the floor,
     the opened door stands open, the wounded horror stays wounded.
     Prose confirms; pixels prove. (Extends art. 28.)
-71. SETTLED — A bare tap never walks you through a door. Forward
-    being forever (art. 9), every irreversible act goes through the
-    act strip as a plain verb you pressed.
+71. SETTLED (strengthened by the ruling of 2026-08-06) — A bare tap never
+    walks you through a door. Forward being forever (art. 9), every
+    irreversible act goes through the act strip as a plain verb you
+    pressed.
+
+    **And the act strip serves the last look.** A picked door stayed
+    picked: tap an urn, press the door verb still sitting in the strip,
+    and you are through a door you were not looking at — attention moved
+    and the commit did not. So **tapping any thing releases a picked
+    door**: the pick outline goes and the door's verbs leave the strip.
+    A door verb may only ever commit the door currently picked, and **no
+    pick means no door verb on the strip**. Re-picking is one tap.
+
+    The cost is honest and accepted: interleaving looking with leaving
+    costs one extra tap. Art. 5's spirit is the reason — nothing
+    irreversible happens by accident — and commitment is only drama when
+    the commit is the thing you meant. Arriving in a room still picks the
+    first door it offers, because nothing has moved yet; the ruling is
+    about attention moving. The summons (art. 68) is untouched: a verb
+    looking summoned lives on the ledger and survives the release,
+    because the summons is knowledge and the pick is attention.
 
 ## The dice under the thumb
 72. SETTLED (ruled) — Selection is staged, and kept-marks are mortal.

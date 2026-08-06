@@ -21,6 +21,9 @@
 
 import type { Chain, ChainNode, Dealer, Door, Fill } from '../gen/index.js'
 import { deal, nodeAt } from '../gen/index.js'
+
+export type { Pick, Touch } from './pick.js'
+export { isPicked, onArrival, picking, pickedDoor } from './pick.js'
 import type { RegionId } from '../gen/index.js'
 import type { Good } from '../lots/index.js'
 import type { WorldMark } from '../room/index.js'
@@ -160,6 +163,23 @@ export interface Act {
    * it, and is offered on arrival like any other.
    */
   readonly about?: string
+  /**
+   * arts 68, 97 (card 67): which door of this room this act turns the lock
+   * of. Absent on everything that is not a lock, which is nearly all of them.
+   *
+   * The defect this closes is that the key opened the Warden's door **by
+   * existing**. art. 80 constructs the whole depth around placing that key
+   * and the payoff was a passive inventory check — looking is free and
+   * commitment is drama, and a lock that opens itself is neither. So a
+   * locked door is a *deed-gated* door: the deed this act writes (art. 82,
+   * per instance) is what the door reads, and until it is written the door
+   * offers no way on at all.
+   *
+   * It is a door index rather than a boolean because that is what
+   * generalises: every future lock is a deed-gated door, and no future lock
+   * can regress to a passive check without deleting this field.
+   */
+  readonly unlocks?: number
 }
 
 /**
@@ -180,8 +200,17 @@ export interface SocketWords {
 export interface RoomBook {
   beats(room: RoomId): readonly string[]
   tappables(room: RoomId): readonly Tappable[]
-  /** art. 6: looking is free and always answers. */
-  look(room: RoomId, target: string): string
+  /**
+   * art. 6: looking is free and always answers.
+   *
+   * art. 69, and card 67: **it answers either way.** What is carried comes
+   * in because one answer in the game depends on it — a lock names what it
+   * wants, or, if the key is on you, names what fits. That is the first half
+   * of the ceremony and the reason the second half can be a summons rather
+   * than a hint (art. 68). The engine passes the run's pocket and reads
+   * nothing out of it; which answers care is content's business alone.
+   */
+  look(room: RoomId, target: string, carried?: readonly ItemId[]): string
   acts(room: RoomId): readonly Act[]
   /**
    * art. 83: sockets carry their own words. The room is handed over so the
@@ -213,6 +242,13 @@ export interface DoorState {
   readonly open: boolean
   /** art. 97: it wants a key, so it wears the lock on its frame. */
   readonly locked: boolean
+  /**
+   * arts 70, 97 (card 67): the lock has been turned, here. The world
+   * remembers in pixels — the lock hangs open on the frame rather than
+   * quietly ceasing to be drawn, because a lock that vanishes is a lock
+   * that was never there.
+   */
+  readonly turned: boolean
   /** art. 37: the Warden's door ends the depth and is its own object. */
   readonly ends: boolean
 }
@@ -300,6 +336,10 @@ export function sceneStateOf(ledgers: Ledgers, book: RoomBook, node: ChainNode):
       at: door.at,
       open: (run?.opened ?? []).includes(doorKey(node.instance, door)),
       locked: door.demands.length > 0,
+      // art. 70: a turned lock hangs open, and it does so here rather than
+      // in the shell, because the paint is a function of the scene state
+      // and of nothing the shell happens to be holding.
+      turned: turnedHere(ledgers, book, node, door),
       ends: door.ends === true,
     })),
   }
@@ -319,7 +359,13 @@ export function sceneKey(state: SceneState): string {
     state.opened.join('+'),
     // art. 97: how many thresholds and what state each is in are both pixels,
     // so a frame cached without them is a frame with the wrong doors in it.
-    state.doors.map((door) => `${door.at}${door.open ? 'o' : ''}${door.locked ? 'k' : ''}`).join('+'),
+    // card 67: and a turned lock is a pixel like the rest of them.
+    state.doors
+      .map(
+        (door) =>
+          `${door.at}${door.open ? 'o' : ''}${door.locked ? 'k' : ''}${door.turned ? 't' : ''}`,
+      )
+      .join('+'),
     state.horror ?? '-',
     state.fills
       .map((fill) => `${fill.socket}=${fill.encounter}${fill.orElse === undefined ? '' : `/${fill.orElse}`}`)
@@ -354,6 +400,11 @@ export function enterRoom(
       // tapped, the act about it is not in the tray at all — not greyed, not
       // refusing, not there.
       .filter((one) => summoned(run, at, one))
+      // arts 7, 68 (card 67): and neither is an act whose gate is not met.
+      // "Only then, and only carrying" — a verb you cannot press is the same
+      // defect as a verb you have not earned, so it gets the same answer.
+      // What the player gets instead is the tap: the lock says what it wants.
+      .filter((one) => afforded(run, one))
       .filter((one) => !done(run, at, one))
       .map((one) => ({ kind: 'act' as const, act: one })),
     ...node.doors.map((door) => ({ kind: 'door' as const, door })),
@@ -398,6 +449,20 @@ export function summoned(run: RunLedger | null, instance: InstanceId, one: Act):
   return one.about === undefined || hasLooked(run, instance, one.about)
 }
 
+/**
+ * art. 7 (card 67): whether what this act is gated on is actually on you.
+ *
+ * `act` has always refused an unmet gate; this is what stops the tray from
+ * offering the press in the first place. art. 68 abolished the verb that is
+ * present and refusing, and a verb that needs something you are not
+ * carrying is exactly that verb.
+ */
+export function afforded(run: RunLedger | null, one: Act): boolean {
+  if (one.needs.length === 0) return true
+  const held = new Set<string>(run?.carried ?? [])
+  return one.needs.every((item) => held.has(item))
+}
+
 /** art. 82: done *here*. Two alcoves each hold their own key. */
 function done(run: RunLedger | null, instance: InstanceId, one: Act): boolean {
   if (run === null) return false
@@ -410,9 +475,22 @@ function beatAt(beats: readonly string[], index: number): Beat | null {
   return { text, index: Math.min(index, beats.length - 1), last: index >= beats.length - 1 }
 }
 
-/** art. 5: tapping never harms; looking is free and always answers (art. 6). */
-export function look(book: RoomBook, bands: Bands, target: Tappable): Beat {
-  return { text: book.look(bands.room, target.id), index: -1, last: true }
+/**
+ * art. 5: tapping never harms; looking is free and always answers (art. 6).
+ *
+ * card 67: what the run is carrying goes with the question, because art. 69
+ * says a thing answers *either way* and the lock is the one thing in the
+ * game whose either-way is a different sentence. The pocket is optional so
+ * that a caller which only wants the room's own answer — a test, a re-read
+ * — is not made to pretend to be a run.
+ */
+export function look(
+  book: RoomBook,
+  bands: Bands,
+  target: Tappable,
+  carried: readonly ItemId[] = [],
+): Beat {
+  return { text: book.look(bands.room, target.id, carried), index: -1, last: true }
 }
 
 /**
@@ -515,10 +593,83 @@ export function doors(bands: Bands): readonly Door[] {
 /**
  * art. 7: outcomes, not clicks, are gated. A door you cannot open is still
  * a door you may always tap — it simply does not open (art. 5).
+ *
+ * This is the *key* half only: whether what the lock demands is on you. The
+ * other half is whether you have turned it (`turnedHere`), and a door needs
+ * both (`opens`).
  */
 export function canOpen(ledgers: Ledgers, door: Door): boolean {
   const held = new Set<string>(ledgers.run?.carried ?? [])
   return door.demands.every((key) => held.has(key))
+}
+
+// ── The ceremony at the lock (card 67, arts 68, 70, 82, 97) ────────────
+
+/**
+ * Which act, if any, turns this door's lock. A locked door with nothing
+ * authored to turn it never opens — deliberately, and loudly: the old
+ * behaviour was that a lock opened itself the moment the key was in the
+ * pocket, and a silent fallback to that is exactly the regression this
+ * card exists to make impossible. `test/warden.test.ts` holds the catalog
+ * to it, so content cannot ship such a door by accident.
+ */
+export function lockActFor(book: RoomBook, node: ChainNode, door: Door): Act | null {
+  return actsIn(book, node).find((one) => one.unlocks === door.at) ?? null
+}
+
+/**
+ * arts 70, 82: whether this door's lock has been turned **here**. The deed
+ * is the act's own id against this instance, so two copies of one room each
+ * keep their own lock — and it survives leaving and coming back, because
+ * the world remembers.
+ */
+export function turnedHere(
+  ledgers: Ledgers,
+  book: RoomBook,
+  node: ChainNode,
+  door: Door,
+): boolean {
+  if (door.demands.length === 0) return false
+  const turning = lockActFor(book, node, door)
+  if (turning === null) return false
+  return (ledgers.run?.did ?? []).includes(deedKey(node.instance, turning.id))
+}
+
+/**
+ * Whether this door will actually give: the key is on you **and** the lock
+ * has been turned. An unlocked door asks for neither.
+ *
+ * A door that fails this offers no verb at all rather than a verb that
+ * refuses (art. 68: not greyed, not refusing, not there).
+ */
+export function opens(
+  ledgers: Ledgers,
+  book: RoomBook,
+  node: ChainNode,
+  door: Door,
+): boolean {
+  if (!canOpen(ledgers, door)) return false
+  return door.demands.length === 0 || turnedHere(ledgers, book, node, door)
+}
+
+/**
+ * arts 3, 9: whether this room has nothing left that could ever let the run
+ * out of it. Forward is forever, so a run that reaches this is a run the
+ * guarantee failed for — and it is the one case the `End run` valve exists
+ * for.
+ *
+ * A locked door the player is *carrying the key to* is not stranded: the
+ * lock is a press away, and the press is the point. What strands is a lock
+ * whose key is not on you, or a lock nothing in the room can turn.
+ */
+export function stranded(ledgers: Ledgers, book: RoomBook, node: ChainNode): boolean {
+  if (node.doors.length === 0) return false
+  return node.doors.every((door) => {
+    // A fight is a way on, whatever else is true of the door it stands at.
+    if (door.fight !== undefined) return false
+    if (!canOpen(ledgers, door)) return true
+    return door.demands.length > 0 && lockActFor(book, node, door) === null
+  })
 }
 
 /**
@@ -542,9 +693,20 @@ export function heldBack(
 /**
  * art. 3: a run cannot become unwinnable by walking. True when every door in
  * this room is free to be committed — nothing required is still lying here.
+ *
+ * card 67: given a door, it also asks whether that door's lock has been
+ * turned. The two questions are one question at the act strip — *may this
+ * press take me out of here* — and answering them in one place is what
+ * stops a second caller from remembering only half of it.
  */
-export function mayLeave(ledgers: Ledgers, book: RoomBook, node: ChainNode): boolean {
-  return heldBack(ledgers, book, node).length === 0
+export function mayLeave(
+  ledgers: Ledgers,
+  book: RoomBook,
+  node: ChainNode,
+  door?: Door,
+): boolean {
+  if (heldBack(ledgers, book, node).length > 0) return false
+  return door === undefined || opens(ledgers, book, node, door)
 }
 
 /**
@@ -573,12 +735,21 @@ export function chooseDoor(
   const run = ledgers.run
   if (run === null) throw new Error('no run to move')
   if (!canOpen(ledgers, door)) throw new Error('the door does not open')
-  if (door.ends === true) throw new Error("the Warden's door ends the depth: finish, do not walk")
   const here = nodeAt(chain, run.at.instance)
   if (here === null) throw new Error(`no room dealt at ${run.at.instance}`)
-  if (!mayLeave(ledgers, book, here)) {
+  if (heldBack(ledgers, book, here).length > 0) {
     throw new Error('art. 3: something here is still required')
   }
+  // card 67: the key opens nothing by existing. A lock is turned by a press
+  // that leaves a deed, and the door reads the deed (arts 68, 82).
+  //
+  // Before the `ends` refusal on purpose: a locked door that also ends the
+  // depth is refused for the more specific reason, so a caller that reaches
+  // here without the ceremony is told what it actually skipped.
+  if (!opens(ledgers, book, here, door)) {
+    throw new Error('art. 97: the lock has not been turned')
+  }
+  if (door.ends === true) throw new Error("the Warden's door ends the depth: finish, do not walk")
   // art. 70: the door you came through stands open behind you, and it is
   // written down before you move, so the room you left remembers it.
   const marked = openedDoor(tookDoor(run, door.at), doorKey(run.at.instance, door))

@@ -48,5 +48,5 @@ export const GATE: Scene = {
     right: layered(stringCourse(11, 0.9), crack(17, 15, 1, 29)),
     back: stringCourse(11, 0.9),
   }),
-  props: () => [threshold(MUTED, DOOR, { open: false, locked: false, warden: false })],
+  props: () => [threshold(MUTED, DOOR, { open: false, locked: false, turned: false, warden: false })],
 }

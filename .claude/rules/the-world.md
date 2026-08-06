@@ -71,11 +71,30 @@ in the-thumb.md (arts 66–76, 90–92).
     Rerolling the labyrinth still costs what it should — a death.
 
 ## Room types & the grammar
-37. SETTLED — The taxonomy the generator deals: Passage (the Layton bread),
-    Lair (the fight is the room), Puzzle (a lock of logic), Trove (treasure
-    with teeth; fleeting moments live here), Omen (story and strange
-    bargains), Sanctum, Merchant, Savior. Fixed anchors: the Crossing opens
-    every run; the Warden's door ends the depth. Length is tuning, not law.
+37. SETTLED (amended by the company wave, 2026-08-06) — The taxonomy the
+    generator deals: Passage (the Layton bread), Lair (the fight is the
+    room), Puzzle (a lock of logic), Trove (treasure with teeth; fleeting
+    moments live here), Omen (story and strange bargains), Sanctum,
+    Merchant, Savior. Fixed anchors: the Crossing opens every run; the
+    Warden's door ends the depth. Length is tuning, not law.
+
+    **The Warden is the keeper the door was built for, and turning the key
+    is what wakes it.** The open question this closes — *the Warden is a
+    door, not a being* — was open because the article named the anchor and
+    said nothing about what stands behind it. GAME.md's v1 scope has always
+    said it: *"the Warden at the bottom."* So the last anchor is a fight and
+    not a checkbox, and the beat is the key turning (art. 97 as the
+    ceremony), the hall answering in one line, and the thing arriving at the
+    near depth — art. 30 unchanged, because a fight is the room with the
+    thing come close and this room was built around it.
+
+    Two consequences, and both are the article rather than the content.
+    **The keeper stands in no socket**: it is not dealt, it is not weighted,
+    and it is unique by construction, because there is one hall. **It exists
+    only once the key turns**: a player at the door without the key finds
+    the hall empty and the lock answering, which is what makes the turning
+    of the key the event rather than the arrival in the room. Its numbers,
+    its script and its body are content like every other horror's.
 38. SETTLED (amended) — Rules, not templates. The generator's mercy lives
     in the math: just-in-time placement makes stranding impossible
     (art. 80), and rhythm obligations (fight-count bands, no-clump rules)

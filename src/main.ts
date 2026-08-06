@@ -27,26 +27,33 @@ import {
   HAND_SIZE,
   LABELS,
   LADDER,
+  MOTION,
   NOTICES,
   PLAIN_POUCH,
   READOUT,
   ROOM_BOOK,
   TABS,
+  UNBIDDEN,
   VERBS,
+  WARDEN_DOWN,
+  advanceBodyOf,
   atGrid,
+  keeperStanding,
+  encounterOfHorror,
   endLineOf,
   horrorById,
-  horrorOf,
+  horrorIn,
   intentChip,
   itemLabel,
   roomContent,
   type RoomContent,
+  saysBound,
   saysClaim,
   saysDie,
   saysIntent,
   saysItem,
 } from './content/index.js'
-import type { Act, Bands, Tappable } from './descent/index.js'
+import type { Act, Bands, Pick, Tappable } from './descent/index.js'
 import {
   act,
   breathFor,
@@ -54,14 +61,21 @@ import {
   chooseDoor,
   doors,
   enterRoom,
+  heldBack,
+  isPicked,
   look,
   looking,
-  mayLeave,
   nextBeat,
+  onArrival,
   openDoor,
+  opens,
+  picking,
+  pickedDoor,
   remember,
   sceneKey,
   sceneStateOf,
+  stranded,
+  turnedHere,
 } from './descent/index.js'
 import type { Chain, ChainNode, Door } from './gen/index.js'
 import { deal, dealerOf, meetings, nodeAt, reseed } from './gen/index.js'
@@ -108,6 +122,7 @@ import {
   HOME,
   browserVault,
   descending,
+  didHere,
   erase,
   inFlight,
   panelAfter,
@@ -133,8 +148,19 @@ import type { AtTheDoor } from './shell/screens/threshold.js'
 import { doorActs, doorWord } from './shell/screens/threshold.js'
 import type { SettingsActs, SettingsView } from './shell/screens/settings.js'
 import { settingsPanel, settingsWord } from './shell/screens/settings.js'
-import type { Framebuffer, RenderedRoom, WorldMark } from './room/index.js'
-import { fillScale, markRect, overpaint, present, renderRoom } from './room/index.js'
+import type { Framebuffer, Prop, RenderedRoom, Scene, WorldMark } from './room/index.js'
+import {
+  breathing,
+  fillScale,
+  markRect,
+  overpaint,
+  phaseOf,
+  present,
+  renderRoom,
+  stirring,
+  swelling,
+  unbidding,
+} from './room/index.js'
 
 // ── The bands ──────────────────────────────────────────────────────────
 
@@ -222,8 +248,12 @@ let notice: string | null = null
 let refused = false
 /** art. 74: the card and the Book live behind glyphs, never mid-screen. */
 let sheet: 'card' | 'book' | null = null
-/** Which door the thumb has sensed. Sensing and going are two acts (art. 71). */
-let chosen: Door | null = null
+/**
+ * Which door the thumb has picked. Sensing and going are two acts (art. 71),
+ * and under the ruling of 2026-08-06 the act strip serves the *last* look:
+ * tapping anything else releases this, and no pick means no door verb.
+ */
+let pick: Pick = null
 /**
  * art. 60: the dice picked out on the choosing screen, in the order they
  * were picked. Empty everywhere else — the pouch itself is informative and
@@ -287,14 +317,22 @@ function boot(): void {
   ledgers = { ...ledgers, run: tookIntoRun(ledgers.run!, ledgers.permanent) }
   chain = deal(ledgers.run!.seed, ledgers.run!.depth, CATALOG, GRAMMAR, ledgers.run!.history)
   bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
-  chosen = doors(bands)[0] ?? null
+  pick = onArrival(doors(bands))
   greet()
+  // art. 117: a reseed is a new labyrinth, so nothing in it has spoken yet.
+  spoken.clear()
+  unbidden = null
   // art. 75: a half-spent turn survives the lock screen. If one was in
   // flight rather than paused, boot lands back inside it, selection and all.
   // A fight you ran out on is saved the same way and stays where you left
   // it — in the room, behind its door (art. 63).
   const held = pausedAt(ledgers, ledgers.run!.at.instance)
-  const gate = doors(bands).find((door) => door.fight !== undefined)
+  // card 31: the Warden's door carries no fight tag — its keeper stands in
+  // no socket (art. 37 as amended) — so a boot mid-keeper looks for the door
+  // that ends the depth as well.
+  const gate =
+    doors(bands).find((door) => door.fight !== undefined) ??
+    doors(bands).find((door) => door.ends === true)
   if (held !== null && held.engaged && gate !== undefined) {
     resume(held.at)
     // art. 91: booting is not a transition. Focus is state, and the state
@@ -363,7 +401,16 @@ function stillness(): boolean {
   return ledgers.permanent.prefs.reducedMotion
 }
 
-function world(): void {
+/**
+ * The world band.
+ *
+ * `marks` is false on a clock tick: the tap regions are laid out at the
+ * coordinates the props are painted at (art. 68), and none of those move — a
+ * loop moves what a pixel *is*, never where a thing stands (art. 110) — so
+ * rebuilding the DOM under a thumb ten times a second would be a cost with
+ * nothing on the other side of it.
+ */
+function world(marks = true): void {
   // The threshold is a room, cast the way any room is cast (art. 21). What
   // it is not is a menu with a picture behind it, so it goes through the
   // same renderer and the same cache as everything else.
@@ -381,17 +428,61 @@ function world(): void {
   const node = here()
   const content = roomContent(node.room)
   const state = sceneStateOf(ledgers, ROOM_BOOK, node)
-  const stamp = `${sceneKey(state)}:${frameHeight()}`
-  let base = painted.get(stamp)
-  if (base === undefined) {
-    base = renderRoom(content.scene(state), atGrid(GRID, frameHeight()))
-    painted.set(stamp, base)
-  }
+  const scene = content.scene(state)
+  const base = castOf(scene, sceneKey(state))
   // art. 30: no battle screen — the horror is a prop laid into this room's
   // own frame, so the box behind it is never cast twice for a motion.
-  const close = screen.kind === 'fight' && fight !== null ? [advance(fight, closeness).prop] : []
-  show(close.length === 0 ? base.frame : overpaint(base, close))
-  layMarks(base, content)
+  //
+  // art. 100, card 31: a horror that has been drawn advances as its drawing.
+  // Everything else keeps the mass the hinge draws, which is art. 26's first
+  // tier and right for a shape at the end of a corridor.
+  const close = screen.kind === 'fight' && fight !== null ? [advanceWith(fight, closeness)] : []
+  // arts 106–110: and the stir, which is overlay repaint and never a recast.
+  // art. 116: with the world held still there is no overlay at all, so what
+  // shows is the cast frame — which is the settled state, and art. 107 says
+  // the settled state is the whole truth.
+  const moving = stillness()
+    ? []
+    : [
+        ...stirring(scene.motion, base.view, tick),
+        ...unbidding(scene.motion, base.view, unbidden?.at ?? -1),
+      ]
+  const over = [...close, ...moving]
+  show(over.length === 0 ? base.frame : overpaint(base, over))
+  if (marks) layMarks(base, content)
+}
+
+/**
+ * art. 110: the frame the cast made, held. The cache is keyed on the scene
+ * state (art. 70) and on the frame's height, and — where a room's light
+ * swells — on which of the two frames this is.
+ *
+ * The two casts are the one case an overlay cannot do: the light reaches
+ * every surface in the room, and what colour a surface takes is the cast's to
+ * decide (art. 15). So the room is cast twice, a lift apart, and the clock
+ * chooses between two prepared frames rather than changing what a pixel
+ * means (art. 17, unamended).
+ */
+function castOf(scene: Scene, key: string): RenderedRoom {
+  const lit = !stillness() && swelling(scene, tick)
+  const stamp = `${key}:${frameHeight()}${lit ? ':lit' : ''}`
+  let held = painted.get(stamp)
+  if (held === undefined) {
+    held = renderRoom(
+      lit ? breathing(scene, scene.motion?.swell ?? 0) : scene,
+      atGrid(GRID, frameHeight()),
+    )
+    painted.set(stamp, held)
+  }
+  return held
+}
+
+/** art. 30: the thing come close, in whichever body content gave it. */
+function advanceWith(now: Fight, close: number): Prop {
+  const drawn = advanceBodyOf(now.horror.id)
+  return drawn === null
+    ? advance(now, close).prop
+    : advance(now, close, (_, settled) => drawn(settled)).prop
 }
 
 function show(frame: Framebuffer): void {
@@ -456,10 +547,19 @@ function markFor(target: Tappable): HTMLButtonElement {
   el.setAttribute('aria-label', target.noun)
   el.onclick = () => {
     settle()
+    // art. 71 (strengthened 2026-08-06): the act strip serves the last look.
+    // Attention has moved to this thing, so the door the thumb was holding is
+    // released and its verb leaves the strip — nothing irreversible may be
+    // one press away from a thumb that is looking somewhere else.
+    pick = picking({ kind: 'thing', id: target.id })
     // art. 68: the tap is the inspection — the word band is the whole of it,
     // and there is no button behind it. And looking summons: the verb about
     // this thing appears in ACTS once it has been looked at.
-    notice = look(ROOM_BOOK, bands, target).text
+    //
+    // card 67: the pocket goes with the question. A lock names what it wants,
+    // or — carrying the key — names what fits, and that second answer is
+    // what makes the verb it summons legible before it is pressed.
+    notice = look(ROOM_BOOK, bands, target, ledgers.run?.carried ?? []).text
     ledgers = looking(ledgers, target)
     bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
     persist()
@@ -476,22 +576,112 @@ function markFor(target: Tappable): HTMLButtonElement {
  */
 function doorMark(door: Door): HTMLButtonElement {
   const el = document.createElement('button')
-  el.className = `door${chosen?.at === door.at ? ' chosen' : ''}`
+  el.className = `door${isPicked(pick, door) ? ' chosen' : ''}`
   el.setAttribute('aria-label', LABELS['door.ahead'] ?? 'the door')
   el.onclick = () => {
     settle()
     // art. 71: a bare tap never walks you through a door. It picks it out,
     // and the going is a verb in the act strip.
-    chosen = door
+    pick = picking({ kind: 'door', door })
     notice = NOTICES['door.blind'] ?? ''
     paint()
   }
   return el
 }
 
+// ── The world clock (arts 109, 117) ────────────────────────────────────
+
+/**
+ * art. 109: **one clock, and everything that loops rides it.** No per-thing
+ * timers and no drift between visits — a loop's phase is hashed off its own
+ * identity, so the same room breathes the same way every time you stand in
+ * it, and two loops in one room never pulse together.
+ */
+let tick = 0
+/**
+ * art. 117: how many ticks the thumb has been still. The unbidden beat is
+ * scheduled off this rather than off the clock outright, so the room never
+ * speaks over an answer the player just asked for.
+ */
+let stillFor = 0
+/** art. 117: the beat playing now, and how far into it. */
+let unbidden: { readonly at: number; readonly frames: number } | null = null
+/**
+ * art. 117: **said once.** Which instances have already done their one thing.
+ * It is shell state and not the run's on purpose — an unbidden beat may never
+ * gate anything and is never required reading, so a rung on the vault for it
+ * would cost every player a migration for a line that means nothing if it is
+ * missed.
+ */
+const spoken = new Set<string>()
+
+setInterval(onTick, MOTION.tick)
+
+function onTick(): void {
+  // art. 116: with the world held still, no loop runs and the blink never
+  // fires. The clock is what stops — a clock left running with its output
+  // filtered is a thing somebody later forgets is running.
+  if (stillness()) return
+  // Nothing loops on a screen: the front door, the settings, the choosing and
+  // the two endings are all held still by having nothing that moves in them.
+  if (screen.kind !== 'room' && screen.kind !== 'fight') return
+  if (sheet !== null) return
+  tick += 1
+  stillFor += 1
+  if (unbidden !== null) {
+    const at = unbidden.at + 1
+    // art. 1: a one-shot ends in the settled state, and the settled state of
+    // a room that did something of its own accord is the room.
+    unbidden = at >= unbidden.frames ? null : { at, frames: unbidden.frames }
+  } else {
+    theUnbidden()
+  }
+  world(false)
+}
+
+/**
+ * art. 117: **a room may do one small thing of its own accord.** Rarely,
+ * deterministic per instance, at most one line, and never a thing the player
+ * has to have seen.
+ *
+ * The delay is hashed off the instance, so a room does its thing at the same
+ * moment every time you stand still in it and two rooms never do theirs
+ * together. It waits on the *thumb* being still rather than on the clock
+ * outright, which is what keeps it from ever landing on top of a tap.
+ *
+ * It does not wait on the word band being empty, and the first cut of this
+ * did: an answer sits in the band until something clears it, so a room whose
+ * last tap left a line would never speak at all. The soonest delay is twice
+ * the fade (art. 29), so by the time the room says anything the answer has
+ * been read and has gone dim — and the candle underneath is untouched either
+ * way, which is the part art. 117 actually protects.
+ */
+function theUnbidden(): void {
+  if (screen.kind !== 'room') return
+  const node = here()
+  const at = node.instance as string
+  if (spoken.has(at)) return
+  const one = roomContent(node.room).scene(sceneStateOf(ledgers, ROOM_BOOK, node)).motion?.unbidden
+  if (one === undefined) return
+  if (stillFor < MOTION.unbidden.soonest + phaseOf(at, MOTION.unbidden.spread)) return
+  spoken.add(at)
+  unbidden = { at: 0, frames: one.frames }
+  // art. 117: the line rides the notice, which is the one thing in the shell
+  // that sits *over* the word band without touching the candle underneath —
+  // so the beat the player was on is exactly where they left it.
+  const said = UNBIDDEN[node.room as string]
+  if (said !== undefined) {
+    notice = said
+    say()
+  }
+}
+
 // ── Painting ───────────────────────────────────────────────────────────
 
 function paint(): void {
+  // art. 117: the thumb has just done something, so the room's own moment
+  // starts counting again from here.
+  stillFor = 0
   say()
   tray()
   world()
@@ -650,8 +840,10 @@ function settleEverything(): void {
   closeness = 1
   wiping = false
   sheet = null
-  chosen = null
+  pick = null
   picked = []
+  spoken.clear()
+  unbidden = null
   refused = false
   abandoning = false
   painted.clear()
@@ -957,6 +1149,13 @@ function theFightPanel(): void {
   )
   const priced = pricedNow()
   if (priced > 0) totals.append(reading(READOUT.cost ?? '', `${priced}`))
+  // art. 57: everything visible, and art. 65: a bleed is a number the plan
+  // has to be made against. What it will take at the top of the next turn,
+  // after armor — the fight's own armor, because corrosion is something an
+  // *intent* does and a bleed is not this turn's intent.
+  if (now.bleed !== null) {
+    totals.append(reading(READOUT.bleeding ?? '', `${Math.max(0, now.bleed.amount - now.armor)}`))
+  }
   const offer = claimOffer()
   if (offer !== null) totals.append(reading('', offer))
   totals.append(cardGlyph())
@@ -964,8 +1163,14 @@ function theFightPanel(): void {
 
   // The hand, as it lies. art. 72's four states are the die slot's business
   // and have not moved.
+  //
+  // art. 65 (`bind`): a bound die is not on the table — it never landed —
+  // so it is drawn from the hand instead, shut, at the end of the row. The
+  // hole in the hand is the whole of what the effect does, and a hole you
+  // cannot see is a number in a log.
   const laid = casting(now.turn)
   const byId = new Map(ledgers.run!.hand.dice.map((die) => [die.id as string, die] as const))
+  const heldFast = new Set<string>(now.turn.bound)
   if (laid.length > 0) {
     const spent = claimedDice(now.turn)
     for (const landed of laid) {
@@ -974,9 +1179,33 @@ function theFightPanel(): void {
       fightPanel.append(dieSlot(die, landed, spent.has(landed.die)))
     }
   } else {
-    for (const die of ledgers.run!.hand.dice) fightPanel.append(dieSlot(die, null, false))
+    for (const die of ledgers.run!.hand.dice) {
+      if (heldFast.has(die.id as string)) continue
+      fightPanel.append(dieSlot(die, null, false))
+    }
+  }
+  for (const id of now.turn.bound) {
+    const die = byId.get(id as string)
+    if (die !== undefined) fightPanel.append(boundSlot(die, now.horror.id))
   }
   fightActs()
+}
+
+/**
+ * art. 65 (`bind`), arts 68–69: a die somebody else is holding. It answers
+ * with its own truth and with who is holding it, and it commits nothing —
+ * there is nothing to commit, which is the point of it.
+ */
+function boundSlot(die: Die, horror: string): HTMLButtonElement {
+  const el = slot('die bound')
+  el.append(pips(die.faces[0]?.value ?? 1))
+  el.setAttribute('aria-label', saysBound(die, horror))
+  el.onclick = () => {
+    settle()
+    notice = saysBound(die, horror)
+    paint()
+  }
+  return el
 }
 
 /**
@@ -1235,12 +1464,23 @@ function roomActs(): void {
   }
 
   const ahead = doors(bands)
-  if (chosen === null || !ahead.some((door) => door.at === chosen!.at)) chosen = ahead[0] ?? null
-  const door = chosen
-  if (door !== null) {
+  // art. 71 as strengthened: a door verb may only ever commit the door
+  // currently picked, and no pick means no door verb on the strip. There is
+  // deliberately no fallback to the first door — the strip re-picking on its
+  // own is exactly the defect, said in the shell instead of in a variable.
+  //
+  // card 67: **and only an unlocked door offers its way on.** A locked
+  // door's verbs are absent, not disabled (art. 68) — what the player gets
+  // instead is the lock, which answers, and the verb the answer summons.
+  const door = pickedDoor(pick, ahead)
+  if (door !== null && opens(ledgers, ROOM_BOOK, here(), door)) {
     actStrip.append(
-      verb(door.fight !== undefined ? 'fight' : door.ends === true ? 'descend' : 'open', () =>
-        commitDoor(door),
+      // card 31: the Warden's door is a fight-door for as long as its keeper
+      // is standing. Descend is what is left once it is not — art. 71, since
+      // those two words mean different journeys and neither may lie.
+      verb(
+        door.fight !== undefined || keeperUp(door) ? 'fight' : door.ends === true ? 'descend' : 'open',
+        () => commitDoor(door),
       ),
     )
   }
@@ -1249,7 +1489,12 @@ function roomActs(): void {
   // the engine has no back (art. 9). art. 3 now makes that unreachable — the
   // door refuses to commit while the key is still on the floor — so this is
   // the valve for a chain that failed the guarantee, not the ordinary path.
-  if (refused && ahead.every((one) => !canOpen(ledgers, one))) {
+  //
+  // card 67 moved it off the press: with a locked door's verb absent there
+  // is no press left to be refused by, so the valve reads the room instead.
+  // A lock you are carrying the key to is not stranded — the press is one
+  // tap away, and finding it is the ceremony.
+  if (refused || stranded(ledgers, ROOM_BOOK, here())) {
     actStrip.append(verb('end', () => died('end.kept')))
   }
 
@@ -1284,6 +1529,19 @@ function actsInAFight(): void {
   actStrip.append(verb('run', runFromTheFight))
 }
 
+// ── The Warden (card 31, art. 37 as amended 2026-08-06) ────────────────
+
+/** card 31: the rule is content's; this is the shell asking it (arts 63, 71). */
+function keeperUp(door: Door): boolean {
+  const node = here()
+  return keeperStanding(
+    door,
+    node,
+    turnedHere(ledgers, ROOM_BOOK, node, door),
+    sceneStateOf(ledgers, ROOM_BOOK, node).done,
+  )
+}
+
 function doAct(one: Act): void {
   // art. 40: a mercy pressed by a whole body restores nothing and is not
   // spent. The act strip does not go quiet about it (art. 69) — the word
@@ -1293,9 +1551,21 @@ function doAct(one: Act): void {
   bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
   // art. 70: prose confirms, pixels prove — the answer is the room without
   // the thing in it, which the scene state has already stopped drawing.
+  //
+  // card 67: an act may author its own answer, keyed on its own id. It is a
+  // convention rather than a field because the id is already the key the
+  // shell looks a verb up by (art. 66) — one lookup, one place to author.
   notice =
-    mercy === null ? null : (NOTICES[mercy > 0 ? 'mercy.breath' : 'mercy.whole'] ?? null)
+    NOTICES[`answer.${one.id}`] ??
+    (mercy === null ? null : (NOTICES[mercy > 0 ? 'mercy.breath' : 'mercy.whole'] ?? null))
   persist()
+  // card 31: **turning the key is what wakes it.** The hall answers in one
+  // line and the thing arrives at the near depth — art. 30, so the room is
+  // the room and the tray is what turns to combat.
+  const waking = here().doors.find((door) => keeperUp(door))
+  if (one.unlocks !== undefined && waking !== undefined) {
+    return openTheFight(waking, NOTICES['warden.wakes'] ?? notice)
+  }
   paint()
 }
 
@@ -1503,8 +1773,11 @@ function abandonTheRun(): void {
   ledgers = routeDeath(ledgers, 'end.abandoned')
   chain = deal(ledgers.run!.seed, ledgers.run!.depth, CATALOG, GRAMMAR, ledgers.run!.history)
   bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
-  chosen = doors(bands)[0] ?? null
+  pick = onArrival(doors(bands))
   greet()
+  // art. 117: a reseed is a new labyrinth, so nothing in it has spoken yet.
+  spoken.clear()
+  unbidden = null
   refused = false
   abandoning = false
   resumed = { kind: 'room' }
@@ -1544,20 +1817,27 @@ function beginDescent(): void {
  * still lies here, the lock holds, or there is nothing to open.
  */
 function commitDoor(door: Door): void {
-  if (!mayLeave(ledgers, ROOM_BOOK, here())) {
+  if (heldBack(ledgers, ROOM_BOOK, here()).length > 0) {
     // A stop, not a hint: it names nothing and points at nothing (art. 3).
     notice = NOTICES['door.held'] ?? ''
     paint()
     return
   }
   if (door.fight !== undefined) return openTheFight(door)
-  if (!canOpen(ledgers, door)) {
+  // card 67: both halves of the lock, and one line for both. The verb is
+  // absent when either fails (`roomActs`), so this is the belt to that
+  // suspender rather than the ordinary path.
+  if (!opens(ledgers, ROOM_BOOK, here(), door)) {
     // art. 5: the world never punishes touch; it sometimes stops offering.
     notice = NOTICES['door.locked'] ?? ''
     refused = true
     paint()
     return
   }
+  // card 31: while the keeper is standing, the last door is a fight-door
+  // like any other — including after you have run out of it, which is what
+  // makes coming back a resume and not a way past it (art. 63).
+  if (keeperUp(door)) return openTheFight(door)
   if (door.ends === true) return finishTheDepth()
   walk(door)
 }
@@ -1570,7 +1850,7 @@ function walk(door: Door, said: string | null = null): void {
   ledgers = walked.ledgers
   chain = walked.chain
   bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
-  chosen = doors(bands)[0] ?? null
+  pick = onArrival(doors(bands))
   greet()
   notice = said
   persist()
@@ -1583,8 +1863,11 @@ function finishTheDepth(): void {
   ledgers = wake(permanent, reseed(ledgers.run!.seed))
   chain = deal(ledgers.run!.seed, ledgers.run!.depth, CATALOG, GRAMMAR, ledgers.run!.history)
   bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
-  chosen = doors(bands)[0] ?? null
+  pick = onArrival(doors(bands))
   greet()
+  // art. 117: a reseed is a new labyrinth, so nothing in it has spoken yet.
+  spoken.clear()
+  unbidden = null
   screen = { kind: 'finished' }
   focus(panelAfter('finished'))
   notice = null
@@ -1599,11 +1882,12 @@ function finishTheDepth(): void {
  * The card is as spent as you left it and the horror as wounded — running is
  * a retreat, never a way to launder a card.
  */
-function openTheFight(door: Door): void {
+function openTheFight(door: Door, said: string | null = null): void {
   const at = ledgers.run!.at.instance
   // art. 83: which horror this is comes from what stands in the room's
-  // socket, never from the room.
-  const horror = horrorOf(here().fills)
+  // socket — and, at the last room, from the room, because art. 37 as
+  // amended gives that one a keeper that stands in no socket (card 31).
+  const horror = horrorIn(here())
   if (horror === null) return
   const held = pausedAt(ledgers, at)
   if (held !== null) {
@@ -1612,7 +1896,7 @@ function openTheFight(door: Door): void {
     // art. 63: a paused fight resumed is a fight entered, and focuses the
     // same way it did the first time.
     focus(panelAfter('fight-resumed'))
-    ledgers = openDoor(ledgers, door)
+    if (door.ends !== true) ledgers = openDoor(ledgers, door)
     notice = NOTICES['fight.resumed'] ?? ''
     persist()
     paint()
@@ -1627,8 +1911,18 @@ function openTheFight(door: Door): void {
   // the thumb.
   focus(panelAfter('fight-opened'))
   // art. 70: opening a door is an act, and the room it stands in shows it.
-  ledgers = openDoor(ledgers, door)
-  notice = null
+  //
+  // Except the last one (card 31): its keeper came out of the hall, not
+  // through the door, and the door does not open until you go through it.
+  // Painting it open the moment the fight starts would be the world
+  // remembering something that has not happened.
+  if (door.ends !== true) ledgers = openDoor(ledgers, door)
+  // art. 84: a meeting is knowledge, and standing in a room with something
+  // is how most of them are written. The keeper is in no room until the key
+  // turns, so the fight is the only place it can be met.
+  const who = encounterOfHorror(horror.id)
+  if (who !== null) ledgers = { ...ledgers, permanent: meet(ledgers.permanent, who) }
+  notice = said
   persist()
   beginAdvance()
   paint()
@@ -1818,16 +2112,30 @@ function settleTurn(): void {
 
 function wonTheFight(): void {
   const now = fight
-  const here = screen
-  if (now === null || here.kind !== 'fight') return
+  const at = screen
+  if (now === null || at.kind !== 'fight') return
   // art. 63: winning is one of the two things that lets a card refill, and
   // it does it by letting the fight go.
   ledgers = carryOut(ledgers, now)
   fight = null
   screen = { kind: 'room' }
   focus(panelAfter('fight-won'))
+  // card 31: the Warden's door commits no room (art. 37), so beating its
+  // keeper does not walk you anywhere — it writes the deed that turns the
+  // door back into a way down, and `Descend` is the press that takes it.
+  if (at.door.ends === true) {
+    ledgers = { ...ledgers, run: didHere(ledgers.run!, ledgers.run!.at.instance, WARDEN_DOWN) }
+    bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
+    // art. 71 as strengthened (card 63): a fight ending is an arrival in the
+    // room it was fought at the door of, and an arrival picks the way on.
+    pick = onArrival(doors(bands))
+    notice = NOTICES['fight.won'] ?? null
+    persist()
+    paint()
+    return
+  }
   // Winning opens the door, and the door commits the next room (art. 35).
-  walk(here.door, NOTICES['fight.won'] ?? null)
+  walk(at.door, NOTICES['fight.won'] ?? null)
 }
 
 /**
@@ -1851,7 +2159,7 @@ function runFromTheFight(): void {
   // it. Re-entering the door force-focuses FIGHT again (`openTheFight`).
   focus(panelAfter('fight-fled'))
   bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
-  chosen = doors(bands)[0] ?? null
+  pick = onArrival(doors(bands))
   notice = NOTICES['fight.fled'] ?? ''
   persist()
   paint()
@@ -1864,8 +2172,11 @@ function died(cause: string = endLineOf(fight?.horror.id ?? '')): void {
   ledgers = routeDeath(ledgers, cause)
   chain = deal(ledgers.run!.seed, ledgers.run!.depth, CATALOG, GRAMMAR, ledgers.run!.history)
   bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
-  chosen = doors(bands)[0] ?? null
+  pick = onArrival(doors(bands))
   greet()
+  // art. 117: a reseed is a new labyrinth, so nothing in it has spoken yet.
+  spoken.clear()
+  unbidden = null
   fight = null
   refused = false
   screen = { kind: 'dead', cause }

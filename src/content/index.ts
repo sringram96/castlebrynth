@@ -5,7 +5,7 @@
  * way around.
  */
 
-export { GRID, AUTHORED_GRID, AUTHORED_HEIGHT, RENDER, atGrid } from './render.js'
+export { GRID, AUTHORED_GRID, AUTHORED_HEIGHT, MOTION, RENDER, atGrid } from './render.js'
 export type { School, Shading } from './palettes.js'
 export {
   ASH,
@@ -20,6 +20,21 @@ export {
   shadingOf,
 } from './palettes.js'
 export { WAKE, masonry } from './plates/wake.js'
+// arts 100, 107–108: the things drawn once by hand, and the further frames
+// the ones that move are drawn in. A loop's frames share one silhouette, and
+// that is a claim about these drawings rather than about the renderer.
+export {
+  BEARER,
+  BEARER_FRAMES,
+  BRAZIER,
+  BRAZIER_FRAMES,
+  CHOIR,
+  CHOIR_DARK,
+  LANTERN,
+  LANTERN_FRAMES,
+  WATCHER,
+  WATCHER_DARK,
+} from './plates/bestiary.js'
 export { GATE } from './plates/gate.js'
 export type { Dressing } from './plates/plain.js'
 export { BARE, plainScene } from './plates/plain.js'
@@ -82,7 +97,20 @@ export {
   MARROW_SCRIPT,
   MARROW_ESCALATION,
   MARROW_HEALTH,
+  THE_SILT_MOTHER,
+  SILT_MOTHER_SCRIPT,
+  SILT_MOTHER_ESCALATION,
+  SILT_MOTHER_HEALTH,
+  THE_KINDLED,
+  KINDLED_SCRIPT,
+  KINDLED_ESCALATION,
+  KINDLED_HEALTH,
+  THE_WARDEN,
+  WARDEN_SCRIPT,
+  WARDEN_ESCALATION,
+  WARDEN_HEALTH,
   HORRORS,
+  HORROR_SCRIPTS,
   endLineOf,
   horrorById,
   loopOf,
@@ -99,11 +127,13 @@ export {
   FONT,
   GNAWING,
   IRON_KEY,
+  KINDLED,
   LEAVES_A_GOOD,
   LEECH_BONE,
   MARROW,
   MENDER,
   OSSUARY,
+  SILT_MOTHER,
   PLATE,
   PUSHER,
   RARITY,
@@ -113,6 +143,8 @@ export {
   SAVIOR_MERCY,
   SISTER_ELDER,
   SISTER_YOUNGER,
+  WARDEN_KEEPER,
+  encounterOfHorror,
   encounterProp,
   encounterWords,
   fillProps,
@@ -134,6 +166,7 @@ export {
   LABELS,
   READOUT,
   TABS,
+  UNBIDDEN,
   VERBS,
 } from './prose.js'
 export {
@@ -141,6 +174,7 @@ export {
   intentChip,
   itemLabel,
   originOf,
+  saysBound,
   saysClaim,
   saysDie,
   saysGood,
@@ -159,8 +193,12 @@ export {
   ROOMS,
   ROOM_BOOK,
   WARDEN,
+  WARDEN_DOWN,
   WARDEN_KEY,
   WARDEN_KEY_ITEM,
+  advanceBodyOf,
+  horrorIn,
+  keeperStanding,
   horrorOf,
   roomContent,
   roomName,
@@ -177,7 +215,7 @@ export {
   SCRAWL_WORDS,
 } from './voice.js'
 
-import { GNAWING_SCRIPT, MARROW_SCRIPT } from './horrors.js'
+import { HORROR_SCRIPTS } from './horrors.js'
 import { LADDER } from './ladder.js'
 import { CROSSING as THE_CROSSING } from './rooms.js'
 import {
@@ -193,6 +231,7 @@ import {
   READOUT,
   TABS,
   SOCKET_BEATS,
+  UNBIDDEN,
 } from './prose.js'
 import type { Utterance } from './voice.js'
 import { asLabels, asPlaceholders, asScrawls, asThoughts } from './voice.js'
@@ -270,6 +309,11 @@ export function everyString(): readonly Utterance[] {
       // so they are judged exactly as a room's are — and wait on the same
       // card.
       ...Object.values(SOCKET_BEATS).flat(),
+      // art. 117: a room speaking of its own accord is still him noticing
+      // it, so the unbidden lines are prose like any other — and they were
+      // written days before the register changed under them, so they wait on
+      // the same card as the rooms they belong to.
+      ...Object.values(UNBIDDEN),
       ...Object.values(LOOKS),
       // art. 87: an origin is prose that reaches the player, so it is judged
       // as prose. If a sentence cannot pass the lint the item does not ship,
@@ -286,8 +330,10 @@ export function everyString(): readonly Utterance[] {
       // as one — not as a control, which is what art. 66 governs.
       ...Object.values(TABS),
       ...Object.values(LADDER).map((tier) => tier.name),
-      ...GNAWING_SCRIPT.map((intent) => intent.verb),
-      ...MARROW_SCRIPT.map((intent) => intent.verb),
+      // art. 58: every verb of every script that ships, walked rather than
+      // listed — a horror added to the catalog and forgotten here would be
+      // a horror the lint never saw.
+      ...HORROR_SCRIPTS.flat().map((intent) => intent.verb),
     ]),
   ]
 }

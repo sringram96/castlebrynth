@@ -14,6 +14,7 @@ import { harm } from './combos.js'
 import { openTurn } from './turn.js'
 import type {
   Armor,
+  Bleeding,
   Card,
   Fight,
   FightEvent,
@@ -44,6 +45,9 @@ export function openFight(
     yourHealthMax: yourHealth,
     armor,
     card,
+    // art. 65: nothing is running in you at the door. A bleed is something a
+    // horror opens, and no horror has had a turn yet.
+    bleed: null,
     turnNumber: 1,
     turn: openTurn(hand, intent, card),
     hand,
@@ -62,9 +66,25 @@ export function withTurn(fight: Fight, turn: Turn): Fight {
 }
 
 /**
- * A resolved turn, applied. The order is the demo's: the claims land, the
- * riders fire, and only a horror still standing gets to strike back.
- * art. 44: the hand returns whole for the next turn.
+ * A resolved turn, applied.
+ *
+ * **The one declared order** (arts 45, 51, 65, 86). Every effect resolves
+ * at exactly one place in it, and the order is the demo's extended rather
+ * than rearranged — the three effects the company wave adds slot in where
+ * the thing they attack already lived:
+ *
+ *  1. the claims land — `harmDealt` off the horror;
+ *  2. **hunger**, if the turn claimed nothing — the horror takes it back;
+ *  3. the riders fire — heals, then the cost faces (art. 86);
+ *  4. a horror at nothing is dead, and a killing blow is not also a killing
+ *     blow taken;
+ *  5. armor eats its share, and the intent strikes;
+ *  6. a body at nothing is dead;
+ *  7. **bleed** refreshes off this intent, then **ticks** — before the next
+ *     intent shows, so a turn opens with what it already costs you visible;
+ *  8. **bind** takes its die off the turn that is opening.
+ *
+ * art. 44: what is left of the hand returns whole.
  */
 export function advanceFight(fight: Fight, resolution: Resolution): Fight {
   if (fight.outcome !== 'fighting') throw new Error('the fight is over')
@@ -78,8 +98,15 @@ export function advanceFight(fight: Fight, resolution: Resolution): Fight {
     return { ...fight, outcome: 'fled', events: [...fight.events, ...events] }
   }
 
-  const horrorHealth = Math.max(0, fight.horrorHealth - resolution.harmDealt)
+  let horrorHealth = Math.max(0, fight.horrorHealth - resolution.harmDealt)
   if (resolution.harmDealt > 0) events.push({ kind: 'dealt', amount: resolution.harmDealt })
+  // art. 65 (`hunger`): a turn that landed nothing feeds it — never past
+  // what it started with, because a horror that heals above its own health
+  // is a horror whose bar lies (art. 57).
+  if (resolution.fed > 0) {
+    horrorHealth = Math.min(fight.horror.health, horrorHealth + resolution.fed)
+    events.push({ kind: 'fed', amount: resolution.fed })
+  }
   let yourHealth = fight.yourHealth
   if (resolution.healed > 0) {
     yourHealth = Math.min(fight.yourHealthMax, yourHealth + resolution.healed)
@@ -121,16 +148,44 @@ export function advanceFight(fight: Fight, resolution: Resolution): Fight {
     }
   }
 
+  // art. 65 (`bleed`): stacks refresh, never add. A fresh bleed replaces
+  // whatever was running rather than stacking on it.
+  let bleed: Bleeding | null = resolution.bleeds ?? fight.bleed
+  // And it ticks at the top of the turn, before the intent shows: what a
+  // turn already costs you is part of reading the turn (arts 42, 57).
+  if (bleed !== null && bleed.turns > 0) {
+    const bit = Math.max(0, bleed.amount - fight.armor)
+    if (bit > 0) {
+      yourHealth -= bit
+      events.push({ kind: 'bled', amount: bit })
+    }
+    bleed = bleed.turns <= 1 ? null : { amount: bleed.amount, turns: bleed.turns - 1 }
+    if (yourHealth <= 0) {
+      events.push({ kind: 'ended', outcome: 'lost' })
+      return {
+        ...fight,
+        horrorHealth,
+        yourHealth,
+        bleed,
+        outcome: 'lost',
+        events: [...fight.events, ...events],
+      }
+    }
+  }
+
   // art. 44: the hand returns whole; only the card carries the turn's cost.
+  // art. 65 (`bind`): except for what this intent took off it.
   const turnNumber = fight.turnNumber + 1
   const intent = fight.horror.intentFor(turnNumber)
+  if (resolution.binds.length > 0) events.push({ kind: 'bound', dice: resolution.binds })
   events.push({ kind: 'turn-opened', turnNumber, intent })
   return {
     ...fight,
     horrorHealth,
     yourHealth,
+    bleed,
     turnNumber,
-    turn: openTurn(fight.hand, intent, fight.card),
+    turn: openTurn(fight.hand, intent, fight.card, resolution.binds),
     events: [...fight.events, ...events],
   }
 }

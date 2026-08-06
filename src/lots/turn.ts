@@ -33,8 +33,17 @@ export function throwDie(die: Die, lot: Lot): Face {
 /**
  * art. 42: the intent is visible from the top of the turn, before the first
  * casting. Nothing has been thrown yet — `cast` does that.
+ *
+ * art. 65 (`bind`): a turn may open with part of the hand taken off it. The
+ * bound set is the *previous* turn's intent still in force, so it arrives
+ * here rather than being decided here.
  */
-export function openTurn(hand: Hand, intent: Intent, card: Card): Turn {
+export function openTurn(
+  hand: Hand,
+  intent: Intent,
+  card: Card,
+  bound: readonly DieId[] = [],
+): Turn {
   return {
     intent,
     hand,
@@ -42,7 +51,19 @@ export function openTurn(hand: Hand, intent: Intent, card: Card): Turn {
     castingsAllowed: CASTINGS_ALLOWED,
     claims: [],
     card,
+    bound,
   }
+}
+
+/**
+ * art. 65 (`bind`): the dice this turn actually has. A bound die is not in
+ * it — the effect is on the hand, so the die is missing rather than present
+ * and refusing (art. 68's shape, applied to a die instead of a verb).
+ */
+export function castable(turn: Turn): readonly Die[] {
+  if (turn.bound.length === 0) return turn.hand.dice
+  const held = new Set<string>(turn.bound)
+  return turn.hand.dice.filter((die) => !held.has(die.id as string))
 }
 
 /** The dice as they lie: the latest casting, or nothing thrown yet. */
@@ -50,10 +71,13 @@ export function casting(turn: Turn): Casting {
   return turn.castings[turn.castings.length - 1] ?? []
 }
 
-/** art. 41: the first casting. */
+/**
+ * art. 41: the first casting. art. 65: a bound die is excluded **here** —
+ * it never lands, so nothing downstream has to remember not to use it.
+ */
 export function cast(turn: Turn, lot: Lot): Turn {
   if (turn.castings.length > 0) throw new Error('the dice are already cast')
-  const landed: Landed[] = turn.hand.dice.map((die) => land(die, throwDie(die, lot)))
+  const landed: Landed[] = castable(turn).map((die) => land(die, throwDie(die, lot)))
   return { ...turn, castings: [landed] }
 }
 
