@@ -7,7 +7,7 @@ novel a candle at a time; the labyrinth is a blind chain of hand-authored
 rooms, procedurally rearranged every run; fights are poker-dice duels
 against horrors whose intents are always shown; death burns the run and
 keeps the knowledge. `reference/GAME.md` is the fantasy. The binding law is in
-`.claude/rules/` — 116 numbered articles; tasks cite them as "art. N".
+`.claude/rules/` — 117 numbered articles; tasks cite them as "art. N".
 
 ## Components
 - **src/state** — the two ledgers (run / permanent) behind named rituals;
@@ -94,13 +94,188 @@ wave; what is still absent is anything to spend on them.
 
 
 ## Status
-**The labyrinth leans, and the collection has people in it.** `npm run dev`
-is a playable loop in a portrait browser: wake → open one of one to three
-blind doors → the room behind it is dealt on the spot → keep choosing → a
-region locks and the depth announces where you have arrived → the rest of
-the depth deals from that region and its encounters wake → the Warden's
-door, refused without the key and terse with it. `npm test` is green: 33
-files, 321 tests.
+**The labyrinth leans, the collection has people in it, and the rooms are
+awake.** `npm run dev` is a playable loop in a portrait browser: wake → open
+one of one to three blind doors → the room behind it is dealt on the spot →
+keep choosing → a region locks and the depth announces where you have arrived
+→ the rest of the depth deals from that region and its encounters wake → the
+Warden's door, refused without the key and terse with it. Every doorway
+breathes while you stand there, and seven rooms will do one thing of their own
+accord if you stand there long enough. `npm test` is green: 35 files, 350
+tests.
+
+## The life wave (arts 71, 106–110, 117)
+
+The playtest verdict, verbatim: *"it's not much if anything but a clicker
+simulator."* The skeleton was legibility-first on purpose, and this is the
+turn toward feel. **Nothing here adds a mechanic.** Every part of it makes
+what already exists behave like a place instead of a form.
+
+### The pick follows the thumb (card 63, art. 71 strengthened)
+
+A picked door stayed picked. Tap an urn, press the door verb still sitting in
+the strip, and you are through a door you were not looking at — attention
+moved and the commit did not.
+
+**The act strip serves the last look.** Tapping any thing releases a picked
+door; a door verb may only ever commit the door currently picked; **no pick
+means no door verb on the strip.** The defect actually lived in one line of
+the shell — a fallback that re-picked `ahead[0]` whenever the pick was
+empty — so the pick is a small pure module now rather than a variable the
+shell remembers to clear, and "a tap on a thing releases" is a fact of the
+model instead of a habit of the caller.
+
+Arriving still picks the first door, because the ruling is about attention
+*moving* and nothing has moved yet: a room you walk into and walk out of costs
+what it always did. The declared cost is one extra tap when you interleave
+looking with leaving, and it is the right trade — commitment is only drama
+when the commit is the thing you meant.
+
+The summons (art. 68) is untouched and tested for it: a Take that looking
+summoned survives the release, because the summons is knowledge and the pick
+is attention. The two arrive in the *same press*, which is the case worth
+having a test for.
+
+### The stir (card 64, arts 106–110 built)
+
+Three articles had been ratified for two waves with nothing behind them. All
+of it is built:
+
+- **One world clock** (art. 109), ticking at 150 ms, with every loop's phase
+  hashed off its own identity. No per-thing timers: a phase is a function of a
+  name and a length, so there is nothing to hold between paints and nothing to
+  drift. The ash passage runs three loops and no two of them pulse together.
+- **Overlay repaint** (art. 110) on the cached cast. The frame cache is keyed
+  on the scene state exactly as before; the stir is `overpaint` on top of it,
+  which is the job `overpaint` was written for two waves ago.
+- **Cast twice where the room must breathe.** A room lit by fire gets its
+  light lifted a step in a second cast, and the clock alternates the two
+  prepared frames. It is the one case an overlay cannot do — the light reaches
+  every surface and what colour a surface takes is the cast's to decide — and
+  it is why `swell` is a scene-level number rather than a prop.
+- **The budget as a function.** `overspent()` is art. 107 in code: three
+  loops, three frames, one of each kind. A test reads it for every room, so
+  the article binds rather than being quoted.
+
+**Which rooms spend what.** Every room with a way out spends the doorways'
+stir, and it is the one loop nobody authors — `motionOf` adds it, so it is not
+written down twenty-two times.
+
+| room | beyond the doorways |
+| --- | --- |
+| the wet passage · the sewer | **water** — the runnel's sheet |
+| the cistern | **water** — the one line the black water gives back |
+| the font | **water** — the skin on a hand's depth of it |
+| the ash passage | **fire** (the bearer's lantern) · **motes** · the light swells |
+| the kiln · the hoard | **fire** (the brazier, the lantern) · the light swells |
+| the barrow | **stars**, twinkling |
+| the choir · the watcher | **the blink** — the lit points out for one frame |
+| the other thirteen | the doorways, and nothing else |
+
+Fourteen of twenty-two rooms spend only their doorways. That ratio *is*
+art. 107: every added motion devalues every other, and a depth where
+everything moves is a depth where none of it reads.
+
+**A junction's turns stir too**, and they had to be done differently: a turn
+is a hole the cast put in a wall, not a threshold standing on the floor, so
+there is no prop to repaint at a phase. The `Brush` gained `surfaceAt`, which
+hands a prop the cast's own answer to which pixels are the dark a turn goes on
+into — art. 16's mouth, and in a chamber with turns the only mouth there is.
+Guessing at that region in screen space would have been the flat crest
+art. 102 refused, one level down.
+
+**A loop's frames share one silhouette**, and that is a real constraint rather
+than a style note. An overlay repaints on the frame under it, so a flame that
+shrank between frames would leave the larger flame showing through it. What an
+authored frame varies is what its cells are *made of* — the fire runs through
+the flame, the blink is the same face with the light out of it — and a test
+asserts it cell by cell for all five drawings that move.
+
+**Determinism held, and the golden plate did not move.** `WAKE` spends
+nothing, so the plate is untouched at `bbf46771`. The stronger clause is
+tested directly: a room whose only loop is its doorways moves **inside its
+doorways and nowhere else**, measured against the framed footprint art. 105
+already defines. Standing in the Crossing and sampling the canvas gives a
+clean three-state cycle and nothing else, forever.
+
+### The unbidden beat (card 65, art. 117)
+
+**A room may do one small thing of its own accord.** Rarely, scheduled off the
+world clock, deterministic per instance, pixels first, at most one line, said
+once, never gating anything and never moving the candle the player is on.
+
+Seven of twenty-two rooms have one, each keyed to that room's own furniture:
+dust off the Crossing's grate, dust out of the alcove's far niche, a tread
+letting go in the stair, a ring crossing the font's water, the kiln's brazier
+spitting, ash sifting through the pyre, and a line of stars going out and
+coming back over the barrow. Four painters do all seven — `sifting`,
+`ripple`, `sparks`, `passing` — because what makes a beat that room's own is
+the mark it is given and the tone it falls in, not the arithmetic of falling.
+
+**It waits on the thumb, not on the clock.** The delay is hashed off the
+instance (56–151 ticks, so 8–23 seconds) and counts from the last press, which
+is what keeps a room from ever speaking on top of a tap. The first cut also
+refused to speak while the word band held a notice, and that was wrong: an
+answer sits in the band until something clears it, so a room whose last tap
+left a line would never have spoken at all. The soonest delay is twice the
+fade, so by the time a room says anything the answer has been read and gone
+dim — and the *candle* underneath is untouched either way, which is the part
+art. 117 actually protects.
+
+**Said once is shell state, deliberately.** A rung on the vault for a line
+that means nothing if it is missed would cost every player a migration; the
+schedule is deterministic and the once-ness is not persisted, so a reload can
+let one room speak twice. That is the honest cost and it is the right one.
+
+### Reduced motion, and what it proves (art. 116)
+
+With it on, **the clock does not run** — not the paint being filtered, because
+a clock left running with its output discarded is a thing somebody later
+forgets is running. No loop, no blink, no swell, no unbidden beat. Walked a
+depth with it on: every frame is byte-identical to the last, and nothing
+became unreadable, because a loop only ever repaints something the cast had
+already put there.
+
+The unbidden beat does not fire at all with the setting on, rather than firing
+silently. Art. 117 says it may never be required reading, so nothing is lost —
+and "total stillness" stays a claim that can be checked rather than a claim
+with an exception in it.
+
+### What read worse in motion than still
+
+Art. 106's bet is that stillness is capital, and the wave is where the bet
+gets tested. Two findings, both honest:
+
+- **A shut door at depth barely stirs.** The darkness in a shut threshold is
+  the reveal — the recess between the aperture and the plane behind it — and
+  at 40 world units that ring is under a pixel wide. The **throne hall** is
+  the one room in the depth whose shut doorway moves *nothing at all*: its far
+  wall stands at 58. Opened, the hole is full of the room's own darkness and
+  churns like any other, which is the state the room is in for the half of the
+  visit that matters. The test names the throne hall explicitly rather than
+  quietly excluding it.
+- **The throne hall's braziers do not burn**, and that is a boundary rather
+  than an oversight. Art. 108 says a moving thing that cannot be tapped is a
+  bug, and the throne hall's braziers are not tappable — making them so is a
+  noun and a line of prose, which this wave's boundary excludes. It is a
+  one-line follow-up for the next content pass, and the room it would help
+  most.
+
+Nothing read *worse* moving than still. The nearest thing to a regret is the
+motes: with three authored frames a field cannot truly drift, so the drift is
+a twinkle — a second population beside the cast's own, turning over — which is
+what art. 101 licenses anyway ("it may drift and it may twinkle") but is not
+what the word "drift" promises.
+
+### Still open after this wave
+
+- **The phone pass** (below) is untouched, and the stir makes it slightly more
+  urgent: the doorway's churn lives in the bottom two steps of the ramp, which
+  is exactly the register `blendAbove` is unverified in.
+- **The throne hall's fire**, above.
+- **A shut threshold's recess** is authored at 2.2 world units and that is
+  what makes a far door's stir sub-pixel. Deepening it would change the door
+  grammar in every room, which is an art. 97 question and not a motion one.
 
 ## The threshold wave (arts 96, 99, 104–105, 116)
 
@@ -329,7 +504,9 @@ number in `render.ts` should still be treated as unverified.**
 - **The phone pass** (above).
 - **Art. 106's stir**, and the motion budget generally. Thresholds are meant
   to move in the bottom two steps of their ramp; nothing loops yet, which
-  is why reduced motion had only two one-shots to answer for.
+  is why reduced motion had only two one-shots to answer for. **Built by the
+  life wave, the next one along** — see above, including what reduced motion
+  now has to answer for.
 - **A junction's turns have no state.** They are directions and never
   leaves, so there is nothing to open, lock or board — and today no lock
   ever falls on one, because the only lock in the game is the Warden's and
@@ -339,9 +516,9 @@ number in `render.ts` should still be treated as unverified.**
   who wants reduced motion mid-descent reloads, sets it, and presses
   Continue — which costs nothing and loses nothing, but is worth saying out
   loud.
-- **`CLAUDE.md` still says 115 articles.** The wave's permission covered
-  `.claude/rules/the-thumb.md` and `AGENTS.md` only, and both are updated;
-  the third index is a one-line follow-up under normal freeze.
+- ~~**`CLAUDE.md` still says 115 articles.**~~ Closed by the life wave, whose
+  permission covered the index lines carrying its two rulings: all three
+  indexes say 117 now.
 
 **And the tray became a rail and panels.** The playtest found two
 immersion breaks, and the tray stand-up of 2026-08-05 ruled on both. The

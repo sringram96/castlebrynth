@@ -41,7 +41,18 @@ import type {
 } from '../gen/index.js'
 import type { Horror } from '../lots/index.js'
 import type { RoomId } from '../state/index.js'
-import type { Mass, Prop, RoomShape, Scene, WorldMark } from '../room/index.js'
+import type {
+  Blink,
+  Drawn,
+  Loop,
+  Mass,
+  Motion,
+  Prop,
+  RoomShape,
+  Scene,
+  Unbidden,
+  WorldMark,
+} from '../room/index.js'
 import { dune } from '../room/index.js'
 import {
   BURNT,
@@ -96,30 +107,41 @@ import {
   dust,
   fontSteps,
   kilnMouth,
+  moteDrift,
   motes,
+  passing,
   pyreStack,
+  ripple,
   runnel,
   seep,
+  sifting,
+  sparks,
   standingWater,
+  starTwinkle,
   stairHead,
   sumpGrate,
   tallyMarks,
   thing,
   threshold,
+  turnStir,
   framedWidth,
 } from './plates/props.js'
 import {
   BEARER,
+  BEARER_FRAMES,
   BELL,
   BOTTLE,
   BRAZIER,
+  BRAZIER_FRAMES,
   CAGE,
   CAPS,
   CHOIR,
+  CHOIR_DARK,
   COINS,
   HANGED,
   KNIFE,
   LANTERN,
+  LANTERN_FRAMES,
   MANY,
   RING,
   SKULL,
@@ -127,10 +149,11 @@ import {
   THRONE,
   URN,
   WATCHER,
+  WATCHER_DARK,
 } from './plates/bestiary.js'
 import { WAKE, masonry, wakeProps } from './plates/wake.js'
 import { ARRIVALS, BEATS, LABELS, LOOKS, NOUNS } from './prose.js'
-import { RENDER } from './render.js'
+import { MOTION, RENDER } from './render.js'
 
 export { WARDEN_KEY, WARDEN_KEY_ITEM } from './encounters.js'
 
@@ -506,6 +529,89 @@ const STRAY_CHANCE = 0.06
 /** Nothing ever waits in the two anchors: the Crossing opens, the door ends. */
 const NEVER = 0
 
+// ── What a room spends its stillness on (arts 106–110, 117) ────────────
+
+/**
+ * art. 107: **stillness is capital.** Small animations have large effects
+ * only because the world is still, so what a room may run is a budget and not
+ * a feature — the doorways' stir, one hero element, and one field or mass
+ * drifting.
+ *
+ * What is authored here is the room's *own* two. Every room with a way out
+ * spends the doorways' stir, so `motionOf` adds that one rather than have it
+ * written down twenty-two times.
+ */
+interface Moves {
+  readonly loops?: readonly Loop[]
+  readonly blink?: Blink
+  readonly unbidden?: Unbidden
+  /** art. 110: how many ramp steps this room's light swells by. */
+  readonly swell?: number
+}
+
+const notNull = <T,>(one: T | null): one is T => one !== null
+
+/**
+ * art. 107's hero loop: a thing that burns. Its authored frames share one
+ * silhouette (see `bestiary.ts`), so the flame moves and the lamp does not,
+ * and the room's light swells with it (art. 110) — which is the half of fire
+ * an overlay cannot paint.
+ */
+function fireLoop(
+  school: School,
+  id: string,
+  frames: readonly Drawn[],
+  mark: WorldMark,
+  name: string,
+  readableTo = 46,
+): Loop {
+  return {
+    kind: 'hero',
+    id,
+    frames: frames.length,
+    paint: (frame) => [thing(school, frames[frame]!, mark, name, readableTo, FIRE)].filter(notNull),
+  }
+}
+
+/**
+ * art. 107's drift: a field or a mass, turning over. The prop is the room's
+ * own prop at a phase rather than a second drawing of it — running water is
+ * the same channel at the same width and what the clock moves is the light on
+ * it.
+ */
+function driftLoop(
+  school: School,
+  id: string,
+  of: (school: School, phase: number) => Prop,
+  frames = 3,
+): Loop {
+  return { kind: 'drift', id, frames, paint: (frame) => [of(school, frame)] }
+}
+
+/**
+ * art. 108: the blink. The lit points go out for one frame, on a very long
+ * clock, and nothing else in the room is allowed to be that rare.
+ */
+function blinkOf(
+  school: School,
+  id: string,
+  dark: Drawn,
+  mark: WorldMark,
+  name: string,
+  readableTo = 52,
+): Blink {
+  return {
+    id,
+    every: MOTION.blinkEvery,
+    paint: () => [thing(school, dark, mark, name, readableTo)].filter(notNull),
+  }
+}
+
+/** art. 117: a room doing one small thing of its own accord. */
+function unbiddenOf(id: string, paint: Unbidden['paint']): Unbidden {
+  return { id, frames: MOTION.unbidden.frames, paint }
+}
+
 /** One room, as authored. The scene is assembled from it below. */
 interface Authored {
   readonly id: string
@@ -521,6 +627,12 @@ interface Authored {
   readonly plate?: Scene
   /** art. 102: what lies on this room's floor, as a height and not a heap. */
   readonly buried?: (school: School, shape: RoomShape) => Mass
+  /**
+   * arts 106–110, 117: what this room spends its stillness on, beyond the
+   * doorways every room stirs. Absent on most of them, and that is the point
+   * of the ones it is not absent on.
+   */
+  readonly moves?: (school: School) => Moves
   /** art. 99: the architecture on this room's walls, if it has any yet. */
   readonly built?: {
     readonly left?: Feature
@@ -578,6 +690,19 @@ const AUTHORED: readonly Authored[] = [
       back: stringCourse(9.5, 0.85),
     },
     dressing: () => [],
+    // art. 117: the grate lets go of what it has been holding. The room you
+    // wake in is the one room every run stands in, so it is the first place
+    // the labyrinth gets to do something nobody asked it to.
+    moves: (school) => ({
+      unbidden: unbiddenOf('room.crossing:grate', (frame) => [
+        sifting(
+          school,
+          { X: SHAFT_ASIDE, Y: 3.4, z: 17.7, width: 5.6, height: 13 },
+          frame,
+          MOTION.unbidden.frames,
+        ),
+      ]),
+    }),
     tappables: [
       // art. 68: the region answers for the thing where the thing stands, so
       // the grate's mark moves with the shaft rather than staying behind.
@@ -614,6 +739,19 @@ const AUTHORED: readonly Authored[] = [
       // at the frame's edge so it stands aside from the exits (art. 105).
       thing(school, COINS, { X: -7.2, Y: FLOOR, z: 11.5, width: 3.8, height: 2 }, 'the coins'),
     ].filter((one): one is NonNullable<typeof one> => one !== null),
+    // art. 117: the far niche gives up a little of what is in it, which is
+    // the room's own furniture doing the room's own kind of nothing.
+    moves: (school) => ({
+      unbidden: unbiddenOf('room.trove.alcove:niche', (frame) => [
+        sifting(
+          school,
+          { X: 8.4, Y: FLOOR + 6.2, z: 30, width: 2.6, height: 6.2 },
+          frame,
+          MOTION.unbidden.frames,
+          1,
+        ),
+      ]),
+    }),
     tappables: [
       ['alcove.dust', { X: 7.2, Y: FLOOR, z: 22.5, width: 3.4, height: 1.6 }],
       ['alcove.coins', { X: -7.2, Y: FLOOR, z: 11.5, width: 3.8, height: 2 }],
@@ -630,6 +768,19 @@ const AUTHORED: readonly Authored[] = [
     // them is left belongs to the architraves (arts 96–97).
     built: { back: layered(stringCourse(10.5, 0.8), crack(5.5, 15, 1, 31)) },
     dressing: (school) => [stairHead(school)],
+    // art. 117: grit slides off a tread and keeps going without you, which is
+    // what the room's second candle already says it does.
+    moves: (school) => ({
+      unbidden: unbiddenOf('room.passage.stair:tread', (frame) => [
+        sifting(
+          school,
+          { X: 0, Y: FLOOR + 1.4, z: 24, width: 5.2, height: 3.4 },
+          frame,
+          MOTION.unbidden.frames,
+          2,
+        ),
+      ]),
+    }),
     tappables: [['stair.tread', { X: 0, Y: FLOOR, z: 24, width: 7, height: 2.4 }]],
   },
   /**
@@ -654,6 +805,20 @@ const AUTHORED: readonly Authored[] = [
       back: stringCourse(10, 0.7),
     },
     dressing: (school) => [fontSteps(school)],
+    // arts 107, 117: a hand of water, and the two things water does — the
+    // sheet turning over on the slow clock, and once, a ring crossing it
+    // that nobody threw anything into.
+    moves: (school) => ({
+      loops: [driftLoop(school, 'room.sanctum.font:water', fontSteps)],
+      unbidden: unbiddenOf('room.sanctum.font:ring', (frame) => [
+        ripple(
+          school,
+          { X: 0, Y: FLOOR - 1.6, z: 18, width: 3.6, height: 0 },
+          frame,
+          MOTION.unbidden.frames,
+        ),
+      ]),
+    }),
     tappables: [['font.step', { X: 0, Y: FLOOR - 1.2, z: 15, width: 8, height: 2.4 }]],
     // Nothing waits in a font, and nothing floats into it: its mercy socket
     // is spoken for by the thing bound to it. Nobody died here either — it
@@ -674,6 +839,9 @@ const AUTHORED: readonly Authored[] = [
       runnel(school),
       seep(school),
     ],
+    // art. 107: the water in the cut is the one thing here that was never
+    // still, so it is what this room spends its drift on.
+    moves: (school) => ({ loops: [driftLoop(school, 'room.passage.drip:runnel', runnel)] }),
     tappables: [['drip.water', { X: 0, Y: FLOOR, z: 11, width: 6, height: 2.2 }]],
   },
   {
@@ -695,6 +863,11 @@ const AUTHORED: readonly Authored[] = [
       // of whatever the far socket puts at the end of the room (art. 105).
       thing(school, CAGE, { X: -8.4, Y: FLOOR, z: 15, width: 4.4, height: 5 }, 'the cage'),
     ].filter((one): one is NonNullable<typeof one> => one !== null),
+    // art. 107: black water lies flat and does not lie still. The one line it
+    // gives back is what moves, which is the only thing it ever had.
+    moves: (school) => ({
+      loops: [driftLoop(school, 'room.lair.cistern:water', standingWater)],
+    }),
     tappables: [
       ['cistern.water', { X: 0, Y: FLOOR, z: 13, width: 12, height: 2.4 }],
       ['cistern.cage', { X: -8.4, Y: FLOOR, z: 15, width: 4.4, height: 5 }],
@@ -747,6 +920,24 @@ const AUTHORED: readonly Authored[] = [
         FIRE,
       ),
     ].filter((one): one is NonNullable<typeof one> => one !== null),
+    // arts 107, 110: the whole budget, and the room that earns it. The lantern
+    // is the only light in here, so the fire moves *and* the light it throws
+    // swells with it — which is the case art. 110 says has to be cast twice —
+    // and the ash on the air turns over beside it.
+    moves: (school) => ({
+      loops: [
+        fireLoop(
+          school,
+          'room.passage.ash:lantern',
+          BEARER_FRAMES,
+          { X: 8.4, Y: FLOOR, z: 14, width: 4.4, height: 6.2 },
+          'the lantern-bearer',
+          40,
+        ),
+        driftLoop(school, 'room.passage.ash:motes', moteDrift),
+      ],
+      swell: MOTION.swell,
+    }),
     tappables: [
       ['ash.ash', { X: -8.5, Y: FLOOR, z: 15, width: 5, height: 2 }],
       ['ash.bearer', { X: 8.4, Y: FLOOR, z: 14, width: 4.4, height: 6.2 }],
@@ -775,6 +966,30 @@ const AUTHORED: readonly Authored[] = [
         FIRE,
       ),
     ].filter((one): one is NonNullable<typeof one> => one !== null),
+    // arts 107, 110, 117: the brazier burns, the room breathes with it, and
+    // once, without being asked, it throws something.
+    moves: (school) => ({
+      loops: [
+        fireLoop(
+          school,
+          'room.lair.kiln:brazier',
+          BRAZIER_FRAMES,
+          { X: -4.5, Y: FLOOR, z: 11, width: 4, height: 5.2 },
+          'the brazier',
+          44,
+        ),
+      ],
+      swell: MOTION.swell,
+      unbidden: unbiddenOf('room.lair.kiln:sparks', (frame) => [
+        sparks(
+          school,
+          { X: -4.5, Y: FLOOR, z: 11, width: 4, height: 5.2 },
+          frame,
+          MOTION.unbidden.frames,
+          FIRE,
+        ),
+      ]),
+    }),
     tappables: [
       ['kiln.mouth', { X: -12, Y: FLOOR + 2, z: 19, width: 3, height: 7 }],
       ['kiln.brazier', { X: -4.5, Y: FLOOR, z: 11, width: 4, height: 5.2 }],
@@ -790,6 +1005,19 @@ const AUTHORED: readonly Authored[] = [
     // course somebody laid before any of this.
     built: { back: layered(stringCourse(9, 0.9), niche(0, 11, 16, 4.2)) },
     dressing: (school) => [pyreStack(school)],
+    // art. 117: the stack settles a little further into itself. Nothing here
+    // is burning any more, and it has not finished falling either.
+    moves: (school) => ({
+      unbidden: unbiddenOf('room.omen.pyre:ash', (frame) => [
+        sifting(
+          school,
+          { X: 0, Y: FLOOR + 3.8, z: 21, width: 4.8, height: 4 },
+          frame,
+          MOTION.unbidden.frames,
+          3,
+        ),
+      ]),
+    }),
     tappables: [['pyre.timber', { X: 0, Y: FLOOR + 2, z: 21, width: 5.5, height: 4.5 }]],
   },
   {
@@ -882,6 +1110,9 @@ const AUTHORED: readonly Authored[] = [
       thing(school, CAPS, { X: -5.4, Y: FLOOR, z: 16, width: 4.2, height: 2.6 }, 'the caps'),
       thing(school, BOTTLE, { X: 4.8, Y: FLOOR, z: 14, width: 1.4, height: 2 }, 'the bottle'),
     ].filter((one): one is NonNullable<typeof one> => one !== null),
+    // art. 107: the channel runs, here as in the wet passage. One prop, one
+    // phase, two rooms — the same water in a different key (art. 100).
+    moves: (school) => ({ loops: [driftLoop(school, 'room.passage.sewer:channel', runnel)] }),
     tappables: [
       ['sewer.channel', { X: 0, Y: FLOOR, z: 13, width: 3.4, height: 1.6 }],
       ['sewer.caps', { X: -5.4, Y: FLOOR, z: 16, width: 4.2, height: 2.6 }],
@@ -897,6 +1128,15 @@ const AUTHORED: readonly Authored[] = [
       thing(school, STATUE, { X: 17, Y: FLOOR, z: 27, width: 7, height: 10.5 }, 'the statue', 56),
       thing(school, HANGED, { X: 11, Y: FLOOR + 8, z: 16, width: 5, height: 10 }, 'the hanged'),
     ].filter((one): one is NonNullable<typeof one> => one !== null),
+    // arts 101, 117: the field this room is famous for, twinkling — and once,
+    // a band of it going out and coming back. The barrow never says what
+    // that was, because the roof is the thing this room does not have.
+    moves: (school) => ({
+      loops: [driftLoop(school, 'room.open.barrow:stars', starTwinkle)],
+      unbidden: unbiddenOf('room.open.barrow:passing', (frame) => [
+        passing(school, frame, MOTION.unbidden.frames),
+      ]),
+    }),
     tappables: [
       ['barrow.sky', { X: 0, Y: FLOOR + 22, z: 30, width: 26, height: 12 }],
       ['barrow.statue', { X: -16, Y: FLOOR, z: 23, width: 7, height: 10.5 }],
@@ -918,6 +1158,18 @@ const AUTHORED: readonly Authored[] = [
       thing(school, CAGE, { X: -8.8, Y: FLOOR, z: 15, width: 4.6, height: 5.2 }, 'the cage'),
       thing(school, CHOIR, { X: 8.6, Y: FLOOR, z: 24, width: 7.5, height: 9.5 }, 'the choir', 50),
     ].filter((one): one is NonNullable<typeof one> => one !== null),
+    // art. 108: the blink, and the whole budget spent on one frame. Too many
+    // faces, and once a minute every one of them goes out at once.
+    moves: (school) => ({
+      blink: blinkOf(
+        school,
+        'room.lair.choir:faces',
+        CHOIR_DARK,
+        { X: 8.6, Y: FLOOR, z: 24, width: 7.5, height: 9.5 },
+        'the choir',
+        50,
+      ),
+    }),
     tappables: [
       ['choir.cage', { X: -8.8, Y: FLOOR, z: 15, width: 4.6, height: 5.2 }],
       ['choir.faces', { X: 8.6, Y: FLOOR, z: 24, width: 7.5, height: 9.5 }],
@@ -942,6 +1194,21 @@ const AUTHORED: readonly Authored[] = [
       thing(school, KNIFE, { X: 7, Y: FLOOR, z: 21, width: 2, height: 2 }, 'the knife'),
       thing(school, RING, { X: -2.5, Y: FLOOR, z: 12, width: 1.2, height: 1.4 }, 'the ring'),
     ].filter((one): one is NonNullable<typeof one> => one !== null),
+    // arts 107, 110: the lantern in the niche is still burning, which is the
+    // strangest thing in a room nobody has been in.
+    moves: (school) => ({
+      loops: [
+        fireLoop(
+          school,
+          'room.trove.hoard:lantern',
+          LANTERN_FRAMES,
+          { X: -6.5, Y: FLOOR + 5.5, z: 19, width: 2.2, height: 2.4 },
+          'the lantern',
+          46,
+        ),
+      ],
+      swell: MOTION.swell,
+    }),
     tappables: [
       ['hoard.coins', { X: 1.5, Y: FLOOR, z: 16, width: 5, height: 2.6 }],
       ['hoard.lantern', { X: -6.5, Y: FLOOR + 5.5, z: 19, width: 2.2, height: 2.4 }],
@@ -964,6 +1231,18 @@ const AUTHORED: readonly Authored[] = [
       thing(school, WATCHER, { X: -9.5, Y: FLOOR, z: 26, width: 8.5, height: 11.5 }, 'the watcher', 52),
       thing(school, SKULL, { X: 6.5, Y: FLOOR, z: 15, width: 1.8, height: 2 }, 'the skull'),
     ].filter((one): one is NonNullable<typeof one> => one !== null),
+    // art. 108: it is not looking at you yet, and once in a long while it is
+    // not looking at anything. One frame, and it outweighs every loop here.
+    moves: (school) => ({
+      blink: blinkOf(
+        school,
+        'room.puzzle.watcher:neck',
+        WATCHER_DARK,
+        { X: -9.5, Y: FLOOR, z: 26, width: 8.5, height: 11.5 },
+        'the watcher',
+        52,
+      ),
+    }),
     tappables: [
       ['watcher.neck', { X: -9.5, Y: FLOOR, z: 26, width: 8.5, height: 11.5 }],
       ['watcher.skull', { X: 6.5, Y: FLOOR, z: 15, width: 1.8, height: 2 }],
@@ -1069,7 +1348,7 @@ const AUTHORED: readonly Authored[] = [
  * A room with no doors dealt yet paints the one it must have: the far end of
  * an authored room is a way on whether or not the chain has said so.
  */
-function thresholds(one: Authored, state: SceneState): readonly Prop[] {
+function thresholds(one: Authored, state: SceneState, stir = 0): readonly Prop[] {
   // art. 96: a tube has no far wall, so it has nothing for a door to be a
   // hole in — its way on is the mouth. Painting a threshold there would put a
   // frame in mid air, which is the thing art. 97 refuses, so this refuses it
@@ -1089,13 +1368,46 @@ function thresholds(one: Authored, state: SceneState): readonly Prop[] {
     isTurn(one.kind, i, ways.length)
       ? []
       : [
-          threshold(one.school, marks[i]!, {
-            open: door.open,
-            locked: door.locked,
-            warden: door.ends,
-          }),
+          threshold(
+            one.school,
+            marks[i]!,
+            { open: door.open, locked: door.locked, warden: door.ends },
+            stir,
+          ),
         ],
   )
+}
+
+/**
+ * art. 106: **the thresholds stir, and almost nothing else does.** Every room
+ * with a way out spends this loop, so it is built here rather than authored
+ * twenty-two times — and a junction's turns are in it too, because a turn is
+ * a doorway that happens to have been cast rather than drawn (art. 96).
+ *
+ * It is the one constant motion in an ordinary room. A glance finds the exits
+ * without a word being written, which is the whole of what it buys.
+ */
+function doorwayLoop(one: Authored, state: SceneState): Loop {
+  return {
+    kind: 'threshold',
+    id: `${one.id}:doorways`,
+    frames: 3,
+    paint: (frame) => [
+      ...thresholds(one, state, frame),
+      ...(one.kind === 'junction' ? [turnStir(one.school, frame)] : []),
+    ],
+  }
+}
+
+/** arts 106–110: everything that moves in this room, the doorways included. */
+function motionOf(one: Authored, state: SceneState): Motion {
+  const own = one.moves?.(one.school) ?? {}
+  return {
+    loops: [doorwayLoop(one, state), ...(own.loops ?? [])],
+    ...(own.blink === undefined ? {} : { blink: own.blink }),
+    ...(own.unbidden === undefined ? {} : { unbidden: own.unbidden }),
+    ...(own.swell === undefined ? {} : { swell: own.swell }),
+  }
 }
 
 /** The doors a room is standing with, or the one every authored room has. */
@@ -1187,10 +1499,15 @@ function contentOf(one: Authored): RoomContent {
       // grammar never varies between rooms, so no room gets to author it.
       const ways = thresholds(one, state)
       const laid = [...ways, ...socketProps(one, state)]
-      if (laid.length === 0) return base
+      // arts 106–110: and what moves in it, which for most rooms is its
+      // doorways and nothing else. The scene carries the loops; the shell
+      // repaints them on the world clock, over the frame the cast made.
+      const motion = motionOf(one, state)
+      if (laid.length === 0) return { ...base, motion }
       // art. 19: painted near over far, so the list is declared far to near.
       return {
         ...base,
+        motion,
         props: (view) => [...base.props(view), ...laid].sort((a, b) => b.z - a.z),
       }
     },

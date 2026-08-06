@@ -1,5 +1,6 @@
 import type { Framebuffer } from './framebuffer.js'
 import type { Mass } from './mass.js'
+import type { Motion } from './motion.js'
 import type { Ramp } from './ramp.js'
 import type { Projected, RoomShape, View } from './view.js'
 
@@ -156,6 +157,16 @@ export interface Brush {
   hash(x: number, y: number): number
   /** The depth already written at a pixel — the z-buffer stands ready (art. 19). */
   depthAt(x: number, y: number): number
+  /**
+   * Which surface the cast wrote at a pixel (art. 15's first hit).
+   *
+   * art. 106 is why it is here: the darkness inside a **junction's** turn is
+   * not a drawn thing but a hole the cast put in a wall, and the only honest
+   * way to repaint exactly that darkness is to ask the cast which pixels it
+   * is. A prop that guessed at it in screen space would be the flat crest
+   * art. 102 refused, one level down.
+   */
+  surfaceAt(x: number, y: number): SurfaceId
 }
 
 /** A sprite at a world depth. Sorted far to near, painted near over far. */
@@ -185,4 +196,10 @@ export interface Scene {
   readonly surfaces: SurfaceShaders
   /** Props need the derived view to place themselves in world depth. */
   props(view: View): readonly Prop[]
+  /**
+   * arts 106–110, 117: what moves in this room, if anything does. Absent is a
+   * room that spends nothing, which is what makes the rooms that spend
+   * something worth looking at.
+   */
+  readonly motion?: Motion
 }
