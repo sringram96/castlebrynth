@@ -16,7 +16,7 @@
  */
 
 import { ROOM_BOOK, horrorOf } from '../src/content/index.js'
-import { act, chooseDoor } from '../src/descent/index.js'
+import { act, chooseDoor, opens } from '../src/descent/index.js'
 import type { Chain, ChainNode, Door } from '../src/gen/index.js'
 import { hereIn } from '../src/gen/index.js'
 import { carryOut, openFightDoor, turnLots } from '../src/hinge/index.js'
@@ -106,10 +106,10 @@ export function playDepth(seed: number, policy: Policy): DepthReport {
     }
 
     if (door.ends === true) {
-      // art. 3: the Warden's door refuses what it is not given.
-      const held = new Set<string>(ledgers.run!.carried as readonly string[])
-      const opens = door.demands.every((key) => held.has(key as string))
-      return report(opens ? 'finished' : 'refused', node)
+      // art. 3, and card 67: the last door refuses what it is not given —
+      // and, now, what has not been turned. The walk has already pressed
+      // every act the room offered, so a run holding the key has turned it.
+      return report(opens(ledgers, ROOM_BOOK, node, door) ? 'finished' : 'refused', node)
     }
 
     const walked = chooseDoor(ledgers, chain, ROOM_BOOK, door, DEALER)

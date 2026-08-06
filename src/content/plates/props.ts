@@ -739,6 +739,14 @@ export interface ThresholdState {
   readonly open: boolean
   /** art. 97: locked with the lock *on* the frame, never inside it. */
   readonly locked: boolean
+  /**
+   * arts 70, 97 (card 67): the lock has been turned. It still wears one —
+   * a lock that vanishes is a lock that was never there — and what changed
+   * is that the shackle stands out of the plate and the keyhole is dark.
+   * That is what "the world remembers in pixels" means about a press whose
+   * whole subject is a small iron thing on a frame.
+   */
+  readonly turned: boolean
   /** art. 37: the Warden's, which is iron and does not open in this depth. */
   readonly warden: boolean
 }
@@ -895,6 +903,18 @@ export function threshold(school: School, mark: WorldMark, state: ThresholdState
       const at = near.y0 + (near.y1 - near.y0) * 0.58
       b.rect(school.iron, plate - g(2), at - g(3), g(5), g(7))
       b.rect(school.edge, plate - g(1), at - g(2), g(3), g(5))
+      if (state.turned) {
+        // card 67: it hangs open. The shackle is out of the plate and stands
+        // proud above it, the keyhole has gone dark, and the whole of it has
+        // dropped a little on the one hinge it has left. Prose confirms and
+        // pixels prove (art. 70) — this is the pixel.
+        b.rect(school.bone[0]!, plate - g(1), at - g(6), g(1), g(4))
+        b.rect(school.bone[0]!, plate - g(1), at - g(6), g(4), g(1))
+        b.px(school.edge, plate + g(2), at - g(5))
+        b.px(school.hollow, plate, at - g(1))
+        b.px(school.hollow, plate, at + g(1))
+        return
+      }
       b.px(school.coin, plate, at - g(1))
       b.px(school.accent[2]!, plate, at + g(1))
     },

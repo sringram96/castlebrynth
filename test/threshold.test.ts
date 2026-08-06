@@ -191,7 +191,7 @@ describe('art. 116 — a setting changes how the game is shown, never what is tr
         opened: [],
         horror: null,
         fills: [],
-        doors: [{ at: 0, open: false, locked: false, ends: false }],
+        doors: [{ at: 0, open: false, locked: false, turned: false, ends: false }],
       }
       const config = atGrid(GRID, 260)
       const once = renderRoom(held.scene(state), config).frame.pixels

@@ -54,14 +54,16 @@ import {
   chooseDoor,
   doors,
   enterRoom,
+  heldBack,
   look,
   looking,
-  mayLeave,
   nextBeat,
   openDoor,
+  opens,
   remember,
   sceneKey,
   sceneStateOf,
+  stranded,
 } from './descent/index.js'
 import type { Chain, ChainNode, Door } from './gen/index.js'
 import { deal, dealerOf, meetings, nodeAt, reseed } from './gen/index.js'
@@ -453,7 +455,11 @@ function markFor(target: Tappable): HTMLButtonElement {
     // art. 68: the tap is the inspection — the word band is the whole of it,
     // and there is no button behind it. And looking summons: the verb about
     // this thing appears in ACTS once it has been looked at.
-    notice = look(ROOM_BOOK, bands, target).text
+    //
+    // card 67: the pocket goes with the question. A lock names what it wants,
+    // or — carrying the key — names what fits, and that second answer is
+    // what makes the verb it summons legible before it is pressed.
+    notice = look(ROOM_BOOK, bands, target, ledgers.run?.carried ?? []).text
     ledgers = looking(ledgers, target)
     bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
     persist()
@@ -1237,7 +1243,10 @@ function roomActs(): void {
   const ahead = doors(bands)
   if (chosen === null || !ahead.some((door) => door.at === chosen!.at)) chosen = ahead[0] ?? null
   const door = chosen
-  if (door !== null) {
+  // card 67: **only an unlocked door offers its way on.** A locked door's
+  // verbs are absent, not disabled (art. 68) — what the player gets instead
+  // is the lock, which answers, and the verb the answer summons.
+  if (door !== null && opens(ledgers, ROOM_BOOK, here(), door)) {
     actStrip.append(
       verb(door.fight !== undefined ? 'fight' : door.ends === true ? 'descend' : 'open', () =>
         commitDoor(door),
@@ -1249,7 +1258,12 @@ function roomActs(): void {
   // the engine has no back (art. 9). art. 3 now makes that unreachable — the
   // door refuses to commit while the key is still on the floor — so this is
   // the valve for a chain that failed the guarantee, not the ordinary path.
-  if (refused && ahead.every((one) => !canOpen(ledgers, one))) {
+  //
+  // card 67 moved it off the press: with a locked door's verb absent there
+  // is no press left to be refused by, so the valve reads the room instead.
+  // A lock you are carrying the key to is not stranded — the press is one
+  // tap away, and finding it is the ceremony.
+  if (refused || stranded(ledgers, ROOM_BOOK, here())) {
     actStrip.append(verb('end', () => died('end.kept')))
   }
 
@@ -1293,8 +1307,13 @@ function doAct(one: Act): void {
   bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
   // art. 70: prose confirms, pixels prove — the answer is the room without
   // the thing in it, which the scene state has already stopped drawing.
+  //
+  // card 67: an act may author its own answer, keyed on its own id. It is a
+  // convention rather than a field because the id is already the key the
+  // shell looks a verb up by (art. 66) — one lookup, one place to author.
   notice =
-    mercy === null ? null : (NOTICES[mercy > 0 ? 'mercy.breath' : 'mercy.whole'] ?? null)
+    NOTICES[`answer.${one.id}`] ??
+    (mercy === null ? null : (NOTICES[mercy > 0 ? 'mercy.breath' : 'mercy.whole'] ?? null))
   persist()
   paint()
 }
@@ -1544,14 +1563,17 @@ function beginDescent(): void {
  * still lies here, the lock holds, or there is nothing to open.
  */
 function commitDoor(door: Door): void {
-  if (!mayLeave(ledgers, ROOM_BOOK, here())) {
+  if (heldBack(ledgers, ROOM_BOOK, here()).length > 0) {
     // A stop, not a hint: it names nothing and points at nothing (art. 3).
     notice = NOTICES['door.held'] ?? ''
     paint()
     return
   }
   if (door.fight !== undefined) return openTheFight(door)
-  if (!canOpen(ledgers, door)) {
+  // card 67: both halves of the lock, and one line for both. The verb is
+  // absent when either fails (`roomActs`), so this is the belt to that
+  // suspender rather than the ordinary path.
+  if (!opens(ledgers, ROOM_BOOK, here(), door)) {
     // art. 5: the world never punishes touch; it sometimes stops offering.
     notice = NOTICES['door.locked'] ?? ''
     refused = true

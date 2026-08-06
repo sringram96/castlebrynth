@@ -34,6 +34,7 @@ function standing(room: RoomId, doors: number): SceneState {
       at,
       open: false,
       locked: false,
+      turned: false,
       ends: false,
     })),
   }

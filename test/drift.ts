@@ -18,7 +18,7 @@ import {
   PLAIN_POUCH,
   ROOM_BOOK,
 } from '../src/content/index.js'
-import { act, actsIn, chooseDoor, mayLeave, tappablesIn } from '../src/descent/index.js'
+import { act, actsIn, chooseDoor, mayLeave, opens, tappablesIn } from '../src/descent/index.js'
 import type { Catalog, Chain, ChainNode, Door, Grammar, RegionId } from '../src/gen/index.js'
 import { NO_HISTORY, deal, dealerOf, hereIn, lotFrom, meetings } from '../src/gen/index.js'
 import type { Ledgers, RunHistory, Seed } from '../src/state/index.js'
@@ -188,9 +188,10 @@ export function playRun(
     const gate = node.doors[Math.min(Math.max(0, policy(node.doors, chain)), node.doors.length - 1)]
     if (gate === undefined) break
     if (gate.ends === true) {
-      // The Warden's door: it refuses when what it demands is not carried.
-      const held = new Set<string>(ledgers.run!.carried as readonly string[])
-      return { ledgers, chain, refused: !gate.demands.every((key) => held.has(key as string)) }
+      // The Warden's door: it refuses what it is not given, and — card 67 —
+      // what has not been turned. A greedy walk presses everything the room
+      // offers, so a run carrying the key has turned the lock by now.
+      return { ledgers, chain, refused: !opens(ledgers, ROOM_BOOK, node, gate) }
     }
     const walked = obeyTheLaw
       ? chooseDoor(ledgers, chain, ROOM_BOOK, gate, DEALER)

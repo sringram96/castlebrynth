@@ -233,7 +233,12 @@ export const LOOKS: Readonly<Record<string, string>> = {
   'bonefield.bone': 'Long bones, none of them a pair, none of them yours yet.',
   'tally.marks': 'Someone counts something here. The counting continues.',
   'font.step': 'Worn through in the middle. A great many knees, and no boots.',
-  'warden.lock': 'One keyhole, cut for three teeth.',
+  // card 67: the lock answers either way (art. 69), and which of the two it
+  // gives is the whole first half of the ceremony. Empty-handed it names
+  // what it wants; carrying the key it names what fits, and only then is
+  // there a verb (art. 68).
+  'warden.lock': 'One keyhole, cut for three teeth. Nothing on you is cut that way.',
+  'warden.lock.fits': 'One keyhole, cut for three teeth. The iron in your hand is cut for this.',
   'warden.door': 'Black iron. The stone around it is scored where it swings.',
   'gnawing.shape': 'It keeps to the far end. When you stop, the scratching stops.',
   'marrow.shape': 'It stands a head above the door beside it, and it does not lean.',
@@ -372,6 +377,10 @@ export const NOTICES: Readonly<Record<string, string>> = {
   'door.blind': 'Shut, and giving nothing away. The road is what you pick.',
   // arts 3 and 9: a stop, not a hint. It names nothing and points at nothing.
   'door.held': 'Something here is still yours to take.',
+  // card 67: what a turned lock answers with. It is keyed on the act rather
+  // than on the door, so every future lock gets its own sentence and none of
+  // them has to be written in the shell.
+  'answer.act.unlock': 'The key goes in and the wards give, one after another. The lock hangs open.',
   // art. 40: what the breath answers with. The poetry is the response to the
   // button, never the button (art. 66).
   'mercy.breath': 'The cold of it goes through you, and some of what is open closes.',
@@ -539,6 +548,9 @@ export const READOUT: Readonly<Record<string, string>> = {
  */
 export const VERBS: Readonly<Record<string, string>> = {
   'act.take-key': 'Take',
+  // card 67: the press the whole depth is built around. One plain word —
+  // the poetry is what the hall says back, never the button (art. 66).
+  'act.unlock': 'Unlock',
   // art. 40's two mercies, as plain as the article is. Not "Rest", not
   // "Receive the mercy" — the verb is what the thumb does.
   'act.drink': 'Drink',

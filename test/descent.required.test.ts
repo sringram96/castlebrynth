@@ -62,9 +62,21 @@ function keyAt(chain: Chain): number {
 
 describe('art. 80 — the key is unbound, and arrives before its lock', () => {
   it('binds the required thing to no room at all', () => {
-    // There is no key room: no room template offers an act of its own, and
-    // nothing in the catalog says a room hands anything over.
-    for (const held of ROOMS) expect(held.acts, held.id as string).toEqual([])
+    // There is no key room: nothing a room offers of its own hands anything
+    // over, and nothing a room offers of its own is required.
+    //
+    // Restated by card 67, and strengthened rather than relaxed. A room may
+    // now author an act — the Warden's hall authors `Unlock` — and what
+    // art. 80 actually forbids is a room *granting* a required thing, so
+    // that is what this asks. The key still floats and is still placed by
+    // the dealer alone; the ceremony that turns it belongs to the door.
+    for (const held of ROOMS) {
+      for (const one of held.acts) {
+        expect(one.gives, `${held.id as string} / ${one.id}`).toEqual([])
+        expect(one.takes ?? [], `${held.id as string} / ${one.id}`).toEqual([])
+        expect(one.required, `${held.id as string} / ${one.id}`).toBe(false)
+      }
+    }
     // The thing that grants it is an encounter, and it floats.
     const key = CATALOG.encounters.find((one) => one.id === IRON_KEY)!
     expect(key.binding).toBe('floating')
