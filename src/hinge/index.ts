@@ -183,6 +183,19 @@ export function turnLot(
   return lotFrom(reseed(from as unknown as Seed))
 }
 
+/**
+ * card 93: **which of a turn's lots the rolling goods are thrown from.**
+ *
+ * art. 41 allows two castings, so a third casting number is a stream nothing
+ * else in the game ever draws from — which is what makes the amend roll free of
+ * the hand's. Both halves of the flexibility test fall out of it: a run
+ * carrying no trinket never asks for this lot at all, and a run carrying one
+ * throws its dice from exactly the stream it would have thrown them from
+ * anyway. It is a number here rather than a literal at the call site because
+ * the reason it is *three* is the argument above.
+ */
+export const AMEND_LOT = 3
+
 /** The lots of one turn, so a caller need not remember the arithmetic. */
 export type Lots = (castingNumber: number) => Lot
 

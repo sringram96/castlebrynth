@@ -97,9 +97,11 @@ describe('art. 91 — the vault carries the new field forward', () => {
     // art. 116's preferences. 8 is the reason wave, which puts the scrawl at
     // the head of every Book, and 9 is that line ceasing to be an ending. 10
     // is the company wave — a paused fight now carries what a bind took and
-    // what a bleed is taking (art. 65). All of them are the filling kind —
-    // nothing about the arrangement moves — so no descent was lost to any.
-    expect(VAULT_VERSION).toBe(11)
+    // what a bleed is taking (art. 65). 11 is the descent wave's refusals, and
+    // 12 is card 93's rolling goods, which are collectible and therefore
+    // permanent. All of them are the filling kind — nothing about the
+    // arrangement moves — so no descent was lost to any.
+    expect(VAULT_VERSION).toBe(12)
     expect(MIGRATIONS.map((one) => one.from).sort((a, b) => a - b)).toEqual(
       Array.from({ length: VAULT_VERSION - 1 }, (_, at) => at + 1),
     )

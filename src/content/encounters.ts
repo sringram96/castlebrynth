@@ -36,6 +36,7 @@ import {
   THE_ZEALOT,
 } from './items.js'
 import { REFUSALS } from './marks.js'
+import { THE_SLIVER, THE_TIN_SAINT } from './trinkets.js'
 import type { School } from './palettes.js'
 import {
   GNAWING as GNAWING_BODY,
@@ -126,6 +127,16 @@ export const RING = who('enc.ring')
 export const BOWL = who('enc.bowl')
 export const NOTCH = who('enc.notch')
 export const ZEALOT = who('enc.zealot')
+
+/**
+ * card 93: **the rolling goods, on the floor like anything else.** They are
+ * dealt through the same boon socket every other find stands in, at the
+ * rarest band, because the wave's own boundary is that zero of them is the
+ * normal state of the game: most runs carry none for most of their length,
+ * and the cap says only two may ever be carried at once (`ROLLING_CAP`).
+ */
+export const TIN_SAINT = who('enc.tin-saint')
+export const SLIVER = who('enc.sliver')
 
 /**
  * How often the goods are dealt against each other. Rarity is content's, and
@@ -390,6 +401,27 @@ export const ENCOUNTERS: readonly Encounter[] = [
     region: null,
     weight: RARITY.rare,
   },
+  // card 93: the two rolling goods, at the rarest band there is. They are the
+  // add-on the wave says they are — a find that most runs never make — and
+  // they sit in the boon socket rather than in one of their own, because a
+  // socket of their own would be a system beside the growth basket instead of
+  // one more path through it.
+  {
+    id: TIN_SAINT,
+    kind: 'boon',
+    binding: 'floating',
+    scope: 'unique',
+    region: null,
+    weight: RARITY.rare,
+  },
+  {
+    id: SLIVER,
+    kind: 'boon',
+    binding: 'floating',
+    scope: 'unique',
+    region: null,
+    weight: RARITY.rare,
+  },
 ]
 
 /**
@@ -416,6 +448,10 @@ const LEFT_BY: Readonly<Record<string, readonly Good[]>> = {
   [BOWL]: [THE_BOWL],
   [NOTCH]: [THE_NOTCHED_STICK],
   [ZEALOT]: [THE_ZEALOT],
+  // card 93: a rolling good is a good, and it is taken off a floor by the
+  // same act every other good is.
+  [TIN_SAINT]: [THE_TIN_SAINT],
+  [SLIVER]: [THE_SLIVER],
 }
 
 /** Every encounter that leaves a good, for the catalog tests to walk. */
@@ -449,6 +485,10 @@ const REFUSED_FOR: Readonly<Record<string, string>> = {
   [BOWL]: REFUSALS.luck,
   [NOTCH]: REFUSALS.luck,
   [ZEALOT]: REFUSALS.luck,
+  // card 93: a rolling good left lying is a piece of luck left lying, which
+  // is the flag the vocabulary already has for it (art. 84's small set).
+  [TIN_SAINT]: REFUSALS.luck,
+  [SLIVER]: REFUSALS.luck,
 }
 
 /** What this encounter leaves, if it leaves anything (arts 86–87). */

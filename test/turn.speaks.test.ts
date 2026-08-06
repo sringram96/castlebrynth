@@ -45,6 +45,8 @@ const NOTHING: Resolution = {
   binds: [],
   bleeds: null,
   fed: 0,
+  // card 93: the normal state of the game — nothing carried, nothing rolled.
+  amends: [],
 }
 
 const exchange = (over: Partial<Resolution>): string => saysExchange({ ...NOTHING, ...over })

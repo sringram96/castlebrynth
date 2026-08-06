@@ -109,8 +109,15 @@ keep choosing → a region locks and the depth announces where you have arrived
 → the rest of the depth deals from that region and its encounters wake → the
 Warden's door, and the keeper behind it once the key turns. Every doorway
 breathes while you stand there, and seven rooms will do one thing of their own
-accord if you stand there long enough. `npm test` is green: 52 files, 589
+accord if you stand there long enough. `npm test` is green: 56 files, 649
 tests.
+
+**And two things you carry now have faces of their own.** The rolling goods
+(card 93) are a new species beside the dice: carried outside the hand, taking
+no slot of it, entering no combo, and rolling once inside Attack to amend what
+the line came to. Two of them ship, at the rarest band there is, and **carrying
+none is the normal state of the game** — which is an engineering requirement
+and not a disclaimer. One section down: **The rolling goods**.
 
 **And the depth ramps, and the build is how you keep up.** The levels wave
 (cards 89–90) is the arithmetic pass the six-bone amendment left owing, plus
@@ -158,6 +165,202 @@ the line a seal or the card is holding shut instead of calling the floor *the
 best these make*, and a boot no longer throws the permanent ledger away when
 the migration ladder hands it a snapshot with no run. One section down: **The
 fixes wave**.
+
+## The rolling goods (card 93)
+
+**A species of good that has faces.** It is carried outside the hand, takes no
+slot of it, enters no combo, and when you attack it lands and **amends what the
+line came to**. You cannot score a seven-run — but you can score a pair and
+have the thing throw a +2.
+
+**No law changed and none was needed.** Art. 53 already lets a talisman act at
+score time, so a rolling good is a talisman with a face; art. 49's five axes are
+untouched, and the noun is the reference demo's own (**trinket**) rather than a
+sixth axis. Arts 41, 54, 87 and 119 all apply as written.
+
+**There is no new press.** Art. 41's three presses stand exactly as they are and
+a rolling good resolves inside Attack, as a beat in art. 119's cascade. That was
+measured, not assumed: an optional *throw* press was tested at bite costs from 6
+to 30 and always-throwing dominated every time, because the upside compounds —
+ending a fight sooner removes *every* future incoming turn — while a health cost
+is a flat subtraction. A press you always press is what art. 41's amendment
+repealed multi-claim for. **The decision is which goods to carry**, and the turn
+stays simple.
+
+### It is an add-on, and that is an engineering requirement
+
+- **Zero rolling goods is the normal state.** The waking hand carries none, most
+  runs carry none for most of their length, and the two that ship are dealt at
+  the rarest band the boon pool has.
+- **No fight, band, test or tuning number assumes one.** Card 89's bands stand
+  exactly as measured, and the *without* column of every row below is the number
+  card 89 published.
+- **Deleting the content deletes the mechanic.** `src/content/trinkets.ts` is
+  the species; the engine's socket (`src/lots/rolling.ts`) is a no-op when
+  empty. No dead branch in the fight, no empty row on screen, no orphan test.
+
+**The flexibility test, asserted rather than eyeballed.** Carrying none draws no
+randomness — not *draws and discards*, which would silently change every fight
+for every player carrying nothing. It is checked twice over:
+
+- a lot that **throws when it is drawn from**, handed to `decide` with an empty
+  company, and a draw-counter proving the stream is left where it was found;
+- `test/fixtures/pre-rolling.json`, a **transcript of the build before this
+  wave**, taken on the commit before it and never regenerated: every turn's
+  four numbers across two horrors, three hands and forty seeds, plus a hundred
+  and fifty whole depths walked end to end. The fight half is held to the stream
+  byte for byte. The depth half is dealt from a catalog with the two new
+  encounters taken back out, and matches room for room, good for good, death for
+  death — which is *deleting the content deletes the mechanic*, checked.
+
+The roll comes off a **third** turn lot. Art. 41 allows two castings, so casting
+number three is a stream nothing else in the game draws from: the hand is thrown
+from exactly the stream it always was, by construction rather than by care.
+
+### The faces
+
+Four kinds and a cost face, authored as data so a fifth is content.
+
+| kind | what it does |
+| --- | --- |
+| `block N` | turns N aside from the incoming hit |
+| `add N` | N more damage |
+| `per N` | N **for each die in the claim** — pays a pair twice, a full house five times |
+| `cost N` | it bites you (arts 54, 86) |
+| `null` | it did not fire |
+
+**The nulls are the feature, not filler.** They are what keeps a rolling good
+from being flat power, and a thing that fires every turn is a number on the
+body — which is a wearable (art. 47), not a thing that rolls. Every rolling good
+carries **at least two nulls and one cost face**, and the audit
+(`auditTrinket`) bites on one that does not.
+
+Two things about the kinds are worth stating because they are decisions rather
+than arithmetic. A `block` stands **beside** armor rather than inside it, so a
+corroding intent (art. 47) eats the body stat and not a face that came up at
+score time — it is what makes a rolling good a different answer from a wearable
+rather than a worse one, and it is declared on inspect. And a `cost` joins
+art. 86's cost faces in `hurt`, which is what makes the death it causes read
+like any other: the transcript says `cost`, and the Book keys on `cost`.
+
+### The two that ship
+
+| good | faces | origin |
+| --- | --- | --- |
+| **the tin saint** | block 6, block 6, block 10, —, —, cost 4 | somebody who lived by not being hit |
+| **the sliver** | 2 per die, 3 per die, hit 6, —, —, cost 5 | somebody who sharpened one trick until it cut |
+
+Art. 87 holds: each explains its rules in one sentence, in the amended register,
+and neither would ship without it. Both wear a plain noun before they are
+anything (art. 111), one two-word verb, a candle where they lie, and a line when
+picked up. Both write the refusal flag a piece of luck left lying already writes
+(art. 84).
+
+**No third.** A third whose sentence was *another one of those* would be a
+fourth face on one of these rather than a good.
+
+### The rows, beside the unchanged bands
+
+`test/report.ts`, 2000 fights a cell, the greedy thumb. These are **rows, not
+bands**: nothing is tuned around them, and the *without* column is card 89's own
+published number in every one.
+
+| hand | horror | carried | without | with | marginal |
+| --- | --- | --- | --- | --- | --- |
+| the waking hand | the Gnawing | the tin saint | 0.591 | 0.674 | **+0.084** |
+| the waking hand | the Gnawing | the sliver | 0.591 | 0.671 | **+0.081** |
+| the waking hand | the Gnawing | both, at the cap | 0.591 | 0.727 | +0.136 |
+| the waking hand | the Warden | the tin saint | 0.141 | 0.170 | +0.028 |
+| the waking hand | the Warden | the sliver | 0.141 | 0.164 | +0.022 |
+| the waking hand | the Warden | both, at the cap | 0.141 | 0.231 | +0.090 |
+| the returning hand | the Gnawing | the tin saint | 0.815 | 0.833 | +0.018 |
+| the returning hand | the Gnawing | the sliver | 0.815 | 0.861 | +0.046 |
+| the returning hand | the Gnawing | both, at the cap | 0.815 | 0.897 | +0.083 |
+| the returning hand | the Warden | the tin saint | 0.321 | 0.351 | +0.030 |
+| the returning hand | the Warden | the sliver | 0.321 | 0.380 | +0.059 |
+| the returning hand | the Warden | both, at the cap | 0.321 | 0.448 | +0.127 |
+
+That is the **armour band** — the Rusted Plate measured +0.094/+0.044 and a good
+traveler's bone +0.141/+0.000 — and each of them is a third of what an unwhiffed
+multiplier face measured. Two at the cap sit about where a good bone sits, which
+is what a pair of rare finds should be worth. The tin saint is worth most to a
+body with no armour on it and least to one already plated; the sliver is the
+opposite, because `per` rises with the hand.
+
+**The cap is two, and it is the number most likely to break things.** Three took
+a weak hand from 0.412 to **0.825** — a different game, not a tuned one. It is a
+guard rather than a wall (exactly two ship, so the catalog cannot reach past it)
+and it lives on the company handed to the engine, so a caller cannot lose it.
+
+### Reading them, and the beat
+
+**Inspect declares every face and its number**, from birth — card 72's
+declaration duty applied to a brand-new species, so the rider defect (a power
+that fired without ever having said it could) is not repeated. A tap answers:
+
+> the sliver · rolls 2 per die 3 per die hit 6 — — cost 5 · One cut, worked
+> until it was the only thing he had, and it cut deeper the more he threw at
+> it. It cut him too, in the end.
+
+A null is **drawn** rather than named, because *nothing* is what it says and a
+word for it would read as a fifth kind.
+
+**They render only if carried.** No empty row, no placeholder — a run carrying
+none has nothing there, and nothing on screen hints that something is missing.
+
+**The cascade gains a beat** (art. 119). The claimed dice lift, the line names
+its multiplier, the riders fire, the total climbs **to what the line came to** —
+and *then* each rolling good that fired says so and moves the number, one at a
+time, before the blow. Watching them land after you have committed is the whole
+feel of the species. A face that did not fire gets no beat: a null is the absence
+of an event, and each beat says one thing. Reduced motion collapses it to the
+settled total like every other beat, and the settled frame is asserted against
+the fight the engine advanced to at **every face of every good**, singly and at
+the cap.
+
+### Rejected, one line each
+
+- **Guard faces inside the six** (−0.153): a face that guards cannot combo, and
+  the ladder is superlinear, so spending a die's face on defence costs more than
+  the defence is worth.
+- **Unclaimed dice guarding** (−0.001): no decision — the dice that fit nothing
+  were never going to do anything, so guarding with them is a rebate rather than
+  a choice.
+- **The optional throw press**: always-throwing dominated at every bite cost
+  from 6 to 30, so the press was a button you always press.
+- **A multiplier face**: measured +0.254 at a weak hand, near double a good bone
+  and about what the unaudited Zealot is worth. It is legal here *only* because
+  it whiffs, and it is not authored — so the union holds no branch for one.
+
+### Two harness bugs this wave surfaced rather than wrote
+
+Both fell out of the boon pool gaining two rows, and neither is about the game.
+
+**The reference hand was decided alphabetically.** `medianCarry` ranked whole
+hauls by how many runs held exactly that composition. There are hundreds of
+possible two-good hauls, so at four hundred seeds the winner was a two-vote lead
+and the tie behind it broke on the id string — and two compositions in that tie,
+`bone.leech + bone.pusher` and `bone.pusher + the plate`, measure **0.205 and
+0.353** on the road. The published ratchet row hung on which id sorted first.
+A haul is still taken *whole*, from a run that had one; which whole haul is now
+chosen by how **representative** it is — the summed frequency of its own goods
+across every haul of that size — so a composition made of what runs commonly
+find beats two rarities that landed together twice, and the answer stops moving
+when the catalog grows. With it fixed the returning hand is a bone and the plate
+again, and the ratchet measures 0.163 → 0.373 at 400 seeds.
+
+**Both halves of the Sisters in one run was a coin toss.** One run in about two
+thousand holds the pair, so the *existence* count passed on luck and two extra
+boon rows were enough to tip it from seen to unseen. The structural claim — the
+two bands are disjoint and in order, so finding one half means walking for the
+other — is now checked structurally instead of sampled for.
+
+### What this wave did not touch
+
+The ladder, the card (art. 63), the three presses (art. 41), any card 89 tuning
+number, and card 90's six goods, which stay exactly as they shipped — this is a
+new species beside them, not a migration. No new screens, no new interaction
+type, no new collection axis. Cards 80/81 stay deferred.
 
 ## The levels wave (cards 89–90)
 

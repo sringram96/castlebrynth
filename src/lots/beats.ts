@@ -29,6 +29,7 @@
  */
 
 import { cursedValue, worth } from './combos.js'
+import { addedBy, didFire } from './rolling.js'
 import { casting } from './turn.js'
 import type {
   BondId,
@@ -45,6 +46,7 @@ import type {
   Rider,
   RiderEffect,
   RiderId,
+  Rolled,
   Tier,
 } from './types.js'
 
@@ -112,6 +114,19 @@ export type Beat =
       readonly rider: RiderId
       readonly effect: RiderEffect
     }
+  /**
+   * card 93, art. 119: **a rolling good lands, alone.**
+   *
+   * The line names itself and its total climbs; *then* each carried good that
+   * fired says so and moves the number, one at a time. Watching them land after
+   * you have committed is the whole feel of the species — the decision was
+   * which to carry, and this is the moment that decision answers.
+   *
+   * A face that did not fire gets no beat: a null is the absence of an event,
+   * and a beat that said *nothing happened* would be a fifth kind of face
+   * (art. 119 — each beat says one thing, and this one has nothing to say).
+   */
+  | { readonly kind: 'amend'; readonly rolled: Rolled }
   /**
    * Section 2: **the total climbs** to the final number rather than appearing.
    * It is several frames because a climb is several frames; each carries the
@@ -415,7 +430,14 @@ export function cascadeBeats(
   // **The total climbs.** From what the dice are worth to what the line
   // makes of them — which is the payoff of the whole cascade, and the reason
   // the line named its multiplier without spending it a moment ago.
-  const climbTo = Math.max(0, resolution.harmDealt)
+  //
+  // card 93: it climbs to what **the line** came to, not to the final number.
+  // The rolling goods amend that total in their own beats below, so a climb
+  // that swept their amendments up would spend the beat they exist for. With
+  // nothing carried the two numbers are the same and this reads exactly as it
+  // did before the wave.
+  const added = addedBy(resolution.amends)
+  const climbTo = Math.max(0, resolution.harmDealt - added)
   if (climbTo !== attack) {
     const steps = Math.max(1, timings.climbs)
     const from = attack
@@ -428,6 +450,22 @@ export function cascadeBeats(
         step === steps ? climbTo : Math.round(from + (climbTo - from) * (1 - (1 - along) ** 2))
       push({ kind: 'climb' }, each)
     }
+  }
+
+  // ── card 93: the rolling goods land ──────────────────────────────────
+  //
+  // **After the line, before the blow**, which is the order they resolve in
+  // (`decide`): the claim scored, then the goods amended it, then the intent
+  // struck. One beat each, in the order they are carried, and only for the ones
+  // that fired. Each moves the number its own kind moves — an `add` or a `per`
+  // climbs the attack, a `cost` comes out of you, and a `block` moves nothing
+  // here because what it moved is the blow, which the `struck` beat below shows
+  // with its own `blocked`.
+  for (const one of resolution.amends) {
+    if (!didFire(one)) continue
+    if (one.face.kind === 'add' || one.face.kind === 'per') attack += one.amount
+    if (one.face.kind === 'cost') yourHealth -= one.amount
+    push({ kind: 'amend', rolled: one }, timings.rider)
   }
 
   // ── Section 3: the blow (card 76) ────────────────────────────────────
@@ -491,7 +529,9 @@ export function cascadeBeats(
     beat: { kind: 'settled' },
     after: frames.length === 0 ? 0 : timings.flash,
     shows: {
-      attack: climbTo,
+      // card 93: the line's total plus whatever the goods added to it, which
+      // is what the engine already dealt. With nothing carried it is `climbTo`.
+      attack: climbTo + added,
       horrorHealth: after.horrorHealth,
       yourHealth: after.yourHealth,
       landed,

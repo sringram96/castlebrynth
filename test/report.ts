@@ -33,6 +33,8 @@ import {
   LADDER,
   LEVEL_CAP,
   PLAIN_POUCH,
+  ROLLING_CAP,
+  ROLLING_GOODS,
   THE_GNAWING,
   THE_KINDLED,
   THE_MARROW,
@@ -49,6 +51,7 @@ import type {
   Horror,
   Line,
   Talisman,
+  Trinket,
   Wearable,
 } from '../src/lots/index.js'
 import {
@@ -90,7 +93,16 @@ export function referenceOf(label: string, carrying: Carrying): Reference {
     label,
     hand: assembleHand(pouch, HAND_SIZE),
     armor: armorFrom(carrying.worn ?? [], BARE_BODY.armor),
-    goods: { talismans: carrying.keepsakes ?? [], riders: ALL_RIDERS, levelCap: LEVEL_CAP },
+    goods: {
+      talismans: carrying.keepsakes ?? [],
+      riders: ALL_RIDERS,
+      levelCap: LEVEL_CAP,
+      // card 93: empty on every reference hand the wave's own bands are
+      // stated at, which is the point — a rolling good is measured as an
+      // extra *row* beside them and never folded into one of them.
+      trinkets: carrying.trinkets ?? [],
+      trinketCap: ROLLING_CAP,
+    },
     carrying,
   }
 }
@@ -123,27 +135,53 @@ export function median(of: readonly number[]): number {
  * difference there is (DESIGN.md, the levels wave). A composition is not
  * the sum of its marginals, and the honest fix is to read a whole haul off
  * a run that actually had one.
+ *
+ * **How the whole haul is chosen was a second bug, and card 93 surfaced it
+ * rather than writing it.** Ranking the compositions by *how many runs held
+ * exactly that composition* sounds right and is a knife edge: there are
+ * hundreds of possible two-good hauls, so at four hundred seeds the winner is
+ * a two-vote lead and the tie behind it is broken **alphabetically**. Two of
+ * the compositions in that tie were `bone.leech + bone.pusher` and
+ * `bone.pusher + the plate`, which measure 0.205 and 0.353 on the road — so
+ * the published ratchet row was decided by which id sorted first, and adding
+ * any content anywhere could flip it. It did: two rare rows in the boon pool
+ * moved one count by one and the reference hand lost its armour.
+ *
+ * So a haul is still taken **whole**, from a run that actually had one, and
+ * *which* whole haul is chosen by how **representative** it is: the summed
+ * frequency of its own goods across every haul of that size. A composition
+ * made of the things runs commonly find beats one made of two rarities that
+ * happened to land together twice, and the answer stops moving when the
+ * catalog grows. Ties still break on the key, so the same sample still yields
+ * the same hand (art. 36's discipline, applied to a measurement).
  */
 function medianCarry(hauls: readonly DepthReport['haul'][]): Carrying {
   const want = median(hauls.map((haul) => haul.count))
   const sized = hauls.filter((haul) => haul.count === want)
-  const seen = new Map<string, { haul: DepthReport['haul']; count: number }>()
+  const idsOf = (haul: DepthReport['haul']): readonly string[] =>
+    [...haul.dice, ...haul.keepsakes, ...haul.worn, ...haul.trinkets].map(
+      (good) => good.id as string,
+    )
+  // How often each good turns up among the hauls of the median size. This is
+  // the marginal, and it is used only to *rank whole hauls* — never to build
+  // one, which is the mistake the paragraph above is about.
+  const often = new Map<string, number>()
   for (const haul of sized) {
-    const key = [...haul.dice, ...haul.keepsakes, ...haul.worn]
-      .map((good) => good.id as string)
-      .sort()
-      .join('+')
-    const held = seen.get(key)
-    if (held === undefined) seen.set(key, { haul, count: 1 })
-    else held.count++
+    for (const id of idsOf(haul)) often.set(id, (often.get(id) ?? 0) + 1)
   }
-  // Commonest first; ties broken on the key, so the same sample always
-  // yields the same reference hand (art. 36's discipline, applied to a
-  // measurement rather than to a run).
-  const ranked = [...seen.entries()].sort((a, b) => b[1].count - a[1].count || a[0].localeCompare(b[0]))
-  const best = ranked[0]?.[1].haul
+  const scored = sized.map((haul) => ({
+    haul,
+    key: [...idsOf(haul)].sort().join('+'),
+    score: idsOf(haul).reduce((total, id) => total + (often.get(id) ?? 0), 0),
+  }))
+  const best = scored.sort((a, b) => b.score - a.score || a.key.localeCompare(b.key))[0]?.haul
   if (best === undefined) return {}
-  return { dice: best.dice, keepsakes: best.keepsakes, worn: best.worn }
+  return {
+    dice: best.dice,
+    keepsakes: best.keepsakes,
+    worn: best.worn,
+    trinkets: best.trinkets,
+  }
 }
 
 /** What a walk of `runs` first wakings actually did, kept for every row. */
@@ -223,6 +261,7 @@ function combined(one: Carrying, other: Carrying): Carrying {
     dice: [...(one.dice ?? []), ...(other.dice ?? [])],
     keepsakes: [...(one.keepsakes ?? []), ...(other.keepsakes ?? [])],
     worn: [...(one.worn ?? []), ...(other.worn ?? [])],
+    trinkets: [...(one.trinkets ?? []), ...(other.trinkets ?? [])],
   }
 }
 
@@ -236,12 +275,22 @@ function combined(one: Carrying, other: Carrying): Carrying {
  * and nothing in the table turns on the order within a room.
  */
 function haulAtCount(report: DepthReport, n: number): DepthReport['haul'] {
-  const all = [...report.haul.dice, ...report.haul.keepsakes, ...report.haul.worn]
+  const all = [
+    ...report.haul.dice,
+    ...report.haul.keepsakes,
+    ...report.haul.worn,
+    ...report.haul.trinkets,
+  ]
   const held = all.slice(0, n)
   const dice = held.filter((one): one is Die => 'faces' in one)
   const keepsakes = held.filter((one): one is Talisman => 'species' in one)
-  const worn = held.filter((one): one is Wearable => !('faces' in one) && !('species' in one))
-  return { dice, keepsakes, worn, count: held.length }
+  // card 93: a rolling good is told apart by `rolls`, the one field only it
+  // has — which is why its faces do not live under `faces` (`collect`).
+  const trinkets = held.filter((one): one is Trinket => 'rolls' in one)
+  const worn = held.filter(
+    (one): one is Wearable => !('faces' in one) && !('species' in one) && !('rolls' in one),
+  )
+  return { dice, keepsakes, worn, trinkets, count: held.length }
 }
 
 // ── The rows ───────────────────────────────────────────────────────────
@@ -276,6 +325,77 @@ export function rowFor(
     horror: label,
     beatSeconds: beatSecondsOf(horror, reference, Math.min(runs, 60)),
   }
+}
+
+// ── The rolling goods, as extra rows (card 93) ─────────────────────────
+
+/**
+ * card 93: **what one rolling good is worth at a reference hand.**
+ *
+ * It is a *row*, and the wave is explicit about why: the rolling goods are an
+ * add-on, no band may move because of them, and the honest way to report a
+ * thing nothing is tuned around is beside the table rather than inside it. So
+ * this takes a hand the bands are already stated at, plays it with and without
+ * the good, and reports the difference — the same shape the levels wave used
+ * for a talisman, and the same shape the fork was restored with.
+ *
+ * `marginal` is the number DESIGN.md prints. `with` and `without` are kept so
+ * that a row can be read without trusting the subtraction.
+ */
+export interface RollingRow {
+  readonly good: string
+  readonly hand: string
+  readonly horror: string
+  readonly without: number
+  readonly with: number
+  readonly marginal: number
+}
+
+/** One good (or a pair of them, at the cap), against one hand and one horror. */
+export function rollingRow(
+  reference: Reference,
+  horror: Horror,
+  horrorLabel: string,
+  carried: readonly Trinket[],
+  label: string,
+  runs: number,
+): RollingRow {
+  const bare = statsOf(horror, reference.hand, reference.armor, runs, claimGreedily, {
+    ...reference.goods,
+    trinkets: [],
+  })
+  const held = statsOf(horror, reference.hand, reference.armor, runs, claimGreedily, {
+    ...reference.goods,
+    trinkets: carried,
+    trinketCap: ROLLING_CAP,
+  })
+  return {
+    good: label,
+    hand: reference.label,
+    horror: horrorLabel,
+    without: bare.winRate,
+    with: held.winRate,
+    marginal: held.winRate - bare.winRate,
+  }
+}
+
+/**
+ * Every rolling good on its own, then both of them at the cap — which is the
+ * row that says what the cap is actually holding back.
+ */
+export function rollingRows(
+  reference: Reference,
+  horror: Horror,
+  horrorLabel: string,
+  runs: number,
+): readonly RollingRow[] {
+  const each = ROLLING_GOODS.map((one) =>
+    rollingRow(reference, horror, horrorLabel, [one], one.id as string, runs),
+  )
+  return [
+    ...each,
+    rollingRow(reference, horror, horrorLabel, ROLLING_GOODS, 'both, at the cap', runs),
+  ]
 }
 
 // ── The wall-clock (art. 119) ──────────────────────────────────────────

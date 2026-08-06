@@ -32,16 +32,19 @@
  * `withheld(turn, dice)` is what that explanation is when the dice make a
  * line the card has spent or the intent has sealed (arts 63, 65).
  *
- * **The end of the turn** — `decide(turn, 'end-turn' | 'flee', armor,
- * goods)` yields a `Resolution`; `advanceFight(fight, resolution)` applies
+ * **The end of the turn** — `decide(turn, 'end-turn' | 'flee', armor, goods,
+ * lot?)` yields a `Resolution`; `advanceFight(fight, resolution)` applies
  * it and opens the next turn. `withTurn(fight, turn)` keeps the fight and
- * the turn in step while the turn is still moving.
+ * the turn in step while the turn is still moving. The last argument is the
+ * rolling goods' one seam (card 93) and is only reached for by a company that
+ * carries one.
  *
  * The `Lot` is the caller's: a fight is deterministic in the lot it is
  * given, and the run's seed is `src/gen`'s to hold (art. 36).
  */
 
 export type {
+  Amend,
   Armor,
   BindRule,
   Bleeding,
@@ -71,10 +74,13 @@ export type {
   Rider,
   RiderEffect,
   RiderId,
+  Rolled,
   Talisman,
   TalismanId,
   TalismanSpecies,
   Tier,
+  Trinket,
+  TrinketId,
   Turn,
   Value,
   Wearable,
@@ -147,6 +153,24 @@ export {
   everyDieClaimed,
   hungerFrom,
 } from './resolve.js'
+
+/**
+ * card 93: **the rolling goods.** A trinket with faces, carried outside the
+ * hand, rolling once inside Attack to amend what the line came to (art. 53).
+ * `rollAmends` is the whole seam, and it draws nothing when nothing is
+ * carried — which is the wave's own engineering requirement, not a nicety.
+ */
+export type { TrinketAudit } from './rolling.js'
+export {
+  addedBy,
+  auditTrinket,
+  bittenBy,
+  carriedTrinkets,
+  didFire,
+  rollAmends,
+  turnedBy,
+  worthOf,
+} from './rolling.js'
 
 export { advanceFight, openFight, outcomeOf, withTurn } from './fight.js'
 

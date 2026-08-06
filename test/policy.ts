@@ -187,7 +187,14 @@ export function statsOf(
       const at = fight.turnNumber
       const turn = play(recast(keepSensibly(cast(fight.turn, lot)), lot), goods)
       for (const made of turn.claims) lines[made.line] = (lines[made.line] ?? 0) + 1
-      fight = advanceFight(withTurn(fight, turn), decide(turn, 'end-turn', fight.armor, goods))
+      // card 93: the amend roll is handed the same lot the castings came off.
+      // A company carrying no rolling good never draws from it, so every row
+      // this file has ever printed is the row it printed before the wave — and
+      // a row that *does* carry one is a new row rather than a moved one.
+      fight = advanceFight(
+        withTurn(fight, turn),
+        decide(turn, 'end-turn', fight.armor, goods, lot),
+      )
       // The blow landed if the horror survived the claims to throw it: the
       // demo's order says a killing blow is not also a killing blow taken.
       if (at === telegraphAt && fight.outcome !== 'won') telegraphLanded++
