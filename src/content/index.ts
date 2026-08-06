@@ -94,6 +94,12 @@ export {
   THE_WHETSTONE,
   THE_ZEALOT,
 } from './items.js'
+/**
+ * card 93: **the rolling goods.** One file, and it is the mechanic — the
+ * engine's socket is a no-op when empty, so emptying `ROLLING_GOODS` empties
+ * the species with no dead branch left behind it.
+ */
+export { ROLLING_CAP, ROLLING_GOODS, THE_SLIVER, THE_TIN_SAINT } from './trinkets.js'
 export { YOUR_HEALTH_AT_WAKING, BARE_BODY } from './body.js'
 export {
   DEMO_ARMOR,
