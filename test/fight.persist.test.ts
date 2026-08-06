@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
-import { LADDER, ROOM_BOOK, THE_GNAWING, horrorById } from '../src/content/index.js'
+import {
+  LADDER,
+  ROOM_BOOK,
+  THE_GNAWING,
+  THE_SILT_MOTHER,
+  horrorById,
+} from '../src/content/index.js'
 import { enterRoom } from '../src/descent/index.js'
 import {
   openFightDoor,
@@ -276,6 +282,49 @@ describe('art. 63 — a fled fight pauses, and cannot launder a card', () => {
       // The point of the law: something was actually spent along the way.
       expect(left).toBeLessThan(unspent(openFightDoor(start, { door, horror: THE_GNAWING }).turn.card).length)
     }
+  })
+
+  /**
+   * art. 65, card 30: a bind and a bleed are the two pieces of a fight that
+   * cannot be derived from the seed — one is what the *last* intent did to
+   * the hand, the other outlives the turn it opened. Both are written down,
+   * and the proof is that a fight paused mid-bleed with a die taken comes
+   * back short-handed and still bleeding.
+   */
+  it('brings back the bound die and the running bleed (art. 75)', () => {
+    const { ledgers, room, door } = atTheLair(63)
+    let fight = openFightDoor(ledgers, { door, horror: THE_SILT_MOTHER })
+    const whole = ledgers.run!.hand.dice.length
+    let sawBound = 0
+    let sawBleed = 0
+
+    // Five turns of the Silt Mother's script, round-tripped at the top of
+    // every one of them. Her first intent binds and her second bleeds, so
+    // the walk passes through both states without the test having to guess
+    // which turn is which.
+    for (let n = 0; n < 5 && fight.outcome === 'fighting'; n++) {
+      const short = whole - fight.turn.bound.length
+      expect(casting(cast(fight.turn, lotsFor(ledgers, fight)(1)))).toHaveLength(short)
+      if (fight.turn.bound.length > 0) sawBound++
+      if (fight.bleed !== null) sawBleed++
+
+      const back = roundTrip(ledgers, fight, room, 'pre', [])
+      expect(back.fight.turn.bound, `turn ${fight.turnNumber} bound`).toEqual(fight.turn.bound)
+      expect(back.fight.bleed, `turn ${fight.turnNumber} bleed`).toEqual(fight.bleed)
+      // And the hand it re-opens on is the short one, face for face.
+      expect(shapeOfFight(back.fight, back.phase, back.selected)).toEqual(
+        shapeOfFight(fight, 'pre', []),
+      )
+      expect(casting(cast(back.fight.turn, lotsFor(ledgers, back.fight)(1)))).toHaveLength(short)
+
+      const turn = claimAll(cast(fight.turn, lotsFor(ledgers, fight)(1))).turn
+      fight = advanceFight(withTurn(fight, turn), decide(turn, 'end-turn', fight.armor))
+    }
+
+    // The walk has to have been through both, or the round trips proved
+    // nothing about either.
+    expect(sawBound).toBeGreaterThan(0)
+    expect(sawBleed).toBeGreaterThan(0)
   })
 
   it('lets the card refill at the two moments art. 63 allows, and no other', () => {

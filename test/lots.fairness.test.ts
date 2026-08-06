@@ -6,7 +6,6 @@ import {
   GNAWING_HEALTH,
   GNAWING_SCRIPT,
   HAND_SIZE,
-  LADDER,
   PLAIN_POUCH,
   RUSTED_PLATE,
   THE_GNAWING,
@@ -14,23 +13,10 @@ import {
   scriptedHorror,
 } from '../src/content/index.js'
 import { lotFrom } from '../src/gen/index.js'
-import type { Armor, Fight, Hand, Horror, Intent, IntentEffect, Line, Turn } from '../src/lots/index.js'
-import {
-  advanceFight,
-  assembleHand,
-  attack,
-  cast,
-  casting,
-  claim,
-  claimable,
-  decide,
-  keep,
-  openFight,
-  recast,
-  unused,
-  withTurn,
-} from '../src/lots/index.js'
+import type { Armor, Fight, Hand, Horror, Intent, IntentEffect, Turn } from '../src/lots/index.js'
+import { advanceFight, assembleHand, cast, decide, openFight, recast, withTurn } from '../src/lots/index.js'
 import type { Seed } from '../src/state/index.js'
+import { claimGreedily, claimIfWorth, keepSensibly } from './policy.js'
 
 /**
  * Is it fair? — restated for the five-die start (arts 55, 86).
@@ -54,48 +40,6 @@ import type { Seed } from '../src/state/index.js'
  * bands are wide on purpose. They are a tripwire under the tuning, not an
  * opinion about it.
  */
-
-/** Every subset of the free dice, best-scoring claim first, until dry. */
-function claimGreedily(start: Turn): Turn {
-  let turn = start
-  for (let pass = 0; pass < 6; pass++) {
-    const free = unused(turn).map((landed) => landed.die)
-    if (free.length === 0) break
-    let best: { dice: readonly string[]; line: Line; score: number } | null = null
-    for (let mask = 1; mask < 1 << free.length; mask++) {
-      const chosen = free.filter((_, i) => (mask >> i) & 1)
-      for (const line of claimable(turn, chosen, LADDER)) {
-        const score = attack(claim(turn, chosen, line, LADDER)) - attack(turn)
-        if (best === null || score > best.score) best = { dice: chosen, line, score }
-      }
-    }
-    if (best === null || best.score <= 0) break
-    turn = claim(turn, best.dice as never, best.line, LADDER)
-  }
-  return turn
-}
-
-/** Keep everything showing the most common value; throw the rest again. */
-function keepSensibly(turn: Turn): Turn {
-  const laid = casting(turn)
-  const counts = new Map<number, number>()
-  for (const landed of laid) {
-    counts.set(landed.face.value, (counts.get(landed.face.value) ?? 0) + 1)
-  }
-  let bestValue = 0
-  let bestCount = 0
-  for (const [value, count] of counts) {
-    if (count > bestCount || (count === bestCount && value > bestValue)) {
-      bestValue = value
-      bestCount = count
-    }
-  }
-  if (bestCount < 2) return turn
-  return keep(
-    turn,
-    laid.filter((landed) => landed.face.value === bestValue).map((landed) => landed.die),
-  )
-}
 
 /** art. 55: the bare hand. art. 86: the same hand, one traveler's bone on. */
 const BARE_HAND = assembleHand(PLAIN_POUCH, HAND_SIZE)
@@ -203,28 +147,6 @@ function probe(effect: IntentEffect): Horror {
     PLAIN_SCRIPT.map((one, at) => (at === 1 ? { ...one, effect } : one)),
     GNAWING_ESCALATION,
   )
-}
-
-/**
- * The turtle: a thumb that only spends a line on a claim worth having, and
- * ends the turn on anything less. It is the player `hunger` exists to
- * price, and it is why that kind cannot be measured against the greedy
- * model at all — the greedy model never hesitates.
- */
-function claimIfWorth(floor: number): (turn: Turn) => Turn {
-  return (start) => {
-    const free = unused(start).map((landed) => landed.die)
-    let best: { dice: readonly string[]; line: Line; score: number } | null = null
-    for (let mask = 1; mask < 1 << free.length; mask++) {
-      const chosen = free.filter((_, i) => (mask >> i) & 1)
-      for (const line of claimable(start, chosen, LADDER)) {
-        const score = attack(claim(start, chosen, line, LADDER))
-        if (best === null || score > best.score) best = { dice: chosen, line, score }
-      }
-    }
-    if (best === null || best.score < floor) return start
-    return claim(start, best.dice as never, best.line, LADDER)
-  }
 }
 
 const RUNS = 400

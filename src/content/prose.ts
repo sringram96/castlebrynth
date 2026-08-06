@@ -170,6 +170,10 @@ export const NOUNS: Readonly<Record<string, string>> = {
   // art. 83: what stands in a socket names itself, wherever it stands.
   'gnawing.shape': 'the wet shape',
   'marrow.shape': 'the tall shape',
+  // card 29: a region's own. Each names itself before it says anything
+  // atmospheric, and each names the one thing that gives it away (art. 111).
+  'mother.shape': 'the drowned woman',
+  'kindled.shape': 'the burnt figure',
   'key.iron': 'the iron key',
   'basin.water': 'the basin',
   'mender.figure': 'the mender',
@@ -233,6 +237,8 @@ export const LOOKS: Readonly<Record<string, string>> = {
   'warden.door': 'Black iron. The stone around it is scored where it swings.',
   'gnawing.shape': 'It keeps to the far end. When you stop, the scratching stops.',
   'marrow.shape': 'It stands a head above the door beside it, and it does not lean.',
+  'mother.shape': 'A woman, and the water is still coming off her. Her eyes hold a light the room does not.',
+  'kindled.shape': 'A figure of char, and the cracks in it are lit. Nothing here is burning.',
   'key.iron': 'Iron, long as your palm, cut with three teeth.',
   'basin.water': 'Copper, full to the lip, and still. It costs nothing.',
   'mender.figure': 'It sits with its hands open. Nothing about it moves but the breath.',
@@ -285,6 +291,10 @@ export const ORIGINS: Readonly<Record<string, string>> = {
 export const SOCKET_BEATS: Readonly<Record<string, readonly string[]>> = {
   'enc.gnawing': ['Something wet scratches at the far end, and stops when you stop.'],
   'enc.marrow': ['A tall shape waits in the dark ahead. It does not narrow as you near it.'],
+  // card 29: the drowned's and the burnt's. Each says what its region gives
+  // back, and neither says what it is going to do about you.
+  'enc.silt-mother': ['Something stands at the far end with the water running off it, and stays standing.'],
+  'enc.kindled': ['A shape of char waits ahead. The cracks across it are lit, and nothing here burns.'],
   'enc.iron-key': ['An iron key lies where the floor is worn, cut with three teeth.'],
   // art. 40: the place, and the being. Neither asks for anything.
   'enc.basin': ['A copper basin stands full at the foot of the steps. Nothing guards it.'],
@@ -323,6 +333,8 @@ export const ARRIVALS: Readonly<Record<string, readonly string[]>> = {
 export const END_LINES: Readonly<Record<string, string>> = {
   'end.gnawing': 'The Gnawing opens you and goes back to its corner.',
   'end.marrow': 'The Marrow closes over you. The scratching starts again behind it.',
+  'end.silt-mother': 'The Silt Mother puts a hand on your chest, and the water comes up over it.',
+  'end.kindled': 'The Kindled takes hold of you, and what is left of it goes out.',
   'end.warden': 'The Warden stands aside. The stair keeps going down.',
   'end.kept': 'The door does not open, and the corridor behind you is stone.',
 }
@@ -339,6 +351,17 @@ export const INTENT_SAYS: Readonly<Record<string, string>> = {
   CORRODE: 'It spits something corrosive. Your armor does nothing this turn.',
   BELLOW: 'It takes a long breath.',
   REND: 'It opens you from the shoulder down.',
+  // card 29–30: the three new kinds, said in plain words. Each names what
+  // the number does to the plan, because art. 73 makes the intent tappable
+  // and this is the whole of what a tap on it gets back.
+  DRAG: 'It reaches for your highest bone. That die stays under, and does not cast next turn.',
+  CHILL: 'The cold gets into you. It takes a little at the start of each of your next three turns.',
+  SILT: 'It pushes the whole floor at you.',
+  UNDERTOW: 'The water goes out from under you.',
+  SEAR: 'It burns you, and the burn keeps going for three turns.',
+  GAPE: 'It opens. Any turn of yours that claims nothing puts some of it back.',
+  CHAR: 'It lays a hand flat on you.',
+  GUTTER: 'It draws the fire back in, and swings.',
 }
 
 /** The lines the shell says at the seams of a run. */
@@ -433,6 +456,8 @@ export const NOTICES: Readonly<Record<string, string>> = {
 export const LABELS: Readonly<Record<string, string>> = {
   'horror.gnawing': 'the gnawing',
   'horror.marrow': 'the marrow',
+  'horror.silt-mother': 'the silt mother',
+  'horror.kindled': 'the kindled',
   'room.crossing': 'the crossing',
   'room.trove.alcove': 'the alcove',
   'room.passage.stair': 'the stair',

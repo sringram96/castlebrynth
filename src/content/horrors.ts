@@ -97,8 +97,96 @@ export const THE_MARROW: Horror = scriptedHorror(
   MARROW_ESCALATION,
 )
 
+/**
+ * THE SILT MOTHER — the drowned's unique (card 29).
+ *
+ * The Marrow's pattern, moved one region over: she floats, she is unique
+ * per run, and she wakes only when the drowned locks. The playtest verdict
+ * the company wave answers was *"there is still only one bad guy"*, and the
+ * fix is the symmetry the Marrow already implied — every region gets its
+ * unique, so arrival (art. 78) costs something wherever a run arrives.
+ *
+ * **The partition she forces**: hold your best die or spend it. She leans
+ * `bind` — the water takes whatever you are holding highest — and `bleed`,
+ * so a turn spent tidying up is a turn she is still charging for. Against
+ * the Gnawing you can afford to wait for a shape; against her, waiting is
+ * the expensive move and the shape you were waiting for is the die she
+ * takes.
+ *
+ * Her numbers sit under the Marrow's and her script runs the same five, so
+ * she is rarer rather than merely bigger (art. 83's scope, not its weight).
+ */
+export const SILT_MOTHER_SCRIPT: readonly Intent[] = [
+  { verb: 'DRAG', amount: 6, effect: { kind: 'bind', rule: 'highest' } },
+  { verb: 'CHILL', amount: 4, effect: { kind: 'bleed', amount: 4, turns: 3 } },
+  { verb: 'SILT', amount: 8 },
+  { verb: 'DRAG', amount: 7, effect: { kind: 'bind', rule: 'highest' } },
+  { verb: 'UNDERTOW', amount: 12 },
+]
+
+export const SILT_MOTHER_ESCALATION = 3
+
+export const SILT_MOTHER_HEALTH = 112
+
+export const THE_SILT_MOTHER: Horror = scriptedHorror(
+  'horror.silt-mother',
+  SILT_MOTHER_HEALTH,
+  SILT_MOTHER_SCRIPT,
+  SILT_MOTHER_ESCALATION,
+)
+
+/**
+ * THE KINDLED — the burnt's unique (card 29).
+ *
+ * Char over a fire that never went out. Same pattern and the same sizing
+ * discipline: floating, unique per run, awake only when the burnt locks.
+ *
+ * **The partition it forces**: claim something every turn or feed it. It
+ * leans `bleed` — the burn keeps — and `hunger`, which is the only intent
+ * in the depth that punishes a turn you did nothing with. Where the Silt
+ * Mother makes waiting expensive by taking, the Kindled makes it expensive
+ * by *healing*, so the two lean on the same habit from opposite sides and a
+ * player who has learned one has half-learned the other.
+ */
+export const KINDLED_SCRIPT: readonly Intent[] = [
+  { verb: 'SEAR', amount: 5, effect: { kind: 'bleed', amount: 4, turns: 3 } },
+  { verb: 'GAPE', amount: 6, effect: { kind: 'hunger', amount: 12 } },
+  { verb: 'CHAR', amount: 9 },
+  { verb: 'GAPE', amount: 5, effect: { kind: 'hunger', amount: 14 } },
+  { verb: 'GUTTER', amount: 13 },
+]
+
+export const KINDLED_ESCALATION = 3
+
+export const KINDLED_HEALTH = 128
+
+export const THE_KINDLED: Horror = scriptedHorror(
+  'horror.kindled',
+  KINDLED_HEALTH,
+  KINDLED_SCRIPT,
+  KINDLED_ESCALATION,
+)
+
 /** Every horror the depth can deal, for restoring a fight by identity. */
-export const HORRORS: readonly Horror[] = [THE_GNAWING, THE_MARROW]
+export const HORRORS: readonly Horror[] = [
+  THE_GNAWING,
+  THE_MARROW,
+  THE_SILT_MOTHER,
+  THE_KINDLED,
+]
+
+/**
+ * Every script that ships, so the tests can walk them without a list that
+ * has to be kept in step by hand. art. 73 asks every intent to explain
+ * itself on a tap, and the only way to hold content to that is to be able
+ * to enumerate the intents.
+ */
+export const HORROR_SCRIPTS: readonly (readonly Intent[])[] = [
+  GNAWING_SCRIPT,
+  MARROW_SCRIPT,
+  SILT_MOTHER_SCRIPT,
+  KINDLED_SCRIPT,
+]
 
 export function horrorById(id: string): Horror | null {
   return HORRORS.find((held) => held.id === id) ?? null
@@ -108,8 +196,15 @@ export function horrorById(id: string): Horror | null {
  * Which line the Book of Ends takes when a horror finishes a run (art. 11).
  * A death is authored per horror, like everything else it says.
  */
+const END_LINE_OF: Readonly<Record<string, string>> = {
+  'horror.gnawing': 'end.gnawing',
+  'horror.marrow': 'end.marrow',
+  'horror.silt-mother': 'end.silt-mother',
+  'horror.kindled': 'end.kindled',
+}
+
 export function endLineOf(id: string): string {
-  return id === 'horror.marrow' ? 'end.marrow' : 'end.gnawing'
+  return END_LINE_OF[id] ?? 'end.gnawing'
 }
 
 /**
