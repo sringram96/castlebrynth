@@ -357,33 +357,48 @@ export const ARRIVALS: Readonly<Record<string, readonly string[]>> = {
 }
 
 /**
- * One line per death, and one for the door that is not a death (art. 11).
+ * **The scrawls.** Every one of these is a thing he wrote down, in his own
+ * hand, in the last moment he had — rules/voice.md's second voice: second
+ * person, because a note to yourself is an order; lowercase and short,
+ * because it was written badly and fast.
  *
- * These reach the player now. They were authored for the Book of Ends and
- * the Book had never drawn them — it drew a depth and a seed, which is a
- * receipt rather than a record — so a line of the Book is this sentence, and
- * the numbers ride beside it.
+ * The mind wave made the ending *be* the scrawling. Death is forgetting, so
+ * the line the player sees at the end of a run is not a narrator summing it
+ * up — it is him getting one sentence down before it all goes. And the next
+ * waking opens on that sentence (`RoomBook.scrawl`), which is what turns a
+ * death into a lesson with no tutorial anywhere: **the run after a death
+ * begins with what the death taught.**
  *
- * `scrawl` is the line that is already there at the first waking, and it is
- * the only one of these that is **not an ending**. It is your own hand: an
- * order left at the top of the Book for whoever opens it next, which is you,
- * and it is short because it was written in a hurry. Every ending is written
- * underneath it.
+ * So a scrawl may carry the lesson, and where it does the lesson is **true**
+ * — the Gnawing's fifth intent really is the BELLOW, the Marrow's fourth
+ * really does corrode. A note that lies to the next man is worse than no
+ * note at all.
  *
- * It is the one place in the game where prose carries an imperative, and it
- * is not the breach of art. 66 it looks like: the labyrinth is not telling
- * the player what to do, the player is. It commits nothing, it is not on the
- * strip, and there is no press behind it.
+ * `scrawl` is the oldest of them. It stands in the Book from the first
+ * waking, and it is the first thing the game ever says.
+ *
+ * These are the one place prose carries an imperative, and it is not the
+ * breach of art. 66 it looks like: the labyrinth is not telling the player
+ * what to do, the player is. They commit nothing, they are not on the strip,
+ * and there is no press behind them.
  */
 export const END_LINES: Readonly<Record<string, string>> = {
-  scrawl: 'Find your brother. Whatever else goes, keep this.',
-  'end.gnawing': 'The Gnawing opens you and goes back to its corner.',
-  'end.marrow': 'The Marrow closes over you. The scratching starts again behind it.',
-  'end.warden': 'The Warden stands aside. The stair keeps going down.',
-  'end.kept': 'The door does not open, and the corridor behind you is stone.',
+  scrawl: 'you must find him',
+  // The Gnawing's script is six intents and the fifth is BELLOW 16 — every
+  // other one is single digits until it loops. The lesson is the one that
+  // would have saved him.
+  'end.gnawing': 'the fifth one is the big one. count them',
+  // The Marrow's fourth is CORRODE and its fifth is REND 13: armor is gone
+  // exactly one turn before the worst of it.
+  'end.marrow': 'armor is nothing on the fourth. the fifth one opens you',
+  // Not a death. He goes through, and writes it down because the stair does
+  // not stop and he will not remember which door he came out of.
+  'end.warden': 'the black door opens. keep going down',
+  // art. 3's belt: a door refused him, and the run ended standing at it.
+  'end.kept': 'take everything before you open anything',
   // Giving a run up is an ending like any other, and the Book takes its line
-  // like any other — so the line exists. It never had one.
-  'end.abandoned': 'You stop at the door and go no further. The depth behind it shuts.',
+  // like any other. What he writes down is why it was pointless.
+  'end.abandoned': 'you turned back. he is still down there',
 }
 
 /**
@@ -416,18 +431,23 @@ export const NOTICES: Readonly<Record<string, string>> = {
   // art. 63: a fled fight pauses. Nothing about it refills.
   'fight.fled': 'You back out of the door. It waits where you leave it.',
   'fight.resumed': 'It is where you leave it, and it remembers the rest.',
-  // The two endings. A death says what death is *for* in this game — the run
-  // burns and the knowledge does not (arts 10–11) — and the Warden's door
-  // says what finishing a depth is worth, which is that it is not the thing
-  // you came down for.
-  'run.dead': 'The floor comes up. The run ends here, and everything you know of it keeps. So does the name.',
+  /**
+   * There is no `run.dead` any more (the mind wave). **The ending is the
+   * scrawling**: what the word band shows when a run ends is the line he
+   * writes, authored per cause in `END_LINES`, and a narrator's summary
+   * standing where his last sentence should be was the flourish at its
+   * worst. Its `.choose` variant goes with it — a dying man does not compose
+   * a sentence about his pouch, so art. 60's clause is carried there by the
+   * Choose verb and by the screen behind it.
+   *
+   * The Warden's door keeps its line, because it is not a death: he walks
+   * through it, and a man walking has time to think.
+   */
   'run.finished':
     'You go through, and the stair keeps going down. Your brother is not on this depth.',
   // art. 60: an ending with a choice waiting behind it says so, because the
   // next screen is a question rather than the labyrinth. It states what is
   // true of the pouch and stops there — the Choose verb is what instructs.
-  'run.dead.choose':
-    'The floor comes up. The run ends here, and everything you know of it keeps. What is on you now is more than your hand holds.',
   'run.finished.choose':
     'You go through, and the stair keeps going down. Your brother is not on this depth. What is on you now is more than your hand holds.',
   // The Book is never empty now — one line stands in it from the first waking

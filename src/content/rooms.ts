@@ -129,7 +129,7 @@ import {
   WATCHER,
 } from './plates/bestiary.js'
 import { WAKE, masonry, wakeProps } from './plates/wake.js'
-import { ARRIVALS, BEATS, LABELS, LOOKS, NOUNS } from './prose.js'
+import { ARRIVALS, BEATS, END_LINES, LABELS, LOOKS, NOUNS } from './prose.js'
 import { RENDER } from './render.js'
 
 export { WARDEN_KEY, WARDEN_KEY_ITEM } from './encounters.js'
@@ -1377,6 +1377,9 @@ export const ROOM_BOOK: RoomBook = {
   // for nothing else — every word below comes from the encounter.
   socket: (id, fill): SocketWords => fillWords(fill, socketMark(id, fill.socket)),
   arrival: (region) => ARRIVALS[region as string] ?? [],
+  // The waking opens on the last line of the Book — a thing he wrote down,
+  // found again by a man who does not remember writing it (rules/voice.md).
+  scrawl: (cause) => END_LINES[cause] ?? '',
 }
 
 /** The name a room answers to, for the beat that opens it (art. 34). */

@@ -194,7 +194,7 @@ import {
   SOCKET_BEATS,
 } from './prose.js'
 import type { Utterance } from './voice.js'
-import { asLabels, asPlaceholders, asThoughts } from './voice.js'
+import { asLabels, asPlaceholders, asScrawls, asThoughts } from './voice.js'
 
 /**
  * Which of the shell's notices have been rewritten into the amended
@@ -234,12 +234,10 @@ export function everyString(): readonly Utterance[] {
     // wave has not reached yet is a declared placeholder below rather than a
     // string the lint was talked into passing.
     ...asThoughts(noticesIn(true)),
+    // The Book of Ends is the pile of things he wrote down, and the line at
+    // the head of it is the oldest of them.
+    ...asScrawls(Object.values(END_LINES)),
     ...asPlaceholders([
-      // The Book of Ends becomes the pile of things he wrote down in the
-      // next commit of this wave; until the lines are rewritten they are
-      // what they have always been, and saying otherwise here would be the
-      // lint agreeing with a claim nobody has made good on.
-      ...Object.values(END_LINES),
       ...Object.values(BEATS).flat(),
       // art. 78: the arrival is one candle like any other, and waits on the
       // same rewriting.
