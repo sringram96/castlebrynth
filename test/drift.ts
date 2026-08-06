@@ -220,6 +220,39 @@ export function playRun(
   return { ledgers, chain, refused: false }
 }
 
+/**
+ * A run walked forward until it is standing in a room a predicate names.
+ *
+ * Only what the room *requires* is taken on the way (art. 3), so nothing
+ * optional is spent before the thing under test is reached — and the room it
+ * stops in has been looked at, because a verb that has not been summoned is
+ * a verb that is not there (art. 68).
+ */
+export function walkTo(
+  seed: number,
+  wanted: (node: ChainNode) => boolean,
+  policy: Policy = alwaysLeft,
+): { ledgers: Ledgers; chain: Chain; node: ChainNode } | null {
+  let { ledgers, chain } = opened(seed)
+  ledgers = greet(ledgers, chain)
+  for (let n = 0; n < chain.length + 2; n++) {
+    const node = hereIn(chain)
+    if (node === null) return null
+    if (wanted(node)) return { ledgers: lookAround(ledgers, node), chain, node }
+    ledgers = lookAround(ledgers, node)
+    for (const one of takeable(ledgers, node).filter((held) => held.required)) {
+      ledgers = act(ledgers, one)
+    }
+    const door = node.doors[Math.min(Math.max(0, policy(node.doors, chain)), node.doors.length - 1)]
+    if (door === undefined || door.ends === true) return null
+    const walked = chooseDoor(ledgers, chain, ROOM_BOOK, door, DEALER)
+    ledgers = walked.ledgers
+    chain = walked.chain
+    ledgers = greet(ledgers, chain)
+  }
+  return null
+}
+
 /** A run standing in a room with teeth in it, and the door that is the fight. */
 export interface AtAFight {
   readonly ledgers: Ledgers

@@ -210,7 +210,19 @@ export interface RoomBook {
    * than a hint (art. 68). The engine passes the run's pocket and reads
    * nothing out of it; which answers care is content's business alone.
    */
-  look(room: RoomId, target: string, carried?: readonly ItemId[]): string
+  /**
+   * art. 118 (`withheld`): and it answers a third way. When an act about
+   * this thing exists but is not being offered — a mercy a whole body
+   * cannot drink — the look is where the reason lives, because a withheld
+   * verb has nowhere to put one. Content authors the second sentence under
+   * its own key; the engine only says which of the two states it is in.
+   */
+  look(
+    room: RoomId,
+    target: string,
+    carried?: readonly ItemId[],
+    withheld?: boolean,
+  ): string
   acts(room: RoomId): readonly Act[]
   /**
    * art. 83: sockets carry their own words. The room is handed over so the
@@ -395,18 +407,7 @@ export function enterRoom(
   const beats = beatsIn(book, node, wakingScrawl(ledgers, book, node))
   const on = run !== null && run.at.instance === at ? run.at.beat : 0
   const tray: Offer[] = [
-    ...actsIn(book, node)
-      // art. 68: looking is what summons a verb. Until the thing has been
-      // tapped, the act about it is not in the tray at all — not greyed, not
-      // refusing, not there.
-      .filter((one) => summoned(run, at, one))
-      // arts 7, 68 (card 67): and neither is an act whose gate is not met.
-      // "Only then, and only carrying" — a verb you cannot press is the same
-      // defect as a verb you have not earned, so it gets the same answer.
-      // What the player gets instead is the tap: the lock says what it wants.
-      .filter((one) => afforded(run, one))
-      .filter((one) => !done(run, at, one))
-      .map((one) => ({ kind: 'act' as const, act: one })),
+    ...offering(ledgers, book, node).map((one) => ({ kind: 'act' as const, act: one })),
     ...node.doors.map((door) => ({ kind: 'door' as const, door })),
   ]
   return {
@@ -442,6 +443,35 @@ function wakingScrawl(ledgers: Ledgers, book: RoomBook, node: ChainNode): string
 }
 
 /**
+ * **The acts a room is offering right now** — the whole of what the strip is
+ * holding, and the only statement of it.
+ *
+ * Four questions, and each is an article: has looking summoned it (art. 68),
+ * is what it is gated on actually on you (art. 7, card 67), could pressing it
+ * change anything (art. 118), and has it already been done *here* (art. 82).
+ *
+ * It is one function because the answer wave found out what two of it costs.
+ * The tray built this list inline and `src/shell/strip.ts` built it again for
+ * the harness, and a deliberate regression of art. 118 was caught by one of
+ * them and not the other — which is the same defect as a rule with two
+ * statements, discovered before it shipped rather than after.
+ */
+export function offering(
+  ledgers: Ledgers,
+  book: RoomBook,
+  node: ChainNode,
+): readonly Act[] {
+  const run = ledgers.run
+  return actsIn(book, node).filter(
+    (one) =>
+      summoned(run, node.instance, one) &&
+      afforded(run, one) &&
+      moves(ledgers, one) &&
+      !done(run, node.instance, one),
+  )
+}
+
+/**
  * art. 68: whether looking has summoned this act yet, here. An act about
  * nothing is about the room, and a room is a thing you are standing in.
  */
@@ -461,6 +491,48 @@ export function afforded(run: RunLedger | null, one: Act): boolean {
   if (one.needs.length === 0) return true
   const held = new Set<string>(run?.carried ?? [])
   return one.needs.every((item) => held.has(item))
+}
+
+/**
+ * art. 118: **whether pressing this would change anything at all.**
+ *
+ * An act that cannot is not offered — the verb is absent, the way a locked
+ * door's already is (card 67). Today the whole of "cannot" is art. 40's
+ * unspent mercy: a body with nothing open gets nothing back, and `act`
+ * already refuses such a press rather than spending the deed. The refusal
+ * was correct and invisible, which is exactly the shape this article bans.
+ *
+ * Everything else moves by definition — a take puts something in your hand,
+ * a lock turns — so the default is true and each new kind of cannot has to
+ * come here and say so.
+ */
+export function moves(ledgers: Ledgers, one: Act): boolean {
+  if (one.heals !== undefined) return breathFor(ledgers, one) > 0
+  return true
+}
+
+/**
+ * art. 118: whether an act *about this thing* is being withheld right now.
+ *
+ * It is what the look needs in order to say what withholds it. An act
+ * already done is not withheld — it is spent, and the room shows that in
+ * pixels (art. 70) — and neither is one whose gate is simply not met, which
+ * card 67 already answers with the lock's own sentence.
+ */
+export function withholding(
+  ledgers: Ledgers,
+  book: RoomBook,
+  node: ChainNode,
+  target: string,
+): boolean {
+  const run = ledgers.run
+  return actsIn(book, node).some(
+    (one) =>
+      one.about === target &&
+      !done(run, node.instance, one) &&
+      afforded(run, one) &&
+      !moves(ledgers, one),
+  )
 }
 
 /** art. 82: done *here*. Two alcoves each hold their own key. */
@@ -489,8 +561,9 @@ export function look(
   bands: Bands,
   target: Tappable,
   carried: readonly ItemId[] = [],
+  withheld = false,
 ): Beat {
-  return { text: book.look(bands.room, target.id, carried), index: -1, last: true }
+  return { text: book.look(bands.room, target.id, carried, withheld), index: -1, last: true }
 }
 
 /**

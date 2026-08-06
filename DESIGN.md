@@ -101,13 +101,153 @@ keep choosing → a region locks and the depth announces where you have arrived
 → the rest of the depth deals from that region and its encounters wake → the
 Warden's door, and the keeper behind it once the key turns. Every doorway
 breathes while you stand there, and seven rooms will do one thing of their own
-accord if you stand there long enough. `npm test` is green: 39 files, 437
+accord if you stand there long enough. `npm test` is green: 44 files, 488
 tests.
 
 **And the frame says who you are, in his voice.** The reason wave shipped the
 premise that had been sitting in `reference/GAME.md` since the beginning: a
 brother, a name he keeps saying, and down as the only direction there is. The
 mind wave then repealed the narrator who was saying it.
+
+**And the game now says what it did.** The answer wave (cards 69–71, 74) took
+the eleven findings of the 2026-08-06 playtest that had one root cause — *the
+game does things and never says it did them* — and installed art. 118 behind
+them. What that wave did, what it did not touch, and what the suite still
+cannot see is one section down: **The answer wave**.
+
+## The answer wave (art. 118, cards 69–71, 74)
+
+The playtest of 2026-08-06 — twelve runs at 390×844, every line quoted from
+the live word band — found twenty-eight things. Eleven of them had one root
+cause: **the game does things and never says it did them.** The word band had
+exactly two states, what you are looking at and what is coming, and had never
+had a third.
+
+### The ruling installed
+
+**art. 118 — nothing may be a dead press** (`the-thumb.md`), extending art. 71
+from *where a press takes you* to *whether a press does anything at all*.
+Three clauses:
+
+- **An act that cannot change anything is not offered.** The verb is absent,
+  the way a locked door's already is. Card 67 set that precedent for locks
+  only; the two cases it was hiding are art. 40's mercy a whole body cannot
+  drink and art. 3's held-back door.
+- **A withheld act's reason lives in the thing's look.** The verb it would
+  have hung on is the thing that is gone, so the explanation goes where
+  looking already answers (arts 5, 69). Content authors it under `<thing>.kept`.
+- **A room may only hold you back for something already on the frame as a
+  tappable.** Art. 3 keeps its silence about *which* thing; what it loses is
+  the right to hold you for a thing no tap reaches. This is the clause that
+  makes every stop solvable, and it is what the first two rest on.
+
+The defect it closes is the only one in the report that could end a session: a
+bot pressed Open twelve times in one room, was told *"Something here is still
+yours to take"* every time, and never left.
+
+### The band's priority
+
+`src/shell/band.ts`. **An act's answer, then what you are looking at, then the
+ambient.** The ambient — a room's candle, a fight's intent, the door's line at
+the threshold — is not nullable, because art. 69 says silence is a bug and the
+bottom of a priority order is where one would hide. `main.ts`'s single
+`notice` variable is now that value, and every assignment says which of the
+three it is.
+
+### What now speaks that did not
+
+- **Every act.** Eleven answers authored, one per act id, keyed on the id
+  art. 66 already looks the verb up by. `answer.act.unlock` used to be the
+  only one, so every other press fell through to the candle underneath — the
+  candle describing the thing just picked up.
+- **Every turn.** `saysExchange` carries both halves — what you dealt, what it
+  took, and the cost face in the same breath — and it holds the band until the
+  player turns it. Armour eating a blow is a distinct shape from nothing
+  having been thrown, because a player who cannot tell those apart cannot tell
+  whether the armour is doing anything.
+- **The intents.** All twenty-one rewritten: impending rather than landed, and
+  carrying both what the number does to the body and what the effect does to
+  the plan. The numbers are read off the intent rather than written into the
+  words, which fixed a lie nobody had noticed — COVET eats sixes in the
+  Gnawing's script and fives in the Marrow's, and one sentence said "sixes"
+  for both.
+- **The ending.** Two candles: him having it, then the scrawl. The verb is
+  **Wake**, not Descend — Descend was the front door's word standing on a
+  death screen, which was most of why dying read as arriving. `finished` takes
+  Descend, which is what it is.
+- **The Warden's fall**, which had been saying the same six words a stray in a
+  corridor says.
+- **The scrawl**, keyed on the blow rather than on the horror. Twenty-one
+  intent lessons, plus `end.bleed` and `end.cost`: a bleed lands after the
+  blow and can finish a turn the blow did not — the playtest's own death was
+  one — and a cost face is a price the player chose.
+
+### Register
+
+Card 68 has not landed, so `LOOKS`, `SOCKET_BEATS`, most `BEATS` and most
+`NOTICES` are still declared placeholders. **Everything this wave wrote is in
+the amended voice and is linted as a thought or a scrawl from the day it was
+written**, not from the day that card does: the `answer.*` prefix, the new
+`.kept` looks, `EXCHANGE`, `DEATHS`, the new `END_LINES`, the whole of
+`INTENT_SAYS`, and the notices it touched. Nothing new goes into the debt.
+
+### The harness, and what it still cannot see
+
+`test/screen.ts` is the shell's state machine with the painting taken out —
+the same calls `main.ts` makes, through the same pure functions. Every
+existing test asked the engine a question; every finding was about the screen,
+and the screen's decisions lived beside the code that builds a `<button>`. So
+`wayOn`, `offering` and `bandLine` moved somewhere a test can reach them, and
+`test/screen.test.ts` walks sixty depths asserting that every offered verb
+moves the ledgers, every press changes the band, every tap answers, and no
+walk is ever left in a room with no way out. It runs in CI on every push and
+pull request, in the `npm test` the build workflow already gates on.
+
+**Test-guarded now**: the dead press, the held-back door, the withheld mercy
+and its look, an answer for every act in the catalog, the band's priority
+order, the exchange's shapes and numbers, every intent's two halves, the
+per-blow scrawls, and art. 118's third clause asked of rooms as dealt.
+
+**What the harness cannot see, stated plainly.** It holds the shell's
+*decisions*, because those are shared code — delete art. 118's filter and the
+sweep goes red. It only *mirrors* the shell's **sequencing**: the order
+`main.ts` calls those functions in, and which result it assigns to the band.
+Cut `band = answered(saysExchange(...))` out of `endTurn` and the harness
+would not notice, because it makes that call itself. Closing that needs
+`main.ts` under a DOM and is a card of its own. Until then, **sequencing is
+what still needs a human with a phone.**
+
+One duplication was found by deliberately regressing art. 118 and watching
+only half the suite go red: the tray and the harness each filtered the strip
+themselves. There is now one `offering`, and `src/shell/strip.ts` re-exports
+it rather than restating it.
+
+### What this wave did not touch
+
+Seventeen of the twenty-eight findings, on purpose. Cards 72 (the dice
+declare) and 73 (the frame composes) are separate waves:
+
+- **The Crossing draws six bones and says five.** The plate is pre-amendment
+  (art. 55 cut the start to five on 2026-08-05) and the first room of every
+  run contradicts its own first candle.
+- **Riders and bonds are never declared on inspect** (art. 54). The pusher's
+  `1` wounds for 3 and `saysDie` never says so.
+- **The carried key answers with a bare noun.** `saysItem` maps `key.warden`
+  to a look called `alcove.key`, which does not exist.
+- **`VERBS['act.take-key']` is a bare `Take`**, the only unqualified verb in
+  the game.
+- **Dice in the POUCH panel are drawn with no face**; on the choosing screen
+  they are all drawn showing `faces[0].value`, so nine dice read as a wall of
+  ones, and the default pre-selection is the worst hand available.
+- **The threshold stir paints over the advanced horror** — `world()` composes
+  the horror first and every loop overlay second, so the Warden fights with
+  its own hall's door in its chest. One `z` sort, and it is card 73's.
+- **The lock's tap mark covers the black door's** at 390px.
+- **The Crossing has no hero**, and an undrawn horror is a black dithered mass
+  out-competed by a brazier.
+- **`boot()` treats a vault whose run is null as no vault** and rebuilds the
+  permanent ledger from `PLAIN_POUCH`. Unreachable in normal play today; a
+  latent footgun rather than a bug.
 
 ## The mind wave (card 68)
 

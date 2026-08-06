@@ -9,10 +9,21 @@
  * here.
  */
 
-import type { Die, Face, Good, Intent, Line } from '../lots/index.js'
+import type { Die, Face, Good, Intent, Line, Resolution } from '../lots/index.js'
 import type { ItemId } from '../state/index.js'
 import { LADDER } from './ladder.js'
-import { INTENT_SAYS, LABELS, LOOKS, ORIGINS, READOUT } from './prose.js'
+import { endLineOf } from './horrors.js'
+import {
+  DEATHS,
+  END_LINES,
+  EXCHANGE,
+  INTENT_SAYS,
+  LABELS,
+  LOOKS,
+  NOTICES,
+  ORIGINS,
+  READOUT,
+} from './prose.js'
 
 /** Which name a die answers to. Shapes are free; the names are authored. */
 export function dieLabel(die: Die): string {
@@ -73,14 +84,110 @@ export function intentChip(intent: Intent): string {
   return `${intent.verb} ${intent.amount}`
 }
 
-/** art. 73: the intent is tappable, and explains its effect in plain words. */
+/**
+ * art. 73: the intent is tappable, and explains itself in plain words.
+ *
+ * card 71: **both halves, and the numbers are the intent's own.** Half of
+ * these used to describe an effect and never the damage beside it, and the
+ * other half described nothing at all. Filling from the intent rather than
+ * writing the number into the sentence is also what stops COVET claiming to
+ * eat sixes in the one script where it eats fives — the same line, told the
+ * truth twice.
+ */
 export function saysIntent(intent: Intent): string {
-  return INTENT_SAYS[intent.verb] ?? intentChip(intent)
+  const said = INTENT_SAYS[intent.verb]
+  if (said === undefined) return intentChip(intent)
+  const effect = intent.effect
+  return fill(said, {
+    n: intent.amount,
+    v: effect?.kind === 'curse' ? effect.value : 0,
+    t: effect?.kind === 'bleed' ? effect.turns : 0,
+    f: effect?.kind === 'hunger' ? effect.amount : 0,
+  })
 }
 
 /** What a claimed line is worth, as a readout: the name and the number. */
 export function saysClaim(line: Line, harm: number): string {
   return `${LADDER[line].name} ${harm}`
+}
+
+/**
+ * card 69: **what an act answers with.** art. 70 asks prose to confirm what
+ * an act did, and the shell had one authored line for one act — so every
+ * other press fell through to the candle underneath, which is the candle
+ * describing the thing that had just been picked up.
+ *
+ * Keyed on the act's own id, because that is already the key art. 66 looks
+ * its verb up by: one lookup, one place to author, and no field on `Act` for
+ * content to forget to fill in. `test/answers.test.ts` enumerates the
+ * catalog and fails on an act that has no line, so this can never quietly
+ * return nothing again.
+ */
+export function saysAct(id: string): string {
+  return NOTICES[`answer.${id}`] ?? ''
+}
+
+/**
+ * card 69: **what the turn did**, both halves, in one line.
+ *
+ * The shape is chosen by what actually happened rather than by which numbers
+ * are non-zero, and the distinction that earns its keep is `blocked`: armour
+ * eating a blow is a different beat from nothing having been thrown, and a
+ * player who cannot tell them apart cannot tell whether the armour is doing
+ * anything. The cost face is said in the same breath (arts 54, 86) — it is a
+ * price he chose, so it belongs in the sentence and not in a readout.
+ *
+ * The words are `prose.ts`'s and are linted there. All this does is pick one
+ * and put the engine's numbers in it.
+ */
+export function saysExchange(resolution: Resolution): string {
+  const dealt = Math.max(0, resolution.harmDealt)
+  const taken = Math.max(0, resolution.harmTaken)
+  const shape =
+    dealt > 0 && taken > 0
+      ? 'both'
+      : dealt > 0
+        ? resolution.blocked > 0
+          ? 'blocked'
+          : 'dealt'
+        : taken > 0
+          ? 'taken'
+          : 'nothing'
+  const parts = [fill(EXCHANGE[shape] ?? '', { dealt, taken, hurt: resolution.hurt })]
+  if (resolution.hurt > 0) parts.push(fill(EXCHANGE.cost ?? '', { hurt: resolution.hurt }))
+  if (resolution.healed > 0) parts.push(EXCHANGE.healed ?? '')
+  return parts.filter((said) => said !== '').join(' ')
+}
+
+function fill(said: string, numbers: Readonly<Record<string, number>>): string {
+  return said.replace(/\{(\w+)\}/g, (whole, key: string) => String(numbers[key] ?? whole))
+}
+
+/**
+ * card 69: **which line the Book takes, keyed on the blow that landed.**
+ *
+ * A scrawl keyed on the horror teaches the wrong turn: a run killed by the
+ * Gnawing's CORRODE was told to count to the fifth intent, which is a note
+ * about a thing that did not happen. An intent kind means the same thing
+ * wherever it appears, so its lesson is true of every horror carrying it.
+ *
+ * `verb` empty — a cost face, a bleed still ticking, a door that never
+ * opened — falls back to the horror's own line, because there is no blow to
+ * name and a wrong name is worse than a general one.
+ */
+export function endLineFor(verb: string, horror: string): string {
+  const byBlow = `end.${verb.toLowerCase()}`
+  return verb !== '' && END_LINES[byBlow] !== undefined ? byBlow : endLineOf(horror)
+}
+
+/**
+ * card 69: the candle before the scrawl — him, having it. Death was not an
+ * event: the run ended and the next thing on screen was the following run's
+ * Crossing with the health bar full. Every killing blow falls to one line,
+ * because the specificity belongs in the scrawl, where the lesson is.
+ */
+export function saysDeath(cause: string): string {
+  return DEATHS[cause] ?? DEATHS['end.death'] ?? ''
 }
 
 /** Which thing in the world a carried item is, so it answers the same way. */

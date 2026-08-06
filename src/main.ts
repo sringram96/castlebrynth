@@ -47,9 +47,13 @@ import {
   itemLabel,
   roomContent,
   type RoomContent,
+  endLineFor,
+  saysAct,
   saysBound,
   saysClaim,
+  saysDeath,
   saysDie,
+  saysExchange,
   saysIntent,
   saysItem,
 } from './content/index.js'
@@ -76,7 +80,11 @@ import {
   sceneStateOf,
   stranded,
   turnedHere,
+  withholding,
 } from './descent/index.js'
+import { wayOn } from './shell/strip.js'
+import type { Held } from './shell/band.js'
+import { HUSHED, answered, bandLine, holding, noticed } from './shell/band.js'
 import type { Chain, ChainNode, Door } from './gen/index.js'
 import { deal, dealerOf, meetings, nodeAt, reseed } from './gen/index.js'
 import type { Standing } from './hinge/index.js'
@@ -243,7 +251,19 @@ let screen: Screen
 let resumed: Screen = { kind: 'room' }
 /** Set while the door is asking whether the run should really be given up. */
 let abandoning = false
-let notice: string | null = null
+/**
+ * card 69: **the band's third state.** art. 29 gave the word band two jobs —
+ * what you are looking at, and what is coming — and the shell had one slot
+ * for both, with nowhere at all for what just happened. So an act's answer
+ * and a tap's answer fought over one variable, and an act with no authored
+ * line fell straight through to the candle underneath.
+ *
+ * `Held` is that slot split in three with a priority: **an act's answer,
+ * then what you are looking at, then the ambient** (`src/shell/band.ts`).
+ * The ambient is `wordOf()` and is never null — art. 69 says silence is a
+ * bug, and the bottom of a priority order is where a silence would hide.
+ */
+let band: Held = HUSHED
 /** Set when a door has already refused you here, so the room can say so. */
 let refused = false
 /** art. 74: the card and the Book live behind glyphs, never mid-screen. */
@@ -559,7 +579,20 @@ function markFor(target: Tappable): HTMLButtonElement {
     // card 67: the pocket goes with the question. A lock names what it wants,
     // or — carrying the key — names what fits, and that second answer is
     // what makes the verb it summons legible before it is pressed.
-    notice = look(ROOM_BOOK, bands, target, ledgers.run?.carried ?? []).text
+    //
+    // art. 118: and the third question, which is whether the act about this
+    // thing is being withheld. A withheld verb is absent, so the look is the
+    // only place its reason can be — a basin a whole body cannot drink says
+    // so when you look at it, and says nothing anywhere else.
+    band = noticed(
+      look(
+        ROOM_BOOK,
+        bands,
+        target,
+        ledgers.run?.carried ?? [],
+        withholding(ledgers, ROOM_BOOK, here(), target.id),
+      ).text,
+    )
     ledgers = looking(ledgers, target)
     bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
     persist()
@@ -583,7 +616,15 @@ function doorMark(door: Door): HTMLButtonElement {
     // art. 71: a bare tap never walks you through a door. It picks it out,
     // and the going is a verb in the act strip.
     pick = picking({ kind: 'door', door })
-    notice = NOTICES['door.blind'] ?? ''
+    // art. 118: a door with something still owed to the room offers no verb,
+    // so the door's own answer is where that has to be said. It still names
+    // nothing and points at nothing (art. 3) — what changed is that the
+    // player now hears it by looking rather than by pressing and failing.
+    band = noticed(
+      (heldBack(ledgers, ROOM_BOOK, here()).length > 0
+        ? NOTICES['door.held']
+        : NOTICES['door.blind']) ?? '',
+    )
     paint()
   }
   return el
@@ -671,7 +712,7 @@ function theUnbidden(): void {
   // so the beat the player was on is exactly where they left it.
   const said = UNBIDDEN[node.room as string]
   if (said !== undefined) {
-    notice = said
+    band = answered(said)
     say()
   }
 }
@@ -692,11 +733,16 @@ function paint(): void {
 let fadeTimer: number | undefined
 
 function say(): void {
-  const said = notice ?? wordOf()
-  wordBand.replaceChildren(document.createTextNode(said))
-  const browsing = screen.kind === 'room'
-  const left = bands.beats.length - 1 - (bands.word?.index ?? 0)
-  if (notice === null && browsing && left > 0) {
+  // card 69: the priority, and the only place it is resolved.
+  const ambient = wordOf()
+  wordBand.replaceChildren(document.createTextNode(bandLine(band, ambient)))
+  // card 69: a held line is the same promise a candle-still-to-come is —
+  // there is something underneath this, and one tap gets to it — so it wears
+  // the same mark. Without it the exchange would sit on the band looking
+  // like the last word there is, and the intent behind it would never be
+  // read by anybody who did not think to tap.
+  const left = holding(band) ? (bandLine(band, ambient) === ambient ? 0 : 1) : candlesLeft()
+  if (left > 0) {
     const more = document.createElement('span')
     more.className = 'more'
     // Not a word: a mark, so the candle that is still to come is visible
@@ -715,13 +761,30 @@ function say(): void {
   fadeTimer = setTimeout(() => wordBand.classList.add('faded'), 4000) as unknown as number
 }
 
+/**
+ * How many candles are still to come under whatever is showing.
+ *
+ * A room's are its beats (art. 29). An ending's are its own two — the death
+ * and the scrawl — which are not in `bands` at all, because the room behind
+ * the dead screen is the *next* run's Crossing and its candles are not what
+ * is being read (card 69).
+ */
+function candlesLeft(): number {
+  if (screen.kind === 'dead') return Math.max(0, ending.length - 1 - endingAt)
+  if (screen.kind !== 'room') return 0
+  return bands.beats.length - 1 - (bands.word?.index ?? 0)
+}
+
 wordBand.onclick = () => {
   settle()
   // art. 29: presentation fades, knowledge doesn't. One tap recalls the
   // word; the same tap turns the candle when there is another (art. 67 keeps
   // the beat advance out of the tray).
-  if (notice !== null) {
-    notice = null
+  if (holding(band)) {
+    band = HUSHED
+  } else if (screen.kind === 'dead') {
+    // card 69: the ending turns its own candles — the death, then the scrawl.
+    if (endingAt < ending.length - 1) endingAt += 1
   } else if (bands.word !== null && !bands.word.last) {
     bands = nextBeat(bands)
     persist()
@@ -736,15 +799,19 @@ function wordOf(): string {
     case 'settings':
       return settingsWord(theSettings())
     /**
-     * The scrawl he leaves, and nothing else. A dying man does not compose a
-     * sentence about his pouch, so art. 60's clause — an ending with a
-     * choice behind it says so — is carried here by the verb instead of by
-     * the word: the strip says Choose, and the screen behind it states the
-     * situation (`choose.which`). It is the one place the mind wave moved
-     * that article's weight from the prose to the control.
+     * **The ending, in two candles** (card 69): him having it, then the
+     * scrawl he gets down before it all goes. The second one is the one that
+     * survives — the next waking opens on it (`RoomBook.scrawl`) — and the
+     * first is what makes it read as a thing he wrote rather than as a
+     * caption on a corridor that is already the next run's.
+     *
+     * A dying man does not compose a sentence about his pouch, so art. 60's
+     * clause — an ending with a choice behind it says so — is carried by the
+     * verb instead of by the word: the strip says Choose, and the screen
+     * behind it states the situation (`choose.which`).
      */
     case 'dead':
-      return END_LINES[screen.cause] ?? ''
+      return ending[Math.min(endingAt, ending.length - 1)] ?? END_LINES[screen.cause] ?? ''
     case 'finished':
       return (
         (mustChoose(ledgers.permanent) ? NOTICES['run.finished.choose'] : NOTICES['run.finished']) ??
@@ -783,7 +850,7 @@ function crown(): void {
   intent.textContent = intentChip(now.turn.intent)
   intent.onclick = () => {
     settle()
-    notice = saysIntent(now.turn.intent)
+    band = noticed(saysIntent(now.turn.intent))
     paint()
   }
 
@@ -856,7 +923,7 @@ function forgetEverything(): void {
   // vault with nothing in it, because that is what a new install is. A
   // second path would be a second thing to keep in step.
   boot()
-  notice = NOTICES['forget.done'] ?? null
+  band = answered(NOTICES['forget.done'] ?? null)
   paint()
 }
 
@@ -991,7 +1058,7 @@ function tabs(): void {
       // already on steps back — which is how you return to a fight that has
       // no tab of its own.
       focus(panel === on && inAFight() ? 'fight' : panel)
-      notice = null
+      band = HUSHED
       persist()
       paint()
     }
@@ -1202,7 +1269,7 @@ function boundSlot(die: Die, horror: string): HTMLButtonElement {
   el.setAttribute('aria-label', saysBound(die, horror))
   el.onclick = () => {
     settle()
-    notice = saysBound(die, horror)
+    band = noticed(saysBound(die, horror))
     paint()
   }
   return el
@@ -1230,8 +1297,12 @@ function claimOffer(): string | null {
   const offer = saysClaim(line, scoreOf(line))
   // The floor is always on offer (art. 46), so "the offer is the floor" is
   // exactly the case art. 72 says owes the thumb a reason as well as a price.
+  //
+  // card 71: and the reason is a *reason*, not a refusal. This used to print
+  // the offer and "No combo uses exactly these dice" side by side, which
+  // reads as the tray offering something and denying it in one breath.
   return fitsNothing(now.turn, selected, LADDER)
-    ? `${offer} · ${NOTICES['claim.exact'] ?? ''}`
+    ? `${offer} · ${NOTICES['claim.floor'] ?? ''}`
     : offer
 }
 
@@ -1369,7 +1440,7 @@ function dieSlot(die: Die, landed: Landed | null, claimed: boolean): HTMLButtonE
   el.onclick = () => {
     settle()
     const spentIn = claimed ? claimIn(landed!.die) : undefined
-    notice = saysDie(die, landed?.face, spentIn ?? undefined)
+    band = noticed(saysDie(die, landed?.face, spentIn ?? undefined))
     if (landed !== null) tapDie(landed.die)
     paint()
   }
@@ -1386,7 +1457,7 @@ function emptySlot(): HTMLButtonElement {
   const el = slot('empty')
   el.onclick = () => {
     settle()
-    notice = NOTICES['pouch.empty'] ?? ''
+    band = noticed(NOTICES['pouch.empty'] ?? '')
     paint()
   }
   return el
@@ -1403,7 +1474,7 @@ function spareSlot(die: Die): HTMLButtonElement {
   el.setAttribute('aria-label', saysDie(die))
   el.onclick = () => {
     settle()
-    notice = saysDie(die)
+    band = noticed(saysDie(die))
     paint()
   }
   return el
@@ -1414,7 +1485,7 @@ function carriedSlot(item: ItemId): HTMLButtonElement {
   el.textContent = itemLabel(item).replace(/^the /, '')
   el.onclick = () => {
     settle()
-    notice = saysItem(item)
+    band = noticed(saysItem(item))
     paint()
   }
   return el
@@ -1441,13 +1512,21 @@ function acts(): void {
     // waiting it opens the question rather than the labyrinth, so it says
     // Choose — art. 71's rule that no press lies about where it takes you.
     case 'dead':
+      // card 69: **Wake, not Descend.** art. 71 says no press may lie about
+      // where it takes you, and after a death the two words mean different
+      // things: death is forgetting (rules/voice.md), and what comes next is
+      // waking up at the Crossing again with nothing but what is written
+      // down. Descend was the front door's word standing on a death screen,
+      // which was most of why dying read as arriving.
       return actStrip.append(
-        verb(mustChoose(ledgers.permanent) ? 'choose' : 'descend', beginDescent),
+        verb(mustChoose(ledgers.permanent) ? 'choose' : 'wake', beginDescent),
         verb('read', () => { sheet = 'book'; paint() }),
       )
     case 'finished':
+      // And the other way round: the Warden's door is walked through, not
+      // died at. He is going down a floor, so the word is Descend.
       return actStrip.append(
-        verb(mustChoose(ledgers.permanent) ? 'choose' : 'wake', beginDescent),
+        verb(mustChoose(ledgers.permanent) ? 'choose' : 'descend', beginDescent),
         verb('read', () => { sheet = 'book'; paint() }),
       )
     case 'choosing':
@@ -1472,17 +1551,19 @@ function roomActs(): void {
   // card 67: **and only an unlocked door offers its way on.** A locked
   // door's verbs are absent, not disabled (art. 68) — what the player gets
   // instead is the lock, which answers, and the verb the answer summons.
+  //
+  // art. 118: **and only a door that would actually give.** The way on is
+  // one question asked in one place (`wayOn`), and a null answer is the
+  // article: a room still owed something offers no door verb at all, rather
+  // than a press that fails and leaves the strip exactly as it was.
+  //
+  // card 31: the Warden's door is a fight-door for as long as its keeper is
+  // standing, and Descend is what is left once it is not — art. 71, since
+  // those two words mean different journeys and neither may lie.
   const door = pickedDoor(pick, ahead)
-  if (door !== null && opens(ledgers, ROOM_BOOK, here(), door)) {
-    actStrip.append(
-      // card 31: the Warden's door is a fight-door for as long as its keeper
-      // is standing. Descend is what is left once it is not — art. 71, since
-      // those two words mean different journeys and neither may lie.
-      verb(
-        door.fight !== undefined || keeperUp(door) ? 'fight' : door.ends === true ? 'descend' : 'open',
-        () => commitDoor(door),
-      ),
-    )
+  const way = door === null ? null : wayOn(ledgers, ROOM_BOOK, here(), door, keeperUp(door))
+  if (door !== null && way !== null) {
+    actStrip.append(verb(way, () => commitDoor(door)))
   }
 
   // A run that walked past its key would reach a door it cannot open, and
@@ -1543,28 +1624,30 @@ function keeperUp(door: Door): boolean {
 }
 
 function doAct(one: Act): void {
-  // art. 40: a mercy pressed by a whole body restores nothing and is not
-  // spent. The act strip does not go quiet about it (art. 69) — the word
-  // band says which of the two happened.
-  const mercy = one.heals === undefined ? null : breathFor(ledgers, one)
+  // art. 118: a mercy a whole body cannot drink is no longer on the strip at
+  // all, so a mercy that is pressed is always a mercy that lands — which is
+  // why there is no longer a branch here asking which of the two happened.
   ledgers = act(ledgers, one)
   bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
   // art. 70: prose confirms, pixels prove — the answer is the room without
   // the thing in it, which the scene state has already stopped drawing.
   //
-  // card 67: an act may author its own answer, keyed on its own id. It is a
-  // convention rather than a field because the id is already the key the
-  // shell looks a verb up by (art. 66) — one lookup, one place to author.
-  notice =
-    NOTICES[`answer.${one.id}`] ??
-    (mercy === null ? null : (NOTICES[mercy > 0 ? 'mercy.breath' : 'mercy.whole'] ?? null))
+  // card 69: **every act answers, and it answers with its own line.** The id
+  // is the key, because that is already the key art. 66 looks the verb up
+  // by — one lookup, one place to author, and `test/answers.test.ts` walks
+  // the catalog so a new act cannot ship without one.
+  //
+  // There is no fallback left. The old one fell through to the candle the
+  // player was standing on, which is the candle describing the thing they
+  // had just picked up: *Take bone* answered *"There is a bone in it."*
+  band = answered(saysAct(one.id))
   persist()
   // card 31: **turning the key is what wakes it.** The hall answers in one
   // line and the thing arrives at the near depth — art. 30, so the room is
   // the room and the tray is what turns to combat.
   const waking = here().doors.find((door) => keeperUp(door))
   if (one.unlocks !== undefined && waking !== undefined) {
-    return openTheFight(waking, NOTICES['warden.wakes'] ?? notice)
+    return openTheFight(waking, NOTICES['warden.wakes'] ?? saysAct(one.id))
   }
   paint()
 }
@@ -1588,7 +1671,7 @@ function choosingPanel(): void {
     el.onclick = () => {
       settle()
       // art. 68: a tap answers first, always — the pick is what it leaves.
-      notice = saysDie(die)
+      band = noticed(saysDie(die))
       picked =
         at >= 0
           ? picked.filter((one) => one !== die.id)
@@ -1597,7 +1680,7 @@ function choosingPanel(): void {
             : [...picked, die.id]
       if (at < 0 && picked.length >= size && !picked.includes(die.id)) {
         // Full: the tap still answered, and the hand did not move (art. 5).
-        notice = NOTICES['choose.full'] ?? notice
+        band = noticed(NOTICES['choose.full'] ?? saysDie(die))
       }
       paint()
     }
@@ -1618,14 +1701,14 @@ function choosingPanel(): void {
  */
 function commitChoice(): void {
   if (picked.length !== ledgers.permanent.handSize) {
-    notice = NOTICES['choose.short'] ?? ''
+    band = answered(NOTICES['choose.short'] ?? '')
     return paint()
   }
   const permanent = chooseHand(ledgers.permanent, picked)
   ledgers = { permanent, run: tookIntoRun(ledgers.run!, permanent) }
   picked = []
   screen = { kind: 'room' }
-  notice = null
+  band = HUSHED
   persist()
   paint()
 }
@@ -1653,7 +1736,7 @@ const DOOR_ACTS = {
    */
   resume(): void {
     screen = resumed
-    notice = null
+    band = HUSHED
     paint()
   },
   descend(): void {
@@ -1661,7 +1744,7 @@ const DOOR_ACTS = {
   },
   arm(): void {
     abandoning = true
-    notice = null
+    band = HUSHED
     paint()
   },
   abandon(): void {
@@ -1669,7 +1752,7 @@ const DOOR_ACTS = {
   },
   keep(): void {
     abandoning = false
-    notice = null
+    band = HUSHED
     paint()
   },
   read(): void {
@@ -1680,7 +1763,7 @@ const DOOR_ACTS = {
     wiping = false
     imported = null
     screen = { kind: 'settings' }
-    notice = null
+    band = HUSHED
     paint()
   },
 }
@@ -1746,7 +1829,7 @@ const SETTINGS_ACTS: SettingsActs = {
   leave(): void {
     screen = { kind: 'threshold' }
     imported = null
-    notice = null
+    band = HUSHED
     paint()
   },
 }
@@ -1782,7 +1865,7 @@ function abandonTheRun(): void {
   abandoning = false
   resumed = { kind: 'room' }
   screen = { kind: 'threshold' }
-  notice = NOTICES['gate.abandoned'] ?? null
+  band = answered(NOTICES['gate.abandoned'] ?? null)
   persist()
   paint()
 }
@@ -1806,7 +1889,7 @@ function beginDescent(): void {
   } else {
     screen = { kind: 'room' }
   }
-  notice = null
+  band = HUSHED
   persist()
   paint()
 }
@@ -1819,7 +1902,7 @@ function beginDescent(): void {
 function commitDoor(door: Door): void {
   if (heldBack(ledgers, ROOM_BOOK, here()).length > 0) {
     // A stop, not a hint: it names nothing and points at nothing (art. 3).
-    notice = NOTICES['door.held'] ?? ''
+    band = answered(NOTICES['door.held'] ?? '')
     paint()
     return
   }
@@ -1829,7 +1912,7 @@ function commitDoor(door: Door): void {
   // suspender rather than the ordinary path.
   if (!opens(ledgers, ROOM_BOOK, here(), door)) {
     // art. 5: the world never punishes touch; it sometimes stops offering.
-    notice = NOTICES['door.locked'] ?? ''
+    band = answered(NOTICES['door.locked'] ?? '')
     refused = true
     paint()
     return
@@ -1852,7 +1935,7 @@ function walk(door: Door, said: string | null = null): void {
   bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
   pick = onArrival(doors(bands))
   greet()
-  notice = said
+  band = answered(said)
   persist()
   paint()
 }
@@ -1870,7 +1953,7 @@ function finishTheDepth(): void {
   unbidden = null
   screen = { kind: 'finished' }
   focus(panelAfter('finished'))
-  notice = null
+  band = HUSHED
   persist()
   paint()
 }
@@ -1897,7 +1980,7 @@ function openTheFight(door: Door, said: string | null = null): void {
     // same way it did the first time.
     focus(panelAfter('fight-resumed'))
     if (door.ends !== true) ledgers = openDoor(ledgers, door)
-    notice = NOTICES['fight.resumed'] ?? ''
+    band = answered(NOTICES['fight.resumed'] ?? '')
     persist()
     paint()
     return
@@ -1922,7 +2005,7 @@ function openTheFight(door: Door, said: string | null = null): void {
   // turns, so the fight is the only place it can be met.
   const who = encounterOfHorror(horror.id)
   if (who !== null) ledgers = { ...ledgers, permanent: meet(ledgers.permanent, who) }
-  notice = said
+  band = answered(said)
   persist()
   beginAdvance()
   paint()
@@ -2010,7 +2093,7 @@ function fightActs(): void {
       verb('roll', () => {
         fight = withTurn(now, cast(now.turn, lots(1)))
         phase = 'keep'
-        notice = null
+        band = HUSHED
         persist()
         paint()
       }),
@@ -2026,7 +2109,7 @@ function fightActs(): void {
           fight = withTurn(now, recast(now.turn, lots(2)))
           phase = 'claim'
           selected = []
-          notice = null
+          band = HUSHED
           persist()
           paint()
         },
@@ -2057,7 +2140,7 @@ function fightActs(): void {
   fightPanel.append(
     verb('attack', () => {
       fight = withTurn(now, claim(now.turn, selected, line, LADDER, goods()))
-      notice = null
+      band = HUSHED
       // The claim is on the ledger before the beat runs, so a phone locked
       // mid-resolve wakes with the attack made rather than unmade (art. 75).
       persist()
@@ -2076,6 +2159,11 @@ function endTurn(): void {
   if (now === null) return
   resolving = decide(now.turn, 'end-turn', now.armor, goods())
   selected = []
+  // card 69: **the turn says what it did**, both halves, and it holds the
+  // band until the player turns it. Before this, pressing Attack moved two
+  // numbers and then talked about the next intent: nothing on screen ever
+  // said you hit it for twenty, or that it took seven out of you.
+  band = answered(saysExchange(resolving))
   // art. 116: the resolve is a beat of presentation and nothing else — no
   // decision waits on it (art. 1) — so with the world held still it is
   // skipped and the turn lands. What the dimming would have shown is what
@@ -2097,7 +2185,10 @@ function settleTurn(): void {
   selected = []
   switch (routeTurn(advancedFight, resolution)) {
     case 'fight-continues':
-      notice = null
+      // card 69: **the band keeps what the turn did.** It used to be hushed
+      // here, which is why the only thing the player ever read in a fight
+      // was the next intent — the exchange had already been thrown away by
+      // the time the turn settled.
       persist()
       paint()
       return
@@ -2106,8 +2197,36 @@ function settleTurn(): void {
     case 'fled':
       return runFromTheFight()
     case 'death':
-      return died()
+      // card 69: the scrawl keys on the blow that landed, not on the horror
+      // that was carrying it. A run killed by CORRODE was being told to
+      // count to the fifth intent, which is a note about something that did
+      // not happen.
+      return died(endLineFor(theBlow(now, advancedFight), now.horror.id))
   }
+}
+
+/**
+ * card 69: what finished the run, as the stem its scrawl is keyed on.
+ *
+ * The turn's own intent is not always the answer, and the playtest's own
+ * death was one of the exceptions: a bleed opened three turns earlier ticked
+ * after the blow landed and finished a turn the blow had not. A cost face
+ * (art. 86) does the same on the other side of the beat. So the events the
+ * advance just wrote are read back, and the *last* thing that took health is
+ * what the Book records — none of the three borrows another's lesson, and
+ * empty falls back to the horror's own line.
+ */
+function theBlow(before: Fight, after: Fight): string {
+  const fresh = after.events.slice(before.events.length)
+  for (let at = fresh.length - 1; at >= 0; at--) {
+    const event = fresh[at]
+    if (event === undefined) continue
+    if (event.kind === 'struck') return before.turn.intent.verb
+    // Neither of these is an intent, and neither is the horror's doing.
+    if (event.kind === 'bled') return 'bleed'
+    if (event.kind === 'cost') return 'cost'
+  }
+  return ''
 }
 
 function wonTheFight(): void {
@@ -2129,7 +2248,11 @@ function wonTheFight(): void {
     // art. 71 as strengthened (card 63): a fight ending is an arrival in the
     // room it was fought at the door of, and an arrival picks the way on.
     pick = onArrival(doors(bands))
-    notice = NOTICES['fight.won'] ?? null
+    // art. 37, card 69: the keeper the depth was built around gets its own
+    // line. Unlocking the door is ceremonial and the fall was not — it said
+    // the same six words a stray in a corridor says, which left the depth's
+    // last beat flatter than its second-to-last.
+    band = answered(NOTICES['warden.fell'] ?? NOTICES['fight.won'] ?? null)
     persist()
     paint()
     return
@@ -2160,10 +2283,27 @@ function runFromTheFight(): void {
   focus(panelAfter('fight-fled'))
   bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
   pick = onArrival(doors(bands))
-  notice = NOTICES['fight.fled'] ?? ''
+  band = answered(NOTICES['fight.fled'] ?? '')
   persist()
   paint()
 }
+
+/**
+ * card 69: **the ending's own candles.**
+ *
+ * Death was not an event. The turn resolved and the next thing on screen was
+ * the following run's Crossing, fully lit, with the vitals back to full and
+ * one lowercase line at the top — nothing said the run had ended, and the
+ * verb underneath said Descend, which is what the front door says.
+ *
+ * The scrawl was being asked to carry both *the run is over* and *here is
+ * what killed you*, and it was written to carry only the second. So the
+ * ending is two candles: him having it, then the thing he gets down before
+ * it goes. Turning between them is the word band's own tap (art. 29), which
+ * is the vocabulary a room's candles already use.
+ */
+let ending: readonly string[] = []
+let endingAt = 0
 
 function died(cause: string = endLineOf(fight?.horror.id ?? '')): void {
   clearTimeout(advanceTimer)
@@ -2181,7 +2321,11 @@ function died(cause: string = endLineOf(fight?.horror.id ?? '')): void {
   refused = false
   screen = { kind: 'dead', cause }
   focus(panelAfter('died'))
-  notice = null
+  // The run ends, and is seen to end. The scrawl is the second candle, so it
+  // reads as a thing he wrote rather than as a caption on a fresh corridor.
+  ending = [saysDeath(cause), ROOM_BOOK.scrawl(cause)].filter((said) => said !== '')
+  endingAt = 0
+  band = HUSHED
   persist()
   paint()
 }

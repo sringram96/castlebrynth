@@ -110,10 +110,17 @@ function thumb(opened: Fight, lot: Lot) {
       if (phase !== 'claim' || selected.length === 0) return []
       return claimable(now.turn, selected, LADDER)
     },
-    /** What the tray says when a selection is owed a reason (art. 72). */
+    /**
+     * What the tray says when a selection is owed a reason (art. 72).
+     *
+     * card 71: the reason is a *reason* now. The tray used to print the
+     * floor's offer and "No combo uses exactly these dice" side by side,
+     * which reads as offering something and denying it in one breath — so
+     * what stands beside the offer says what the offer is.
+     */
     says(): string | null {
       if (phase !== 'claim' || selected.length === 0) return null
-      return fitsNothing(now.turn, selected, LADDER) ? (NOTICES['claim.exact'] ?? '') : null
+      return fitsNothing(now.turn, selected, LADDER) ? (NOTICES['claim.floor'] ?? '') : null
     },
     /**
      * "attack" — one press (art. 41, amended 2026-08-05). The selection is
@@ -218,7 +225,10 @@ describe('the thumb — art. 72 (the exact selection, and why it fits nothing)',
     // The floor is on offer, and the floor is not a combo (art. 46) — so the
     // thumb is owed a reason, and this is the line that was missing.
     expect(play.offers()).toEqual(['any-dice'])
-    expect(play.says()).toBe('No combo uses exactly these dice.')
+    expect(play.says()).toBe(NOTICES['claim.floor'])
+    // card 71: and it reads as one statement beside the offer rather than as
+    // a refusal contradicting it.
+    expect(play.says()).not.toBe(NOTICES['claim.exact'])
 
     // Releasing the one die that fits nothing turns the message into an offer.
     const stray = play.laid().find((landed) => landed.face.value === 1)!

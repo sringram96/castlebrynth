@@ -156,6 +156,8 @@ export {
 export {
   ARRIVALS,
   BEATS,
+  DEATHS,
+  EXCHANGE,
   NOUNS,
   LOOKS,
   ORIGINS,
@@ -173,10 +175,14 @@ export {
   dieLabel,
   intentChip,
   itemLabel,
+  endLineFor,
   originOf,
+  saysAct,
   saysBound,
   saysClaim,
+  saysDeath,
   saysDie,
+  saysExchange,
   saysGood,
   saysIntent,
   saysItem,
@@ -221,7 +227,9 @@ import { CROSSING as THE_CROSSING } from './rooms.js'
 import {
   ARRIVALS,
   BEATS,
+  DEATHS,
   END_LINES,
+  EXCHANGE,
   INTENT_SAYS,
   LABELS,
   LOOKS,
@@ -262,7 +270,37 @@ const AMENDED_NOTICES: readonly string[] = [
   'choose.which',
   'book.title',
   'book.empty',
+  // The answer wave. Card 68 has not landed, so the rest of this map is
+  // still the debt — but nothing new may be written in the repealed voice
+  // (rules/voice.md), so every line this wave touched is judged as a
+  // thought from the moment it is written.
+  'door.blind',
+  'door.held',
+  // card 71: the totals line, said as one statement rather than as an offer
+  // and a refusal standing next to each other.
+  'claim.exact',
+  'claim.floor',
 ]
+
+/**
+ * card 69: every `answer.*` line is this wave's, so it is a prefix rather
+ * than a list. A new act ships with a new answer, and the answer is judged
+ * as a thought the moment it is written — there is no version of that where
+ * somebody has to remember to add a key here as well.
+ */
+const AMENDED_PREFIXES: readonly string[] = ['answer.']
+
+function amendedNotice(key: string): boolean {
+  return AMENDED_NOTICES.includes(key) || AMENDED_PREFIXES.some((at) => key.startsWith(at))
+}
+
+/**
+ * The same declaration for the looks, and for the same reason. `LOOKS` is
+ * cards 27–29's debt and is otherwise a placeholder wholesale; these are the
+ * lines the answer wave wrote, and they answer to the amended register from
+ * the day they were written rather than from the day the card lands.
+ */
+const AMENDED_LOOKS: readonly string[] = ['basin.water.kept', 'mender.figure.kept']
 
 /**
  * Every player-facing string in the game, for the voice lint. If a string
@@ -283,7 +321,11 @@ const AMENDED_NOTICES: readonly string[] = [
 export function everyString(): readonly Utterance[] {
   const noticesIn = (amended: boolean): readonly string[] =>
     Object.entries(NOTICES)
-      .filter(([key]) => AMENDED_NOTICES.includes(key) === amended)
+      .filter(([key]) => amendedNotice(key) === amended)
+      .map(([, said]) => said)
+  const looksIn = (amended: boolean): readonly string[] =>
+    Object.entries(LOOKS)
+      .filter(([key]) => AMENDED_LOOKS.includes(key) === amended)
       .map(([, said]) => said)
   return [
     // The amended register, as far as it has been written. Everything the
@@ -297,6 +339,16 @@ export function everyString(): readonly Utterance[] {
       // working out what his own choosing has done.
       ...Object.values(ARRIVALS).flat(),
       ...noticesIn(true),
+      ...looksIn(true),
+      // card 69: what a turn did, and the candle before the scrawl. Both are
+      // him in live play, so both are thoughts — the `{dealt}` tokens are
+      // filled by `saysExchange` and are words like any other to the lint.
+      ...Object.values(EXCHANGE),
+      ...Object.values(DEATHS),
+      // card 71: rewritten this wave — impending, and carrying both halves.
+      // The `{n}` tokens are filled by `saysIntent` and are words like any
+      // other to the lint.
+      ...Object.values(INTENT_SAYS),
     ]),
     // The Book of Ends is the pile of things he wrote down, and the line at
     // the head of it is the oldest of them.
@@ -314,12 +366,11 @@ export function everyString(): readonly Utterance[] {
       // written days before the register changed under them, so they wait on
       // the same card as the rooms they belong to.
       ...Object.values(UNBIDDEN),
-      ...Object.values(LOOKS),
+      ...looksIn(false),
       // art. 87: an origin is prose that reaches the player, so it is judged
       // as prose. If a sentence cannot pass the lint the item does not ship,
       // which is the article's acceptance test enforced rather than quoted.
       ...Object.values(ORIGINS),
-      ...Object.values(INTENT_SAYS),
       ...noticesIn(false),
     ]),
     ...asLabels([
