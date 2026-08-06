@@ -3,7 +3,9 @@ Articles keep their ledger numbers; cite as "art. N". Statuses: SETTLED
 binds every task. STANDING is inherited from GAME.md, unamended. DEFAULT
 binds until deliberately revisited. PARKED is not law — build nothing
 that assumes it. How the game is touched — the interaction model — lives
-in the-thumb.md (arts 66–76, 90–92, 116, 118).
+in the-thumb.md (arts 66–76, 90–92, 116, 118). What a touch may *cost* is
+art. 119, installed here beside arts 5–7 because it is about the world and
+not about the thumb.
 
 ## Time & the clock
 1. SETTLED — The rules are discrete: no decision is ever lost to slowness.
@@ -25,6 +27,51 @@ in the-thumb.md (arts 66–76, 90–92, 116, 118).
    looking is free and always answers.
 7. SETTLED — Outcomes, not clicks, are gated — on an item, a piece of
    knowledge, or a world event.
+
+### The price of an act (ratified 2026-08-06)
+119. SETTLED (ruled 2026-08-06) — **An act may carry a declared price, and
+     the price is visible before the press.**
+
+     **This is the Descent's art. 42.** The Lots promise the intent before
+     you commit — the number and the effect are on the frame from the top of
+     the turn, and keeping is planning. The Descent had commit, answer and
+     change, and no way to weigh a press before making it, so curiosity was
+     never dangerous, only slow. This article is the other half of the same
+     promise, said about a room instead of about a turn: **looking at the
+     thing tells you what the act about it costs, and looking stays free**
+     (art. 5). Pressing pays.
+
+     The price reaches the player through the **look**, because art. 68
+     abolished the inspect button and the tap *is* the inspection — and
+     because the verb it hangs on is two words or fewer (art. 66) and cannot
+     carry a number. So a thing whose act is priced answers with the price
+     in it, in the same breath as the noun (art. 111), and it answers that
+     way from the first tap — which is the tap that summons the verb, so
+     there is no order of presses in which the verb arrives before its
+     price.
+
+     **What a price may be is content**: health, a wound, a spoiled thing, a
+     fleeting moment closing (art. 4), noise that wakes something. What it
+     may never be is **the run** — a price takes from the body and stops
+     short of the last of it, because a press made out of curiosity may cost
+     a player something and may not cost them everything. A run ends to a
+     horror, to the Warden, or to a door; never to a question.
+
+     **The return bar, and it is strict.** Every priced act returns at least
+     one of: **knowledge, leverage, a relationship, a permanent change, or an
+     exceptional object.** *Lose four health and receive ordinary loot* does
+     not ship. Art. 88's knowledge goods are the cheapest legal payload and
+     should be the most common one — a priced act that sharpens a question
+     is worth more than one that answers it.
+
+     Four guards, and all four are existing law. **Art. 3 stands**: nothing
+     required to finish a run sits behind a priced act, so a run can never be
+     lost by declining to gamble. **Art. 5 stands absolutely**: the look that
+     reveals the price is free, and it is free every time. **Art. 118
+     composes**: an act that cannot change anything is not offered, so a
+     priced act whose payload is spent is absent and the thing's look says
+     why. **Art. 2 is untouched**: these are not QTEs and nothing here is
+     timed.
 8. PARKED — The lean (drag to peek with true parallax, spring home) exists
    in the reference renderer. Not law.
 
@@ -46,11 +93,30 @@ in the-thumb.md (arts 66–76, 90–92, 116, 118).
     article is spent, not parked.
 
 ## The chain
-31. SETTLED (amended) — Blind chains. A depth is a chain of rooms joined
-    by doors; at each room, one to three doors — one is a corridor
-    moment, three is a crossroads. No map UI exists — the road ahead is
-    only ever the doors in front of you. (Senses on doors are PARKED
-    with the hint system; see art. 77's note.)
+31. SETTLED (amended twice; the senses unparked 2026-08-06) — Blind chains.
+    A depth is a chain of rooms joined by doors; at each room, one to three
+    doors — one is a corridor moment, three is a crossroads. No map UI
+    exists — the road ahead is only ever the doors in front of you.
+
+    **A door has a sense, and the sense is its region tag, leaking**
+    (art. 77's mechanism, unparked). One line per door, given on a tap:
+    looking is free (arts 5–6) and a door answers like anything else
+    (art. 69). Without it every choice is between identical unknowns and
+    the drift is asking its twenty questions in a language the player
+    cannot read.
+
+    Two rules keep it honest. **A sense is true and partial**: it never
+    lies and it never completes. It says what the region smells like, not
+    what the room contains — and it cannot, because under art. 79 the room
+    does not exist until the door is opened. **A sense is not a label**: it
+    never names the region, never ranks the doors and never says *danger*.
+    The player learns the vocabulary by descending, which is art. 10's
+    knowledge doing its job.
+
+    **The lean is felt, never displayed.** The tally is not shown in any
+    form, ever (art. 77): a player who keeps taking warm doors should feel
+    the labyrinth leaning several rooms before art. 78 says *arrival*, and
+    a number on the frame would spend that for nothing.
 32. SETTLED — Every death reseeds. Each run is a fresh randomized
     arrangement of the authored rooms.
 33. SETTLED — Every arrangement must be winnable: on any path the player
@@ -121,8 +187,15 @@ in the-thumb.md (arts 66–76, 90–92, 116, 118).
     region tag; every choice tallies. Rooms deal from pools weighted by
     the tally — the labyrinth leans as the player leans. Twenty
     questions, not a fork in a road: no single door means much, and the
-    pattern of doors means everything. (When the parked hint system
-    returns, a door's sense is simply its region tag, leaking.)
+    pattern of doors means everything.
+
+    **A door's sense is that tag, leaking** (unparked 2026-08-06 and
+    written into art. 31, which is where it is now law). The mechanism this
+    article already specified is the whole of the implementation: the tag
+    exists, the tap answers, and the answer is drawn from the region's own
+    vocabulary. Nothing about the road not taken is computed to produce one
+    — the tag is dealt with the door (art. 79) and the sense is a function
+    of the tag.
 78. SETTLED (ruled) — The lock is forced. By a set door count (content),
     one region locks: the rest of the depth deals from its pool, its
     bound encounters activate, and the first room after the lock
@@ -149,10 +222,22 @@ in the-thumb.md (arts 66–76, 90–92, 116, 118).
     or floating, and remembers. Rooms declare sockets; encounters carry
     their own words — a room's authored prose never assumes what fills
     its sockets.
-84. SETTLED (ruled) — What survives death. Unique encounters respawn with
-    the reseed — the run burns (art. 11) — but meetings are knowledge:
-    the permanent ledger remembers who you have met, and a merchant's
-    memory of you lives there too. The labyrinth remembers you.
+84. SETTLED (ruled; extended 2026-08-06) — What survives death. Unique
+    encounters respawn with the reseed — the run burns (art. 11) — but
+    meetings are knowledge: the permanent ledger remembers who you have
+    met, and a merchant's memory of you lives there too. The labyrinth
+    remembers you.
+
+    **And some of what you refuse is remembered.** A refusal is a flag on
+    the permanent ledger, written when a run walks out of a room leaving
+    something it was offered — the forfeited half of a fork (art. 89
+    produces one every time), a bone left where it lay, a mercy not taken,
+    a question not asked (art. 119). It is a small, reusable vocabulary and
+    it is deliberately capped: a flag lands in two or three later moments,
+    and a game that authored a branch per refusal would be authoring
+    hundreds of them for a line each. What a flag changes is what a tap
+    answers and what a good's origin sentence says (arts 87–88) — the
+    machinery for both already exists and needed a sentence, not a system.
 85. PARKED — The trail. The run's history graph (art. 36) could someday
     be shown as where you have been; art. 31 bans the road ahead, not
     the road behind. Showing it still requires an amendment. Parked,

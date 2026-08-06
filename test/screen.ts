@@ -31,15 +31,27 @@
  * phone, and DESIGN.md says so.
  */
 
-import { ROOM_BOOK, horrorIn, horrorOf, keeperStanding, saysAct, saysExchange, saysIntent } from '../src/content/index.js'
+import {
+  NOTICES,
+  ROOM_BOOK,
+  horrorIn,
+  horrorOf,
+  keeperStanding,
+  saysAct,
+  saysDoor,
+  saysExchange,
+  saysIntent,
+} from '../src/content/index.js'
 import type { Act, Tappable } from '../src/descent/index.js'
 import {
   act,
+  actsIn,
   chooseDoor,
   enterRoom,
   heldBack,
   look,
   looking,
+  priceAt,
   sceneStateOf,
   tappablesIn,
   turnedHere,
@@ -56,6 +68,7 @@ import { HUSHED, answered, bandLine, noticed } from '../src/shell/band.js'
 import { offeredActs, wayOn } from '../src/shell/strip.js'
 import type { WayOn } from '../src/shell/strip.js'
 import type { Ledgers } from '../src/state/index.js'
+import { knownMarks } from '../src/state/index.js'
 import { DEALER, greet, opened } from './drift.js'
 import { claimGreedily, keepSensibly } from './policy.js'
 
@@ -88,6 +101,8 @@ export interface Shell {
   press(one: Act): Press
   /** art. 118: the door's verb, or nothing at all. */
   way(door: Door): WayOn | null
+  /** arts 31, 69 (card 49): what tapping this door answers with. */
+  sense(door: Door): string
   /** Walk through it (art. 79: the room behind it is dealt now). */
   walk(door: Door): void
   /** art. 30: the door is the fight. */
@@ -149,6 +164,11 @@ export function shellAt(seed: number): Shell {
         target,
         ledgers.run?.carried ?? [],
         withholding(ledgers, ROOM_BOOK, node(), target.id),
+        // art. 119: and the price, which the tap that summons the verb is
+        // the tap that says.
+        priceAt(ledgers, ROOM_BOOK, node(), target.id),
+        // arts 10, 84: and what he still knows.
+        knownMarks(ledgers.permanent),
       ).text
       band = noticed(said)
       ledgers = looking(ledgers, target)
@@ -161,12 +181,25 @@ export function shellAt(seed: number): Shell {
       // press starts is `enter`'s business and is driven by the caller.
       const before = shell.said()
       const was = ledgers
-      ledgers = act(ledgers, one)
+      // arts 84, 89: the room's acts go with the press, so a fork's
+      // forfeiture can write the flag that lives on the act it closed.
+      ledgers = act(ledgers, one, actsIn(ROOM_BOOK, node()))
       reread()
       band = answered(saysAct(one.id))
       return { verb: one.verb, moved: ledgers !== was, before, after: shell.said() }
     },
     way: (door) => wayOn(ledgers, ROOM_BOOK, node(), door, keeperUp(door)),
+    // `doorMark`: the sense first, because it is what the door is, and
+    // art. 118's stop after it, because it is what he is doing about it.
+    sense: (door) =>
+      [
+        saysDoor(door, node().instance),
+        ...(heldBack(ledgers, ROOM_BOOK, node()).length > 0
+          ? [NOTICES['door.held'] ?? '']
+          : []),
+      ]
+        .filter((said) => said !== '')
+        .join(' '),
     walk(door) {
       const walked = chooseDoor(ledgers, chain, ROOM_BOOK, door, DEALER)
       ledgers = walked.ledgers

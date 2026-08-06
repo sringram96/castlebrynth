@@ -9,10 +9,12 @@
  * here.
  */
 
+import type { Door, InstanceId } from '../gen/index.js'
 import type { Die, Face, Good, Intent, Line, Resolution } from '../lots/index.js'
 import type { ItemId } from '../state/index.js'
 import { LADDER } from './ladder.js'
 import { endLineOf } from './horrors.js'
+import { ECHOES, marked } from './marks.js'
 import {
   DEATHS,
   END_LINES,
@@ -23,7 +25,48 @@ import {
   NOTICES,
   ORIGINS,
   READOUT,
+  SENSES,
 } from './prose.js'
+
+// ── The doors speak (card 49, arts 31, 77) ─────────────────────────────
+
+/**
+ * A door's sense: **its region tag, leaking.**
+ *
+ * Which of the pool's lines this door gives is hashed off the door's own
+ * identity — the instance it stands in and which door of that room it is —
+ * so it is a function of the same two facts art. 82 already keys the world
+ * on. Two consequences, and both are the point: a door says the same thing
+ * every time it is tapped and every time it is come back to, and a
+ * crossroads offering three doors tagged the same way still gives three
+ * different sentences rather than the same one three times.
+ *
+ * Nothing about the road not taken is computed to produce one (art. 79). The
+ * tag was dealt with the door; this only reads it.
+ *
+ * The last door of the depth has no tag to leak — there is nothing left to
+ * lean toward (art. 37) — so it answers with what it is instead.
+ */
+export function saysDoor(door: Door, instance: InstanceId): string {
+  if (door.ends === true) return NOTICES['door.last'] ?? NOTICES['door.blind'] ?? ''
+  const pool = SENSES[(door.region as string | null) ?? '']
+  if (pool === undefined || pool.length === 0) return NOTICES['door.blind'] ?? ''
+  return pool[hashOf(`${instance as string}→${door.at}`) % pool.length] ?? pool[0] ?? ''
+}
+
+/**
+ * A small deterministic hash — the same shape the world clock's phase offset
+ * uses (art. 109), for the same reason: a choice that has to be identical on
+ * every visit cannot be made by a lot that has already been spent.
+ */
+function hashOf(key: string): number {
+  let held = 2166136261
+  for (let i = 0; i < key.length; i++) {
+    held ^= key.charCodeAt(i)
+    held = Math.imul(held, 16777619)
+  }
+  return Math.abs(held)
+}
 
 /** Which name a die answers to. Shapes are free; the names are authored. */
 export function dieLabel(die: Die): string {
@@ -40,9 +83,18 @@ export function dieLabel(die: Die): string {
 /**
  * art. 87: the one sentence that makes a good an item rather than a stat
  * block. Empty for the plain bones, which came off nobody.
+ *
+ * art. 84 (extended, card 87): **and it may say that you have been offered
+ * one of these before.** The die you refused turns up in another traveler's
+ * hand, and what changes is the sentence rather than the die — art. 87's
+ * machinery needed a sentence and not a system, which is the whole reason
+ * this is a second key in `ORIGINS` and not a field on `Good`.
  */
-export function originOf(good: Good): string {
-  return ORIGINS[good.id as string] ?? ''
+export function originOf(good: Good, remembered: readonly string[] = []): string {
+  const id = good.id as string
+  const again = ORIGINS[`${id}.again`]
+  if (again !== undefined && marked(ECHOES, `${id}.origin`, remembered)) return again
+  return ORIGINS[id] ?? ''
 }
 
 /**
@@ -54,11 +106,16 @@ export function originOf(good: Good): string {
  * rides with the numbers rather than behind another tap, because the whole
  * claim of the article is that the two explain each other.
  */
-export function saysDie(die: Die, showing?: Face, spentIn?: Line): string {
+export function saysDie(
+  die: Die,
+  showing?: Face,
+  spentIn?: Line,
+  remembered: readonly string[] = [],
+): string {
   const parts: string[] = [dieLabel(die)]
   if (showing === undefined) {
     parts.push(`${READOUT.faces} ${die.faces.map((face) => face.value).join(' ')}`)
-    const origin = originOf(die)
+    const origin = originOf(die, remembered)
     if (origin !== '') parts.push(origin)
   } else {
     parts.push(`${READOUT.showing} ${showing.value}`)
@@ -211,8 +268,20 @@ export function itemLabel(item: ItemId): string {
  * sentence that says where its rules come from. Talismans and wearables
  * answer the same way a die does, because a tap is a tap (art. 68).
  */
-export function saysGood(good: Good): string {
+export function saysGood(good: Good, remembered: readonly string[] = []): string {
   const label = LABELS[good.id as string] ?? (good.id as string)
-  const origin = originOf(good)
+  const origin = originOf(good, remembered)
   return origin === '' ? label : `${label} · ${origin}`
+}
+
+/**
+ * art. 119: the price, put into the sentence that carries it.
+ *
+ * The look is authored with `{n}` in it and the number arrives from the act,
+ * exactly as art. 42's intent lines fill from the intent — so no sentence
+ * can drift off what a press actually charges, and a price that changed
+ * would change the words with it.
+ */
+export function saysLook(said: string, price: number): string {
+  return price <= 0 ? said : fill(said, { n: price })
 }

@@ -50,6 +50,7 @@ import {
   endLineFor,
   saysAct,
   saysBound,
+  saysDoor,
   saysClaim,
   saysDeath,
   saysDie,
@@ -60,6 +61,7 @@ import {
 import type { Act, Bands, Pick, Tappable } from './descent/index.js'
 import {
   act,
+  actsIn,
   breathFor,
   canOpen,
   chooseDoor,
@@ -78,6 +80,7 @@ import {
   remember,
   sceneKey,
   sceneStateOf,
+  priceAt,
   stranded,
   turnedHere,
   withholding,
@@ -137,6 +140,7 @@ import {
   finish,
   focused,
   firstPermanent,
+  knownMarks,
   load,
   meet,
   save,
@@ -591,6 +595,14 @@ function markFor(target: Tappable): HTMLButtonElement {
         target,
         ledgers.run?.carried ?? [],
         withholding(ledgers, ROOM_BOOK, here(), target.id),
+        // art. 119: and the fourth, which is the price. The tap that summons
+        // the verb is the tap that says what it costs, so there is no order
+        // of presses in which the verb arrives before its number.
+        priceAt(ledgers, ROOM_BOOK, here(), target.id),
+        // arts 10, 84: and the fifth — what he still knows, clues and
+        // refusals together, because to a thing being looked at they are one
+        // thing.
+        knownMarks(ledgers.permanent),
       ).text,
     )
     ledgers = looking(ledgers, target)
@@ -602,10 +614,17 @@ function markFor(target: Tappable): HTMLButtonElement {
 }
 
 /**
- * arts 31, 69, 77: a door answers, and what it answers with is itself. Its
- * region tag is hidden — a sense would be exactly that tag leaking, and the
- * hint system is parked — so the line the tap gives back says what a shut
- * door says and no more.
+ * **arts 31, 69, 77 (card 49): a door answers, and what it answers with is
+ * its region tag, leaking.**
+ *
+ * The senses are unparked. One line per door, free on a tap, true and
+ * partial and never a label — it says what the region smells like, never
+ * what the room contains, and it names nothing and ranks nothing. Without
+ * it every choice here was between identical unknowns and the drift was
+ * asking its twenty questions in a language the player could not read.
+ *
+ * The tally is still shown in no form whatever (art. 77). The lean is felt,
+ * and this is the whole of what it is felt through.
  */
 function doorMark(door: Door): HTMLButtonElement {
   const el = document.createElement('button')
@@ -620,10 +639,30 @@ function doorMark(door: Door): HTMLButtonElement {
     // so the door's own answer is where that has to be said. It still names
     // nothing and points at nothing (art. 3) — what changed is that the
     // player now hears it by looking rather than by pressing and failing.
+    /**
+     * **Both, and in that order** (arts 31, 118).
+     *
+     * A door with something still owed to the room offers no verb, so its
+     * own answer is where that has to be said — and the first cut of card 49
+     * let that *replace* the sense, which the playtest walk caught at once:
+     * a room holding you back turned every door in it blind, and the one
+     * moment a player most wants to know which way they are about to commit
+     * is the moment they are being made to look around first.
+     *
+     * So the sense comes first, because it is what the door *is*, and the
+     * stop comes after it, because it is what he is doing about it. Looking
+     * is free (art. 5) and it stays free of art. 3's refusal; the stop still
+     * names nothing and points at nothing.
+     */
     band = noticed(
-      (heldBack(ledgers, ROOM_BOOK, here()).length > 0
-        ? NOTICES['door.held']
-        : NOTICES['door.blind']) ?? '',
+      [
+        saysDoor(door, here().instance),
+        ...(heldBack(ledgers, ROOM_BOOK, here()).length > 0
+          ? [NOTICES['door.held'] ?? '']
+          : []),
+      ]
+        .filter((said) => said !== '')
+        .join(' '),
     )
     paint()
   }
@@ -1627,7 +1666,10 @@ function doAct(one: Act): void {
   // art. 118: a mercy a whole body cannot drink is no longer on the strip at
   // all, so a mercy that is pressed is always a mercy that lands — which is
   // why there is no longer a branch here asking which of the two happened.
-  ledgers = act(ledgers, one)
+  // arts 84, 89: the room's acts go with the press, because a fork forfeits
+  // by act *id* and the flag a refusal writes lives on the act. Without them
+  // the deeds are still written and the refusal is simply not noticed.
+  ledgers = act(ledgers, one, actsIn(ROOM_BOOK, here()))
   bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
   // art. 70: prose confirms, pixels prove — the answer is the room without
   // the thing in it, which the scene state has already stopped drawing.

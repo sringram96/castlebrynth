@@ -136,6 +136,21 @@ export const BEATS: Readonly<Record<string, readonly string[]>> = {
     "The Warden's door. Black iron, three bands, no seam.",
     'There is one lock, and it is not small.',
   ],
+  /**
+   * **The covered font** (card 88, the descent wave). The exemplar room for
+   * art. 119, and the bar the rest of the depth is held to: *a room gives a
+   * question before it gives a reward.*
+   *
+   * Two candles and neither of them says anything is wrong. The room states
+   * what is there and stops — the cloth being wet from underneath, the lip
+   * being worn on the inside and the floor being dry are three free looks
+   * (art. 5), and the question is what they add up to rather than anything
+   * said out loud.
+   */
+  'room.trove.covered-font': [
+    'The covered font. A stone basin stands waist-high in the middle of the floor.',
+    'Cloth over the top of it, tied off under the rim. Somebody pulled it tight.',
+  ],
 }
 
 /** Tappable nouns are concrete and singular (voice). */
@@ -207,6 +222,11 @@ export const NOUNS: Readonly<Record<string, string>> = {
   'leech.thing': 'the dark bone',
   'cord.thing': 'the knotted cord',
   'plate.thing': 'the rusted plate',
+  // card 88: the covered font's three, and each is a plain noun before it is
+  // anything (art. 111). What they add up to is the room's business.
+  'font.cloth': 'the cloth',
+  'font.basin': 'the basin',
+  'font.dry': 'the dry floor',
 }
 
 /** What looking answers. Looking is free and always answers (art. 6). */
@@ -269,6 +289,15 @@ export const LOOKS: Readonly<Record<string, string>> = {
   // verb is absent, so this is the whole of where the reason can live —
   // and art. 40 is the reason: an unspent mercy keeps.
   'basin.water.kept': 'Copper, full to the lip. There is nothing open on me for it to close. It keeps.',
+  /**
+   * art. 118, second kind (card 88): the verb is absent because what it pays
+   * out is already on me. Knowledge survives death (arts 10–11), so these
+   * are what a man who has already asked the question reads instead — the
+   * answer he has, and why there is nothing to press.
+   */
+  'sump.grate.kept': 'Iron bars over a drop. I have had my head through one of these. It goes down past the light and it does not stop at a floor, and I do not need to look again.',
+  'kiln.mouth.kept': 'Brick, glazed smooth. I know what is back there: it runs past the wall and turns, and the turn is warm. My arm can stay out of this one.',
+  'font.cloth.kept': 'Cloth, tight, wet from underneath. Six, and then a seventh. There is nothing under here I have not already got, and I am not putting my ear down for it twice.',
   'mender.figure.kept': 'Its hands stay open. Nothing on me is bleeding, so it goes on waiting.',
   'door.ahead': 'Shut. Nothing comes under it, and nothing goes through it but you.',
   // art. 86: a traveler answers as a body. The bone is what the act takes;
@@ -282,6 +311,83 @@ export const LOOKS: Readonly<Record<string, string>> = {
   'leech.thing': 'One face of it is stained darker than the others. The stain is not dust.',
   'cord.thing': 'Knotted at every hand’s width. The knots run out before the cord does.',
   'plate.thing': 'Iron, rusted through in two places, and neither of them over the heart.',
+
+  // ── The covered font, free (card 88, arts 5, 111) ────────────────────
+  //
+  // Three looks that cost nothing and build the question without stating
+  // it: the cloth is wet **from below**, the lip is worn on the **inside**,
+  // and a basin like this should have left a ring on the floor. Nothing
+  // here says danger and everything implies it — which is the bar this room
+  // sets for every room authored after it.
+  'font.cloth': 'Cloth, tied under the rim and pulled drum-tight. It is wet. The wet is coming through from underneath.',
+  'font.basin': 'Stone, waist-high. The lip is worn smooth on the inside, and only on the inside.',
+  'font.dry': 'Dry all the way round the foot. A thing this full leaves a ring on the floor, and there is no ring.',
+
+  // ── What a price sounds like (art. 119) ──────────────────────────────
+  //
+  // The look is where the price is said, because the verb is two words
+  // (art. 66) and art. 68 abolished the button that could carry a number.
+  // `{n}` is the price and is filled by `saysLook` from the act itself, so
+  // no sentence here can drift off what a press actually charges — the same
+  // reason art. 42's intent lines fill from the intent.
+  'font.cloth.price':
+    'Cloth, tight, and wet from underneath. Putting my ear on it means leaning my weight on whatever is under there. {n} out of me, and I would know something.',
+  'sump.grate.price':
+    'Iron bars over a drop, and the gap is wide enough for my head. {n} out of me for the reach and the cold, and I would see what this place empties into.',
+  'kiln.mouth.price':
+    'Brick, glazed smooth, and the inside goes back past the wall. My arm fits. {n} out of me for whatever the brick takes off it, and I would know how far back it goes.',
+
+  // ── What he knows afterwards (arts 88, 119) ──────────────────────────
+  //
+  // A knowledge good earns its place by changing what a tap answers, and
+  // this is that, enforced: every clue the depth pays out changes two or
+  // three of these and `test/price.test.ts` walks them.
+  /**
+   * The three priced things' own second answers. Precedence puts these
+   * *between* the price and the withheld line (`lookKey`), and the walk is
+   * what found they were needed: a man who has just put his ear to the cloth
+   * and taps it again was being told what the cloth is made of, as though
+   * nothing had happened. `.price` is gone once the act is done, `.kept`
+   * only stands once the whole payload is spent, and this is the state in
+   * between — the same run, the thing now known.
+   */
+  'font.cloth.knows': 'Cloth, tight and wet. Six, and then a seventh. I have not worked out what the seventh one is and I would like to stop trying.',
+  'sump.grate.knows': 'Iron bars over the drop. It goes down past the light and it does not stop at a floor.',
+  'kiln.mouth.knows': 'Brick, glazed smooth. It runs back past the wall and turns, and the turn is warm.',
+  'cistern.water.knows': 'Flat and black and deeper than the room is tall. I count what comes up out of it. Six, and I wait.',
+  'drip.water.knows': 'The water goes under the wall and keeps going. Six seams, and I keep looking for the seventh.',
+  'buried.sand.knows': 'Sand, banked to the walls, still coming in. It comes from the same place everything down here goes.',
+  'crossing.grate.knows': 'Light through iron I cannot reach. Whatever falls through here is going the same way I am.',
+  'pyre.timber.knows': 'Charred through and still square. It burned somewhere with a flue in it, and then somebody carried it here.',
+  'tally.marks.knows': 'Cut in fives, and the last group stops at four. The same hand cut the inside of that basin.',
+  'crossing.bones.knows': 'Five bones, worn smooth. Somebody was counting these too, and they got further than I have.',
+
+  // ── What he has walked past (art. 84 as extended) ────────────────────
+  //
+  // Nine flags across the whole game and each lands in two or three of
+  // these. A second answer, never a second branch: the labyrinth remembers
+  // and says so, and nothing about what it deals moves.
+  'traveler.pusher.thing.again': 'The hand is out and shut on one bone. I have left one of these lying before, and I am still down here.',
+  'traveler.careful.thing.again': 'Folded, tidy, and a bone by the knee. I walked past one of these. It is not going to be a habit.',
+  'traveler.runner.thing.again': 'One boot pointing back the way I came. I left the last one where he lay, and I keep thinking about it.',
+  'crossing.traveler.again': 'Not him. I check anyway. I have not checked every one, and I said I would.',
+  'sister.elder.thing.again': 'One notch, cut halfway. There was another of these and I left it, so this one is on its own the way the last one was.',
+  'sister.younger.thing.again': 'Two notches. Somewhere above me is the one I did not pick up, and it is above me for good.',
+  'bonefield.bone.again': 'Long bones, none of them a pair. I have left half of a pair behind me already.',
+  'cord.thing.again': 'Knotted at every hand of it. I have left one of these coiled on a floor. Somebody counted with it and I did not.',
+  'tally.marks.again': 'Someone counts something here. I had a cord for counting in my hand and I put it down.',
+  'plate.thing.again': 'Straps cut, rusted through in two places. I left the last one lying, and I have been hit since.',
+  'warden.door.again': 'Black iron, scored where it swings. There was iron on a floor behind me that I could be wearing at this door.',
+  'basin.water.again': 'Copper, full to the lip, still. I walked away from one of these with blood on me. Not twice.',
+  'font.step.again': 'Worn through in the middle. A great many knees. I did not put mine down at the last one.',
+  'mender.figure.again': 'Its hands are open. Somebody sat like that for me before and I went past them without stopping.',
+  'leech.thing.again': 'One face stained darker. I left the last one where it lay, and I have bled out slow since.',
+  'crawl.legs.again': 'Too many, and the same on every side. Whatever takes a little at a time takes it from me for free.',
+  'sump.grate.again': 'Iron bars over a drop. I stood over one of these and did not look. I am doing it again.',
+  'kiln.mouth.again': 'Brick, and the inside goes back past the wall. I kept my arm out of the last one, so I still do not know.',
+  'font.cloth.again': 'Cloth, tight, wet from underneath. I did not put my ear to the last one of these either.',
+  'font.basin.again': 'The lip is worn on the inside. There was something in one of these I did not take, and it is still in there.',
+  'cistern.cage.again': 'A cage, open, standing in the water to its middle. I left something in a basin once. This is worse and it is the same.',
 }
 
 /**
@@ -309,6 +415,28 @@ export const ORIGINS: Readonly<Record<string, string>> = {
     'The cord of one who counts the way down in order, and what you claim in order scores a tier higher.',
   'wearable.rusted-plate':
     'Iron somebody wears down here, rusted through in two places, and still good for three.',
+  /**
+   * card 88: the counting stone is placed now, so it owes art. 87 the same
+   * sentence every other shipped good owes. Its rule is that sixes count
+   * double, and its origin is somebody who counted — which is also why it
+   * was in a basin under a cloth with the count cut inside the lip.
+   */
+  'talisman.ossuary':
+    'The luck of one who counts the high faces twice and the low ones not at all, and stops counting at four.',
+  /**
+   * art. 84 (extended, card 87): **the die you refused turns up in another
+   * traveler's hand.** Same good, same numbers, one sentence further on —
+   * because the labyrinth remembers, and the cheapest true way to say so is
+   * in the sentence the good already owed (art. 87).
+   */
+  'bone.pusher.again':
+    'The one who throws high until the throw that lands low — and there is one of these on a floor behind you, in a hand you did not open.',
+  'bone.careful.again':
+    'The one who never throws high and never throws low, and dies here regardless. So did the one you stepped over.',
+  'bone.runner.again':
+    'The one who keeps the strong throw for the last room. You have left one of these lying, and it is still lying there.',
+  'talisman.cord.again':
+    'The cord of one who counts the way down in order, and what you claim in order scores a tier higher. There was another, coiled, and you walked on.',
 }
 
 /**
@@ -344,6 +472,62 @@ export const SOCKET_BEATS: Readonly<Record<string, readonly string[]>> = {
    * to find out (art. 68).
    */
   fork: ['Two things lie here. What you take closes what you leave.'],
+}
+
+/**
+ * **The doors speak** (card 49, art. 31 as amended 2026-08-06).
+ *
+ * A door's sense is its region tag, leaking — the mechanism art. 77 has
+ * specified since it was ratified, unparked. One line per door, given free
+ * on a tap (arts 5–6), and it is what makes the drift perceivable: without
+ * it every choice is between identical unknowns and the labyrinth is asking
+ * its twenty questions in a language the player cannot read.
+ *
+ * **Two rules, and both are the article.** A sense is **true and partial**:
+ * it never lies and it never completes, because under art. 79 the room
+ * behind the door does not exist yet and there is nothing there to describe.
+ * It says what the region smells like and not what the room contains. And a
+ * sense is **not a label**: it never names the region, never ranks the doors
+ * against each other and never says *danger*. The player learns the
+ * vocabulary by descending, which is art. 10's knowledge doing its job on
+ * the one thing in the game nobody has ever been able to learn.
+ *
+ * Four lines a pool, chosen deterministically off the door's own identity
+ * (`saysDoor`), so the same door always says the same thing and a room
+ * offering three of one region still gives three different sentences.
+ * `test/senses.test.ts` holds every line to both rules.
+ */
+export const SENSES: Readonly<Record<string, readonly string[]>> = {
+  'region.drowned': [
+    'Cold air under this one, and no echo comes back with it.',
+    'The draught off it is wet. Something is dripping a long way in.',
+    'The stone under the frame is dark, and it is dark all the way down to the floor.',
+    'Still air, and it smells the way a bucket smells after a month.',
+  ],
+  'region.burnt': [
+    'Wax, and singed hair. Something went out in a hurry behind this one.',
+    'The frame is warm to the back of my hand. Nothing I can see is alight.',
+    'Dry air off it, with grit in the dry that gets into my teeth.',
+    'It smells the way a chimney smells. Old, and gone over twice.',
+  ],
+  'region.ossuary': [
+    'Someone coughing, carefully, a long way in. Then stopping.',
+    'Chalk on the frame. It comes off on my hand and it will not come off my hand.',
+    'Something being set down, and set down again, and it stops when I stop.',
+    'The air off it is dry and a little sweet. I know that smell and I would rather not.',
+  ],
+  /**
+   * The pool that leans nowhere (art. 77). Its senses have to be as true and
+   * as concrete as the others — a neutral door that answered with a shrug
+   * would be a dead tap wearing a sentence — and they say nothing about a
+   * region because there is no region to say anything about.
+   */
+  '': [
+    'Nothing comes under this one. Cold stone, and a gap in it.',
+    'Still air behind it. Not moving in and not moving out.',
+    'The frame is worn at the edge the way every frame down here is worn.',
+    'Quiet. Whatever is back there is not doing anything about me.',
+  ],
 }
 
 /**
@@ -607,9 +791,14 @@ export const UNBIDDEN: Readonly<Record<string, string>> = {
 /** The lines the shell says at the seams of a run. */
 export const NOTICES: Readonly<Record<string, string>> = {
   'door.locked': 'The lock holds. Whatever opens it is not on you.',
-  // arts 31, 77: a door's sense would be its region tag leaking, and the
-  // hint system is parked. A door still answers — it answers with itself.
+  // arts 31, 77 (card 49): a door's sense *is* its region tag leaking, and
+  // the senses are unparked — `SENSES` is what a door answers with now. This
+  // stays as the answer for a pool with no vocabulary authored, because
+  // art. 69 says silence is a bug and the fallback is where one would hide.
   'door.blind': 'Shut, and giving nothing away. The road is whichever one I pick.',
+  // art. 37: the last door of the depth has no tag to leak — there is
+  // nothing left to lean toward — so it answers with what it is.
+  'door.last': 'Nothing comes under this one at all. Whatever is behind it is not breathing.',
   // arts 3, 9 and 118: a stop, not a hint. It names nothing and points at
   // nothing — and under art. 118 it no longer has to, because what holds
   // the door is on the frame and one tap away.
@@ -656,6 +845,25 @@ export const NOTICES: Readonly<Record<string, string>> = {
   'answer.act.take.leech': 'The stain does not come off on my hand. Whatever it took, it took a little at a time.',
   'answer.act.take.cord': 'Knotted at every hand of it. Somebody counted the way down in order and ran out of cord.',
   'answer.act.take.plate': 'The straps are cut, not worn through. Somebody got this off him fast, and it did not save either of them.',
+  /**
+   * art. 119: **what a priced press buys.** Each of the three is knowledge
+   * (art. 88), and each answer *sharpens the question rather than answering
+   * it* — which is card 88's bar, quoted in DESIGN.md and enforced here by
+   * there being no sentence in any of them that says what the thing is.
+   */
+  'answer.act.listen':
+    'Water, moving, right under my ear. Then something sets down. And again. I count six of them, and I am halfway through breathing out when the seventh one comes.',
+  'answer.act.peer':
+    'The drop goes down past the light and keeps going. It does not end at a floor. Whatever this place loses, it is still losing.',
+  'answer.act.reach':
+    'It goes back past the wall and then it turns, and the turn is warm. The brick takes the skin off my forearm on the way out.',
+  // arts 88, 89: the two halves of the covered font's fork. One is a thing
+  // in the hand and one is a thing known, and the answer to each says what
+  // the other one just cost.
+  'answer.act.font.stone':
+    'Small, carved, and heavier than it has any business being. The water closes over where it was and I cannot see the lip any more.',
+  'answer.act.font.marks':
+    'Cut inside the lip, under the water line, in fives. The last group stops at four. The basin goes over as I lean and whatever was in it goes with it.',
   // card 31: what the hall answers with when the lock it was built around
   // is turned. One candle: the key, and the thing the door was for.
   'warden.wakes':
@@ -808,6 +1016,7 @@ export const LABELS: Readonly<Record<string, string>> = {
   'room.passage.bonefield': 'the bonefield',
   'room.puzzle.tally': 'the tally',
   'room.sanctum.font': 'the font',
+  'room.trove.covered-font': 'the covered font',
   'room.warden': "the warden's door",
   'region.drowned': 'the drowned',
   'region.burnt': 'the burnt',
@@ -822,7 +1031,9 @@ export const LABELS: Readonly<Record<string, string>> = {
   'die.pusher': 'the last push',
   'die.careful': 'the careful bone',
   'die.runner': 'the last room',
-  'talisman.ossuary': 'the ossuary',
+  // card 88: it is placed now, in the covered font, so it wears the name of
+  // the thing it is rather than the name of a region it is not from.
+  'talisman.ossuary': 'the counting stone',
   'talisman.zealot': 'the zealot',
   'talisman.cord': 'the counting cord',
   'wearable.rusted-plate': 'the rusted plate',
@@ -890,6 +1101,19 @@ export const VERBS: Readonly<Record<string, string>> = {
   'act.take.leech': 'Take leech',
   'act.take.cord': 'Take cord',
   'act.take.plate': 'Take plate',
+  /**
+   * art. 119's three, and GAME.md named all three long before anything gave
+   * an act a price. They are plain imperatives like every other control —
+   * what they *cost* is said by the thing they are about, because a verb of
+   * two words cannot carry a number (arts 66, 68).
+   */
+  'act.listen': 'Listen',
+  'act.peer': 'Peer',
+  'act.reach': 'Reach in',
+  // art. 89: a fork needs the thumb to tell two verbs apart, so both of the
+  // covered font's are two words and neither of them is Take.
+  'act.font.stone': 'Take stone',
+  'act.font.marks': 'Read lip',
   open: 'Open',
   fight: 'Fight',
   descend: 'Descend',

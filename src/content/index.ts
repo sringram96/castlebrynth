@@ -167,10 +167,13 @@ export {
   NOTICES,
   LABELS,
   READOUT,
+  SENSES,
   TABS,
   UNBIDDEN,
   VERBS,
 } from './prose.js'
+// arts 84, 88, 119: what he still knows, and where a mark lands.
+export { CLUES, ECHOES, EVERY_CLUE, EVERY_REFUSAL, KNOWS, REFUSALS, marked } from './marks.js'
 export {
   dieLabel,
   intentChip,
@@ -180,6 +183,8 @@ export {
   saysAct,
   saysBound,
   saysClaim,
+  saysDoor,
+  saysLook,
   saysDeath,
   saysDie,
   saysExchange,
@@ -237,6 +242,7 @@ import {
   NOUNS,
   ORIGINS,
   READOUT,
+  SENSES,
   TABS,
   SOCKET_BEATS,
   UNBIDDEN,
@@ -280,6 +286,9 @@ const AMENDED_NOTICES: readonly string[] = [
   // and a refusal standing next to each other.
   'claim.exact',
   'claim.floor',
+  // card 49: what the last door of the depth says, which is the one door in
+  // the game with no region tag to leak.
+  'door.last',
 ]
 
 /**
@@ -297,10 +306,36 @@ function amendedNotice(key: string): boolean {
 /**
  * The same declaration for the looks, and for the same reason. `LOOKS` is
  * cards 27–29's debt and is otherwise a placeholder wholesale; these are the
- * lines the answer wave wrote, and they answer to the amended register from
- * the day they were written rather than from the day the card lands.
+ * lines the answer and descent waves wrote, and they answer to the amended
+ * register from the day they were written rather than from the day the card
+ * lands.
+ *
+ * The descent wave's are a **suffix rule** rather than a list, and that is
+ * honest rather than convenient: `.kept`, `.price`, `.knows` and `.again`
+ * are keys that did not exist before art. 118 and art. 119, so every string
+ * under one of them was written after the register changed. There is no
+ * version of the list where somebody has to remember to add a key as well
+ * as author a line.
  */
-const AMENDED_LOOKS: readonly string[] = ['basin.water.kept', 'mender.figure.kept']
+const AMENDED_LOOK_SUFFIXES: readonly string[] = ['.kept', '.price', '.knows', '.again']
+
+/**
+ * And the covered font's own three (card 88). The exemplar room is written
+ * in the amended voice from the first line — a room later authors are told
+ * to read cannot be a room in the repealed register.
+ */
+const AMENDED_LOOKS: readonly string[] = ['font.cloth', 'font.basin', 'font.dry']
+
+function amendedLook(key: string): boolean {
+  return AMENDED_LOOKS.includes(key) || AMENDED_LOOK_SUFFIXES.some((at) => key.endsWith(at))
+}
+
+/**
+ * card 88: the rooms whose beats are in the amended voice. The Crossing is
+ * the mind wave's; the covered font is this wave's, and it is the exemplar,
+ * so it is not allowed to be part of the debt cards 27–28 are clearing.
+ */
+const AMENDED_ROOMS: readonly string[] = [THE_CROSSING as string, 'room.trove.covered-font']
 
 /**
  * Every player-facing string in the game, for the voice lint. If a string
@@ -325,7 +360,7 @@ export function everyString(): readonly Utterance[] {
       .map(([, said]) => said)
   const looksIn = (amended: boolean): readonly string[] =>
     Object.entries(LOOKS)
-      .filter(([key]) => AMENDED_LOOKS.includes(key) === amended)
+      .filter(([key]) => amendedLook(key) === amended)
       .map(([, said]) => said)
   return [
     // The amended register, as far as it has been written. Everything the
@@ -334,7 +369,13 @@ export function everyString(): readonly Utterance[] {
     ...asThoughts([
       // The waking, in his head. The candle before it is the scrawl, and it
       // is not in `BEATS` at all — the Book lays it down (`RoomBook.scrawl`).
-      ...(BEATS[WAKING] ?? []),
+      // card 88: and the covered font's, because the exemplar cannot be
+      // written in a register the game has repealed.
+      ...AMENDED_ROOMS.flatMap((room) => BEATS[room] ?? []),
+      // card 49: **a door's sense**, unparked (art. 31 as amended). Every
+      // line of every pool, so the lint sees the one thing in the game that
+      // is authored per region and read per door.
+      ...Object.values(SENSES).flat(),
       // art. 78: the arrival is one candle like any other, and it is him
       // working out what his own choosing has done.
       ...Object.values(ARRIVALS).flat(),
@@ -355,7 +396,7 @@ export function everyString(): readonly Utterance[] {
     ...asScrawls(Object.values(END_LINES)),
     ...asPlaceholders([
       ...Object.entries(BEATS)
-        .filter(([room]) => room !== WAKING)
+        .filter(([room]) => !AMENDED_ROOMS.includes(room))
         .flatMap(([, said]) => said),
       // art. 83: a socket's words reach the player exactly as a room's do,
       // so they are judged exactly as a room's are — and wait on the same
