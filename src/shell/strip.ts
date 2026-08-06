@@ -13,10 +13,9 @@
  */
 
 import type { ChainNode, Door } from '../gen/index.js'
-import type { Act, RoomBook } from '../descent/index.js'
-import { actsIn, afforded, mayLeave, moves, summoned } from '../descent/index.js'
+import type { RoomBook } from '../descent/index.js'
+import { mayLeave } from '../descent/index.js'
 import type { Ledgers } from '../state/index.js'
-import { deedKey } from '../state/index.js'
 
 /**
  * art. 66: which plain verb this door wears, or nothing at all.
@@ -45,25 +44,12 @@ export function wayOn(
 }
 
 /**
- * art. 67: the acts the strip is holding right now — what looking has
- * summoned (art. 68), what is afforded (card 67), what has not been done
- * here (art. 82), and what could still change something (art. 118).
+ * art. 67: the acts the strip is holding right now.
  *
- * `enterRoom` already builds exactly this list into the bands; this asks the
- * same question of a room without needing a `Bands` in hand, which is what a
- * harness walking a depth has.
+ * It is `offering` under the shell's own name, and it is a re-export rather
+ * than a second filter on purpose. The first cut of this file wrote the four
+ * conditions out again, and a deliberate regression of art. 118 was then
+ * caught by the tray's copy and missed by the harness's — one rule with two
+ * statements, which is what `offering`'s own note is about.
  */
-export function offeredActs(
-  ledgers: Ledgers,
-  book: RoomBook,
-  node: ChainNode,
-): readonly Act[] {
-  const run = ledgers.run
-  return actsIn(book, node).filter(
-    (one) =>
-      summoned(run, node.instance, one) &&
-      afforded(run, one) &&
-      moves(ledgers, one) &&
-      !(run?.did ?? []).includes(deedKey(node.instance, one.id)),
-  )
-}
+export { offering as offeredActs } from '../descent/index.js'

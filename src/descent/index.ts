@@ -407,23 +407,7 @@ export function enterRoom(
   const beats = beatsIn(book, node, wakingScrawl(ledgers, book, node))
   const on = run !== null && run.at.instance === at ? run.at.beat : 0
   const tray: Offer[] = [
-    ...actsIn(book, node)
-      // art. 68: looking is what summons a verb. Until the thing has been
-      // tapped, the act about it is not in the tray at all — not greyed, not
-      // refusing, not there.
-      .filter((one) => summoned(run, at, one))
-      // arts 7, 68 (card 67): and neither is an act whose gate is not met.
-      // "Only then, and only carrying" — a verb you cannot press is the same
-      // defect as a verb you have not earned, so it gets the same answer.
-      // What the player gets instead is the tap: the lock says what it wants.
-      .filter((one) => afforded(run, one))
-      // art. 118: nor an act that could not change anything if it were
-      // pressed. The precedent is the line above it — card 67 took the verb
-      // away from a lock you have no key to, and a mercy a whole body cannot
-      // drink is the same verb offering the same nothing.
-      .filter((one) => moves(ledgers, one))
-      .filter((one) => !done(run, at, one))
-      .map((one) => ({ kind: 'act' as const, act: one })),
+    ...offering(ledgers, book, node).map((one) => ({ kind: 'act' as const, act: one })),
     ...node.doors.map((door) => ({ kind: 'door' as const, door })),
   ]
   return {
@@ -456,6 +440,35 @@ function wakingScrawl(ledgers: Ledgers, book: RoomBook, node: ChainNode): string
   if (last === undefined) return null
   const said = book.scrawl(last.cause)
   return said === '' ? null : said
+}
+
+/**
+ * **The acts a room is offering right now** — the whole of what the strip is
+ * holding, and the only statement of it.
+ *
+ * Four questions, and each is an article: has looking summoned it (art. 68),
+ * is what it is gated on actually on you (art. 7, card 67), could pressing it
+ * change anything (art. 118), and has it already been done *here* (art. 82).
+ *
+ * It is one function because the answer wave found out what two of it costs.
+ * The tray built this list inline and `src/shell/strip.ts` built it again for
+ * the harness, and a deliberate regression of art. 118 was caught by one of
+ * them and not the other — which is the same defect as a rule with two
+ * statements, discovered before it shipped rather than after.
+ */
+export function offering(
+  ledgers: Ledgers,
+  book: RoomBook,
+  node: ChainNode,
+): readonly Act[] {
+  const run = ledgers.run
+  return actsIn(book, node).filter(
+    (one) =>
+      summoned(run, node.instance, one) &&
+      afforded(run, one) &&
+      moves(ledgers, one) &&
+      !done(run, node.instance, one),
+  )
 }
 
 /**
