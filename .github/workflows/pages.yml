@@ -65,3 +65,12 @@ jobs:
           path: dist
       - id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          # The action polls Pages and **cancels the deployment** when it
+          # gives up, so its default ten minutes is a guillotine and not a
+          # report: a deploy that would have landed at minute eleven is
+          # killed and the run goes red. Deploys here took ~20 seconds until
+          # 2026-08-06, when they began sitting in `in_progress` past the
+          # cap. Thirty minutes is long enough to tell *slow* from *stuck*,
+          # which is the thing we could not previously distinguish.
+          timeout: 1800000
