@@ -2861,14 +2861,16 @@ that goes by at the speed of a die teaches nothing.
 
 ### What felt worse than instant, and what is still owed
 
-**The flash and the lunge are landing on something nearly invisible.** The
-default horror body is art. 26's first tier — a dark mass that reads as the
-room's own darkness until it is struck. The flash actually *rescues* it: the
-strike is the first frame in which the shape is legible at all, which is a
-strange thing for a hit reaction to be doing. The beat is not wrong and it is
-not cut; it will pay properly when **card 78** gives the horrors bodies, and
-this wave's boundary said explicitly that it animates whatever body exists.
-Recorded rather than fixed.
+**The flash and the lunge were landing on something nearly invisible.** The
+default horror body was art. 26's first tier — a dark mass that read as the
+room's own darkness until it was struck. The flash actually *rescued* it: the
+strike was the first frame in which the shape was legible at all, which is a
+strange thing for a hit reaction to be doing. The beats were not wrong and
+were not cut, and this wave's boundary said explicitly that it animates
+whatever body exists.
+
+**Closed by the bodies (card 78), one section down.** Every horror the depth
+deals is now drawn, and both beats land on a silhouette.
 
 **No beat was cut.** Every one in the brief earned its place under a browser,
 and the two that were nearly cut for symmetry are worth naming as kept on
@@ -2892,3 +2894,85 @@ amendment stands on for its own three missing demos. Everything above was
 built from the wave's brief, which carries the beat order and every timing;
 if the file turns up and disagrees about intent, it wins and this section is
 the record of what was assumed in its absence.
+
+
+## The bodies (card 78, art. 100)
+
+The fight wave gave the blow a flash and a lunge and then showed what the
+default body was costing: **the flash was the first frame in which the horror
+was legible at all.** A hit reaction that is also the introduction is a hit
+reaction landing on nothing, and the playtest verdict was the plainest
+possible version of it — *the bad guy is just a black mist.*
+
+### What was actually wrong
+
+Not the renderer, and not the beats. Four of the five horrors had **no
+drawing**, and art. 100 says exactly why that fails: *procedural scatter has
+no silhouette, and silhouette is most of legibility at this scale.* The
+Warden had a body and read perfectly; the Gnawing — the horror a run meets
+most — was a `lurker` mass at the far end and the hinge's default mass in the
+fight, which is to say a dark smear in both places.
+
+There was a second, quieter defect. The Silt Mother and the Kindled were
+*already* drawn where they stand in a room, and the Gnawing and the Marrow
+were masses there on the stated argument that a shape at the far end is what
+a horror looks like *before it is anything*. That argument was only ever
+describing two rooms out of four, so it was an inconsistency wearing a
+reason.
+
+### What shipped
+
+**Two new drawings and one table.** The Gnawing and the Marrow are drawn for
+the first time; all five are wired into `advanceBodyOf`, and the two that
+were masses at distance now stand at the far end as themselves. The thing you
+see down the corridor is the thing that comes at you, which is most of what
+makes an advance read as an arrival rather than as a shape resolving.
+
+The silhouettes are deliberately un-confusable, because that is the entire
+purchase art. 100 is making:
+
+| | |
+| --- | --- |
+| **the Gnawing** | wide, low, and mostly jaw — two sockets and a band of interlocking teeth |
+| **the Marrow** | a skull on a barred ribcage on two long legs |
+| **the Silt Mother** | tall and narrow, and given away by two cold lights |
+| **the Kindled** | char, cracked open, and the cracks are its own light |
+| **the Warden** | a hood wider than the aperture it steps out of |
+
+**The lesson that made them readable** came from measuring the first attempt
+against the Warden, which already worked. A feature at this scale needs to be
+a **dark socket with a light inside it**, two cells or more across — the first
+Gnawing had single-cell `*` eyes and one-cell teeth, and rendered as a solid
+brown blob with no face at all. The eyes went to 4×2 sockets of the ramp's
+bottom step with `*` inside, and the teeth to two-cell blocks alternating top
+and bottom across a dark mouth. That is a fact about authoring drawings for
+this projection and it belongs in this file rather than in anybody's memory.
+
+**Each carries its own school** rather than the room's — the Warden's
+precedent, and deliberate: a region is known by its light (art. 114) and a
+horror is not a region, so the thing that walks out of the dark should be in
+its own key wherever the drift put it. The Kindled is the exception that
+proves art. 100's `*`: its cracks burn as an authored ember in every school,
+because whatever is burning in there is not the room's light.
+
+**Sizes are the fiction's**, in world units, and one of them is a balance
+call rather than a drawing call: the Gnawing was first authored at 18×15 and
+filled the frame edge to edge, which took *too big for the room* away from
+the Warden — the one horror whose whole point is that it was always too big
+for its door. It sits at 15×12 now, a beast in the corridor with the room
+still visible around it.
+
+### What this did not touch
+
+No engine change, no new article, no beat added or removed, and no timing
+moved. `advanceBodyOf` still answers `null` for a horror content has not
+drawn, so the hinge's mass stays reachable rather than becoming unreachable
+code, and the test says so.
+
+One test changed, and it changed because it was asserting the thing this card
+repeals: `test/warden.test.ts` used to say *every other horror keeps the
+hinge's own mass*, which was true and was the defect. It now asserts that
+every horror in `HORRORS` has a body, and that an undrawn one still honestly
+has none.
+
+`npm test`: 50 files, 557 tests, green.

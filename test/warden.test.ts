@@ -6,6 +6,7 @@ import {
   END_LINES,
   GNAWING_ESCALATION,
   GNAWING_HEALTH,
+  HORRORS,
   LOOKS,
   NOTICES,
   ROOM_BOOK,
@@ -413,8 +414,17 @@ describe('card 31 — the Warden is the keeper the door was built for', () => {
     expect(typeof staged.prop.paint).toBe('function')
     // It comes down the hall: nearer at the lens than at the far wall.
     expect(drawn!(1).z).toBeLessThan(drawn!(0).z)
-    // Every other horror keeps the hinge's own mass (art. 26's first tier).
-    expect(advanceBodyOf('horror.gnawing')).toBeNull()
+    // **And it is no longer the only one** (card 78). This used to assert
+    // that every other horror kept the hinge's default mass, which was true
+    // and was the defect: art. 119 §3 gave the blow a flash and a lunge, and
+    // both were landing on a shape with no silhouette to move. Every horror
+    // the depth deals now comes at you as itself.
+    for (const horror of HORRORS) {
+      expect(advanceBodyOf(horror.id), horror.id).not.toBeNull()
+    }
+    // A horror content has not drawn is still honestly nothing, so the
+    // hinge's mass stays reachable rather than becoming unreachable code.
+    expect(advanceBodyOf('horror.nobody-has-drawn-this')).toBeNull()
   })
 
   it('sets the depth’s exam: every effect kind the depth has to teach', () => {

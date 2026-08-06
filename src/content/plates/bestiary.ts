@@ -354,6 +354,79 @@ export const WARDEN_KEEPER: Drawn = drawn([
   '..44..........44..',
 ])
 
+/**
+ * THE GNAWING — the depth's own horror, drawn (card 78).
+ *
+ * It was a `lurker` at the far end and the hinge's default mass in the
+ * fight, which is to say it was a dark smear in both places. Art. 100 is
+ * blunt about why that fails: **procedural scatter has no silhouette, and
+ * silhouette is most of legibility at this scale.** A horror a run meets
+ * five times has to be the same thing all five, and a smear cannot be.
+ *
+ * It is drawn as what its script says it is. It swipes, it bellows and it
+ * covets, so it is **wide and low and mostly jaw** — the opposite silhouette
+ * to the Warden's tall hood and to the Marrow's ribs, which is the whole
+ * point of drawing it at all. The teeth are the top of the ramp and the
+ * mouth behind them is the bottom of it; the two eyes are `*`, so they burn
+ * in whatever school it is standing in and are the last thing to go dark.
+ */
+export const GNAWING: Drawn = drawn([
+  '....343........343....',
+  '...34543......34543...',
+  '..346666666666666643..',
+  '.34111111666611111143.',
+  '.341****166661****143.',
+  '.341****166661****143.',
+  '.34111111666611111143.',
+  '..346666666666666643..',
+  '...3455555555555543...',
+  '..349911991199119943..',
+  '..349911991199119943..',
+  '..341111111111111143..',
+  '..341199119911991143..',
+  '..341199119911991143..',
+  '...3455555555555543...',
+  '...344443....344443...',
+  '..3444443....3444443..',
+  '..3444443....3444443..',
+])
+
+/**
+ * THE MARROW — the ossuary's unique, drawn (card 78).
+ *
+ * The same debt as the Gnawing's and the same fix. Where the Gnawing is all
+ * jaw, this is all **frame**: a skull on a barred ribcage on two long legs,
+ * so the two of them cannot be confused at any distance the projection
+ * leaves them readable at. The dark between the ribs is the body's own
+ * lowest step rather than a hole — a ribcage you can see the room through
+ * would break its silhouette, and the silhouette is the thing being bought.
+ */
+export const MARROW: Drawn = drawn([
+  '......3443......',
+  '.....346643.....',
+  '....34*66*43....',
+  '....34666643....',
+  '.....345543.....',
+  '.....325243.....',
+  '.......33.......',
+  '.......33.......',
+  '...3466666643...',
+  '...3111441113...',
+  '..346666666643..',
+  '..311114411113..',
+  '..346666666643..',
+  '..311114411113..',
+  '..346666666643..',
+  '..311114411113..',
+  '...3466666643...',
+  '...3111441113...',
+  '....34555543....',
+  '.....344443.....',
+  '....34....43....',
+  '....34....43....',
+  '....34....43....',
+])
+
 // ── The hoard ──────────────────────────────────────────────────────────
 
 /** A skull, and it is the plainest thing in this file on purpose. */

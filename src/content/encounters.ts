@@ -28,7 +28,12 @@ import { THE_LEECH, THE_SISTERS } from './dice.js'
 import { RUSTED_PLATE, THE_CORD } from './items.js'
 import { REFUSALS } from './marks.js'
 import type { School } from './palettes.js'
-import { KINDLED as KINDLED_BODY, SILT_MOTHER as SILT_MOTHER_BODY } from './plates/bestiary.js'
+import {
+  GNAWING as GNAWING_BODY,
+  KINDLED as KINDLED_BODY,
+  MARROW as MARROW_BODY,
+  SILT_MOTHER as SILT_MOTHER_BODY,
+} from './plates/bestiary.js'
 import {
   deadTraveler,
   goodOnFloor,
@@ -621,16 +626,34 @@ export function encounterProp(
   done: readonly string[],
 ): Prop | null {
   switch (id) {
+    // art. 100, card 78: **and these two are drawn now as well.** They were
+    // masses on the argument that a shape at the far end is what a horror
+    // looks like before it is anything — but the drowned's unique and the
+    // burnt's were already drawn at exactly that distance, so the argument
+    // was only ever describing two rooms out of four. What art. 100 actually
+    // says is the other thing: a horror a run meets more than once has to be
+    // recognised the second time, and silhouette is most of legibility at
+    // this scale. The thing standing at the end of the corridor is now the
+    // thing that comes at you (`advanceBodyOf`), which is the whole of what
+    // makes an advance read as an arrival rather than as a shape resolving.
     case GNAWING:
-      return lurker(school, at, false)
+      return thing(
+        school,
+        GNAWING_BODY,
+        { ...at, width: at.width * 1.25 },
+        NOUNS['gnawing.shape'] ?? 'the shape',
+        HORROR_READABLE_TO,
+      )
     case MARROW:
-      return lurker(school, at, true)
-    // art. 100, card 29: a unique is drawn, not scattered. The Gnawing and
-    // the Marrow are masses on purpose — they are what a shape at the far
-    // end looks like before it is anything — but a horror a run meets once
-    // has to be recognised the second time, and silhouette is most of
-    // legibility at this scale. The school colours them, so one drawing is
-    // one thing in whatever key the room is in.
+      return thing(
+        school,
+        MARROW_BODY,
+        { ...at, height: at.height * 1.25 },
+        NOUNS['marrow.shape'] ?? 'the shape',
+        HORROR_READABLE_TO,
+      )
+    // The school colours them, so one drawing is one thing in whatever key
+    // the room is in.
     case SILT_MOTHER:
       return thing(
         school,
