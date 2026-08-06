@@ -5,7 +5,7 @@
  * way around.
  */
 
-export { GRID, AUTHORED_GRID, AUTHORED_HEIGHT, MOTION, RENDER, atGrid } from './render.js'
+export { CASCADE, GRID, AUTHORED_GRID, AUTHORED_HEIGHT, MOTION, RENDER, atGrid } from './render.js'
 export type { School, Shading } from './palettes.js'
 export {
   ASH,

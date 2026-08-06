@@ -18,6 +18,7 @@
 import {
   ALL_RIDERS,
   BARE_BODY,
+  CASCADE,
   CATALOG,
   CROSSING,
   END_LINES,
@@ -101,11 +102,23 @@ import {
   saveFight,
   turnLots,
 } from './hinge/index.js'
-import type { Card, Die, DieId, Fight, Goods, Landed, Line, Resolution } from './lots/index.js'
+import type {
+  Card,
+  Die,
+  DieId,
+  Fight,
+  Frame,
+  Goods,
+  Landed,
+  Line,
+  Resolution,
+  Shown,
+} from './lots/index.js'
 import {
   LINES,
   advanceFight,
   assemble,
+  atOnce,
   cast,
   casting,
   castingsLeft,
@@ -120,7 +133,9 @@ import {
   keep,
   recast,
   ridersFired,
+  rollBeats,
   sealed,
+  tumblingFace,
   unused,
   withTurn,
   woundedBy,
@@ -280,6 +295,9 @@ let pick: Pick = null
  * commits nothing (art. 67).
  */
 let picked: readonly DieId[] = []
+
+/** A first casting holds nothing back: everything in the hand is in the air. */
+const NOTHING_HELD: ReadonlySet<string> = new Set<string>()
 
 /** art. 75: mirrored into the run on every mutation, never only here. */
 let fight: Fight | null = null
@@ -1428,12 +1446,20 @@ function dieSlot(die: Die, landed: Landed | null, claimed: boolean): HTMLButtonE
     resolving !== null && landed !== null && !claimed
       ? ' unused'
       : ''
+  // art. 119, card 75: **dice do not appear, they land.** Until this one's
+  // own beat, it is still in the air — and the face it shows while it is
+  // there is hashed off its identity, never rolled, because nothing is
+  // decided during an animation.
+  const air = landed !== null && shown !== null && !shown.landed.includes(landed.die)
   const el = slot(
-    `die${landed === null ? ' rest' : ''}${kept ? ' kept' : ''}${isSelected ? ' sel' : ''}${
-      claimed ? ' claimed' : ''
-    }${idle}`,
+    `die${landed === null ? ' rest' : ''}${air ? ' rolling' : ''}${kept ? ' kept' : ''}${
+      isSelected ? ' sel' : ''
+    }${claimed ? ' claimed' : ''}${idle}`,
   )
-  if (landed !== null) el.append(pips(landed.face.value))
+  if (landed !== null) {
+    const face = air ? die.faces[tumblingFace(landed.die, spun, die.body)] : landed.face
+    el.append(pips(face?.value ?? landed.face.value))
+  }
   el.setAttribute('aria-label', saysDie(die, landed?.face))
   // art. 69: silence is a bug. A die answers with its declared truth whether
   // or not the tap also does something to it.
@@ -2069,9 +2095,116 @@ function settleAdvance(): void {
   persist()
 }
 
+// ── art. 119: the beats, played ────────────────────────────────────────
+
+/**
+ * **A fight event resolves in beats, and each beat says one thing.**
+ *
+ * The script arrives whole from `src/lots/beats.ts`, computed off an event
+ * that has already happened, and this is the only thing in the shell that
+ * reads it. Two properties are worth stating because both are the article
+ * rather than the implementation:
+ *
+ * - **Nothing is decided here.** No engine call happens inside a scheduled
+ *   beat. Every frame already carries the numbers the screen should be
+ *   reading once it has landed, so a beat is a repaint and never a
+ *   question. `test/beats.guard.test.ts` is what stops that drifting.
+ * - **There is one timeline.** art. 116 does not get a second path: the same
+ *   frames are read with every delay zero, and a delay of nothing is not a
+ *   short wait but no wait, so the whole script falls through in this one
+ *   turn of the loop and what shows is the settled state (art. 107).
+ */
+interface Playing {
+  readonly frames: readonly Frame[]
+  at: number
+  /** What happens once the last frame has landed. The turn's own settling. */
+  readonly lands: () => void
+  timer: number | undefined
+}
+
+let playing: Playing | null = null
+/**
+ * What the fight's numbers read while a timeline is running. `null` is the
+ * fight itself, which is what they read the rest of the time.
+ */
+let shown: Shown | null = null
+/**
+ * How many frames of the current timeline have shown. A die still in the air
+ * takes its face from this, so the tumble moves without anything rolling
+ * (art. 119: nothing is decided during an animation).
+ */
+let spun = 0
+
+function begin(frames: readonly Frame[], lands: () => void = paint): void {
+  stopBeats()
+  spun = 0
+  playing = {
+    frames: stillness() ? atOnce(frames) : frames,
+    at: 0,
+    lands,
+    timer: undefined,
+  }
+  // The first frame gets the whole screen, because it is the answer to a
+  // press: the strip has to lose the verb that started this in the same
+  // instant the first beat lands.
+  stepBeat(paint)
+}
+
+function stepBeat(draw: () => void = showBeat): void {
+  const now = playing
+  if (now === null) return
+  const frame = now.frames[now.at]
+  if (frame === undefined) return landBeats()
+  now.at += 1
+  spun += 1
+  shown = frame.shows
+  draw()
+  const next = now.frames[now.at]
+  if (next === undefined) return landBeats()
+  if (next.after <= 0) return stepBeat()
+  now.timer = setTimeout(() => stepBeat(), next.after) as unknown as number
+}
+
+/** What a beat repaints: the numbers, and nothing that has not moved. */
+function showBeat(): void {
+  say()
+  vitals()
+  crown()
+  theFightPanel()
+}
+
+/**
+ * art. 1: the settled end state, arrived at. Every entry point comes through
+ * here before it does anything else, so a timeline is never something the
+ * player has to wait out — and because the settled state is the whole truth
+ * (art. 119), skipping it costs nothing.
+ */
+function landBeats(): void {
+  const now = playing
+  if (now === null) return
+  clearTimeout(now.timer)
+  playing = null
+  shown = null
+  spun = 0
+  now.lands()
+}
+
+/**
+ * art. 36: **close mid-anything and resume exactly.** A timeline is never
+ * written down — it is presentation over a ledger that is already settled —
+ * so dropping it cannot lose anything, and every scheduled beat goes with it.
+ */
+function stopBeats(): void {
+  if (playing !== null) clearTimeout(playing.timer)
+  playing = null
+  shown = null
+  spun = 0
+}
+
 /** Every entry point settles whatever pulse is running first (art. 1). */
 function settle(): void {
   if (screen.kind === 'fight' && !advanced) settleAdvance()
+  if (playing !== null) landBeats()
   if (resolving !== null) settleTurn()
 }
 
@@ -2084,6 +2217,10 @@ function fightActs(): void {
   const now = fight
   if (now === null) return
   if (resolving !== null) return
+  // art. 119: a timeline is a fight event resolving, and a fight event that
+  // is still resolving has nothing to offer. The verbs come back with the
+  // settled state; a tap anywhere lands the timeline first (art. 1).
+  if (playing !== null) return
   // art. 36: each casting's lot is a pure function of where the run stands,
   // so the shell never has to hold a half-spent generator between paints.
   const lots = turnLots(ledgers.run!.seed, ledgers.run!.at.step, now.turnNumber)
@@ -2091,11 +2228,14 @@ function fightActs(): void {
   if (phase === 'pre') {
     fightPanel.append(
       verb('roll', () => {
-        fight = withTurn(now, cast(now.turn, lots(1)))
+        // art. 119: the throw is made, and written down, before the first
+        // frame is drawn. What the beats do is land the dice one at a time.
+        const rolled = withTurn(now, cast(now.turn, lots(1)))
+        fight = rolled
         phase = 'keep'
         band = HUSHED
         persist()
-        paint()
+        begin(rollBeats(rolled, NOTHING_HELD, CASCADE))
       }),
     )
     return
@@ -2106,12 +2246,24 @@ function fightActs(): void {
       verb(
         'recast',
         () => {
-          fight = withTurn(now, recast(now.turn, lots(2)))
+          // art. 41, card 75: **a reroll re-tumbles only the dice being
+          // rerolled.** What the thumb kept sits perfectly still, and that
+          // stillness is what makes holding feel like a decision that has
+          // already happened. The kept set is read off the turn *before* the
+          // recast, because the recast is what clears the keep-marks
+          // (art. 72).
+          const held = new Set<string>(
+            casting(now.turn)
+              .filter((landed) => landed.kept)
+              .map((landed) => landed.die as string),
+          )
+          const thrown = withTurn(now, recast(now.turn, lots(2)))
+          fight = thrown
           phase = 'claim'
           selected = []
           band = HUSHED
           persist()
-          paint()
+          begin(rollBeats(thrown, held, CASCADE))
         },
         castingsLeft(now.turn) === 0,
       ),
@@ -2272,6 +2424,9 @@ function runFromTheFight(): void {
   clearTimeout(advanceTimer)
   clearTimeout(resolveTimer)
   resolving = null
+  // art. 119: a timeline is presentation over a settled ledger, so leaving
+  // the fight drops it whole. Every beat it had scheduled goes with it.
+  stopBeats()
   ledgers = routeFlight(
     ledgers,
     saveFight(now, ledgers.run!.at.instance, phase, selected, advanced, false),
@@ -2309,6 +2464,7 @@ function died(cause: string = endLineOf(fight?.horror.id ?? '')): void {
   clearTimeout(advanceTimer)
   clearTimeout(resolveTimer)
   resolving = null
+  stopBeats()
   ledgers = routeDeath(ledgers, cause)
   chain = deal(ledgers.run!.seed, ledgers.run!.depth, CATALOG, GRAMMAR, ledgers.run!.history)
   bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
