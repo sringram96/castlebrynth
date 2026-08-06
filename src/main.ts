@@ -679,11 +679,12 @@ function cardLines(): void {
  * the numbers alone, which is a receipt rather than a record — the sentences
  * were authored for this sheet and had never reached it.
  *
- * The reason wave's line is drawn by exactly this code and no other: it is
- * one line among the lines, in the same class, at the top because it is the
- * oldest. What marks it out is that it has no seed and no depth — nothing
- * here dealt that run — and that its sentence is the only one in the Book
- * with no *you* in it. Content, never styling.
+ * The scrawl at the head of it is drawn by exactly this code and no other. It
+ * is not marked out by identity — nothing here asks which line it is — but by
+ * what it has: **a line with no run behind it takes no ordinal and no
+ * numbers**, because it is not an ending and there is nothing true to print
+ * in those columns. The endings number themselves, from one, among
+ * themselves.
  */
 function bookLines(): void {
   const lines = ledgers.permanent.bookOfEnds
@@ -694,18 +695,26 @@ function bookLines(): void {
     sheetBand.append(empty)
     return
   }
-  for (const [n, line] of lines.entries()) {
+  let ending = 0
+  for (const line of lines) {
     const div = document.createElement('div')
     div.className = 'line open'
+    const said = END_LINES[line.cause] ?? line.cause
+    // A run behind it is what makes a line an ending. Without one there is
+    // no number it could wear and no numbers it could carry.
+    const ofARun = line.seed !== null || line.depth !== null
     const left = document.createElement('span')
-    left.textContent = `${n + 1} · ${END_LINES[line.cause] ?? line.cause}`
-    const right = document.createElement('span')
-    const unknown = READOUT.unknown ?? ''
-    right.className = 'tag'
-    right.textContent = `${READOUT.depth} ${line.depth ?? unknown} · ${READOUT.seed} ${
-      line.seed ?? unknown
-    }`
-    div.append(left, right)
+    left.textContent = ofARun ? `${(ending += 1)} · ${said}` : said
+    div.append(left)
+    if (ofARun) {
+      const unknown = READOUT.unknown ?? ''
+      const right = document.createElement('span')
+      right.className = 'tag'
+      right.textContent = `${READOUT.depth} ${line.depth ?? unknown} · ${READOUT.seed} ${
+        line.seed ?? unknown
+      }`
+      div.append(right)
+    }
     sheetBand.append(div)
   }
 }

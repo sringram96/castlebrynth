@@ -156,10 +156,11 @@ describe('art. 68 — the summons rides the vault', () => {
   it('keeps the ladder gapless to the version this wave writes', () => {
     // Bumped by the threshold wave: 6 for the run's `descending` (the front
     // door may only offer Continue for a run that was begun) and 7 for
-    // art. 116's preferences. 8 is the reason wave, which puts the line that
-    // is not yours at the head of every Book. All three are the filling kind
-    // — nothing about the arrangement moves — so no descent was lost to any.
-    expect(VAULT_VERSION).toBe(8)
+    // art. 116's preferences. 8 is the reason wave, which puts the scrawl at
+    // the head of every Book, and 9 is that line ceasing to be an ending.
+    // All of them are the filling kind — nothing about the arrangement moves
+    // — so no descent was lost to any.
+    expect(VAULT_VERSION).toBe(9)
     expect(MIGRATIONS.map((one) => one.from).sort((a, b) => a - b)).toEqual(
       Array.from({ length: VAULT_VERSION - 1 }, (_, at) => at + 1),
     )

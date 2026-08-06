@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { BARE_BODY, HAND_SIZE, PLAIN_POUCH } from '../src/content/index.js'
 import type { Vault } from '../src/state/index.js'
 import {
-  FIRST_END,
+  THE_SCRAWL,
   MIGRATIONS,
   QUARANTINE_KEY,
   die,
@@ -85,7 +85,7 @@ describe('the vault ladder — art. 11 (the Book survives everything)', () => {
     // The lines the ladder exists for, word for word — and above them the
     // one the reason wave puts at the head of every Book (art. 11).
     expect(restored!.permanent.bookOfEnds).toEqual([
-      FIRST_END,
+      THE_SCRAWL,
       { seed: 7, depth: 1, cause: 'end.gnawing' },
       { seed: 9, depth: 1, cause: 'end.marrow' },
     ])
@@ -227,12 +227,13 @@ function freshLedgers() {
  * endings. It adds the line *above* theirs, because it is older than any of
  * them, and it takes nothing away.
  */
-describe('the line that was already there — art. 11 (the reason wave)', () => {
-  it('opens a first waking with exactly one line, and it is not yours', () => {
+describe('the scrawl at the head of the Book — art. 11 (the reason wave)', () => {
+  it('opens a first waking with exactly one line, and it is not an ending', () => {
     const permanent = firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY)
-    expect(permanent.bookOfEnds).toEqual([FIRST_END])
-    // Not yours, and honest about it: nothing here dealt that run, so it has
-    // no seed to print and no depth to claim.
+    expect(permanent.bookOfEnds).toEqual([THE_SCRAWL])
+    // Not an ending, and honest about it: there is no run behind it, so it
+    // has no seed to print and no depth to claim — which is what the reader
+    // reads it by, rather than by asking which line it is.
     expect(permanent.bookOfEnds[0]!.seed).toBeNull()
     expect(permanent.bookOfEnds[0]!.depth).toBeNull()
   })
@@ -240,11 +241,11 @@ describe('the line that was already there — art. 11 (the reason wave)', () => 
   it('keeps it there through a death, with yours written under it', () => {
     const ledgers = wake(firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY), 11 as never)
     const after = die(ledgers, 'end.gnawing')
-    expect(after.bookOfEnds.map((line) => line.cause)).toEqual([FIRST_END.cause, 'end.gnawing'])
+    expect(after.bookOfEnds.map((line) => line.cause)).toEqual([THE_SCRAWL.cause, 'end.gnawing'])
     expect(after.bookOfEnds[1]!.seed).toBe(ledgers.run!.seed)
   })
 
-  it('gives an existing Book the line above its own, and loses nothing', () => {
+  it('gives an existing Book the scrawl above its own lines, and loses nothing', () => {
     const rung = MIGRATIONS.find((one) => one.from === 7)!
     const walked = rung.up({
       version: 7,
@@ -263,7 +264,7 @@ describe('the line that was already there — art. 11 (the reason wave)', () => 
       permanent: { bookOfEnds: readonly Record<string, unknown>[] }
     }
     expect(ledgers.permanent.bookOfEnds).toEqual([
-      FIRST_END,
+      THE_SCRAWL,
       { seed: 7, depth: 1, cause: 'end.gnawing' },
       { seed: 9, depth: 1, cause: 'end.marrow' },
     ])
@@ -274,9 +275,9 @@ describe('the line that was already there — art. 11 (the reason wave)', () => 
 
   it('does not grow a second copy of it on a Book that already has one', () => {
     const rung = MIGRATIONS.find((one) => one.from === 7)!
-    const once = { version: 7, ledgers: { run: null, permanent: { bookOfEnds: [FIRST_END] } } }
+    const once = { version: 7, ledgers: { run: null, permanent: { bookOfEnds: [THE_SCRAWL] } } }
     const walked = rung.up(once) as { ledgers: { permanent: { bookOfEnds: readonly unknown[] } } }
-    expect(walked.ledgers.permanent.bookOfEnds).toEqual([FIRST_END])
+    expect(walked.ledgers.permanent.bookOfEnds).toEqual([THE_SCRAWL])
   })
 
   it('fills a Book that was never written at all', () => {
@@ -284,7 +285,37 @@ describe('the line that was already there — art. 11 (the reason wave)', () => 
     const walked = rung.up({ version: 7, ledgers: { run: null, permanent: {} } }) as {
       ledgers: { permanent: { bookOfEnds: readonly unknown[] } }
     }
-    expect(walked.ledgers.permanent.bookOfEnds).toEqual([FIRST_END])
+    expect(walked.ledgers.permanent.bookOfEnds).toEqual([THE_SCRAWL])
+  })
+
+  /**
+   * v8 shipped the line as an ending — a death that happened before yours.
+   * The ruling as it stands is that it is the player's own hand, so a Book
+   * written by that build is rewritten rather than left holding an id with no
+   * words behind it, and nothing else in it moves.
+   */
+  it('rewrites the v8 line, which was an ending, and touches no other', () => {
+    const rung = MIGRATIONS.find((one) => one.from === 8)!
+    const walked = rung.up({
+      version: 8,
+      ledgers: {
+        run: { seed: 5 },
+        permanent: {
+          bookOfEnds: [
+            { seed: null, depth: null, cause: 'end.gone' },
+            { seed: 7, depth: 1, cause: 'end.gnawing' },
+          ],
+        },
+      },
+    }) as {
+      ledgers: { run: Record<string, unknown>; permanent: { bookOfEnds: readonly unknown[] } }
+    }
+    expect(walked.ledgers.permanent.bookOfEnds).toEqual([
+      THE_SCRAWL,
+      { seed: 7, depth: 1, cause: 'end.gnawing' },
+    ])
+    // And the descent it was standing in is where it was.
+    expect(walked.ledgers.run.seed).toBe(5)
   })
 
   /**
@@ -297,7 +328,7 @@ describe('the line that was already there — art. 11 (the reason wave)', () => 
     save(freshLedgers(), vault)
     erase(vault)
     expect(load(vault)).toBeNull()
-    expect(firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY).bookOfEnds).toEqual([FIRST_END])
+    expect(firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY).bookOfEnds).toEqual([THE_SCRAWL])
   })
 })
 

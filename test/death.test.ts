@@ -18,7 +18,7 @@ import type { Clue, ClueId, RoomId, Vault } from '../src/state/index.js'
 import {
   collect,
   finish,
-  FIRST_END,
+  THE_SCRAWL,
   firstPermanent,
   learn,
   load,
@@ -111,7 +111,7 @@ describe('death — art. 32 (every death reseeds), art. 11 (the permanent surviv
     // art. 11 (the reason wave): the line that was already there, and then
     // yours written under it. The Book you are adding to was open before you.
     expect(woken.permanent.bookOfEnds).toEqual([
-      FIRST_END,
+      THE_SCRAWL,
       { seed: knowing.run!.seed, depth: 1, cause: 'end.gnawing' },
     ])
   })
@@ -165,7 +165,7 @@ describe('death — art. 32 (every death reseeds), art. 11 (the permanent surviv
     const died = routeDeath(ledgers, 'end.gnawing')
     const finished = finish(died, 'end.warden')
     expect(finished.bookOfEnds.map((line) => line.cause)).toEqual([
-      FIRST_END.cause,
+      THE_SCRAWL.cause,
       'end.gnawing',
       'end.warden',
     ])
