@@ -59,6 +59,8 @@ import {
   BURNT,
   DROWNED,
   ENCOUNTERS,
+  // card 95: the deed a beaten horror leaves, and the thing it is tapped as.
+  HORROR_DOWN,
   IRON_KEY,
   OSSUARY,
   FLOOR_CHANCE,
@@ -67,6 +69,7 @@ import {
   WARDEN_KEY_ITEM,
   fillProps,
   fillWords,
+  horrorTapOf,
 } from './encounters.js'
 import { THE_WARDEN, horrorById } from './horrors.js'
 import type { School } from './palettes.js'
@@ -168,7 +171,7 @@ import { saysLook } from './says.js'
 import { ARRIVALS, BEATS, END_LINES, LABELS, LOOKS, NOUNS, VERBS } from './prose.js'
 import { MOTION, RENDER } from './render.js'
 
-export { WARDEN_KEY, WARDEN_KEY_ITEM } from './encounters.js'
+export { HORROR_DOWN, WARDEN_KEY, WARDEN_KEY_ITEM } from './encounters.js'
 
 const room = (s: string): RoomId => s as RoomId
 
@@ -1936,6 +1939,39 @@ export function horrorIn(node: { readonly type: RoomType; readonly fills: readon
 }
 
 /**
+ * card 95, arts 30, 68: **the thing in this room a fight is summoned by
+ * tapping**, or nothing where nothing has teeth.
+ *
+ * The Warden is deliberately not here. It stands in no socket (art. 37), it is
+ * not in the hall until the key turns, and the ceremony that wakes it is
+ * already a verb pressed about a thing — the lock. What card 95 is about is
+ * the horror that *is* standing in the room while the player walks around it.
+ */
+export function horrorMarkIn(node: { readonly fills: readonly Fill[] }): string | null {
+  for (const fill of node.fills) {
+    const mark = horrorTapOf(fill.encounter)
+    if (mark !== null) return mark
+  }
+  return null
+}
+
+/**
+ * card 95: **whether the thing in this room is still on its feet.**
+ *
+ * It is `keeperStanding` said about a socket instead of about a hall, and it
+ * is asked of the *room* rather than of a door because that is what is true: a
+ * horror does not guard one way out, it is in the room with you, and the
+ * generator already gives every door of such a room the same fight. So while
+ * it stands, no door offers a way through; when it falls, all of them do.
+ */
+export function horrorStanding(
+  node: { readonly fills: readonly Fill[] },
+  done: readonly string[],
+): boolean {
+  return horrorOf(node.fills) !== null && !done.includes(HORROR_DOWN)
+}
+
+/**
  * card 31: the deed a beaten keeper leaves.
  *
  * It is a deed and not an act — nothing presses it — written against the
@@ -2103,7 +2139,12 @@ export const ROOM_BOOK: RoomBook = {
   acts: (id) => roomContent(id).acts,
   // art. 83: the room is handed over so the thing can stand somewhere, and
   // for nothing else — every word below comes from the encounter.
-  socket: (id, fill): SocketWords => fillWords(fill, socketMark(id, fill.socket)),
+  // card 95: and what the room has *done* goes with the question, because one
+  // socket stops speaking when its encounter is finished with — a horror that
+  // has fallen. It defaults to nothing, so every caller that is asking about a
+  // room rather than about a moment in one is unchanged.
+  socket: (id, fill, done = []): SocketWords =>
+    fillWords(fill, socketMark(id, fill.socket), done),
   arrival: (region) => ARRIVALS[region as string] ?? [],
   // The waking opens on the last line of the Book — a thing he wrote down,
   // found again by a man who does not remember writing it (rules/voice.md).

@@ -165,11 +165,6 @@ export function saysIntent(intent: Intent): string {
   })
 }
 
-/** What a claimed line is worth, as a readout: the name and the number. */
-export function saysClaim(line: Line, harm: number): string {
-  return `${LADDER[line].name} ${harm}`
-}
-
 /**
  * arts 63, 65, 72: **the line these dice make, and what is holding it
  * shut.** A readout in the card's own register — the line's name, and the
@@ -348,7 +343,10 @@ function declaredBy(good: Good): readonly string[] {
   // have to be: the nulls are what pays for the rest (art. 54), and a player
   // who cannot see how often the thing does nothing cannot price it.
   if ('rolls' in good) {
-    return [`${READOUT.rolls} ${good.rolls.map(faceSays).join(' ')}`]
+    // card 94: the faces are sentences now, so they are separated the way
+    // every other readout in this file separates its parts. Run together they
+    // read as one long claim about the thing rather than as six faces.
+    return [`${READOUT.rolls} ${good.rolls.map(faceSays).join(' · ')}`]
   }
   if (!('species' in good)) {
     return 'armor' in good ? [`${READOUT.armor} ${good.armor}`] : []
@@ -376,21 +374,27 @@ function declaredBy(good: Good): readonly string[] {
 
 /**
  * card 93: one face of a rolling good, as a readout — the kind's own word and
- * the number on it. A null is drawn rather than named: *nothing* is what it
- * says, and a word for it would read as a fifth kind.
+ * the number on it.
+ *
+ * card 94: **and it is the only phrasing of that fact in the game.** The tray
+ * caption under a trinket, the face labels its inspect draws, and the line the
+ * word band says when it lands all come out of here, so a player never has to
+ * learn that *turns 6 aside* and some other sentence are the same thing. The
+ * number is put into the words rather than written beside them, so a retuned
+ * face cannot drift off its own description (`fill`, as everywhere else).
  */
 export function faceSays(face: Amend): string {
   switch (face.kind) {
     case 'null':
       return READOUT.nothing ?? ''
     case 'add':
-      return `${READOUT.add} ${face.amount}`
+      return fill(READOUT.add ?? '', { n: face.amount })
     case 'block':
-      return `${READOUT.block} ${face.amount}`
+      return fill(READOUT.block ?? '', { n: face.amount })
     case 'per':
-      return `${face.amount} ${READOUT.per}`
+      return fill(READOUT.per ?? '', { n: face.amount })
     case 'cost':
-      return `${READOUT.cost} ${face.amount}`
+      return fill(READOUT.bites ?? '', { n: face.amount })
   }
 }
 
@@ -408,7 +412,7 @@ export function saysAmend(rolled: Rolled): string {
   if (face.kind === 'null') return `${label} · ${READOUT.nothing ?? ''}`
   // `per` is the one kind whose face and whose *total* are different numbers,
   // and both of them are worth reading: two a die, and eight this turn.
-  const said = face.kind === 'per' ? `${faceSays(face)} ${rolled.amount}` : faceSays(face)
+  const said = face.kind === 'per' ? `${faceSays(face)} · ${rolled.amount}` : faceSays(face)
   return `${label} · ${said}`
 }
 

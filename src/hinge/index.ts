@@ -34,9 +34,17 @@ import type { FightPhase, FightSave, InstanceId, Ledgers, Seed } from '../state/
 import { die, fighting, tookIntoRun, wake, wounded } from '../state/index.js'
 import type { Brush, Prop } from '../room/index.js'
 
-/** A door that is a fight. Opening it does not change rooms. */
+/**
+ * A fight, and the door it is standing at.
+ *
+ * card 95: **the door is null for every fight but the keeper's.** A fight is
+ * about the horror — art. 68's verb hangs off the thing you tapped — and only
+ * the Warden's is about a door as well, because art. 37 makes that keeper the
+ * door's own. Nothing in this module has ever read the field; it is here
+ * because the run is standing somewhere while it fights.
+ */
 export interface FightDoor {
-  readonly door: Door
+  readonly door: Door | null
   readonly horror: Horror
 }
 

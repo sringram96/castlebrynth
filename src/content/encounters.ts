@@ -644,6 +644,34 @@ const KNEEL: Act = {
 const tappable = (id: string, at: WorldMark): Tappable => ({ id, noun: NOUNS[id] ?? id, at })
 
 /**
+ * card 95: **the deed a beaten horror leaves**, against the instance it fell
+ * in (art. 82) — two copies of one Lair each keep their own.
+ *
+ * It is the Warden's `WARDEN_DOWN` said about the things that stand in
+ * sockets, and it exists for the same reason: the room reads it to know
+ * whether its doors are shut, its socket reads it to know whether to keep
+ * speaking, and the paint reads it to know whether to draw anything.
+ */
+export const HORROR_DOWN = 'deed.horror-down'
+
+/** Where a thing stands when nothing about the room is being asked. */
+const ANYWHERE: WorldMark = { X: 0, Y: 0, z: 1, width: 1, height: 1 }
+
+/**
+ * card 95, art. 68: **the thing in the world a fight is summoned by tapping.**
+ *
+ * It is derived from the socket's own words rather than listed again here, so
+ * a horror whose noun is renamed cannot end up with a verb hanging off a
+ * tappable that no longer exists. Null for everything that is not a horror,
+ * which is most of what stands in a socket.
+ */
+export function horrorTapOf(id: EncounterId): string | null {
+  const one = ENCOUNTERS.find((held) => held.id === id)
+  if (one === undefined || one.kind !== 'horror') return null
+  return encounterWords(id, ANYWHERE).tappables[0]?.id ?? null
+}
+
+/**
  * What an encounter says for itself, standing at the mark the room keeps for
  * that socket. The mark comes in because a thing that is tapped has to stand
  * somewhere (art. 68) — not because the room has anything to say about it.
@@ -656,7 +684,17 @@ export function encounterWords(
   id: EncounterId,
   at: WorldMark,
   forfeit?: EncounterId,
+  done: readonly string[] = [],
 ): SocketWords {
+  // card 95: **a horror that has fallen leaves the room.** Winning used to
+  // walk you straight through the door you had bumped into, so nobody ever
+  // stood in a room with a beaten thing in it; the fight is entered by tapping
+  // the horror now, and won in the room, so the room has to stop saying it is
+  // there. One candle, no prop (`encounterProp`), nothing left to tap —
+  // art. 70, and it is the taken key's own pattern.
+  if (done.includes(HORROR_DOWN) && horrorTapOf(id) !== null) {
+    return { beats: SOCKET_BEATS[`${id as string}.down`] ?? [], tappables: [], acts: [] }
+  }
   switch (id) {
     case GNAWING:
       return {
@@ -732,11 +770,11 @@ function tapId(who: EncounterId): string {
  *
  * A fill with no `orElse` is the ordinary case and passes straight through.
  */
-export function fillWords(fill: Fill, at: WorldMark): SocketWords {
-  if (fill.orElse === undefined) return encounterWords(fill.encounter, at)
+export function fillWords(fill: Fill, at: WorldMark, done: readonly string[] = []): SocketWords {
+  if (fill.orElse === undefined) return encounterWords(fill.encounter, at, undefined, done)
   const apart = at.width * 0.6
-  const mine = encounterWords(fill.encounter, { ...at, X: at.X - apart }, fill.orElse)
-  const theirs = encounterWords(fill.orElse, { ...at, X: at.X + apart }, fill.encounter)
+  const mine = encounterWords(fill.encounter, { ...at, X: at.X - apart }, fill.orElse, done)
+  const theirs = encounterWords(fill.orElse, { ...at, X: at.X + apart }, fill.encounter, done)
   return {
     beats: [...(SOCKET_BEATS['fork'] ?? []), ...mine.beats, ...theirs.beats],
     tappables: [...mine.tappables, ...theirs.tappables],
@@ -755,6 +793,12 @@ export function encounterProp(
   at: WorldMark,
   done: readonly string[],
 ): Prop | null {
+  // card 95, art. 70: **a beaten horror is not in the scene.** The fight is
+  // won standing in the room now rather than on the way out of it, so the room
+  // has to show that the thing is down — a body still filling the far end
+  // while its verb is gone would be exactly the world remembering something
+  // that did not happen.
+  if (done.includes(HORROR_DOWN) && horrorTapOf(id) !== null) return null
   switch (id) {
     // art. 100, card 78: **and these two are drawn now as well.** They were
     // masses on the argument that a shape at the far end is what a horror

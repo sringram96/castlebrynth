@@ -197,51 +197,59 @@
          inverts when selected, wears a tab when kept, and is ringed and sunk
          when claimed. Unused dice dim at resolve. */
       .slot { width: 42px; height: 42px; padding: 0; position: relative; background: var(--sunk);
-        border: 1px solid var(--line); }
+        border: 1px solid var(--line); display: flex; align-items: center;
+        justify-content: center; }
       .slot.empty { border-style: dashed; opacity: .5; }
-      .slot .pips { position: absolute; inset: 5px; display: grid;
-        grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); }
-      .slot .pips span { display: flex; align-items: center; justify-content: center; }
-      .slot .pips i { display: block; width: 7px; height: 7px; border-radius: 50%;
-        background: var(--ink); }
+      /* card 94: the face is an authored drawing now, painted to a canvas from
+         indices into its own material's ramp (art. 100). The stylesheet does
+         not know what a pip is and must not: a colour here would be a colour
+         off the ramp, which is the one thing art. 100 forbids. */
+      .slot .mark { display: block; image-rendering: pixelated; }
       .slot.die { background: #262119; }
-      /* A die still in the pouch has not been thrown: a bone, and no face. */
-      .slot.die.rest::after { content: ''; position: absolute; inset: 10px;
-        border: 1px solid #6b6154; }
       /* art. 119, card 75: a die still in the air. It is not a fifth state
          under art. 72 — those four are what a die *is*, and this is a die
          that has not finished arriving — so it says so by being unsettled
-         rather than by taking a colour of its own: the body is still, the
-         face is not, and the ring a resting die wears is absent because it
-         has been thrown. */
-      .slot.die.rolling { border-color: #4c463c; }
-      .slot.die.rolling .pips i { background: var(--dim); }
+         rather than by taking a colour of its own. */
+      .slot.die.rolling { border-color: #4c463c; opacity: .8; }
       .slot.kept { background: #2a3238; border-color: var(--cold); }
       .slot.kept::after { content: ''; position: absolute; top: -1px; left: -1px; right: -1px;
         height: 5px; background: var(--cold); }
-      .slot.sel { background: var(--ink); border-color: var(--gold); border-width: 2px; }
-      .slot.sel .pips i { background: #14120f; }
+      /* card 94: selection stopped inverting the slot. It could invert while
+         a die was a pip grid the stylesheet drew — it could recolour the pips
+         to match. A die is an authored drawing now and its colours are its
+         material's (art. 100), so a white ground under it washes the bone out
+         instead of reversing it. The gold surround is the demo's own mark and
+         art. 72's four states stay unmistakably distinct: a warm ring here, a
+         cold tab kept, a sunk circle claimed, nothing idle. */
+      .slot.sel { background: #2a2113; border-color: var(--gold); border-width: 2px;
+        box-shadow: 0 0 0 1px rgba(217,179,106,.45); }
       .slot.claimed { background: #14120f; border-color: var(--gold); opacity: .8; }
       .slot.claimed::after { content: ''; position: absolute; inset: 3px;
-        border: 1px solid var(--gold); border-radius: 50%; }
+        border: 1px solid var(--gold); border-radius: 50%; pointer-events: none; }
       .slot.claimed.sel::after { border-color: #14120f; }
       .slot.unused { opacity: .4; }
       /* art. 119 §2: a claimed die lifts, alone, brightening — and stays
          lifted, because the total is still climbing off it. It sits a pixel
-         proud of the row, which is the only thing in the tray that does. */
+         proud of the row, which is the only thing in the tray that does. The
+         brightening is the drawing's own ramp, relit (art. 115), not a rule
+         here: one drawing, two lights. */
       .slot.lifted { background: #2f2717; border-color: var(--gold);
         transform: translateY(-2px); }
-      .slot.lifted .pips i { background: var(--gold); }
-      /* …and its own small +n, in the moment it lifts and in no other. */
-      .slot .gain { position: absolute; left: 0; right: 0; top: -14px; text-align: center;
-        font-size: .72em; color: var(--gold); }
-      /* art. 60: a spare is yours and not in your hand. It reads as a die
-         that has been set down — same body, no lit face, and set apart from
-         the hand by a rule down the left of it. */
-      .slot.spare { background: #1b1813; border-color: #3a332a; opacity: .72;
-        margin-left: 10px; box-shadow: inset 3px 0 0 -1px var(--gold); }
-      .slot.spare .pips i { background: #6d6252; }
-      .slot.spare.sel { opacity: 1; }
+      /* card 94: the number pops off the thing that made it and is gone. The
+         caption under the thing is the standing explanation, so this only ever
+         carries the amount — v1 of the wave threw numbers that left their
+         source and v2 wrote a receipt; both are in DESIGN.md, and neither
+         returns. */
+      .pop { position: absolute; left: 50%; top: -4px; transform: translate(-50%, 0);
+        white-space: nowrap; font: 600 15px Georgia, serif; pointer-events: none;
+        opacity: 0; z-index: 5; text-shadow: 0 1px 3px rgba(0,0,0,.9);
+        animation: pop .62s ease-out forwards; }
+      @keyframes pop {
+        0%   { opacity: 0; transform: translate(-50%, 4px) scale(.8); }
+        22%  { opacity: 1; transform: translate(-50%, -8px) scale(1.15); }
+        60%  { opacity: 1; transform: translate(-50%, -16px) scale(1); }
+        100% { opacity: 0; transform: translate(-50%, -30px) scale(1); }
+      }
       .slot.carried { background: #2a2418; border-color: var(--gold); font-size: .7em;
         color: var(--gold); }
       /* art. 65: a bound die is not in the turn at all — it never lands. It
@@ -250,28 +258,75 @@
          bar across it is the one mark in the tray that means "not yours this
          turn", and a tap says who took it (art. 69). */
       .slot.bound { background: #191517; border-color: #4a2f33; opacity: .62; }
-      .slot.bound .pips i { background: #4a3f3a; }
       .slot.bound::after { content: ''; position: absolute; left: -1px; right: -1px;
-        top: 50%; height: 3px; margin-top: -1px; background: #7a3b40; }
-      /* card 93: a rolling good sits beside the hand it is not part of — wider
-         than a die because it wears a name rather than a face, and set apart by
-         a rule the way a spare is, because which side of the hand a thing is on
-         is the only thing either mark is about. It renders only if carried:
-         there is no empty state, because carrying none is the normal state. */
-      .slot.trinket { width: auto; min-width: 42px; padding: 0 6px; font-size: .66em;
-        color: var(--dim); background: #1d1a22; border-color: #3b3446;
-        margin-left: 10px; box-shadow: inset 3px 0 0 -1px #6a5b86; }
-      /* One rule, off the hand — a second between two trinkets would say they
-         are on different sides of something, and they are not. */
-      .slot.trinket + .slot.trinket { margin-left: 0; }
-      /* art. 70: what it rolled stays legible until the turn settles. A face
-         that fired lights; a null is drawn and says nothing else. */
-      .slot.trinket .face { display: block; font-size: .92em; color: #8d7fa8; }
-      .slot.trinket.rolled { color: var(--ink); border-color: #6a5b86; }
+        top: 50%; height: 3px; margin-top: -1px; background: #7a3b40;
+        pointer-events: none; }
+      /* card 93/94: a rolling good sits beside the hand it is not part of, and
+         it is a different **object** now rather than the same box in another
+         border colour — cold bevelled iron with a glyph on it, against warm
+         rounded pipped bone. That is what the playtest could not do: tell the
+         six from the carried things. The bar is that the two rows read apart
+         with the screen upside down, so the separator can be one dashed
+         hairline and no heading (art. 100 does the work, not a label).
+         It renders only if carried: there is no empty state, because carrying
+         none is the normal state of the game. */
+      .slot.trinket { width: auto; min-width: 56px; height: auto; padding: 3px 6px 4px;
+        flex-direction: column; gap: 2px; font-size: .62em; color: var(--dim);
+        background: #14171d; border-color: #2f3846; }
+      /* card 94: **the caption stands at all times**, so what a carried thing
+         is holding is readable while the line is still being chosen. It is the
+         standing explanation; the pop is only ever the amount. */
+      .slot.trinket .cap { display: block; text-align: center; line-height: 1.2; }
+      .slot.trinket .cap b { display: block; font-weight: normal; }
+      .slot.trinket .cap i { display: block; font-style: normal; color: #4b463f; }
+      /* A face that did nothing: the metal goes dull and nothing is claimed. */
+      .slot.trinket.idle { opacity: .72; }
+      .slot.trinket.rolled { border-color: #45566b; }
       /* art. 119: and the beat it lands on is the one moment it moves. */
-      .slot.trinket.landing { background: #2b2438; border-color: var(--gold);
+      .slot.trinket.landing { background: #1d2530; border-color: var(--gold);
         transform: translateY(-2px); }
-      .slot.trinket.landing .face { color: var(--gold); }
+
+      /* card 94: **one readout, two boxes — sum × line.** It is live before
+         Attack, it is the only running number in the fight, and through a
+         cascade it reads art. 119's beats: the sum ticks as the bones lift,
+         the multiplier lights when the line names itself, and the two collapse
+         into the blow. */
+      #fight .score { flex: 1 0 100%; display: flex; align-items: center;
+        justify-content: center; gap: 10px; padding: 4px 0 7px; }
+      #fight .score .box { min-width: 58px; padding: 2px 10px; border: 1px solid #3a322a;
+        background: #141110; text-align: center; font-variant-numeric: tabular-nums;
+        font-size: 1.4rem; color: var(--gold);
+        transition: transform .13s ease-out, color .13s, border-color .13s; }
+      #fight .score .box.pulse { transform: scale(1.13); color: #f0c874;
+        border-color: var(--gold); }
+      #fight .score .box.dead { color: #4b463f; border-color: #282320; }
+      #fight .score .op { font-size: 1rem; color: var(--dim); }
+      #fight .score .op.dead { color: #2f2b27; }
+      #fight .score .cap2 { display: block; margin-top: 2px; text-align: center;
+        font-size: .58rem; letter-spacing: .14em; color: #55504a; }
+
+      /* card 94, art. 54: **a thing shows its faces.** A die at rest was a
+         hollow box and a trinket was a name, so the pouch held seven identical
+         boxes and the screen whose whole job is telling dice apart drew every
+         one of them as a 1. A thing not on the table is its name and its whole
+         face set, in the order a roll indexes them. */
+      .reading { flex: 1 0 100%; display: flex; align-items: center; gap: 8px;
+        padding: 3px 6px; background: none; border: 1px solid transparent;
+        min-height: 34px; text-align: left; }
+      .reading .name { flex: 0 0 auto; min-width: 5.4em; font-size: .74em; color: var(--dim); }
+      .reading .faces { display: flex; gap: 4px; flex-wrap: wrap; align-items: flex-start; }
+      .reading .fw { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+      .reading .fw .mark { display: block; image-rendering: pixelated; }
+      .reading .fl { font-size: .52em; line-height: 1.1; text-align: center;
+        max-width: 4.2em; color: #55504a; }
+      /* art. 60: a spare is yours and not in your hand — same body, dimmer,
+         and set apart by the rule above it rather than by a colour. */
+      .reading.spare { opacity: .66; }
+      .reading.sel { border-color: var(--gold); background: #1c1710; }
+      .reading.sel .name { color: var(--ink); }
+      /* card 94: once the materials differ, a dashed hairline is the whole
+         separator the tray needs. No heading, no label. */
+      .panel .rule.iron { background: none; height: 0; border-top: 1px dashed #2f3846; }
     </style>
   </head>
   <body>

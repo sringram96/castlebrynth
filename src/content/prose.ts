@@ -510,6 +510,17 @@ export const SOCKET_BEATS: Readonly<Record<string, readonly string[]>> = {
   // back, and neither says what it is going to do about you.
   'enc.silt-mother': ['Something stands at the far end with the water running off it, and stays standing.'],
   'enc.kindled': ['A shape of char waits ahead. The cracks across it are lit, and nothing here burns.'],
+  /**
+   * card 95: **what the room says once the thing in it is down.** A fight is
+   * won standing in the room now, so a socket that has been emptied by one has
+   * to say so — art. 70, in the room's own mouth rather than in a readout. One
+   * candle each, and each is him having the moment rather than being told
+   * about it (rules/voice.md).
+   */
+  'enc.gnawing.down': ['It stopped. Whatever it was, it is a heap at the far end now.'],
+  'enc.marrow.down': ['It came down all at once, and it is still taller than me lying there.'],
+  'enc.silt-mother.down': ['She is down, and the water is still coming off her. It will stop.'],
+  'enc.kindled.down': ['The cracks went out one at a time. It is cold char now, and it is quiet.'],
   'enc.iron-key': ['An iron key lies where the floor is worn, cut with three teeth.'],
   // art. 40: the place, and the being. Neither asks for anything.
   'enc.basin': ['A copper basin stands full at the foot of the steps. Nothing guards it.'],
@@ -903,6 +914,17 @@ export const NOTICES: Readonly<Record<string, string>> = {
   // the door is on the frame and one tap away.
   'door.held': 'Not yet. There is something in here still mine to take.',
   /**
+   * card 95, art. 118: **a door a horror is standing in front of offers no way
+   * through, and its look says why.**
+   *
+   * The whole of the fix is that the door stops being a trap that starts a
+   * fight and becomes a thing that tells you what is wrong. It names nothing —
+   * the thing is on the frame and one tap away, which is what art. 118's third
+   * clause makes safe — and it is not a hint, because there is only ever one
+   * thing it could be about.
+   */
+  'door.guarded': 'Something is in the way.',
+  /**
    * **What an act answers with** (the answer wave, card 69).
    *
    * art. 70 asks prose to confirm what an act did. Until this wave there was
@@ -1217,10 +1239,32 @@ export const READOUT: Readonly<Record<string, string>> = {
    * because *nothing* is what it says.
    */
   rolls: 'rolls',
-  block: 'block',
-  add: 'hit',
-  per: 'per die',
-  nothing: '—',
+  /**
+   * card 94: **one vocabulary, three places.** These five are the whole of
+   * what a rolling good's face is ever called, and the same string reaches the
+   * tray caption, the inspect and the word band — there is no second phrasing
+   * of any of them anywhere in the game.
+   *
+   * They carry their number rather than standing beside it (`{n}`, filled by
+   * `faceSays`), because *turns 6 aside* is a sentence a player can read and
+   * *block 6* is a field name. The words are a plain man's (rules/voice.md);
+   * the numbers are the good's, in `trinkets.ts`.
+   */
+  block: 'turns {n} aside',
+  add: '+{n}',
+  per: '+{n} per die',
+  bites: 'bites {n}',
+  nothing: 'nothing',
+  /**
+   * card 94, arts 54 and 86: what a bone's cost face says under it. The scar
+   * says *which* face and this says *how much*, and between them art. 54 is
+   * answered in pixels rather than in a sentence about the die in general.
+   */
+  costs: 'costs {n}',
+  /** card 94: the two boxes of the one readout — `sum × line`, then the blow. */
+  sum: 'sum',
+  line: 'line',
+  blow: 'the blow',
   corroded: 'corroded',
   next: 'next',
   ends: 'ends',

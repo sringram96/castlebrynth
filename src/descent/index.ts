@@ -321,8 +321,18 @@ export interface RoomBook {
    * art. 83: sockets carry their own words. The room is handed over so the
    * socket's things can stand where this room keeps that socket — not so the
    * room can speak for them.
+   *
+   * card 95 (`done`): and what has happened *here* goes with it, because a
+   * socket may be finished with. A horror beaten in the room it stands in
+   * stops being a candle, a tappable and a prop, all three (art. 70) — and
+   * until this wave that state was unreachable, because winning walked you out
+   * of the room before you could stand in it.
+   *
+   * It defaults to nothing so that every caller asking about a room rather
+   * than about a moment in one is unchanged, and so that the one caller who
+   * must pass it (`enterRoom`) is the only one who has to know.
    */
-  socket(room: RoomId, fill: Fill): SocketWords
+  socket(room: RoomId, fill: Fill, done?: readonly string[]): SocketWords
   /** art. 78: what the depth says when it arrives somewhere. */
   arrival(region: RegionId): readonly string[]
   /**
@@ -388,11 +398,21 @@ export function actsIn(book: RoomBook, node: ChainNode): readonly Act[] {
   ]
 }
 
-/** art. 83: the same, for what may be tapped. */
-export function tappablesIn(book: RoomBook, node: ChainNode): readonly Tappable[] {
+/**
+ * art. 83: the same, for what may be tapped.
+ *
+ * card 95 (`done`): a socket that is finished with offers nothing to tap. The
+ * default is *nothing has happened here*, which is the right answer for every
+ * caller asking what a room is rather than what this one has become.
+ */
+export function tappablesIn(
+  book: RoomBook,
+  node: ChainNode,
+  done: readonly string[] = [],
+): readonly Tappable[] {
   return [
     ...book.tappables(node.room),
-    ...node.fills.flatMap((fill) => book.socket(node.room, fill).tappables),
+    ...node.fills.flatMap((fill) => book.socket(node.room, fill, done).tappables),
   ]
 }
 
@@ -410,12 +430,13 @@ export function beatsIn(
   book: RoomBook,
   node: ChainNode,
   waking: string | null = null,
+  done: readonly string[] = [],
 ): readonly string[] {
   return [
     ...(waking === null ? [] : [waking]),
     ...(node.announces === null ? [] : book.arrival(node.announces)),
     ...book.beats(node.room),
-    ...node.fills.flatMap((fill) => book.socket(node.room, fill).beats),
+    ...node.fills.flatMap((fill) => book.socket(node.room, fill, done).beats),
   ]
 }
 
@@ -497,7 +518,11 @@ export function enterRoom(
   const node = nodeAt(chain, at)
   if (node === null) throw new Error(`no room dealt at ${at}`)
   const run = ledgers.run
-  const beats = beatsIn(book, node, wakingScrawl(ledgers, book, node))
+  // card 95: what the room has become, not only what it is. A socket may be
+  // finished with — the horror that stood in it is down — and both what the
+  // room says and what it offers to the thumb have to know (art. 70).
+  const done = sceneStateOf(ledgers, book, node).done
+  const beats = beatsIn(book, node, wakingScrawl(ledgers, book, node), done)
   const on = run !== null && run.at.instance === at ? run.at.beat : 0
   const tray: Offer[] = [
     ...offering(ledgers, book, node).map((one) => ({ kind: 'act' as const, act: one })),
@@ -509,7 +534,7 @@ export function enterRoom(
     instance: at,
     beats,
     tray,
-    tappables: tappablesIn(book, node),
+    tappables: tappablesIn(book, node, done),
   }
 }
 

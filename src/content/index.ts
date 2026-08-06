@@ -205,6 +205,28 @@ export {
 } from './prose.js'
 // arts 84, 88, 120: what he still knows, and where a mark lands.
 export { CLUES, ECHOES, EVERY_CLUE, EVERY_REFUSAL, KNOWS, REFUSALS, marked } from './marks.js'
+/**
+ * card 94: **the two materials.** Bone and iron, as authored drawings — grids
+ * of indices into their own ramps, coloured by the tray at paint time
+ * (art. 100). Nothing here is worth anything and nothing here is a colour a
+ * caller may choose.
+ */
+export type { Drawing } from './faces.js'
+export {
+  BONE_BODY,
+  BONE_RAMP,
+  BONE_RAMP_LIT,
+  BONE_SCAR,
+  FACE_GRID,
+  IRON_BODY,
+  IRON_EMPTY,
+  IRON_RAMP,
+  IRON_RAMP_LIT,
+  IRON_RAMP_NULL,
+  KIND_INK,
+  glyphFor,
+  pipsFor,
+} from './faces.js'
 export {
   dieLabel,
   intentChip,
@@ -213,7 +235,6 @@ export {
   originOf,
   saysAct,
   saysBound,
-  saysClaim,
   saysDoor,
   saysFiring,
   saysLine,
@@ -237,6 +258,8 @@ export {
   FAR_SOCKET,
   FLOOR_SOCKET,
   GRAMMAR,
+  // card 95: the deed a beaten horror leaves, beside the keeper's.
+  HORROR_DOWN,
   MERCY_SOCKET,
   ROOMS,
   ROOM_BOOK,
@@ -246,6 +269,9 @@ export {
   WARDEN_KEY_ITEM,
   advanceBodyOf,
   horrorIn,
+  // card 95: the thing a fight is summoned by tapping, and whether it stands.
+  horrorMarkIn,
+  horrorStanding,
   keeperStanding,
   horrorOf,
   roomContent,

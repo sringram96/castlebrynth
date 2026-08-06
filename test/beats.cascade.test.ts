@@ -229,6 +229,58 @@ describe('art. 119 §2 — the cascade (each beat says one thing)', () => {
     expect(still.every((frame) => frame.after === 0)).toBe(true)
   })
 
+  /**
+   * card 94: **the readout equals the engine's resolved total**, at the end of
+   * every scoring sequence there is.
+   *
+   * The score row shows `shows.attack` and computes nothing, so this is the
+   * whole of the guarantee that the number a player watches climb is the
+   * number that landed. It is asserted against `harmDealt` rather than against
+   * the cascade's own arithmetic, because agreeing with itself is what a wrong
+   * readout also does.
+   *
+   * The rolling goods are in it on purpose: they amend after the climb, and a
+   * readout that stopped at the line would be a readout that was right until
+   * the moment a carried thing did something.
+   */
+  it('lands the readout on the number the engine dealt', () => {
+    const carrying: Goods = {
+      ...RIDERS,
+      trinkets: [
+        { id: 'trinket.test.add' as never, rolls: [{ kind: 'add', amount: 4 }] },
+        { id: 'trinket.test.per' as never, rolls: [{ kind: 'per', amount: 3 }] },
+      ],
+    }
+    for (const [values, line] of [
+      [[4, 4, 4], 'triple'],
+      [[3, 3, 3, 5, 5], 'full-house'],
+      [[1, 2, 3, 4, 5], 'run-5'],
+      [[2, 2], 'pair'],
+      [[2], 'any-dice'],
+    ] as const) {
+      for (const goods of [NO_GOODS, RIDERS, carrying]) {
+        const opened = openFight(horrorOf(), { dice: [] }, 60, 0, goods)
+        const turn = turnOf(values)
+        const laid = turn.castings[0]!.map((one) => one.die)
+        const before = withTurn(
+          { ...opened, turn, hand: turn.hand, yourHealthMax: 60 },
+          claim(turn, laid, line, LADDER, goods),
+        )
+        // A lot only where one is owed: carrying none must draw none (card 93).
+        const lot = goods.trinkets === undefined ? undefined : { next: () => 0 }
+        const resolution = decide(before.turn, 'end-turn', before.armor, goods, lot)
+        const after = advanceFight(before, resolution)
+        const frames = cascadeBeats(before, after, resolution, goods, CASCADE)
+        expect(frames.at(-1)?.shows.attack, `${line} · ${goods.trinkets === undefined ? 'bare' : 'carrying'}`).toBe(
+          resolution.harmDealt,
+        )
+        // And with motion reduced it lands on the same number, because there
+        // is one timeline and no branch that could disagree (art. 116).
+        expect(atOnce(frames).at(-1)?.shows.attack, line).toBe(resolution.harmDealt)
+      }
+    }
+  })
+
   /** art. 69: silence is a bug, and a rider with no words is a silent power. */
   it('has a word for every rider that ships', () => {
     for (const rider of ALL_RIDERS) {

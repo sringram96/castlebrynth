@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Castlebrynth — where the number comes from</title>
+<style>
+  :root{--ink:#0a0908;--line:#2b2722;--bone:#d8d0c0;--dim:#8a8478;--faint:#55504a;
+        --gold:#c9a35e;--hot:#f0c874;--cold:#7fa8cc;--red:#c07060}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--ink);color:var(--bone);
+    font-family:"Iowan Old Style",Palatino,Georgia,serif;line-height:1.45}
+  header{padding:16px 14px 10px;border-bottom:1px solid var(--line)}
+  h1{margin:0 0 5px;font-size:1rem;letter-spacing:.3em;font-variant:small-caps;font-weight:500}
+  header p{margin:0 0 6px;font-size:.82rem;color:var(--dim)}
+  section{padding:14px 0 10px;border-bottom:1px solid var(--line)}
+  h2{margin:0 14px 3px;font-size:.85rem;letter-spacing:.2em;font-variant:small-caps;font-weight:500}
+  .why{margin:0 14px 10px;font-size:.78rem;color:var(--dim)}
+  .note{margin:9px 14px 0;font-size:.72rem;color:var(--faint);font-style:italic}
+  canvas{display:block;image-rendering:pixelated}
+  .rowlab{margin:0 14px 5px;font-size:.62rem;letter-spacing:.18em;font-variant:small-caps;color:var(--faint)}
+  .strip{display:flex;gap:7px;padding:0 14px 10px;align-items:flex-start;flex-wrap:wrap}
+  .stage{width:348px;margin:0 auto}
+  .band{min-height:34px;padding:7px 10px;font-size:.76rem;font-style:italic;color:var(--dim);
+    border:1px solid var(--line);border-bottom:none;background:#0d0b0a}
+
+  /* the score: one readout, two numbers, and it ticks */
+  .score{background:#0b0a09;border-left:1px solid var(--line);border-right:1px solid var(--line);
+    padding:10px 10px 12px;display:flex;align-items:center;justify-content:center;gap:10px;min-height:66px}
+  .box{min-width:62px;padding:3px 10px;border:1px solid #3a322a;background:#141110;
+    text-align:center;font-variant:tabular-nums;font-size:1.5rem;color:var(--gold);
+    transition:transform .13s ease-out,color .13s,border-color .13s,box-shadow .13s}
+  .box.pulse{transform:scale(1.13);color:var(--hot);border-color:var(--gold);
+    box-shadow:0 0 16px rgba(210,165,90,.4)}
+  .box.dead{color:#4b463f;border-color:#282320}
+  .op{font-size:1.05rem;color:var(--dim)}
+  .op.dead{color:#2f2b27}
+  .cap2{font-size:.55rem;letter-spacing:.16em;font-variant:small-caps;color:var(--faint);
+    display:block;margin-top:2px}
+
+  .lab{padding:5px 10px 1px;font-size:.6rem;letter-spacing:.18em;font-variant:small-caps;
+    color:var(--faint);background:#0d0b0a;border-left:1px solid var(--line);border-right:1px solid var(--line)}
+  .tray{display:flex;gap:6px;justify-content:center;padding:5px 10px 9px;background:#0d0b0a;
+    border-left:1px solid var(--line);border-right:1px solid var(--line);align-items:flex-start}
+  .tray.iron{border-top:1px dashed #2f3846;gap:20px}
+  .slot{display:flex;flex-direction:column;align-items:center;gap:3px;position:relative}
+  .slot .cap{font-size:.55rem;letter-spacing:.03em;text-align:center;line-height:1.2}
+  /* the number appears ON the thing that made it — this is the whole fix */
+  .pop{position:absolute;left:50%;top:-4px;transform:translate(-50%,0);white-space:nowrap;
+    font:600 15px Georgia,serif;pointer-events:none;opacity:0;z-index:5;
+    text-shadow:0 1px 3px rgba(0,0,0,.9)}
+  .pop.go{animation:pop .62s ease-out forwards}
+  @keyframes pop{0%{opacity:0;transform:translate(-50%,4px) scale(.8)}
+    22%{opacity:1;transform:translate(-50%,-8px) scale(1.15)}
+    60%{opacity:1;transform:translate(-50%,-16px) scale(1)}
+    100%{opacity:0;transform:translate(-50%,-30px) scale(1)}}
+  .acts{display:flex;gap:6px;padding:8px 10px 11px;background:#0d0b0a;border:1px solid var(--line);border-top:none}
+  button{flex:1;padding:9px 4px;background:#161210;color:var(--bone);border:1px solid #4a3f36;
+    font-family:inherit;font-size:.75rem;letter-spacing:.13em;font-variant:small-caps;cursor:pointer}
+  button:disabled{opacity:.3;cursor:default}
+  button.go{border-color:var(--gold);color:var(--gold)}
+  .opts{display:flex;gap:16px;justify-content:center;padding:9px 14px 2px;font-size:.72rem;color:var(--dim)}
+  .opts label{display:flex;align-items:center;gap:5px;cursor:pointer}
+  .inspect{margin:0 14px 4px;padding:8px 10px;background:#0d0b0a;border:1px solid var(--line)}
+  .inspect .nm{font-size:.76rem;font-variant:small-caps;letter-spacing:.13em}
+  .inspect .or{font-size:.7rem;color:var(--dim);font-style:italic;padding-top:4px;line-height:1.4}
+  .faces{display:flex;gap:5px;padding:7px 0 3px;align-items:flex-start;flex-wrap:wrap}
+  .fl{font-size:.55rem;color:var(--faint);text-align:center;letter-spacing:.03em;max-width:54px;line-height:1.2}
+  .fw{display:flex;flex-direction:column;align-items:center;gap:2px}
+  footer{padding:14px 14px 40px;font-size:.74rem;color:var(--faint)}
+</style>
+</head>
+<body>
+<header>
+  <h1>where the number comes from</h1>
+  <p>No list. The number appears <b>on the thing that made it</b>, and one readout ticks: the sum, then the multiplier, then the iron adding to it. Attribution is where you are already looking.</p>
+</header>
+
+<section>
+  <h2>1 · different material, different shape</h2>
+  <p class="why">Warm bone, cold iron. Rounded against bevelled. Pips against glyphs.</p>
+  <p class="rowlab">the six · yours to steer</p>
+  <div class="strip" id="rowBone"></div>
+  <p class="rowlab">carried · they roll, they do not combo</p>
+  <div class="strip" id="rowIron"></div>
+</section>
+
+<section>
+  <h2>2 · a die shows its faces</h2>
+  <p class="why">Every face in the order a roll indexes them, with the cost marked where it actually sits.</p>
+  <div id="inspects"></div>
+</section>
+
+<section>
+  <h2>3 · the scoring</h2>
+  <p class="why">Roll, tap bones to claim, Attack. Each die pops its own value. The line lights the multiplier. Then each iron die that fired pops <b>its</b> number, on itself — and the readout climbs.</p>
+  <div class="stage">
+    <div class="band" id="band">Six bones and two pieces of iron.</div>
+    <div class="score">
+      <div><div class="box dead" id="bChips">0</div><span class="cap2" id="capChips">sum</span></div>
+      <div class="op dead" id="bOp">×</div>
+      <div><div class="box dead" id="bMult">—</div><span class="cap2" id="capMult">line</span></div>
+    </div>
+    <div class="lab">the six</div>
+    <div class="tray" id="tray"></div>
+    <div class="lab">carried · what they are holding now</div>
+    <div class="tray iron" id="itray"></div>
+    <div class="acts">
+      <button id="bRoll" class="go">Roll</button>
+      <button id="bRe" disabled>Reroll</button>
+      <button id="bAtk" disabled>Attack</button>
+    </div>
+  </div>
+  <div class="opts"><label><input type="checkbox" id="slow"> slower</label></div>
+  <p class="note">A trinket that rolled a null pops nothing and stays dark — nothing happened, so nothing is claimed. The caption under it already says what it is holding, so the pop only ever has to carry the amount.</p>
+</section>
+
+<footer>The whole of it: the sum ticks as the bones pop, the multiplier lights when the line is named, the two collapse into the blow, and the iron adds to that. Three seconds, and every number was seen leaving the thing that made it.</footer>
+
+<script>
+"use strict";
+function hsl(h,s,l){h=((h%360)+360)%360;s/=100;l/=100;
+  const c=(1-Math.abs(2*l-1))*s,x=c*(1-Math.abs((h/60)%2-1)),m=l-c/2;let r,g,b;
+  if(h<60){[r,g,b]=[c,x,0];}else if(h<120){[r,g,b]=[x,c,0];}
+  else if(h<180){[r,g,b]=[0,c,x];}else if(h<240){[r,g,b]=[0,x,c];}
+  else if(h<300){[r,g,b]=[x,0,c];}else{[r,g,b]=[c,0,x];}
+  return "rgb("+Math.round((r+m)*255)+","+Math.round((g+m)*255)+","+Math.round((b+m)*255)+")";}
+const BONE={face:hsl(38,26,74),lit:hsl(44,46,90),edge:hsl(30,20,30),deep:hsl(28,18,20),
+            pip:hsl(26,22,17),scar:hsl(8,52,42)};
+const IRON={face:hsl(214,16,44),lit:hsl(204,32,70),edge:hsl(218,20,20),deep:hsl(220,18,13),
+            glyph:hsl(200,34,84),dead:hsl(216,10,30)};
+const KIND={block:hsl(202,44,66),add:hsl(40,62,64),per:hsl(40,62,64),cost:hsl(8,56,58),null:hsl(216,10,40)};
+function P(cv,s){cv.width=16*s;cv.height=16*s;cv.style.width=(16*s)+"px";cv.style.height=(16*s)+"px";
+  const c=cv.getContext("2d");c.imageSmoothingEnabled=false;
+  return {c:c,px:function(x,y,col,w,h){c.fillStyle=col;c.fillRect(x*s,y*s,(w||1)*s,(h||1)*s);}};}
+function drawBone(cv,val,st){
+  const s=st.s||3,o=P(cv,s),c=o.c,px=o.px;
+  c.clearRect(0,0,cv.width,cv.height);
+  const body=st.lift?BONE.lit:BONE.face,edge=BONE.edge;
+  px(2,1,edge,12,1);px(2,14,edge,12,1);px(1,2,edge,1,12);px(14,2,edge,1,12);
+  px(2,2,edge,1,1);px(13,2,edge,1,1);px(2,13,edge,1,1);px(13,13,edge,1,1);
+  px(2,2,body,12,12);px(3,2,body,10,1);px(2,3,body,1,10);
+  px(3,3,BONE.lit,9,1);px(3,3,BONE.lit,1,9);
+  px(12,12,BONE.deep,2,2);px(4,12,BONE.deep,8,1);
+  const L={1:[[7,7]],2:[[4,4],[10,10]],3:[[4,4],[7,7],[10,10]],
+    4:[[4,4],[10,4],[4,10],[10,10]],5:[[4,4],[10,4],[7,7],[4,10],[10,10]],
+    6:[[4,4],[10,4],[4,7],[10,7],[4,10],[10,10]]};
+  const pts=L[val]||[];
+  for(let i=0;i<pts.length;i++) px(pts[i][0]-1,pts[i][1]-1,BONE.pip,2,2);
+  if(st.scar){px(12,3,BONE.scar,2,1);px(13,4,BONE.scar,1,2);}
+  if(st.sel){c.strokeStyle=hsl(40,52,60);c.lineWidth=Math.max(1,s-1);
+    c.strokeRect(s*.5,s*.5,cv.width-s,cv.height-s);}
+}
+function drawTrinket(cv,face,st){
+  const s=st.s||3,o=P(cv,s),c=o.c,px=o.px;
+  c.clearRect(0,0,cv.width,cv.height);
+  const dead=!!face&&face.kind==="null";
+  const body=dead?IRON.dead:(st.fire?IRON.lit:IRON.face);
+  px(4,1,IRON.edge,8,1);px(4,14,IRON.edge,8,1);px(1,4,IRON.edge,1,8);px(14,4,IRON.edge,1,8);
+  px(2,3,IRON.edge,2,1);px(3,2,IRON.edge,1,1);px(12,3,IRON.edge,2,1);px(12,2,IRON.edge,1,1);
+  px(2,12,IRON.edge,2,1);px(3,13,IRON.edge,1,1);px(12,12,IRON.edge,2,1);px(12,13,IRON.edge,1,1);
+  px(4,2,body,8,12);px(2,4,body,12,8);px(3,3,body,10,10);
+  px(4,2,IRON.lit,7,1);px(2,4,IRON.lit,1,7);
+  px(11,12,IRON.deep,3,1);px(12,11,IRON.deep,1,3);
+  const g=dead?IRON.dead:IRON.glyph;
+  if(!face){px(6,7,IRON.deep,4,2);}
+  else if(face.kind==="null"){px(5,7,IRON.edge,6,1);px(5,8,IRON.edge,6,1);}
+  else if(face.kind==="block"){px(5,4,g,6,1);px(4,5,g,1,4);px(11,5,g,1,4);
+    px(5,9,g,6,1);px(6,10,g,4,1);px(7,11,g,2,1);}
+  else if(face.kind==="add"){px(7,4,g,2,8);px(4,7,g,8,2);}
+  else if(face.kind==="per"){px(7,5,g,2,6);px(5,7,g,6,2);px(3,3,g,1,1);px(12,3,g,1,1);
+    px(3,12,g,1,1);px(12,12,g,1,1);}
+  else if(face.kind==="cost"){px(5,4,g,2,2);px(7,6,g,2,2);px(9,4,g,2,2);
+    px(6,9,g,1,2);px(8,10,g,1,2);px(10,9,g,1,2);}
+  if(st.fire){c.strokeStyle=IRON.glyph;c.lineWidth=Math.max(1,s-1);
+    c.strokeRect(s*.5,s*.5,cv.width-s,cv.height-s);}
+}
+function mk(p,s){const cv=document.createElement("canvas");
+  cv.width=16*s;cv.height=16*s;cv.style.width=(16*s)+"px";cv.style.height=(16*s)+"px";
+  p.appendChild(cv);return cv;}
+
+const SAINT={id:"the tin saint",origin:"Somebody who lived by not being hit.",
+  faces:[{kind:"block",amount:6},{kind:"block",amount:6},{kind:"block",amount:10},
+         {kind:"null"},{kind:"null"},{kind:"cost",amount:4}]};
+const SLIVER={id:"the sliver",origin:"Somebody who sharpened one trick until it cut.",
+  faces:[{kind:"per",amount:2},{kind:"per",amount:3},{kind:"add",amount:6},
+         {kind:"null"},{kind:"null"},{kind:"cost",amount:5}]};
+function say(f){return !f?"—":f.kind==="null"?"nothing":f.kind==="per"?("+"+f.amount+" per die"):
+  f.kind==="block"?("turns "+f.amount+" aside"):f.kind==="cost"?("bites "+f.amount):("+"+f.amount);}
+
+const rb=document.getElementById("rowBone"),ri=document.getElementById("rowIron");
+[1,2,3,4,5,6].forEach(function(v){drawBone(mk(rb,3),v,{s:3});});
+drawBone(mk(rb,3),1,{s:3,scar:true});
+[SAINT.faces[2],SLIVER.faces[1],SAINT.faces[3],SLIVER.faces[5]].forEach(function(f){
+  drawTrinket(mk(ri,3),f,{s:3});});
+
+const PUSHER={id:"the last push",
+  origin:"The one who throws high, and again, and again, until the throw that lands low.",
+  bone:true,faces:[1,5,5,6,6,6],scarAt:0,rider:"the push — you bleed 3"};
+const PLAIN={id:"a plain bone",origin:"Yours. It has no story yet.",bone:true,faces:[1,2,3,4,5,6]};
+const ins=document.getElementById("inspects");
+[PLAIN,PUSHER,SAINT,SLIVER].forEach(function(d){
+  const box=document.createElement("div");box.className="inspect";
+  const nm=document.createElement("div");nm.className="nm";nm.textContent=d.id;box.appendChild(nm);
+  const fr=document.createElement("div");fr.className="faces";box.appendChild(fr);
+  d.faces.forEach(function(f,i){
+    const w=document.createElement("div");w.className="fw";fr.appendChild(w);
+    const cv=mk(w,3);
+    if(d.bone){drawBone(cv,f,{s:3,scar:d.scarAt===i});}else{drawTrinket(cv,f,{s:3});}
+    const l=document.createElement("div");l.className="fl";
+    l.textContent=d.bone?(d.scarAt===i?"costs 3":""):say(f);
+    if(!d.bone){l.style.color=KIND[f.kind];}
+    w.appendChild(l);});
+  const or=document.createElement("div");or.className="or";
+  or.textContent=(d.rider?d.rider+" · ":"")+d.origin;box.appendChild(or);
+  ins.appendChild(box);});
+
+const TIER={pair:2,trip:3,quad:4,run3:2,run4:3,run5:4,twopair:3,fullhouse:4,any:1};
+const NAME={pair:"a pair",trip:"three of a kind",quad:"four of a kind",run3:"a run of three",
+  run4:"a run of four",run5:"a run of five",twopair:"two pair",fullhouse:"a full house",any:"loose dice"};
+function lines(nums){
+  const c={};for(let i=0;i<nums.length;i++){c[nums[i]]=(c[nums[i]]||0)+1;}
+  const out=[];
+  for(const k in c){const v=+k,n=c[k];
+    if(n>=2)out.push(["pair",2*v,2]);if(n>=3)out.push(["trip",3*v,3]);if(n>=4)out.push(["quad",4*v,4]);}
+  const ds=Object.keys(c).map(Number).sort(function(a,b){return a-b;});
+  [[3,"run3"],[4,"run4"],[5,"run5"]].forEach(function(pr){
+    const L=pr[0],nm=pr[1];
+    for(let i=0;i+L<=ds.length;i++){const s=ds.slice(i,i+L);
+      if(s[L-1]-s[0]===L-1)out.push([nm,s.reduce(function(a,b){return a+b;},0),L]);}});
+  const pairs=ds.filter(function(v){return c[v]>=2;});
+  if(pairs.length>=2)out.push(["twopair",2*pairs[pairs.length-1]+2*pairs[pairs.length-2],4]);
+  const trips=ds.filter(function(v){return c[v]>=3;});
+  trips.forEach(function(t){pairs.forEach(function(p){if(p!==t)out.push(["fullhouse",3*t+2*p,5]);});});
+  out.push(["any",nums.reduce(function(a,b){return a+b;},0),nums.length]);
+  return out;}
+function best(n){let b=null;const all=lines(n);
+  for(let i=0;i<all.length;i++){const x=all[i],s=x[1]*TIER[x[0]];if(!b||s>b[3])b=[x[0],x[1],x[2],s];}
+  return b;}
+function $(id){return document.getElementById(id);}
+const TR=[SAINT,SLIVER];
+let S={vals:[1,1,1,1,1,1],sel:[0,0,0,0,0,0],rolls:[null,null],rolled:false,busy:false,lift:null,fire:null};
+const tray=$("tray"),itray=$("itray");
+const boneCv=[0,1,2,3,4,5].map(function(i){
+  const slot=document.createElement("div");slot.className="slot";slot.style.width="46px";tray.appendChild(slot);
+  const cv=mk(slot,3);cv.style.cursor="pointer";
+  cv.onclick=function(){if(!S.rolled||S.busy)return;S.sel[i]=!S.sel[i];paint();};
+  const cap=document.createElement("div");cap.className="cap";cap.style.minHeight="12px";slot.appendChild(cap);
+  return {slot:slot,cv:cv,cap:cap};});
+const ironCv=TR.map(function(t){
+  const slot=document.createElement("div");slot.className="slot";slot.style.width="76px";itray.appendChild(slot);
+  const cv=mk(slot,3);
+  const cap=document.createElement("div");cap.className="cap";slot.appendChild(cap);
+  return {slot:slot,cv:cv,cap:cap,name:t.id};});
+/** The number appears on the thing that made it, then it is gone. */
+function pop(slot,text,col){
+  const d=document.createElement("div");d.className="pop";d.textContent=text;d.style.color=col;
+  slot.appendChild(d);
+  requestAnimationFrame(function(){d.className="pop go";});
+  setTimeout(function(){if(d.parentNode)d.parentNode.removeChild(d);},700);
+}
+function setBox(el,txt,pulse){el.textContent=txt;
+  if(pulse){el.className="box pulse";setTimeout(function(){el.className="box";},140);}}
+function paint(){
+  boneCv.forEach(function(o,i){drawBone(o.cv,S.vals[i],{s:3,sel:S.sel[i],lift:S.lift&&S.lift[i]});
+    o.cap.textContent=S.sel[i]?"claimed":"";o.cap.style.color=KIND.add;});
+  ironCv.forEach(function(o,i){const f=S.rolls[i];
+    drawTrinket(o.cv,f,{s:3,fire:S.fire&&S.fire[i]});
+    o.cap.innerHTML='<span style="color:'+(f?KIND[f.kind]:"#55504a")+'">'+say(f)+'</span>'+
+      '<span style="color:#4b463f;display:block">'+o.name+'</span>';});
+  const picked=S.vals.filter(function(_,i){return S.sel[i];});
+  const b=picked.length?best(picked):null;
+  if(!S.busy){
+    $("bChips").textContent=picked.length?String(picked.reduce(function(a,c){return a+c;},0)):"0";
+    $("bChips").className=picked.length?"box":"box dead";
+    $("bMult").textContent=b?("× "+TIER[b[0]]).slice(2):"—";
+    $("bMult").className=b?"box":"box dead";
+    $("bOp").className=b?"op":"op dead";
+    $("capMult").textContent=b?NAME[b[0]]:"line";
+    $("capChips").textContent="sum";
+  }
+  $("bAtk").disabled=!S.rolled||!picked.length||S.busy;
+  $("bRe").disabled=!S.rolled||S.busy;$("bRoll").disabled=S.rolled||S.busy;
+}
+let T=[];
+function at(ms,fn){T.push(setTimeout(fn,ms));}
+function band(t){$("band").textContent=t;}
+function K(){return $("slow").checked?1.9:1;}
+function doRoll(re){
+  S.busy=true;T.forEach(clearTimeout);T=[];S.lift=null;S.fire=null;
+  const which=[0,1,2,3,4,5].map(function(i){return re?!S.sel[i]:true;});
+  if(!re)S.sel=[0,0,0,0,0,0];
+  band(re?"Take them back. Throw again.":"Throw.");
+  let n=0;
+  which.forEach(function(y,i){if(!y)return;const settle=170+(n++)*75;
+    const tk=setInterval(function(){S.vals[i]=1+Math.floor(Math.random()*6);paint();},52);T.push(tk);
+    at(settle,function(){clearInterval(tk);S.vals[i]=1+Math.floor(Math.random()*6);paint();});});
+  if(!re){S.rolls=[null,null];
+    at(190+n*75,function(){S.rolls=TR.map(function(t){return t.faces[Math.floor(Math.random()*6)];});
+      band("The iron shows what it is holding.");paint();});}
+  at(280+n*75,function(){S.rolled=true;S.busy=false;paint();});
+}
+function doAttack(){
+  const idx=[];S.sel.forEach(function(o,i){if(o)idx.push(i);});
+  const b=best(idx.map(function(i){return S.vals[i];}));
+  S.busy=true;T.forEach(clearTimeout);T=[];
+  S.lift=[0,0,0,0,0,0];S.fire=[0,0];
+  const k=K();let t=0,sum=0;
+  $("bChips").className="box";$("bChips").textContent="0";
+  $("bMult").className="box dead";$("bMult").textContent="—";
+  $("bOp").className="op dead";$("capMult").textContent="line";
+  paint();
+  /* 1 — each bone pops its own value, and the sum ticks */
+  idx.forEach(function(i){
+    at(t,function(){S.lift[i]=1;sum+=S.vals[i];
+      pop(boneCv[i].slot,"+"+S.vals[i],KIND.add);
+      setBox($("bChips"),String(sum),true);paint();});
+    t+=145*k;});
+  /* 2 — the line lights the multiplier */
+  t+=230*k;
+  at(t,function(){$("bOp").className="op";
+    setBox($("bMult"),String(TIER[b[0]]),true);
+    $("capMult").textContent=NAME[b[0]];
+    band(NAME[b[0]]+".");});
+  /* 3 — they collapse into the blow */
+  t+=430*k;
+  let run=0;
+  at(t,function(){run=b[3];
+    $("bMult").className="box dead";$("bMult").textContent="—";$("bOp").className="op dead";
+    $("capMult").textContent="";$("capChips").textContent="the blow";
+    setBox($("bChips"),String(run),true);});
+  /* 4 — the iron adds to it, each popping on itself */
+  t+=380*k;
+  const fired=[];
+  S.rolls.forEach(function(f,i){if(f&&f.kind!=="null")fired.push({f:f,i:i});});
+  fired.forEach(function(o){
+    const f=o.f,i=o.i;
+    at(t,function(){S.fire[i]=1;
+      if(f.kind==="per"){const g=f.amount*b[2];run+=g;
+        pop(ironCv[i].slot,"+"+g,KIND.per);
+        band(f.amount+" for each of the "+b[2]+".");setBox($("bChips"),String(run),true);}
+      else if(f.kind==="add"){run+=f.amount;
+        pop(ironCv[i].slot,"+"+f.amount,KIND.add);
+        band("+"+f.amount+".");setBox($("bChips"),String(run),true);}
+      else if(f.kind==="block"){
+        pop(ironCv[i].slot,"⛊"+f.amount,KIND.block);
+        band("It turns "+f.amount+" aside.");}
+      else{pop(ironCv[i].slot,"−"+f.amount,KIND.cost);band("It bites. "+f.amount+".");}
+      paint();});
+    t+=390*k;});
+  at(t,function(){band("It comes to "+run+".");
+    S.rolled=false;S.sel=[0,0,0,0,0,0];S.busy=false;S.lift=null;S.fire=null;paint();});
+}
+$("bRoll").onclick=function(){doRoll(false);};
+$("bRe").onclick=function(){doRoll(true);};
+$("bAtk").onclick=doAttack;
+paint();
+</script>
+</body>
+</html>
