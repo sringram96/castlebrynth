@@ -5,35 +5,34 @@ import type { Card, Die, DieId, Hand, Intent, Line, Turn, Value } from '../src/l
 import { LINES, claimable, shapesOf } from '../src/lots/index.js'
 
 /**
- * The floor, restated for a hand of five (arts 46, 48, 55, 63, 64).
+ * The floor, restated for the bare hand (arts 46, 48, 55, 63, 64).
  *
- * This file used to enforce the whiff clause — no hand of six could fail to
- * score — which art. 46 repealed in favour of the ANY DICE line. The
- * travelers ruling of 2026-08-05 moves it again, because the bare hand is
- * now five dice and the pigeonhole argument underneath it is a different
- * argument.
+ * This file used to enforce the whiff clause — no hand could fail to score —
+ * which art. 46 repealed in favour of the ANY DICE line. It has been
+ * restated twice since, because art. 55 has moved the bare hand twice and
+ * the pigeonhole argument underneath it is a different argument each time.
  *
- * **At six**, five dice over six values either repeated a value — a pair —
- * or held all six, which is the straight. The guarantee was a shape, and the
- * best case of the all-distinct branch was the top of the ladder.
+ * **At six** (art. 55 as amended 2026-08-06, and where it stands now) the
+ * two branches are: a repeated value, which is a pair; or six distinct
+ * values, which can only be all of 1–6 and is therefore the straight. So
+ * something above the floor is always there, and it is tight at ×2 — the
+ * hand 1-1-2-3-5-6 makes a pair and a run of 3 and nothing better. Neither
+ * half of the guarantee holds on its own.
  *
- * **At five**, the two branches are: a repeat, which is a pair; or five
- * distinct values, which omits exactly one of 1–6 — and omitting any one
- * value from 1–6 always leaves three consecutive behind. So the guarantee is
- * *a pair or a run of 3*, and it is tight at ×2: the hand 1-1-2-3-5 makes
- * nothing better. Neither half is guaranteed on its own.
- *
- * And three lines of the ladder leave the bare player's reach entirely: the
- * straight, three pairs, and two triples all want six dice. They are on the
- * card, they are unclaimable, and the sixth die that opens them is a dead
- * traveler's (art. 86). That is the amendment's real arithmetic, and it is
- * asserted here rather than described.
+ * **At five** (the 2026-08-05 ruling, now superseded) the branches were a
+ * repeat or five distinct values omitting one of 1–6, and omitting any one
+ * always leaves three consecutive behind: *a pair or a run of 3*, also tight
+ * at ×2. Three lines of the ladder — the straight, three pairs, two triples
+ * — sat on the card out of a bare hand's reach, and the sixth die that
+ * opened them was a dead traveler's. **That is the clause the amendment
+ * repealed**: a bare hand now reaches every line on the card, and what a
+ * traveler's die buys is a better hand rather than a longer ladder.
  */
 
 /** art. 55 (amended): the bare hand, as the first waking assembles it. */
 const BARE = PLAIN_POUCH.dice.length
 
-/** arts 48, 55: the lines a hand of five can never make, whatever it rolls. */
+/** arts 48, 60: the lines no hand shorter than six can make, whatever it rolls. */
 const NEEDS_SIX: readonly Line[] = ['straight', 'three-pairs', 'two-triples']
 
 /** Every hand of `size` dice, as values. 6^size of them. */
@@ -137,7 +136,7 @@ describe('lots — art. 46 (the ANY DICE floor), art. 48 (the shapes), arts 63�
     expect(linesIn([1, 1, 1, 1, 1] as Value[]).has('pair')).toBe(true)
   })
 
-  it('is tight at ×2: some hand of five reaches no better (arts 48, 55)', () => {
+  it('is tight at ×2: some bare hand reaches no better (arts 48, 55)', () => {
     let worst = Number.POSITIVE_INFINITY
     for (const hand of everyHand(BARE)) worst = Math.min(worst, bestAboveFloor(hand))
     // Never nothing — the shape above is always there.
@@ -146,32 +145,33 @@ describe('lots — art. 46 (the ANY DICE floor), art. 48 (the shapes), arts 63�
     expect(worst).toBe(LADDER.pair.multiplier)
     expect(worst).toBe(LADDER['run-3'].multiplier)
     // The witness, so the number is a hand and not a coincidence.
-    expect(bestAboveFloor([1, 1, 2, 3, 5] as Value[])).toBe(2)
+    expect(bestAboveFloor([1, 1, 2, 3, 5, 6] as Value[])).toBe(2)
   })
 
   /**
-   * arts 48, 55, 86: what the amendment took away. Three lines sit on the
-   * card that a bare hand can never spend — and the die that opens them came
-   * off somebody who did not come back.
+   * arts 48, 55 (amended 2026-08-06): **the whole card is spendable from the
+   * waking.** The bare hand is six, so the three six-die lines are in reach
+   * of it and a run can no longer carry lines it has no way to claim.
    */
-  it('puts three lines of the ladder out of a bare hand’s reach (arts 48, 55)', () => {
+  it('leaves no line of the ladder out of a bare hand’s reach (arts 48, 55)', () => {
     const reachable = new Set<Line>()
     for (const hand of everyHand(BARE)) for (const line of linesIn(hand)) reachable.add(line)
-    for (const line of NEEDS_SIX) expect([...reachable], line).not.toContain(line)
-    // They are on the card regardless: the card is the ladder, not the hand.
-    for (const line of NEEDS_SIX) expect(LINES).toContain(line)
-    // Everything else on the ladder is reachable at five.
-    for (const line of LINES) {
-      if (NEEDS_SIX.includes(line)) continue
-      expect([...reachable], line).toContain(line)
-    }
+    for (const line of LINES) expect([...reachable], line).toContain(line)
+    // The three that used to be out of reach, named, because they are the
+    // whole difference the amendment made.
+    for (const line of NEEDS_SIX) expect([...reachable], line).toContain(line)
   })
 
-  it('opens all three again the moment the hand is six (arts 56, 60, 86)', () => {
-    expect(HAND_SIZE).toBe(BARE + 1)
+  it('keeps the six-die lines six-die lines (arts 48, 60)', () => {
+    expect(HAND_SIZE).toBe(BARE)
     expect(shapesOf([1, 2, 3, 4, 5, 6] as Value[])).toContain('straight')
     expect(shapesOf([1, 1, 2, 2, 3, 3] as Value[])).toContain('three-pairs')
     expect(shapesOf([1, 1, 1, 2, 2, 2] as Value[])).toContain('two-triples')
+    // A hand one short of six makes none of them, whatever it rolls: these
+    // are shapes and not sizes, and a wound that shrinks the hand shuts them.
+    const shorter = new Set<Line>()
+    for (const hand of everyHand(BARE - 1)) for (const line of linesIn(hand)) shorter.add(line)
+    for (const line of NEEDS_SIX) expect([...shorter], line).not.toContain(line)
   })
 
   it('names 1-2-3-4-5-6 the straight, and not a run of six (art. 48)', () => {

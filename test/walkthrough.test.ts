@@ -47,6 +47,7 @@ import {
   memoryVault,
   meet,
   movedTo,
+  sparesOf,
   save,
   wake,
 } from '../src/state/index.js'
@@ -175,13 +176,13 @@ function atTheWardensDoor(): { ledgers: Ledgers; chain: Chain; node: ChainNode }
 const verbsIn = (bands: Bands): readonly string[] =>
   bands.tray.flatMap((offer) => (offer.kind === 'act' ? [offer.act.verb] : []))
 
-describe('the walk — five bones, a traveler, a fork, and a death', () => {
-  it('wakes with five dice and one empty slot (arts 55, 60)', () => {
+describe('the walk — six bones, a traveler, a fork, and a death', () => {
+  it('wakes with a full hand of six (arts 55, 60)', () => {
     const ledgers = wake(firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY), seedOf(1))
-    expect(ledgers.run!.hand.dice).toHaveLength(5)
+    expect(ledgers.run!.hand.dice).toHaveLength(HAND_SIZE)
     expect(ledgers.permanent.handSize).toBe(6)
-    // What the tray draws: a slot per die, then the shortfall as empties.
-    expect(ledgers.permanent.handSize - ledgers.run!.hand.dice.length).toBe(1)
+    // What the tray draws: a slot per die, and no empties behind them.
+    expect(ledgers.permanent.handSize - ledgers.run!.hand.dice.length).toBe(0)
     // And nothing at all is signed yet.
     expect(ledgers.permanent.signature).toBeNull()
   })
@@ -200,27 +201,31 @@ describe('the walk — five bones, a traveler, a fork, and a death', () => {
     }
   })
 
-  it('takes their die: it signs the run and fills the slot (arts 56, 86)', () => {
+  it('takes their die: it signs the run and goes spare (arts 56, 60, 86)', () => {
     const { ledgers, one } = firstBone()
     const bone = one.takes![0]!
     expect(ledgers.permanent.signature).toBeNull()
-    expect(ledgers.run!.hand.dice).toHaveLength(5)
+    expect(ledgers.run!.hand.dice).toHaveLength(HAND_SIZE)
 
     const after = act(ledgers, one)
     // The signature is the first die you collect, and it is a dead
     // traveler's — there is no other kind.
     expect(after.permanent.signature).toBe(bone.id)
     expect(after.permanent.pouch.dice.map((die) => die.id)).toContain(bone.id)
-    // And the hole in the hand is closed, now rather than at the next waking.
+    // art. 55 as amended: the hand was already full, so this is a spare and
+    // the choosing screen is where it comes down (art. 60). The hand a run
+    // went down with does not move inside the descent.
     expect(after.run!.hand.dice).toHaveLength(HAND_SIZE)
-    expect(after.run!.hand.dice.at(-1)!.id).toBe(bone.id)
+    expect(after.run!.hand.dice.map((die) => die.id)).not.toContain(bone.id)
+    expect(sparesOf(after.permanent).map((die) => die.id)).toEqual([bone.id])
   })
 
   it('answers a tap with the declared distribution and the origin (arts 54, 87)', () => {
     const { ledgers, one } = firstBone()
     const bone = one.takes![0]!
-    const inHand = act(ledgers, one).run!.hand.dice.at(-1)!
-    const said = saysDie(inHand)
+    const owned = act(ledgers, one).permanent.pouch.dice.at(-1)!
+    const said = saysDie(owned)
+    const inHand = owned
     // Every face, in order, as the die declares them (arts 50, 54).
     expect(said).toContain(inHand.faces.map((face) => face.value).join(' '))
     // And the one sentence that says why those are the faces (art. 87).

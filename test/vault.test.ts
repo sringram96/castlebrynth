@@ -15,6 +15,7 @@ import {
   quarantined,
   save,
   wake,
+  woken,
 } from '../src/state/index.js'
 
 /**
@@ -118,9 +119,52 @@ describe('the vault ladder — art. 11 (the Book survives everything)', () => {
     expect(restored.run).toBeNull()
     expect(restored.permanent.bookOfEnds).toHaveLength(3)
     // And the permanent it kept still wakes a run, which is the point.
-    const woken = wake(restored.permanent, 3 as never)
-    expect(woken.run).not.toBeNull()
-    expect(woken.permanent.bookOfEnds).toHaveLength(3)
+    const up = wake(restored.permanent, 3 as never)
+    expect(up.run).not.toBeNull()
+    expect(up.permanent.bookOfEnds).toHaveLength(3)
+  })
+
+  /**
+   * art. 11 — **and the boot has to actually use it.**
+   *
+   * The rung above hands back a permanent and no run, and the shell used to
+   * read "no run" as "nothing here" and wake from the bare pouch. Every die,
+   * every meeting and the whole Book went with it, one schema change after
+   * the ladder was written to prevent exactly that. So the decision is a
+   * function now, and this is the test standing over it.
+   */
+  it('wakes a dropped run off the permanent the ladder kept (arts 11, 36)', () => {
+    const { vault } = killable({ [VAULT_KEY]: V1 })
+    const restored = load(vault)!
+    expect(restored.run).toBeNull()
+
+    const bare = firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY)
+    const up = woken(restored, bare, 3 as never)
+
+    // The player is intact: the Book, the pouch, everything the ladder kept.
+    expect(up.permanent).toEqual(restored.permanent)
+    expect(up.permanent.bookOfEnds).toHaveLength(3)
+    expect(up.permanent).not.toEqual(bare)
+    // And they are standing in a run again, which is what was actually lost.
+    expect(up.run).not.toBeNull()
+    expect(up.run!.seed).toBe(3)
+  })
+
+  it('wakes bare only when the vault holds nothing at all (art. 11)', () => {
+    const bare = firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY)
+    const fresh = woken(null, bare, 4 as never)
+    expect(fresh.permanent).toEqual(bare)
+    expect(fresh.run).not.toBeNull()
+  })
+
+  it('stands a run back up exactly as it was found (arts 36, 75)', () => {
+    const { vault } = killable()
+    const ledgers = wake(firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY), 8 as never)
+    save(ledgers, vault)
+    const restored = load(vault)!
+    expect(woken(restored, firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY), 9 as never)).toBe(
+      restored,
+    )
   })
 
   it('walks every rung of the ladder, with no gap between them', () => {

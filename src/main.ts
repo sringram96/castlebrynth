@@ -60,6 +60,7 @@ import {
   saysIntent,
   saysLine,
   saysItem,
+  saysWithheld,
 } from './content/index.js'
 import type { Act, Bands, Pick, Tappable } from './descent/index.js'
 import {
@@ -146,6 +147,7 @@ import {
   sealed,
   tumblingFace,
   unused,
+  withheld,
   withTurn,
   woundedBy,
 } from './lots/index.js'
@@ -170,6 +172,7 @@ import {
   mustChoose,
   tookIntoRun,
   wake,
+  woken,
 } from './state/index.js'
 import {
   exported,
@@ -356,15 +359,16 @@ function greet(): void {
 }
 
 function boot(): void {
-  const found = load(vault)
-  if (found === null || found.run === null) {
-    // arts 55–56: a first waking is five bones and a hole. There is no ritual
-    // left at the Crossing — the signature is the first traveler's die, and
-    // the labyrinth is where that is found (art. 86). Waking *is* the room.
-    ledgers = wake(firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY), freshSeed())
-  } else {
-    ledgers = found
-  }
+  // arts 11, 36: what a boot wakes with is `woken`'s question and not the
+  // shell's — the snapshot's own run where there is one, a fresh run off the
+  // snapshot's permanent where the ladder dropped the run, and only a truly
+  // empty vault gets the bare pouch.
+  //
+  // arts 55–56 as amended: a first waking is six bones and a full hand. There
+  // is no ritual left at the Crossing — the signature is the first traveler's
+  // die, and the labyrinth is where that is found (art. 86). Waking *is* the
+  // room.
+  ledgers = woken(load(vault), firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY), freshSeed())
   screen = { kind: 'room' }
   // art. 60: the hand is the first `handSize` of the pouch, and that has to
   // be true on the way *in* as well as after every act — a boot is the one
@@ -1468,9 +1472,19 @@ function claimOffer(): string | null {
   // card 71: and the reason is a *reason*, not a refusal. This used to print
   // the offer and "No combo uses exactly these dice" side by side, which
   // reads as the tray offering something and denying it in one breath.
-  return fitsNothing(now.turn, selected, LADDER)
+  if (!fitsNothing(now.turn, selected, LADDER)) return offer
+  // arts 63, 65: **and the reason has to be the true one.** A selection down
+  // to the floor because the dice make nothing and a selection down to the
+  // floor because the horror sealed the line it makes look identical, and the
+  // tray called both of them *the best these make*. On a SEAL turn that
+  // sentence is false about a full house lying on the table, which is what a
+  // player reads as the scoring being broken — so where a line is actually
+  // there and shut, the shut line is what gets named (art. 118's second
+  // clause, said about a line instead of a verb).
+  const shut = withheld(now.turn, selected)
+  return shut === null
     ? `${offer} · ${NOTICES['claim.floor'] ?? ''}`
-    : offer
+    : `${offer} · ${saysWithheld(shut.line, shut.why)}`
 }
 
 /**
@@ -1651,6 +1665,10 @@ function claimIn(die: DieId): Line | null {
 
 function emptySlot(): HTMLButtonElement {
   const el = slot('empty')
+  // art. 69: silence is a bug, and a slot with no label is silent to anyone
+  // reading the tray rather than looking at it. It answers on a tap with the
+  // same words either way.
+  el.setAttribute('aria-label', NOTICES['pouch.empty'] ?? '')
   el.onclick = () => {
     settle()
     band = noticed(NOTICES['pouch.empty'] ?? '')

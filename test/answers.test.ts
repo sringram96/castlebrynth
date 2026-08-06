@@ -23,8 +23,10 @@ import {
   ROOMS,
   ROOM_BOOK,
   encounterWords,
+  LADDER,
   lintVoice,
   saysAct,
+  saysWithheld,
 } from '../src/content/index.js'
 import type { Act } from '../src/descent/index.js'
 import { act, chooseDoor, enterRoom } from '../src/descent/index.js'
@@ -155,5 +157,39 @@ describe('card 69 — the answers the retired lines used to carry', () => {
     // the verb, so there is nothing left for `mercy.whole` to answer.
     expect(NOTICES['mercy.whole']).toBeUndefined()
     expect(NOTICES['mercy.breath']).toBeUndefined()
+  })
+})
+
+/**
+ * arts 63, 65, 72, 118 — **the tray names the line, not the floor.**
+ *
+ * The sentence this replaces was *any dice 19 · the best these make*, said
+ * over a full house on a SEAL turn. It was the whole of what a playtest read
+ * as the scoring being broken: the dice plainly made a full house and the
+ * game was quietly worth one point a pip for them, with nothing on the frame
+ * saying why. `withheld` finds the reason (`lots/card.ts`); this is the
+ * sentence it comes out as.
+ */
+describe('arts 63, 65 — what the tray says about a line it is not offering', () => {
+  it('names the line and what is holding it shut', () => {
+    expect(saysWithheld('full-house', 'sealed')).toContain(LADDER['full-house'].name)
+    expect(saysWithheld('full-house', 'sealed')).toContain(NOTICES['claim.sealed']!)
+    expect(saysWithheld('pair', 'spent')).toContain(LADDER.pair.name)
+    expect(saysWithheld('pair', 'spent')).toContain(NOTICES['claim.spent']!)
+  })
+
+  it('tells the two reasons apart, and neither is the floor’s line', () => {
+    expect(saysWithheld('full-house', 'sealed')).not.toBe(saysWithheld('full-house', 'spent'))
+    for (const why of ['sealed', 'spent'] as const) {
+      expect(saysWithheld('full-house', why)).not.toContain(NOTICES['claim.floor']!)
+    }
+  })
+
+  it('says nothing the controls would have to carry (art. 66)', () => {
+    // It is a readout beside the offer, never a verb — so it is free to be
+    // longer than two words, and it must never read as one.
+    for (const why of ['sealed', 'spent'] as const) {
+      expect(saysWithheld('three-pairs', why)).not.toMatch(/^[A-Z]/)
+    }
   })
 })

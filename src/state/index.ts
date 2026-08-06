@@ -1254,6 +1254,35 @@ export function load(vault: Vault): Ledgers | null {
 }
 
 /**
+ * art. 11: **what the boot wakes with**, given what `load` found and what a
+ * first waking would be.
+ *
+ * Three cases, and the middle one is the whole reason this is a function
+ * rather than two lines in the shell:
+ *
+ * - **a snapshot with a run** — stand back up exactly where you were
+ *   (art. 36, art. 75).
+ * - **a snapshot with no run** — wake a fresh run *from the permanent it
+ *   carries*. This is what the migration ladder writes whenever a schema
+ *   change makes an old run unreplayable (`keepingOnlyThePermanent`), and
+ *   the ladder's whole promise is that it keeps the pouch, the knowledge and
+ *   the Book while dropping only the position in the labyrinth. The shell
+ *   used to wake from the *bare* permanent here, which threw all of it away
+ *   and handed the player a first waking — the wipe the ladder exists to
+ *   prevent, wearing a new coat. A run is a position and costs a run to
+ *   lose; the permanent is the player and may never be lost at all.
+ * - **nothing at all** — a first waking, from the bare permanent given.
+ *
+ * The seed is handed in rather than drawn here, because a waking is seeded
+ * at the waking (art. 36) and this is a decision about *which ledger*, not
+ * about chance.
+ */
+export function woken(found: Ledgers | null, bare: PermanentLedger, seed: Seed): Ledgers {
+  if (found === null) return wake(bare, seed)
+  return found.run === null ? wake(found.permanent, seed) : found
+}
+
+/**
  * A snapshot, walked from whatever version it says it is up to this one.
  * `null` when there is no path — which is a snapshot to keep, not one to
  * throw away.
