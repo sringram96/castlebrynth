@@ -167,7 +167,15 @@ export {
   socketMark,
 } from './rooms.js'
 export type { Utterance, VoiceCategory, VoiceComplaint } from './voice.js'
-export { lintVoice, asBeats, asLabels, CANDLE_WORDS } from './voice.js'
+export {
+  lintVoice,
+  asLabels,
+  asPlaceholders,
+  asScrawls,
+  asThoughts,
+  CANDLE_WORDS,
+  SCRAWL_WORDS,
+} from './voice.js'
 
 import { GNAWING_SCRIPT, MARROW_SCRIPT } from './horrors.js'
 import { LADDER } from './ladder.js'
@@ -186,16 +194,30 @@ import {
   SOCKET_BEATS,
 } from './prose.js'
 import type { Utterance } from './voice.js'
-import { asBeats, asLabels } from './voice.js'
+import { asLabels, asPlaceholders, asThoughts } from './voice.js'
+
+/**
+ * Which of the shell's notices have been rewritten into the amended
+ * register. Everything else in `NOTICES` is prose in the repealed voice and
+ * is declared a placeholder rather than quietly counted as passing.
+ *
+ * It is an explicit list because the honest answer is a list: a string is in
+ * the new voice because somebody wrote it in the new voice, never because a
+ * regular expression failed to object to it. **Empty until this wave's third
+ * commit**, which is the one that does the writing.
+ */
+const AMENDED_NOTICES: readonly string[] = []
 
 /**
  * Every player-facing string in the game, for the voice lint. If a string
  * reaches the player and is not in here, the lint cannot see it — and that
  * is the bug, not the exception.
  *
- * Two categories, by the ruling of 2026-08-04: prose answers to the whole
- * of rules/voice.md, and names — combos, items, rooms, horrors, the verbs
- * on an intent — answer to it minus second person and present tense.
+ * **Four categories** (the mind wave). A **thought** is him in live play; a
+ * **scrawl** is anything he wrote down; a **label** is a name and answers to
+ * neither register; a **placeholder** is prose in the repealed voice that
+ * cards 27–29 have not reached yet. The placeholders are the debt, declared
+ * where it can be counted.
  *
  * `VERBS` is deliberately not here. art. 66 exempts controls from
  * rules/voice.md and binds them to itself; they are linted against that
@@ -203,22 +225,36 @@ import { asBeats, asLabels } from './voice.js'
  * by a different rule and not an escape from one.
  */
 export function everyString(): readonly Utterance[] {
+  const noticesIn = (amended: boolean): readonly string[] =>
+    Object.entries(NOTICES)
+      .filter(([key]) => AMENDED_NOTICES.includes(key) === amended)
+      .map(([, said]) => said)
   return [
-    ...asBeats([
+    // The amended register, as far as it has been written. Everything the
+    // wave has not reached yet is a declared placeholder below rather than a
+    // string the lint was talked into passing.
+    ...asThoughts(noticesIn(true)),
+    ...asPlaceholders([
+      // The Book of Ends becomes the pile of things he wrote down in the
+      // next commit of this wave; until the lines are rewritten they are
+      // what they have always been, and saying otherwise here would be the
+      // lint agreeing with a claim nobody has made good on.
+      ...Object.values(END_LINES),
       ...Object.values(BEATS).flat(),
-      // art. 83: a socket's words reach the player exactly as a room's do,
-      // so they are judged exactly as a room's are.
-      ...Object.values(SOCKET_BEATS).flat(),
-      // art. 78: the arrival is one candle like any other.
+      // art. 78: the arrival is one candle like any other, and waits on the
+      // same rewriting.
       ...Object.values(ARRIVALS).flat(),
+      // art. 83: a socket's words reach the player exactly as a room's do,
+      // so they are judged exactly as a room's are — and wait on the same
+      // card.
+      ...Object.values(SOCKET_BEATS).flat(),
       ...Object.values(LOOKS),
       // art. 87: an origin is prose that reaches the player, so it is judged
       // as prose. If a sentence cannot pass the lint the item does not ship,
       // which is the article's acceptance test enforced rather than quoted.
       ...Object.values(ORIGINS),
-      ...Object.values(END_LINES),
       ...Object.values(INTENT_SAYS),
-      ...Object.values(NOTICES),
+      ...noticesIn(false),
     ]),
     ...asLabels([
       ...Object.values(NOUNS),

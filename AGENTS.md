@@ -20,11 +20,13 @@ Test: a first run dies interestingly; a taught run wins in ten minutes.
 Never: filler, grind, a punished tap, one optimal play.
 
 ### design — "is it ours?"
-Owns theme, story, voice, and the look.
+Owns theme, story, voice, and the look. The voice is one frightened man's
+mind: he thinks, or he writes it down, and nobody narrates him.
 Law: rules/voice.md, rules/the-room.md (arts 13–30, 93–112),
 rules/the-thumb.md (arts 66–76, 90–92, 116).
 Test: `reference/castlebrynth-wake-v3.html` and the hero-density image.
-Never: explanation, comfort, early spoilers, out-of-register art.
+Never: explanation, comfort, early spoilers, out-of-register art, a
+sentence he would not think.
 
 ### mechanics — "does it hold?"
 Owns state, persistence, generation wiring, rendering correctness, the
@@ -73,7 +75,9 @@ art. 47's BRACE is repealed. The rest:
   game is presented and may never change what is true, preferences are
   permanent state, and reduced motion is the test of whether art. 107's
   settled states were honest
-- **voice.md** — every player-facing string
+- **voice.md** — every player-facing string, in his voice: the thought
+  (first person, live) or the scrawl (second person, written down), never
+  a narrator. Amended by the mind wave, 2026-08-06.
 
 Statuses: SETTLED binds. STANDING is inherited from GAME.md, unamended.
 DEFAULT binds until deliberately revisited. PARKED is not law — build
