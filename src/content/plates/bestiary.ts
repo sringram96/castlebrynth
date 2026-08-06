@@ -633,3 +633,96 @@ export const URN: Drawn = drawn([
   '..66666666..',
   '..44444444..',
 ])
+
+// ── The covered font (card 88) ─────────────────────────────────────────
+
+/**
+ * **The covered font, shut.** A stone basin at waist height with cloth
+ * stretched over the top of it and tied off under the rim.
+ *
+ * The cloth is the light end of the ramp and the stone is the middle of it,
+ * so the eye reads the cloth first — which is the room's whole composition
+ * (art. 104): one thing, and the thing is a lid somebody tied down. The two
+ * dark cells at the centre of the cloth are where it is wet through from
+ * underneath, and they are the only lie the room tells before it is asked a
+ * question.
+ */
+export const COVERED_BASIN: Drawn = drawn([
+  '..777777777..',
+  '.77788877777.',
+  '7778888888777',
+  '7788811188877',
+  '7788111118877',
+  '7778811188777',
+  '.77788887777.',
+  '.66666666666.',
+  '.65555555556.',
+  '..655555556..',
+  '..655555556..',
+  '...6555556...',
+  '...6555556...',
+  '....65556....',
+  '....65556....',
+  '...6555556...',
+  '..66666666...',
+  '..55555555...',
+])
+
+/**
+ * **The cloth back, and the water still in it** — what the basin is after
+ * the stone has been taken out of it (art. 89: the forfeiture shows in
+ * pixels, and so does the take).
+ *
+ * The cloth is folded off to one side rather than gone, because a cloth that
+ * vanished would be a cloth that was never tied on (art. 70).
+ */
+export const OPEN_BASIN: Drawn = drawn([
+  '.....444.....',
+  '....44444....',
+  '.66666666666.',
+  '.63333333336.',
+  '.63222222236.',
+  '.63222222236.',
+  '.66333333366.',
+  '.66666666666.',
+  '.65555555556.',
+  '..655555556..',
+  '..655555556..',
+  '...6555556...',
+  '...6555556...',
+  '....65556....',
+  '....65556....',
+  '...6555556...',
+  '..66666666...',
+  '..55555555...',
+])
+
+/**
+ * **Gone over.** Reading the inside of the lip means leaning the basin, and
+ * what was in the water goes with it — so the third state is a basin tipped
+ * on its foot and a floor that is wet where it was dry.
+ *
+ * It is the same silhouette as the other two down the stem, so the three
+ * read as one object in three states rather than as three objects
+ * (art. 100's argument about silhouette, applied along time).
+ */
+export const SPILLED_BASIN: Drawn = drawn([
+  '....444......',
+  '...44444.....',
+  '.6666666.....',
+  '.6333333666..',
+  '.63222233366.',
+  '.66333322236.',
+  '..66663333366',
+  '.66666666666.',
+  '.65555555556.',
+  '..655555556..',
+  '..655555556..',
+  '...6555556...',
+  '...6555556...',
+  '....65556....',
+  '....65556....',
+  '...6555556...',
+  '.166666666.1.',
+  '11555555551 1',
+])

@@ -7,7 +7,7 @@ novel a candle at a time; the labyrinth is a blind chain of hand-authored
 rooms, procedurally rearranged every run; fights are poker-dice duels
 against horrors whose intents are always shown; death burns the run and
 keeps the knowledge. `reference/GAME.md` is the fantasy. The binding law is in
-`.claude/rules/` — 117 numbered articles; tasks cite them as "art. N".
+`.claude/rules/` — 120 numbered articles; tasks cite them as "art. N".
 
 ## Components
 - **src/state** — the two ledgers (run / permanent) behind named rituals;
@@ -33,9 +33,16 @@ all state client-side.
   plus a sprite manifest; perspective cannot lie. (arts 13–15)
 - **Relative scale everywhere** — one game pixel = 1/GRID of frame width;
   GRID is a dial (240 now, 480 a named option). (arts 22–25)
-- **Blind chains, reseeded every death, provably winnable.** (arts 31–33)
-- **Knowledge attaches to things, not places** — it survives the reseed.
-  (arts 10, 34)
+- **Blind chains, reseeded every death, provably winnable** — and blind is not
+  mute: a door leaks its region's sense, true and partial and never a label,
+  so the drift's twenty questions are asked in a language the player can
+  read. (arts 31–33, 77)
+- **An act may cost something, and the cost is in the look** — the Descent's
+  art. 42. Looking is free and says the price; pressing pays; a price is never
+  the run; and every priced act returns knowledge, leverage, a relationship, a
+  permanent change or an exceptional object. (arts 5, 120)
+- **Knowledge attaches to things, not places** — it survives the reseed, and
+  so does some of what you refused. (arts 10, 34, 84)
 - **The poker duel, carded** — intent first, then three presses: Roll,
   Reroll, Attack. The selection is the attack, scored sum × tier, each
   line once per fight; defense is armor from items, not dice.
@@ -101,8 +108,18 @@ keep choosing → a region locks and the depth announces where you have arrived
 → the rest of the depth deals from that region and its encounters wake → the
 Warden's door, and the keeper behind it once the key turns. Every doorway
 breathes while you stand there, and seven rooms will do one thing of their own
-accord if you stand there long enough. `npm test` is green: 48 files, 525
+accord if you stand there long enough. `npm test` is green: 50 files, 557
 tests.
+
+**And the doors say something, and curiosity costs something.** The descent
+wave (cards 49, 86–88) built the missing half of the exploration engine: the
+Lots have the whole loop — perceive an intent, predict, commit, get an answer,
+know more — and the Descent had commit, answer and change and was missing
+*perceive* and *predict*. Two articles close it: **art. 31 as amended**, which
+unparks the senses so a door leaks its region tag, and **art. 120**, the
+Descent's art. 42, which lets an act carry a declared price and puts that price
+in front of the press. Art. 84 gains a sentence with them: the labyrinth now
+remembers some of what you refuse. One section down: **The descent wave**.
 
 **And the frame says who you are, in his voice.** The reason wave shipped the
 premise that had been sitting in `reference/GAME.md` since the beginning: a
@@ -124,6 +141,271 @@ multiplier, each rider fires alone, the total climbs, and then the blow.
 **Timings are still owed a phone.** The section at the foot of this file —
 **The fight wave** — records what was settled, what was measured in a browser
 at 390×844, and what a hand still has to decide.
+
+## The descent wave (arts 31, 84, 120 · cards 49, 86–88)
+
+The Lots have the whole loop: you **perceive** an intent, **predict**,
+**commit**, get a clear **answer**, and **know** more than you did. The Descent
+had commit, answer and change — and was missing perceive and predict, for two
+reasons that were both in the law rather than in the code. **Art. 31 parked the
+senses on doors**, so every choice was between identical unknowns and the
+drift's twenty questions were being asked in a language the player could not
+read. And **no article anywhere gave an act a price** — art. 5 says tapping
+never harms, art. 7 gates outcomes, and GAME.md's promise of acts *"with gates
+and consequences"* was never ratified. So curiosity was not dangerous; it was
+merely slow.
+
+This wave adds **no new interaction type** (art. 76 untouched) and **no new
+verb grammar** (art. 66 untouched). Everything below is a tap, and every
+control is a plain imperative of two words or fewer.
+
+### The two articles, as installed
+
+**art. 31, amended (`the-world.md`) — the senses are unparked.** Art. 77 had
+specified the mechanism since the day it was ratified — *a door's sense is its
+region tag, leaking* — so this is unparking rather than inventing. One line per
+door, given free on a tap (arts 5–6), and two rules keep it honest:
+
+- **A sense is true and partial.** It never lies and it never completes. It
+  says what the region smells like, not what the room contains — and it cannot,
+  because under art. 79 the room behind the door does not exist until the door
+  is opened.
+- **A sense is not a label.** It never names the region, never ranks the doors
+  and never says *danger*. The player learns the vocabulary by descending,
+  which is art. 10's knowledge doing its job on the one thing in the game
+  nobody had ever been able to learn.
+
+The tally is shown in **no form whatever**. The lean is felt, and a door at a
+time is the whole of what it is felt through.
+
+**art. 120, new (`the-world.md`, beside arts 5–7) — the price of an act.** *An
+act may carry a declared price, and the price is visible before the press.*
+**This is the Descent's art. 42**, and the article says so: the Lots promise
+the intent before you commit, the Descent promises the cost. Looking at the
+thing tells you what the act about it costs, and **looking stays free**
+(art. 5). Pressing pays.
+
+The price reaches the player through the **look**, because art. 68 abolished
+the inspect button and art. 66 gives a verb two words — a verb cannot carry a
+number. And it is the *number*, filled into the sentence by `saysLook` the same
+way `saysIntent` fills an intent's, so a price and the words quoting it cannot
+drift apart. The tap that summons the verb is the tap that says what it costs,
+so **there is no order of presses in which the verb arrives before its price.**
+
+**A price is never the run.** It comes out of the body and stops one point
+short of the last of it. A press made out of curiosity may cost a player
+something and may not cost them everything: a run ends to a horror, to the
+Warden or to a door, never to a question. The clamp is in `priceOf`, so no
+content can author past it.
+
+**art. 84, extended by one sentence** — *and some of what you refuse is
+remembered.* It fitted inside the existing article: art. 84 already says the
+labyrinth remembers you, and it remembered only meetings.
+
+### The sense vocabulary, per region
+
+Four lines a pool, chosen deterministically off the door's own identity, so a
+door says the same thing every visit and a crossroads offering three doors of
+one region still gives three different sentences.
+
+| pool | what leaks |
+| --- | --- |
+| **drowned** | cold air and no echo · a wet draught and dripping a long way in · stone dark all the way down · a bucket left standing a month |
+| **burnt** | wax and singed hair · a frame warm to the back of the hand · dry air with grit in it · a chimney, gone over twice |
+| **ossuary** | someone coughing, carefully · chalk that will not come off the hand · something set down and set down again · dry air, and a little sweet |
+| **neutral** | nothing comes under it · still air, moving neither way · a frame worn like every other · quiet, and not doing anything about you |
+| **the last door** | its own line: nothing comes under it at all, and whatever is behind it is not breathing (art. 37 — it carries no tag, because there is nothing left to lean toward) |
+
+`test/senses.test.ts` holds every line to both of art. 31's rules: no sense may
+contain a word of its own region's name, none may rank or warn, none may name a
+room or a horror (art. 79 — there is nothing back there yet), and **none may
+carry a number or a quantity**, because a sense that counted would be the tally
+leaking in a form art. 77 forbids.
+
+**Both the sense and the stop.** The first cut let art. 118's held-back line
+*replace* the sense, and the playtest walk caught it in the second room: a room
+holding you back turned every door in it blind, at exactly the moment a player
+most wants to know which way they are about to commit. The door now answers
+with its sense first — that is what the door *is* — and the stop after it,
+which is what he is doing about it. Art. 3 keeps its silence about *which*
+thing.
+
+### The priced acts, and what they pay
+
+Three verbs, and GAME.md named all three long before anything gave an act a
+price. Each is summoned by looking (art. 68), none is required, and none holds
+a door.
+
+| act | where | costs | pays | and it changes |
+| --- | --- | --- | --- | --- |
+| **PEER** | the sump's grate | 1 | knowledge — `clue.the-drop` | the sump's grate, the buried hall's sand, the Crossing's own grate |
+| **REACH IN** | the kiln's mouth | 2 | knowledge — `clue.the-flue` | the kiln's mouth, the pyre's timber |
+| **LISTEN** | the covered font's cloth | 2 | knowledge — `clue.the-seventh` | the cloth, the cistern's water, the wet passage's water |
+
+**All three pay in knowledge**, which is art. 88's payload and the cheapest
+legal one on art. 120's return bar — and the article says it should be the most
+common, because an act that sharpens a question is worth more than one that
+answers it. The bar is enforced rather than quoted: `test/price.test.ts` walks
+every priced act in the catalog and fails a `knowledge` claim with no clue
+behind it, an `object` claim with no good, a `change` claim that heals nothing.
+*Lose four health and receive ordinary loot* does not ship.
+
+**Art. 118 composes, and it bites harder than expected.** `collect` and `learn`
+are both idempotent by id, so a second press of a priced act spends a deed,
+charges a price and changes nothing — the dead press art. 118 exists to end.
+`moves()` now refuses any act whose *whole* payload is already on the permanent
+ledger. It reaches **across runs**, and that is arts 10 and 11 rather than an
+oversight: knowledge survives death, so a man who has already put his ear to
+one of these knows what he would learn and does not pay for it twice. The
+thing's look says so (`<thing>.kept`).
+
+That has a consequence worth stating plainly: **the exemplar decays over a
+career.** A player who has listened at one covered font and taken its stone
+meets a later one with nothing under the cloth to press for, and reads two
+sentences instead of making a decision. The alternative is making the fork's
+goods run-scoped rather than permanent, which is an art. 11 question and not an
+art. 120 one — it is not a thing this wave could decide quietly.
+
+**A look is now under test, for the first time.** Art. 5 says the world never
+punishes touch, and nothing had ever asserted it. `test/price.test.ts` looks at
+every tappable of every room of forty whole depths, twice each, and asserts
+that health, what is carried, what has been done, what has been opened and the
+**whole permanent ledger** are untouched. The one thing that does move is
+`looked`, and that is art. 68 rather than a cost: the summons is knowledge, and
+it is what makes the verb exist.
+
+### The refusal flags, and where each lands
+
+Nine flags, and the cap **is** the design: a flag lands in two or three later
+moments, and the failure mode card 87 exists to avoid is hundreds of one-off
+branches authored for a line each. Flags are *kinds* of refusal and never
+particular acts — three travelers share one flag, because walking past a body
+is the same thing whichever body it is, and what the second one says is that
+you have done this before.
+
+| flag | written by leaving | and it lands on |
+| --- | --- | --- |
+| `refused.bone` | any traveler's bone left in the hand it was in | the three bodies, the Crossing's own traveler, and the origin sentence of whichever bone you *do* pick up (art. 87) |
+| `refused.pair` | half of the Sisters left behind (art. 52) | both halves, and the bonefield's drifts |
+| `refused.luck` | the counting cord left coiled | the cord, and the tally's scratches |
+| `refused.iron` | the rusted plate left on him | the plate, and the Warden's door |
+| `refused.stain` | the leech bone left where it lay | the bone, and the crawl's legs |
+| `refused.breath` | a basin not drunk from (art. 40) | the basin, and the font's steps |
+| `refused.hands` | the Mender not knelt to | the Mender |
+| `refused.question` | a priced act walked past (art. 120) | the sump's grate, the kiln's mouth, the covered font's cloth |
+| `refused.cloth` | the half of the fork left under the cloth (art. 89) | the covered font's basin, and the cistern's cage |
+
+**A refusal is turning down an offer**, and three filters make that true rather
+than approximately true. `afforded` (art. 7 — you cannot decline what you were
+never able to take) and `moves` (art. 118 — a mercy a whole body cannot drink
+is not offered at all) are both filtered out; **`summoned` deliberately is
+not**, because a thing the player never looked at is a thing they walked past,
+which is the strongest refusal there is. The first cut left `moves` out and
+recorded every healthy run walking past a Mender as having turned down a mercy
+it was never shown.
+
+Written when the run walks out of the room (`chooseDoor`), because forward is
+forever (art. 9) and the door closing behind you is what makes leaving a
+decision rather than a delay — and, for a fork, in the same breath as the take.
+They ride the permanent, so a death is not an amnesty and neither is a reload:
+`VAULT_VERSION` is **11**, and the rung is the `fillingThePermanent` kind, so
+no descent is lost to it.
+
+**What a flag may change is what a tap answers and what an origin sentence
+says**, and nothing else. Never a weight, never a rarity, never what is dealt —
+a refusal that changed the arrangement would be a difficulty dial the player
+never asked for, which is art. 116's reasoning applied to memory.
+
+### The covered font — the bar, quoted
+
+One room, authored whole, using all three capabilities. **This is the exemplar,
+and the rest of the depth is held to it.** A later author reads this room to
+learn what a priced act is supposed to feel like:
+
+> **A room gives a question before it gives a reward; free looks make the
+> question askable; the priced act sharpens the question rather than answering
+> it; and the take costs something that is not health.**
+
+All four are in the one room.
+
+**The question, before the reward.** A stone basin, waist-high, with a wet
+cloth stretched tight across the top and tied off under the rim. Two candles
+and neither says anything is wrong.
+
+**Free looks make it askable.** Three, and they cost nothing: the cloth is wet
+**from below**; the lip is worn on the **inside**, and only on the inside; the
+floor round the foot is dry, and a thing that full leaves a ring. Nothing says
+danger and everything implies it.
+
+**The priced act sharpens it.** LISTEN costs 2 and returns six small sounds,
+and then a seventh. The player now **knows something is wrong and does not know
+what** — and that distinction is the whole design. Not knowing *why*
+six-then-seven matters is mystery; not knowing what LISTEN *costs* would be
+confusion. Horror wants the first and is ruined by the second, which is exactly
+why art. 120 puts the number in the look.
+
+**And the take costs something that is not health.** Lifting the cloth is a
+fork (art. 89) and its two halves are deliberately not two treasures: one is a
+**thing in the hand** (art. 53's counting stone, placed for the first time and
+given the origin sentence art. 87 requires of every shipped good) and one is a
+**thing known** (art. 88's knowledge good — no stat at all, earning its place
+by changing two later taps). A partition, not a purchase. The forfeiture is
+physical and shows in pixels: taking the stone closes the water over the lip;
+leaning the basin to read the lip puts what was in it on the floor. Three
+authored states of one drawing, one silhouette down the stem.
+
+### Two bugs this wave surfaced rather than wrote
+
+- **`openFight` clamped the body's ceiling.** It set `yourHealthMax` to the
+  health you walked in with, while a *resumed* fight restored `run.healthMax` —
+  so a wounded player's leech rider could not heal them back to whole, and the
+  same body disagreed with itself across a lock screen. Invisible until
+  something could wound a run outside a fight, which is what a priced act is.
+  `openFightDoor` passes the run's own ceiling now.
+- **`act()` re-armed the run for a clue.** The old code called `tookIntoRun`
+  whenever the permanent moved at all, and a clue moves the permanent — which
+  would have rebuilt a hand mid-descent, and art. 60 says the hand never moves
+  inside one. It asks about the *collection* changing now, which is the
+  question it always meant.
+
+### What the walk found, beat by beat
+
+Walked at 390×844 in Chromium, and walked again through the harness with every
+line printed. Where a beat did not land, it is here.
+
+**Lands.** The waking still opens on the scrawl. The doors each say one true
+thing, and three doors give three sentences. The covered font reads exactly as
+designed — the three free looks build the question, `2 out of me` is legible
+before the press, the seventh sound arrives, the strip goes from three verbs to
+two to none as the fork resolves, and the basin afterwards says *"There was
+something in one of these I did not take, and it is still in there."* The
+region locks, its unique arrives, death writes the scrawl the blow earned, and
+the next waking opens on it.
+
+**Does not land: the lean is felt at the arrival, not several rooms before
+it.** The brief asked that a player taking only warm doors feel the labyrinth
+leaning several rooms before art. 78 says *arrival*, and they do not — they
+feel it about one room before. The cause is not the senses, which work: it is
+that `lockAt` is 4 against a `length` of 9, so there are only four doors in
+which to notice a pattern, and the drift's pull needs two or three tallies
+before it visibly biases what is offered. Taking only warm doors, the third and
+fourth rooms offer warm doors and little else, which is one room of anticipation
+rather than several. **This is a tuning question about `lockAt` and `length`,
+not about card 49**, and it belongs to the drift rather than to this wave — so
+it is reported rather than fixed. Mixed doors behave as designed: the senses
+stay varied to the last door and no lean is felt at all.
+
+**Does not land: the seam is louder than it was.** The senses, the priced
+looks, the covered font and every `.knows` and `.again` answer are in the
+amended voice; the rooms they stand beside are still the placeholder tranche
+cards 27–29 are clearing. Tapping the Crossing's grate answers *"Light comes
+down through iron you cannot reach"* — a narrator — and then tapping a door
+answers in his own head. The wave could not fix that without doing cards 27–29,
+and it made it more audible by adding good prose next to the debt.
+
+**Left out of scope, as the brief set it.** Cards 80 and 81 (the closing, the
+break) are deferred: no distance states, no intent breaks. No economy, no
+merchants, no QTEs, no second depth. The drift tally is shown in no form.
 
 ## The answer wave (art. 118, cards 69–71, 74)
 

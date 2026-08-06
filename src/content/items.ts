@@ -90,6 +90,12 @@ export const ALL_RIDERS: readonly Rider[] = [LEECH, ...TRAVELER_RIDERS]
  * THE_ORPHAN is deliberately absent. It is over budget with no cost face and
  * no owner, so art. 87 refuses it: it survives as the fixture that proves
  * the audit bites, and it is placed nowhere in the labyrinth.
+ *
+ * THE_ZEALOT is absent too, and for a different reason: nothing in the
+ * labyrinth places it. It is a demo fixture (`reference.ts`) and this list
+ * is what *ships*, so a good that no room and no socket can ever hand over
+ * does not belong in it. THE_OSSUARY was in the same position until card 88
+ * put it under the covered font's cloth.
  */
 export const CATALOG_GOODS: readonly Good[] = [
   ...TRAVELER_DICE,
@@ -97,5 +103,7 @@ export const CATALOG_GOODS: readonly Good[] = [
   THE_SISTERS[1],
   THE_LEECH,
   THE_CORD,
+  // card 88: placed, in the covered font, as one half of its fork.
+  THE_OSSUARY,
   RUSTED_PLATE,
 ]

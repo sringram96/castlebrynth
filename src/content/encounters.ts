@@ -26,6 +26,7 @@ import type { Prop, WorldMark } from '../room/index.js'
 import type { ItemId, RoomId } from '../state/index.js'
 import { THE_LEECH, THE_SISTERS } from './dice.js'
 import { RUSTED_PLATE, THE_CORD } from './items.js'
+import { REFUSALS } from './marks.js'
 import type { School } from './palettes.js'
 import { KINDLED as KINDLED_BODY, SILT_MOTHER as SILT_MOTHER_BODY } from './plates/bestiary.js'
 import {
@@ -335,6 +336,26 @@ const LEFT_BY: Readonly<Record<string, readonly Good[]>> = {
 /** Every encounter that leaves a good, for the catalog tests to walk. */
 export const LEAVES_A_GOOD: readonly EncounterId[] = Object.keys(LEFT_BY) as EncounterId[]
 
+/**
+ * art. 84 (extended, card 87): **which refusal each of these means.**
+ *
+ * The map is deliberately many-to-few. Three travelers share `bone` and two
+ * sisters share `pair`, because what the labyrinth remembers is *the kind of
+ * thing you walked past*, not which one — and the whole design of the card
+ * is a small reusable set rather than a branch per good. Nine flags across
+ * the game, and each lands in two or three later moments (`marks.ts`).
+ */
+const REFUSED_FOR: Readonly<Record<string, string>> = {
+  [PUSHER]: REFUSALS.bone,
+  [CAREFUL]: REFUSALS.bone,
+  [RUNNER]: REFUSALS.bone,
+  [SISTER_ELDER]: REFUSALS.pair,
+  [SISTER_YOUNGER]: REFUSALS.pair,
+  [LEECH_BONE]: REFUSALS.stain,
+  [CORD]: REFUSALS.luck,
+  [PLATE]: REFUSALS.iron,
+}
+
 /** What this encounter leaves, if it leaves anything (arts 86–87). */
 export function leftBy(who: EncounterId): readonly Good[] {
   return LEFT_BY[who as string] ?? []
@@ -393,6 +414,17 @@ function takeAct(who: EncounterId, forfeits?: EncounterId): Act {
     // holds a door — a bone left lying is a bone missed for this run.
     required: false,
     takes: LEFT_BY[who as string] ?? [],
+    // art. 120: an object in the hand, which is the top of the return bar
+    // and the only payload in the depth that is not knowledge. Nothing here
+    // is priced — these are free, and art. 4's *missed* is the whole cost.
+    pays: ['object'],
+    // art. 84 (extended): and the flag the *not* taking of it writes. The
+    // vocabulary is shared across the acts that mean the same refusal —
+    // three travelers are one flag, because walking past a body is the same
+    // thing whichever body it is.
+    ...(REFUSED_FOR[who as string] === undefined
+      ? {}
+      : { refused: REFUSED_FOR[who as string] as string }),
     // art. 68: nothing is taken off a body you have not looked at.
     about: tapId(who),
   }
@@ -415,6 +447,10 @@ const TAKE_THE_KEY: Act = {
   verb: VERBS['act.take-key'] ?? 'Take',
   needs: [],
   gives: [WARDEN_KEY_ITEM],
+  // art. 120: leverage — it is the one thing in the depth that opens
+  // something. And it is `required`, which is exactly why art. 3 forbids it
+  // ever carrying a price.
+  pays: ['leverage'],
   required: true,
   // art. 68: and it is summoned by looking at the key, like anything else.
   // The door still refuses while it lies here (art. 3), so a player who has
@@ -438,7 +474,14 @@ const DRINK: Act = {
   gives: [],
   required: false,
   heals: SANCTUM_BREATH,
+  // art. 120: a mercy pays in a permanent change to the body, and it pays
+  // nothing for it. The bar is about *priced* acts; this is what the bar
+  // looks like at a price of zero.
+  pays: ['change'],
   about: 'basin.water',
+  // art. 84 (extended): walking away from a free breath with blood on you
+  // is a thing the labyrinth notices.
+  refused: REFUSALS.breath,
 }
 
 /**
@@ -456,7 +499,11 @@ const KNEEL: Act = {
   required: false,
   heals: SAVIOR_MERCY,
   remembers: MENDER,
+  // art. 120: the large mercy, and a relationship beside it — art. 84's
+  // memory is what makes the second meeting different from the first.
+  pays: ['change', 'relationship'],
   about: 'mender.figure',
+  refused: REFUSALS.hands,
 }
 
 const tappable = (id: string, at: WorldMark): Tappable => ({ id, noun: NOUNS[id] ?? id, at })
