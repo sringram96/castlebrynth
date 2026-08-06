@@ -19,8 +19,8 @@ import { describe, expect, it } from 'vitest'
 
 import {
   CATALOG,
-  CLUES,
   ECHOES,
+  EVERY_CLUE,
   EVERY_REFUSAL,
   ENCOUNTERS,
   KNOWS,
@@ -108,6 +108,15 @@ describe('art. 120 — an act may carry a declared price', () => {
    * claim with no clue behind it is a failing test rather than a
    * disappointment.
    */
+  it('declares nothing outside the bar, on any act at all', () => {
+    // Asked of every act in the catalog and not only the priced ones: the
+    // bar is what a payload *is*, and an unpriced act that claimed one off
+    // the list would be a claim no later reader could check.
+    for (const one of everyAct()) {
+      for (const paid of one.pays ?? []) expect(BAR, one.id).toContain(paid)
+    }
+  })
+
   it('returns a payload from the bar, and actually pays it', () => {
     for (const one of priced()) {
       expect(one.pays ?? [], one.id).not.toHaveLength(0)
@@ -146,7 +155,7 @@ describe('art. 120 — an act may carry a declared price', () => {
    * that it earns its place by changing an answer.
    */
   it('makes every clue change what at least two later taps answer (art. 88)', () => {
-    for (const clue of Object.values(CLUES)) {
+    for (const clue of EVERY_CLUE) {
       const lands = Object.entries(KNOWS).filter(([, marks]) =>
         marks.includes(clue.id as string),
       )

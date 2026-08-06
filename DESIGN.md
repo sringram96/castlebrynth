@@ -108,7 +108,7 @@ keep choosing → a region locks and the depth announces where you have arrived
 → the rest of the depth deals from that region and its encounters wake → the
 Warden's door, and the keeper behind it once the key turns. Every doorway
 breathes while you stand there, and seven rooms will do one thing of their own
-accord if you stand there long enough. `npm test` is green: 50 files, 556
+accord if you stand there long enough. `npm test` is green: 50 files, 557
 tests.
 
 **And the doors say something, and curiosity costs something.** The descent
