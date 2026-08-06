@@ -28,8 +28,9 @@ Test:    npm test
   the named rituals in src/state (art. 11).
 - Nothing may assume a device pixel or the number 240 outside render
   config (arts 22–23).
-- Every player-facing string obeys rules/voice.md. Content review is
-  voice review.
+- Every player-facing string obeys rules/voice.md: it is the protagonist
+  thinking or the protagonist writing, never a narrator. Content review is
+  voice review, and `test/content.voice.test.ts` is the review.
 
 ## Agents
 See AGENTS.md. Four agents, by concern: **arithmetic** (is it fair?),

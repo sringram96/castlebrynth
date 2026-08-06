@@ -212,7 +212,13 @@ type Screen =
    */
   | { readonly kind: 'choosing' }
   | { readonly kind: 'fight'; readonly door: Door }
-  | { readonly kind: 'dead' }
+  /**
+   * **The ending is the scrawling** (the mind wave). Death is forgetting, so
+   * what the word band shows at the end of a run is not a summary of it — it
+   * is him getting one line down before it all goes, and the cause is which
+   * line. The next waking opens on that same line (`RoomBook.scrawl`).
+   */
+  | { readonly kind: 'dead'; readonly cause: string }
   | { readonly kind: 'finished' }
 
 const vault = browserVault(localStorage)
@@ -729,11 +735,16 @@ function wordOf(): string {
       return doorWord(atTheDoorNow())
     case 'settings':
       return settingsWord(theSettings())
-    // art. 60: an ending that has a question behind it says so. The line is
-    // the same ending plus what is true of the pouch — never an instruction
-    // (art. 66); the verb on the strip is the thing that tells you to press.
+    /**
+     * The scrawl he leaves, and nothing else. A dying man does not compose a
+     * sentence about his pouch, so art. 60's clause — an ending with a
+     * choice behind it says so — is carried here by the verb instead of by
+     * the word: the strip says Choose, and the screen behind it states the
+     * situation (`choose.which`). It is the one place the mind wave moved
+     * that article's weight from the prose to the control.
+     */
     case 'dead':
-      return (mustChoose(ledgers.permanent) ? NOTICES['run.dead.choose'] : NOTICES['run.dead']) ?? ''
+      return END_LINES[screen.cause] ?? ''
     case 'finished':
       return (
         (mustChoose(ledgers.permanent) ? NOTICES['run.finished.choose'] : NOTICES['run.finished']) ??
@@ -2168,7 +2179,7 @@ function died(cause: string = endLineOf(fight?.horror.id ?? '')): void {
   unbidden = null
   fight = null
   refused = false
-  screen = { kind: 'dead' }
+  screen = { kind: 'dead', cause }
   focus(panelAfter('died'))
   notice = null
   persist()

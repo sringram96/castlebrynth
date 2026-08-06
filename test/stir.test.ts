@@ -409,8 +409,11 @@ describe('art. 117 — a room may do one small thing of its own accord', () => {
   })
 
   it('binds those lines to rules/voice.md like every other line', () => {
+    // art. 117's lines were written days before the mind wave repealed the
+    // narrator, so they answer to the rules that survived the amendment —
+    // the placeholder category, with the rooms they belong to (cards 27–29).
     for (const [room, line] of Object.entries(UNBIDDEN)) {
-      expect(lintVoice(line, 'beat'), room).toEqual([])
+      expect(lintVoice(line, 'placeholder'), room).toEqual([])
     }
   })
 

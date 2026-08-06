@@ -36,6 +36,7 @@ import type {
   RunLedger,
 } from '../state/index.js'
 import {
+  CROSSING,
   atBeat,
   carrying,
   collect,
@@ -219,6 +220,12 @@ export interface RoomBook {
   socket(room: RoomId, fill: Fill): SocketWords
   /** art. 78: what the depth says when it arrives somewhere. */
   arrival(region: RegionId): readonly string[]
+  /**
+   * The words of one line of the Book of Ends — a thing he wrote down
+   * (rules/voice.md, the scrawl). The engine asks for it by cause and never
+   * knows what it says, exactly as it never knows what a room says.
+   */
+  scrawl(cause: string): string
 }
 
 /**
@@ -285,12 +292,22 @@ export function tappablesIn(book: RoomBook, node: ChainNode): readonly Tappable[
 }
 
 /**
- * The candles of a room as dealt: the arrival first when this is the room
- * that announces one (art. 78), then the room's own words, then each
- * socket's.
+ * The candles of a room as dealt: the waking's scrawl first where there is
+ * one, then the arrival when this is the room that announces one (art. 78),
+ * then the room's own words, then each socket's.
+ *
+ * `waking` is the last line of the Book of Ends — the last thing he wrote
+ * before he forgot everything else (rules/voice.md: the amnesia is canon).
+ * It is passed in rather than read here because the Book is on the permanent
+ * ledger and this function knows about a room, not about a player.
  */
-export function beatsIn(book: RoomBook, node: ChainNode): readonly string[] {
+export function beatsIn(
+  book: RoomBook,
+  node: ChainNode,
+  waking: string | null = null,
+): readonly string[] {
   return [
+    ...(waking === null ? [] : [waking]),
     ...(node.announces === null ? [] : book.arrival(node.announces)),
     ...book.beats(node.room),
     ...node.fills.flatMap((fill) => book.socket(node.room, fill).beats),
@@ -375,7 +392,7 @@ export function enterRoom(
   const node = nodeAt(chain, at)
   if (node === null) throw new Error(`no room dealt at ${at}`)
   const run = ledgers.run
-  const beats = beatsIn(book, node)
+  const beats = beatsIn(book, node, wakingScrawl(ledgers, book, node))
   const on = run !== null && run.at.instance === at ? run.at.beat : 0
   const tray: Offer[] = [
     ...actsIn(book, node)
@@ -400,6 +417,28 @@ export function enterRoom(
     tray,
     tappables: tappablesIn(book, node),
   }
+}
+
+/**
+ * **The waking opens on the last thing he wrote** (the mind wave).
+ *
+ * Death is forgetting, and the permanent ledger is what is written down and
+ * what he still knows (art. 11, rules/voice.md). So the first candle of a
+ * run is the most recent line of the Book of Ends — his own handwriting,
+ * found again by a man who does not remember writing it. On a first waking
+ * that is the oldest scrawl there is, and it is the first thing the game
+ * ever says.
+ *
+ * It is the Crossing and only the Crossing, because art. 37 makes the
+ * Crossing the room that opens every run: the waking is a place, not a
+ * moment the shell has to remember it is in.
+ */
+function wakingScrawl(ledgers: Ledgers, book: RoomBook, node: ChainNode): string | null {
+  if ((node.room as string) !== (CROSSING as string)) return null
+  const last = ledgers.permanent.bookOfEnds.at(-1)
+  if (last === undefined) return null
+  const said = book.scrawl(last.cause)
+  return said === '' ? null : said
 }
 
 /**

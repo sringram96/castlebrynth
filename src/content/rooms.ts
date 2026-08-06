@@ -155,7 +155,7 @@ import {
   WATCHER_DARK,
 } from './plates/bestiary.js'
 import { WAKE, masonry, wakeProps } from './plates/wake.js'
-import { ARRIVALS, BEATS, LABELS, LOOKS, NOUNS, VERBS } from './prose.js'
+import { ARRIVALS, BEATS, END_LINES, LABELS, LOOKS, NOUNS, VERBS } from './prose.js'
 import { MOTION, RENDER } from './render.js'
 
 export { WARDEN_KEY, WARDEN_KEY_ITEM } from './encounters.js'
@@ -1815,6 +1815,9 @@ export const ROOM_BOOK: RoomBook = {
   // for nothing else — every word below comes from the encounter.
   socket: (id, fill): SocketWords => fillWords(fill, socketMark(id, fill.socket)),
   arrival: (region) => ARRIVALS[region as string] ?? [],
+  // The waking opens on the last line of the Book — a thing he wrote down,
+  // found again by a man who does not remember writing it (rules/voice.md).
+  scrawl: (cause) => END_LINES[cause] ?? '',
 }
 
 /**

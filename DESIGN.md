@@ -99,14 +99,209 @@ awake.** `npm run dev` is a playable loop in a portrait browser: wake → open
 one of one to three blind doors → the room behind it is dealt on the spot →
 keep choosing → a region locks and the depth announces where you have arrived
 → the rest of the depth deals from that region and its encounters wake → the
-Warden's door, refused without the key and terse with it. Every doorway
+Warden's door, and the keeper behind it once the key turns. Every doorway
 breathes while you stand there, and seven rooms will do one thing of their own
-accord if you stand there long enough. `npm test` is green: 35 files, 357
+accord if you stand there long enough. `npm test` is green: 39 files, 437
 tests.
 
-**And the frame says who you are.** The reason wave shipped the premise that
-had been sitting in `reference/GAME.md` since the beginning: a brother, a
-name you keep saying, and down as the only direction there is.
+**And the frame says who you are, in his voice.** The reason wave shipped the
+premise that had been sitting in `reference/GAME.md` since the beginning: a
+brother, a name he keeps saying, and down as the only direction there is. The
+mind wave then repealed the narrator who was saying it.
+
+## The mind wave (card 68)
+
+The playtest of the reason wave's prose, in one line: **the flourish is
+wrong.** The facts had landed and the mouth they came out of had not. The
+words on screen were a narrator describing Castlebrynth with care — *the dark
+does the arguing* — when what they are is the inside of one plain,
+frightened, determined man's head. Every fact the reason wave delivered
+stands; every sentence carrying them was rewritten.
+
+Three commits: the law, the loop, the frame.
+
+### The law, amended (`.claude/rules/voice.md`)
+
+**The voice is his mind.** Every player-facing line is the protagonist
+thinking or the protagonist writing, and never a narrator. Two voices, both
+his:
+
+- **The thought** — live play. First person, present tense, plain words,
+  short lines; fragments and questions legal; ellipses and dashes are
+  thought-speed and not decoration.
+- **The scrawl** — anything written down. Second person imperative, because a
+  note to yourself is an order. Lowercase legal, and short, because he is out
+  of time when he writes one.
+
+And the rules that make it a device rather than a style: **plain man's
+words** (if a line sounds written, cut it); **not-knowing** — he names only
+what he knows, so an unmet horror is *"What— what IS that."* and a met one is
+its name, which makes art. 34's met-flags literally what he still knows;
+**fear is had, never narrated**; **the amnesia is canon**, so the fiction now
+*explains* the two ledgers (art. 11) instead of decorating them. Kept whole:
+one candle, art. 111's naming, nothing explains itself twice, spoiler
+discipline.
+
+**The lint stopped asking "is this in register" and started asking "whose
+mouth is this".** A thought that says *you* is a narrator addressing the
+player; a scrawl that says *I* is a diary. Two rules pointing opposite ways,
+so neither voice can be written into the other's category by accident. Two
+old rules died with the flourish: the blanket **past-tense ban** (he may
+remember — *"He came down here"* is the man, not a narrator) and the
+**exclamation ban** (one when earned, never two). The *"you feel"* ban stayed
+and gained *"I feel"* with it, now for the true reason.
+
+**The fourth category is the debt.** Everything still in the repealed
+register is declared a `placeholder` in `everyString()` — it answers to the
+rules that survived and to nothing else. It is a number the test can print
+rather than an impression, and nothing new may be written in it.
+
+### The scrawl loop
+
+The frame of a run, closed into a circle: **every ending is him scrawling one
+line in a last moment of clarity, and every waking opens on the last thing he
+wrote — which he does not remember writing.**
+
+- **The waking.** The Crossing's first candle is the most recent line of the
+  Book of Ends. `RoomBook` gained `scrawl(cause)`, `beatsIn` takes it, and
+  `enterRoom` reads it off the permanent — the engine asks by cause and never
+  learns what it says, exactly as it never learns what a room says. Keyed on
+  the Crossing because art. 37 makes the Crossing the room that opens every
+  run: the waking is a place, not a moment the shell has to remember it is
+  in.
+- **The ending.** The death line shown *is* the scrawl he leaves. `run.dead`
+  and its `.choose` variant are gone: a narrator's summary standing where his
+  last sentence should be was the flourish at its worst, and a dying man does
+  not compose a sentence about his pouch. The Warden's door keeps a thought,
+  because it is not a death — a man walking through it has time to think.
+- **The lessons are true.** Dying to the Gnawing writes *"the fifth one is
+  the big one. count them"*, and its script really is six intents with
+  BELLOW 16 fifth; the Marrow's says armor is nothing on the fourth, which is
+  where CORRODE sits, one turn before REND 13. A note that lies to the next
+  man is worse than no note at all. This is where the engagement file's law —
+  *a death that taught nothing is a bug* — finally has a sentence to live in.
+- **The first words of the game** are the oldest scrawl: **"you must find
+  him."** No schema change; the v8 rung stands as shipped.
+
+### Every frame string, before and after
+
+**The threshold**
+
+| | |
+|---|---|
+| before | *The way down into Castlebrynth. Stone stops at a shut door, and what comes up under it is colder than the room. You say the name to it again.* |
+| after | *Castlebrynth. Cold coming up under the door. He came down here, so I go down.* |
+| before | *The way down. The door stands as you left it, and the run behind it is still yours. Your brother is further down than that.* |
+| after | *I stopped partway down. It is all still there. He is further down than that.* |
+| before | *The run ends here, unfinished. The depth behind it goes with it, the Book takes the line, and the way down starts again at the Crossing.* |
+| after | *If I stop now the whole floor goes. Everything I got past, gone. And the Book takes a line for it.* |
+| before | *The door shuts on it. What you carried down stays down there, and the name comes back up with you.* |
+| after | *Shut. Everything I carried is still down there. So is he.* |
+
+**The waking** — the candle in front of these is the scrawl, and it is not in
+`BEATS` at all: the Book lays it down.
+
+| | |
+|---|---|
+| before | *The Crossing. You wake with the ceiling close enough to touch and your brother's name already in your mouth.* |
+| after | *My writing. When did I write that.* |
+| before | *Five bones lie in your open hand. Your hand holds six.* |
+| after | *The Crossing. Low ceiling, cold floor. Five bones in my hand and my hand holds six.* |
+| before | *The traveler against the wall is not the one you are looking for. You check anyway. You check every one.* |
+| after | *The traveler by the wall is not him. I check anyway. I check every one.* |
+| before | *The corridor goes down. Behind you the stone is unbroken, and down is where the name goes.* |
+| after | *Down, then. Behind me the stone is solid, and his name is the only thing I still have.* |
+
+**The three arrivals** — the second candle is the same discovery in all
+three, because it is the same discovery.
+
+| | |
+|---|---|
+| before | *Every door you take leans down toward water… / The floor slopes, and stays sloped. What Castlebrynth is given down here, it keeps under water.* |
+| after | *Water on the walls. The floor tips down and stays tipped.* / *Every door I picked came out lower and wetter than the last. It has been listening.* |
+| before | *Every door you take opens on something already burnt… / The air dries out. What Castlebrynth is given down here, it keeps as ash…* |
+| after | *Everything down here has burned. The stone is still black with it.* / *Every door I picked opened on something already burnt. It has been listening.* |
+| before | *Every door you take goes further in among the dead… / The walls go pale. What Castlebrynth is given down here, it keeps in the courses…* |
+| after | *The walls are bone. Set in courses, like brick, all the way up.* / *Every door I picked went further in among the dead. It has been listening.* |
+
+**The endings**
+
+| | |
+|---|---|
+| before | *The floor comes up. The run ends here, and everything you know of it keeps. So does the name.* |
+| after | retired — the word band shows the scrawl he leaves (`END_LINES`, per cause) |
+| before | *You go through, and the stair keeps going down. Your brother is not on this depth.* |
+| after | *The black door gives. He is not on this floor. So it is the next one.* |
+| before (scrawls) | *The Gnawing opens you and goes back to its corner.* / *The Marrow closes over you…* / *The Warden stands aside…* / *The door does not open…* / *You stop at the door and go no further…* |
+| after | *the fifth one is the big one. count them* / *armor is nothing on the fourth. the fifth one opens you* / *the black door opens. keep going down* / *take everything before you open anything* / *you turned back. he is still down there* |
+
+**The choosing screen, and the Book**
+
+| | |
+|---|---|
+| before | *More bones than your hand holds. Each one belongs to somebody who does not come back up. The rest stay here.* |
+| after | *More bones than my hand holds. Every one of them came off somebody who did not come back up. The rest stay here.* |
+| before | *The Book of Ends. Every ending is written here, under the first line.* |
+| after | *The Book of Ends. All of it is my handwriting. I do not remember any of it.* |
+| before | *Find your brother. Whatever else goes, keep this.* |
+| after | *you must find him* |
+
+### What resisted the register — and what cards 27/28 must not imitate
+
+Three kinds of line fought back, and each one is worth naming because the
+next wave will meet all three.
+
+**The lines that exist to state a rule.** `gate.abandon.asked` has to say
+what a press costs before it is pressed (arts 5, 71), and a frightened man
+does not enumerate consequences. *"If I stop now the whole floor goes.
+Everything I got past, gone. And the Book takes a line for it."* is the best
+of about a dozen, and the last clause is still the game talking rather than
+him — he would not think the word *Book* about his own notebook. It is the
+one line in the frame I would call a compromise. **The lesson for 27/28: a
+line that has to carry a rule should carry it as a consequence he can see,
+not as a term.**
+
+**Room naming versus thought.** art. 34 wants the room to say its own name as
+it opens, and *"The Crossing. Low ceiling, cold floor."* is a man labelling a
+room he is standing in, which is not how anybody thinks. It survives because
+legibility outranks naturalism and because the fragment style makes a bare
+noun read as noticing rather than as announcing. `room.scene.test.ts` had to
+be amended for the waking, since his first candle now answers the scrawl
+rather than the room, and the naming lands one candle later. **For 27/28:
+thirteen rooms have to do this thirteen more times, and the trap is thirteen
+sentences that all start with a name and a colon.**
+
+**Second person is load-bearing in more places than it looks.** Nearly every
+unrewritten notice — `door.locked`, `fight.won`, `pouch.empty`, the settings
+and vault lines — is addressed to *you*, and the lint now calls that a
+narrator. They are declared placeholders rather than quietly rewritten,
+because they belong to screens nobody has designed a voice for yet: **a
+settings screen is the one place in the game where there may be no character
+at all**, and deciding that is a ruling, not a rewrite. It is the largest
+unowned tranche in the file and no card names it. It should get one.
+
+The debt is otherwise exactly the size the last wave said: thirteen rooms of
+beats, every tap answer, every intent line, art. 87's origins. All of it is
+still true, flat, unhaunted prose in a register that has now been repealed —
+which is worse than it was a week ago, because the frame around it is no
+longer in the same voice. **The seam is now audible**, and that is a feature
+of this wave rather than a defect of it: the arrivals are frame prose
+standing in a room, and a player who reads one and then taps the wall hears
+the game change person mid-breath. Cards 27–29 close it.
+
+**What the life and company waves added while this one was being written**
+lands on the same two piles, and both were sorted rather than left to be
+found later. Their **endings are scrawls**, written like the rest and true
+like the rest: the Silt Mother's says *"she takes whatever you hold highest.
+do not wait"* because `bind: highest` is two of her five intents; the
+Kindled's says *"claim something every turn. it feeds on the empty ones"*
+because hunger is the one intent in the depth that charges for a turn spent
+doing nothing; the Warden's two lines are the two ways that fight can end,
+and the one it writes when it wins names the seventh intent because `KEEP 18`
+is what the seventh is. Their **room prose** — art. 117's unbidden lines and
+the hall's line when the key turns — is placeholder, with the rooms it
+belongs to. Nothing new was written in the repealed register by this wave;
+what arrived in it was declared.
 
 ## The life wave (arts 71, 106–110, 117)
 

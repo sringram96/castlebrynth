@@ -395,7 +395,10 @@ describe('card 31 — the Warden is the keeper the door was built for', () => {
     expect(keeper.id).toBe(THE_WARDEN.id)
     const said = NOTICES['warden.wakes'] ?? ''
     expect(said.length).toBeGreaterThan(0)
-    expect(lintVoice(said, 'beat')).toEqual([])
+    // The hall's line is a shell notice in the repealed register, like the
+    // rest of them: the mind wave declared that tranche a placeholder rather
+    // than rewriting screens nobody has ruled a voice for.
+    expect(lintVoice(said, 'placeholder')).toEqual([])
   })
 
   it('arrives at the near depth, in a body of its own (arts 30, 100)', () => {

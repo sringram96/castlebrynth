@@ -205,10 +205,19 @@ export {
   socketMark,
 } from './rooms.js'
 export type { Utterance, VoiceCategory, VoiceComplaint } from './voice.js'
-export { lintVoice, asBeats, asLabels, CANDLE_WORDS } from './voice.js'
+export {
+  lintVoice,
+  asLabels,
+  asPlaceholders,
+  asScrawls,
+  asThoughts,
+  CANDLE_WORDS,
+  SCRAWL_WORDS,
+} from './voice.js'
 
 import { HORROR_SCRIPTS } from './horrors.js'
 import { LADDER } from './ladder.js'
+import { CROSSING as THE_CROSSING } from './rooms.js'
 import {
   ARRIVALS,
   BEATS,
@@ -225,16 +234,46 @@ import {
   UNBIDDEN,
 } from './prose.js'
 import type { Utterance } from './voice.js'
-import { asBeats, asLabels } from './voice.js'
+import { asLabels, asPlaceholders, asScrawls, asThoughts } from './voice.js'
+
+/**
+ * art. 37: the Crossing opens every run, so the Crossing's beats are the
+ * waking — the one room the mind wave rewrote. The other thirteen are
+ * cards 27–28's.
+ */
+const WAKING = THE_CROSSING as string
+
+/**
+ * Which of the shell's notices have been rewritten into the amended
+ * register. Everything else in `NOTICES` is prose in the repealed voice and
+ * is declared a placeholder rather than quietly counted as passing.
+ *
+ * It is an explicit list because the honest answer is a list: a string is in
+ * the new voice because somebody wrote it in the new voice, never because a
+ * regular expression failed to object to it.
+ */
+const AMENDED_NOTICES: readonly string[] = [
+  'gate.cold',
+  'gate.held',
+  'gate.abandon.asked',
+  'gate.abandoned',
+  'run.finished',
+  'run.finished.choose',
+  'choose.which',
+  'book.title',
+  'book.empty',
+]
 
 /**
  * Every player-facing string in the game, for the voice lint. If a string
  * reaches the player and is not in here, the lint cannot see it — and that
  * is the bug, not the exception.
  *
- * Two categories, by the ruling of 2026-08-04: prose answers to the whole
- * of rules/voice.md, and names — combos, items, rooms, horrors, the verbs
- * on an intent — answer to it minus second person and present tense.
+ * **Four categories** (the mind wave). A **thought** is him in live play; a
+ * **scrawl** is anything he wrote down; a **label** is a name and answers to
+ * neither register; a **placeholder** is prose in the repealed voice that
+ * cards 27–29 have not reached yet. The placeholders are the debt, declared
+ * where it can be counted.
  *
  * `VERBS` is deliberately not here. art. 66 exempts controls from
  * rules/voice.md and binds them to itself; they are linted against that
@@ -242,25 +281,46 @@ import { asBeats, asLabels } from './voice.js'
  * by a different rule and not an escape from one.
  */
 export function everyString(): readonly Utterance[] {
+  const noticesIn = (amended: boolean): readonly string[] =>
+    Object.entries(NOTICES)
+      .filter(([key]) => AMENDED_NOTICES.includes(key) === amended)
+      .map(([, said]) => said)
   return [
-    ...asBeats([
-      ...Object.values(BEATS).flat(),
-      // art. 83: a socket's words reach the player exactly as a room's do,
-      // so they are judged exactly as a room's are.
-      ...Object.values(SOCKET_BEATS).flat(),
-      // art. 78: the arrival is one candle like any other.
+    // The amended register, as far as it has been written. Everything the
+    // wave has not reached yet is a declared placeholder below rather than a
+    // string the lint was talked into passing.
+    ...asThoughts([
+      // The waking, in his head. The candle before it is the scrawl, and it
+      // is not in `BEATS` at all — the Book lays it down (`RoomBook.scrawl`).
+      ...(BEATS[WAKING] ?? []),
+      // art. 78: the arrival is one candle like any other, and it is him
+      // working out what his own choosing has done.
       ...Object.values(ARRIVALS).flat(),
-      // art. 117: a room speaking of its own accord is still the labyrinth
-      // speaking, and it is judged as everything else the labyrinth says.
+      ...noticesIn(true),
+    ]),
+    // The Book of Ends is the pile of things he wrote down, and the line at
+    // the head of it is the oldest of them.
+    ...asScrawls(Object.values(END_LINES)),
+    ...asPlaceholders([
+      ...Object.entries(BEATS)
+        .filter(([room]) => room !== WAKING)
+        .flatMap(([, said]) => said),
+      // art. 83: a socket's words reach the player exactly as a room's do,
+      // so they are judged exactly as a room's are — and wait on the same
+      // card.
+      ...Object.values(SOCKET_BEATS).flat(),
+      // art. 117: a room speaking of its own accord is still him noticing
+      // it, so the unbidden lines are prose like any other — and they were
+      // written days before the register changed under them, so they wait on
+      // the same card as the rooms they belong to.
       ...Object.values(UNBIDDEN),
       ...Object.values(LOOKS),
       // art. 87: an origin is prose that reaches the player, so it is judged
       // as prose. If a sentence cannot pass the lint the item does not ship,
       // which is the article's acceptance test enforced rather than quoted.
       ...Object.values(ORIGINS),
-      ...Object.values(END_LINES),
       ...Object.values(INTENT_SAYS),
-      ...Object.values(NOTICES),
+      ...noticesIn(false),
     ]),
     ...asLabels([
       ...Object.values(NOUNS),
