@@ -85,6 +85,8 @@ import {
   turnedHere,
   withholding,
 } from './descent/index.js'
+import type { Playing } from './shell/beats.js'
+import { REAL_CLOCK, playBeats } from './shell/beats.js'
 import { wayOn } from './shell/strip.js'
 import type { Held } from './shell/band.js'
 import { HUSHED, answered, bandLine, holding, noticed } from './shell/band.js'
@@ -122,7 +124,6 @@ import {
   LINES,
   advanceFight,
   assemble,
-  atOnce,
   cascadeBeats,
   cast,
   casting,
@@ -581,7 +582,7 @@ function telling(): boolean {
   if (now === null || screen.kind !== 'fight' || now.outcome !== 'fighting') return false
   // A timeline running is a turn resolving, and the turn it would be telling
   // about has not opened yet. The tell belongs to a turn the thumb is in.
-  if (playing !== null) return false
+  if (beating) return false
   return now.horror.intentFor(now.turnNumber + 1).telegraph === true
 }
 
@@ -2245,15 +2246,14 @@ function settleAdvance(): void {
  *   short wait but no wait, so the whole script falls through in this one
  *   turn of the loop and what shows is the settled state (art. 107).
  */
-interface Playing {
-  readonly frames: readonly Frame[]
-  at: number
-  /** What happens once the last frame has landed. The turn's own settling. */
-  readonly lands: () => void
-  timer: number | undefined
-}
-
 let playing: Playing | null = null
+/**
+ * Whether a fight event is resolving. It is a flag beside the player rather
+ * than a look at the player, because the very first frame shows *inside*
+ * `playBeats` — before it has returned anything to hold — and that frame is
+ * the one that has to take the pressed verb off the strip.
+ */
+let beating = false
 /**
  * What the fight's numbers read while a timeline is running. `null` is the
  * fight itself, which is what they read the rest of the time.
@@ -2297,31 +2297,36 @@ const SHAKE_PIXELS = 2
 
 function begin(frames: readonly Frame[], lands: () => void = paint): void {
   stopBeats()
-  spun = 0
-  beatNow = null
-  named = null
-  playing = {
-    frames: stillness() ? atOnce(frames) : frames,
-    at: 0,
-    lands,
-    timer: undefined,
-  }
-  // The first frame gets the whole screen, because it is the answer to a
-  // press: the strip has to lose the verb that started this in the same
-  // instant the first beat lands.
-  stepBeat(paint)
+  beating = true
+  const reading = playBeats(frames, {
+    clock: REAL_CLOCK,
+    // art. 116: the one place the setting is read. Past here there is one
+    // timeline and no branch that could disagree with itself about anything.
+    still: stillness(),
+    show: showFrame,
+    lands: () => {
+      beating = false
+      settleMarks()
+      lands()
+    },
+  })
+  // With the world held still the whole script has already been read out by
+  // the time this line runs, and there is nothing left to hold (art. 116).
+  if (beating) playing = reading
 }
 
-function stepBeat(draw: () => void = showBeat): void {
-  const now = playing
-  if (now === null) return
-  const frame = now.frames[now.at]
-  if (frame === undefined) return landBeats()
-  now.at += 1
+/**
+ * One frame, shown. Everything a beat does to the screen is here, and all of
+ * it is reading fields off a frame that was computed before any of this
+ * started — there is no engine call in this function and there must not be.
+ */
+function showFrame(frame: Frame, first: boolean): void {
   spun += 1
   shown = frame.shows
   beatNow = frame.beat
-  // art. 119 §3: the blow's three marks, each exactly one beat long.
+  // art. 119 §3: the blow's three marks, each exactly one beat long. The
+  // beat after clears them, which is why every timeline ends on a settled
+  // beat — nothing here can be left standing (art. 1).
   flare = frame.shows.hit
   knocked = frame.beat.kind === 'strike' ? 1 : 0
   // **The only time the room itself moves.** The frame is the player's body,
@@ -2329,11 +2334,11 @@ function stepBeat(draw: () => void = showBeat): void {
   // the intent landing on you, and nothing else in the game, ever.
   jolted = frame.beat.kind === 'struck' && frame.beat.amount > 0
   speak(frame.beat)
-  draw()
-  const next = now.frames[now.at]
-  if (next === undefined) return landBeats()
-  if (next.after <= 0) return stepBeat()
-  now.timer = setTimeout(() => stepBeat(), next.after) as unknown as number
+  // The first frame gets the whole screen, because it is the answer to a
+  // press: the strip has to lose the verb that started this in the same
+  // instant the first beat lands.
+  if (first) paint()
+  else showBeat()
 }
 
 /**
@@ -2396,10 +2401,13 @@ function jolt(): void {
  * (art. 119), skipping it costs nothing.
  */
 function landBeats(): void {
-  const now = playing
-  if (now === null) return
-  clearTimeout(now.timer)
+  playing?.land()
+}
+
+/** art. 119: no element left mid-transform. The whole of "ends settled". */
+function settleMarks(): void {
   playing = null
+  beating = false
   shown = null
   spun = 0
   beatNow = null
@@ -2412,7 +2420,6 @@ function landBeats(): void {
     moved = false
     world(false)
   }
-  now.lands()
 }
 
 /**
@@ -2421,23 +2428,16 @@ function landBeats(): void {
  * so dropping it cannot lose anything, and every scheduled beat goes with it.
  */
 function stopBeats(): void {
-  if (playing !== null) clearTimeout(playing.timer)
-  playing = null
-  shown = null
-  spun = 0
-  beatNow = null
-  named = null
-  flare = 'none'
-  knocked = 0
-  jolted = false
+  playing?.stop()
+  beating = false
+  settleMarks()
   moved = false
-  jolt()
 }
 
 /** Every entry point settles whatever pulse is running first (art. 1). */
 function settle(): void {
   if (screen.kind === 'fight' && !advanced) settleAdvance()
-  if (playing !== null) landBeats()
+  if (beating) landBeats()
   if (resolving !== null) settleTurn()
 }
 
@@ -2453,7 +2453,7 @@ function fightActs(): void {
   // art. 119: a timeline is a fight event resolving, and a fight event that
   // is still resolving has nothing to offer. The verbs come back with the
   // settled state; a tap anywhere lands the timeline first (art. 1).
-  if (playing !== null) return
+  if (beating) return
   // art. 36: each casting's lot is a pure function of where the run stands,
   // so the shell never has to hold a half-spent generator between paints.
   const lots = turnLots(ledgers.run!.seed, ledgers.run!.at.step, now.turnNumber)
