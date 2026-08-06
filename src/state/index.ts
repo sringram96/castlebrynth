@@ -307,12 +307,44 @@ export interface RunHistory {
   readonly taken: readonly number[]
 }
 
-/** One line per death, and a different line for the Warden's door. */
+/**
+ * One line per death, a different line for the Warden's door — and one line
+ * that is not an ending at all (`THE_SCRAWL`).
+ *
+ * **The seed and the depth may be absent** (the reason wave). Every line this
+ * vault writes has both, because it dealt the run behind it. A line with
+ * neither has no run behind it, and that is the whole of what separates the
+ * two kinds: the reader prints what it is given, and a line with nothing to
+ * print gets no ordinal and no numbers.
+ */
 export interface EndLine {
-  readonly seed: Seed
-  readonly depth: number
+  readonly seed: Seed | null
+  readonly depth: number | null
   readonly cause: string
 }
+
+/**
+ * art. 11 (the reason wave): **the Book of Ends is not empty at the first
+ * waking.** One line already stands in it, and it is not an ending — it is
+ * your own hand, left at the top of the Book for whoever opens it next.
+ *
+ * It is the cheapest sentence in the game that makes the Book mean something
+ * before the player has died once: the first thing you read, every time you
+ * open it after a death, is your own order to yourself. No seed and no depth,
+ * because there is no run behind it — it was not written at the end of
+ * anything.
+ *
+ * The id lives in the engine for the reason `CROSSING` does — the state layer
+ * has to be able to name a fixed anchor it seeds — and the *words* for it are
+ * still content's alone (`END_LINES` in src/content/prose.ts). Nothing here
+ * says anything out loud.
+ *
+ * There is deliberately **no is-it-this-one predicate**. Nothing may treat
+ * the line specially by identity: the reader draws it with the code that
+ * draws every other line, and what marks it out is that it has no run behind
+ * it and a sentence in a different hand.
+ */
+export const THE_SCRAWL: EndLine = { seed: null, depth: null, cause: 'scrawl' }
 
 export interface RoomVisit {
   /** art. 82: the template — what you recognise, and what knowledge keys on. */
@@ -655,7 +687,15 @@ function withEnding(ledgers: Ledgers, cause: string): PermanentLedger {
   return { ...ledgers.permanent, bookOfEnds: [...ledgers.permanent.bookOfEnds, line] }
 }
 
-/** A first waking: the pouch of plain bones, nothing known yet (art. 55). */
+/**
+ * A first waking: the pouch of plain bones, nothing known yet (art. 55).
+ *
+ * The Book is the one thing that is not empty. `THE_SCRAWL` is standing in it
+ * before the player has done anything at all, which is the whole of the straw
+ * ruling — and it is seeded here rather than by the shell so that there is no
+ * "new game" path where it could be forgotten (`erase` boots through here
+ * too).
+ */
 export function firstPermanent(pouch: Pouch, handSize: number, body: Body): PermanentLedger {
   return {
     pouch,
@@ -665,7 +705,7 @@ export function firstPermanent(pouch: Pouch, handSize: number, body: Body): Perm
     known: [],
     met: [],
     memories: [],
-    bookOfEnds: [],
+    bookOfEnds: [THE_SCRAWL],
     handSize,
     body,
     prefs: PLAIN_PREFS,
@@ -828,11 +868,15 @@ export const QUARANTINE_KEY = 'castlebrynth.quarantine'
  * summons (art. 68): what a run has looked at decides what it may do. 6 is
  * the threshold, which needs to know whether a run was ever begun. 7 is
  * art. 116's preferences, which are permanent state because a player who
- * dies has not changed their mind about motion. 8 is the company wave: a
- * paused fight now carries what a bind took off it and what a bleed is
- * still taking (art. 65), and neither can be derived from a seed.
+ * dies has not changed their mind about motion. 8 is the reason wave: the
+ * Book does not open empty, and a Book that opened empty before gets the
+ * line it was always missing, above its own. 9 is that line ceasing to be an
+ * ending — it is the player's own scrawl, and a v8 Book is rewritten to say
+ * so rather than left holding an id with no words behind it. 10 is the
+ * company wave: a paused fight now carries what a bind took off it and what
+ * a bleed is still taking (art. 65), and neither can be derived from a seed.
  */
-export const VAULT_VERSION = 8
+export const VAULT_VERSION = 10
 
 // ── The migration ladder ───────────────────────────────────────────────
 
@@ -1010,14 +1054,57 @@ export const MIGRATIONS: readonly Migration[] = [
       })),
   },
   /**
-   * 7 → 8. The company wave's effect kinds (art. 65). A v7 fight was fought
+   * 7 → 8. The reason wave: the Book of Ends is not empty at the first
+   * waking, and a player who is already collecting endings gets the premise
+   * too. `THE_SCRAWL` goes in **above** their own lines, because it stands at
+   * the head of the Book and everything else is written under it — and
+   * nothing of theirs moves, so the rung costs them nothing.
+   *
+   * It is idempotent by the cause, not by position: a Book that somehow
+   * already holds the line keeps the one it has rather than growing a second
+   * copy of it.
+   */
+  {
+    from: 7,
+    up: (snapshot) =>
+      fillingThePermanent(snapshot, (permanent) => {
+        const lines = Array.isArray(permanent.bookOfEnds) ? permanent.bookOfEnds : []
+        const already = lines.some((line) => asRaw(line)?.cause === THE_SCRAWL.cause)
+        return { ...permanent, bookOfEnds: already ? lines : [THE_SCRAWL, ...lines] }
+      }),
+  },
+  /**
+   * 8 → 9. The first line stopped being an ending.
+   *
+   * v8 shipped it as one — a death that happened before yours, `end.gone` —
+   * and the ruling as it stands is that the line at the head of the Book is
+   * the player's own hand, not a record of anybody's end. A Book written by
+   * the v8 build holds the old id, and an id with no words behind it would
+   * print itself at the player, so the rung rewrites the one line and leaves
+   * every other line exactly as it found it.
+   */
+  {
+    from: 8,
+    up: (snapshot) =>
+      fillingThePermanent(snapshot, (permanent) => {
+        const lines = Array.isArray(permanent.bookOfEnds) ? permanent.bookOfEnds : []
+        return {
+          ...permanent,
+          bookOfEnds: lines.map((line) =>
+            asRaw(line)?.cause === 'end.gone' ? THE_SCRAWL : line,
+          ),
+        }
+      }),
+  },
+  /**
+   * 9 → 10. The company wave's effect kinds (art. 65). A v9 fight was fought
    * against intents that could not bind a die or open a bleed, so the honest
    * answer for one paused mid-turn is that nothing is bound and nothing is
    * running — which is exactly what it was. The arrangement does not move,
    * so nobody loses a descent, and a run with no fight in it is untouched.
    */
   {
-    from: 7,
+    from: 9,
     up: (snapshot) =>
       fillingTheRun(snapshot, (run) => {
         const held = asRaw(run.fight)

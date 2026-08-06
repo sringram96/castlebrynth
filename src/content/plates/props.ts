@@ -17,7 +17,7 @@
  */
 
 import type { Brush, Drawn, Prop, View, WorldMark } from '../../room/index.js'
-import { mix, standing } from '../../room/index.js'
+import { Surface, mix, standing } from '../../room/index.js'
 import type { School } from '../palettes.js'
 import { alongSteps, lookOf } from '../palettes.js'
 import { AUTHORED_GRID, RENDER } from '../render.js'
@@ -46,7 +46,7 @@ function reach(view: View): number {
  * A runnel cut down the middle of the floor, with the water still in it. The
  * channel is world-space, so it narrows honestly with distance (art. 15).
  */
-export function runnel(school: School): Prop {
+export function runnel(school: School, phase = 0): Prop {
   return {
     name: 'the water',
     z: 8,
@@ -60,8 +60,11 @@ export function runnel(school: School): Prop {
         for (let x = left.x; x < right.x; x++) {
           b.px(school.damp, x, y)
           if (b.dither(x, y, 6)) b.px(school.accent[0]!, x, y)
-          if (b.hash(x | 0, y * 3) < 7) b.px(school.accent[1]!, x, y)
-          if (b.hash(x | 0, y * 11) < 2) b.px(school.accent[3]!, x, y)
+          // art. 107: the sheet phase. The channel is the same channel and
+          // the same width at the same depth — what moves is the light on it,
+          // which is the only thing about running water that does.
+          if (b.hash(x | 0, y * 3 + phase * 5) < 7) b.px(school.accent[1]!, x, y)
+          if (b.hash(x | 0, y * 11 + phase * 13) < 2) b.px(school.accent[3]!, x, y)
         }
         // The lip either side, inked so the cut reads as a cut (art. 18).
         b.px(school.edge, left.x - g(1), y)
@@ -278,6 +281,34 @@ export function motes(school: School): Prop {
   }
 }
 
+/**
+ * arts 101, 107: the field, drifting. Its own population, standing beside the
+ * motes the cast already laid — an overlay may add to the frame under it and
+ * may not take anything out of it, so what loops is a second handful that
+ * turns rather than the first one moving.
+ *
+ * A mote is in two frames of the three and lit in one of them, so the field
+ * keeps its density while what catches the light in it changes. Scatter, and
+ * nothing that has a silhouette to get wrong (art. 101).
+ */
+export function moteDrift(school: School, phase: number, count = 26): Prop {
+  return {
+    name: 'the drift',
+    z: 5,
+    paint(b: Brush): void {
+      const { frame } = b.view
+      for (let n = 0; n < count; n++) {
+        if (b.hash(n * 5, phase * 17) % 3 === 0) continue
+        const x = (b.hash(n * 11, 23) / 97) * frame.width
+        // A hair of vertical wander, so the field is not a grid of blinkers.
+        const y =
+          ((b.hash(n * 19, 7) / 97) * frame.height + b.hash(n, phase) / 97) % frame.height
+        b.px(b.hash(n * 3, phase * 29) < 34 ? school.bone[2]! : school.bone[0]!, x, y)
+      }
+    },
+  }
+}
+
 // ── The stair ──────────────────────────────────────────────────────────
 
 /** Short flights going down at the far end, and the flights do not line up. */
@@ -311,7 +342,7 @@ export function stairHead(school: School): Prop {
 // ── The cistern ────────────────────────────────────────────────────────
 
 /** Black water lying flat across the whole floor, and giving one line back. */
-export function standingWater(school: School): Prop {
+export function standingWater(school: School, phase = 0): Prop {
   return {
     name: 'the standing water',
     z: 9,
@@ -324,8 +355,14 @@ export function standingWater(school: School): Prop {
         for (let x = left.x; x < right.x; x++) {
           b.px(school.damp, x, y)
           if (b.dither(x, y, 3)) b.px(school.hollow, x, y)
+          // art. 107: the sheet, phased. Standing water is still and its
+          // surface is not, so what the clock moves is what it gives back.
+          if (b.hash(x | 0, y * 7 + phase * 23) < 2) b.px(school.accent[0]!, x, y)
           // The one line it gives back, straight down the middle.
-          if (Math.abs(x - (left.x + right.x) / 2) < 1 && b.hash(x | 0, y * 3) < 40) {
+          if (
+            Math.abs(x - (left.x + right.x) / 2) < 1 &&
+            b.hash(x | 0, y * 3 + phase * 11) < 40
+          ) {
             b.px(school.accent[2]!, x, y)
           }
         }
@@ -503,7 +540,7 @@ export function tallyMarks(school: School): Prop {
  * The room's own prop, and only the room's: what stands *in* the font is
  * whatever fills its mercy socket, and it brings its own pixels (art. 83).
  */
-export function fontSteps(school: School): Prop {
+export function fontSteps(school: School, phase = 0): Prop {
   return {
     name: 'the steps',
     z: 15,
@@ -525,7 +562,8 @@ export function fontSteps(school: School): Prop {
         for (let x = left.x; x < right.x; x++) {
           b.px(school.damp, x, y)
           if (b.dither(x, y, 4)) b.px(school.accent[0]!, x, y)
-          if (b.hash(x | 0, y * 7) < 2) b.px(school.accent[1]!, x, y)
+          // art. 107: a hand of water is still, and its skin is not.
+          if (b.hash(x | 0, y * 7 + phase * 19) < 2) b.px(school.accent[1]!, x, y)
         }
       }
       // The sides it is cut into, inked at the lip, so it reads as a hole in
@@ -833,7 +871,24 @@ function aperture(
   return { x0: top.x, x1: foot.x, y0: top.y, y1: foot.y }
 }
 
-export function threshold(school: School, mark: WorldMark, state: ThresholdState): Prop {
+/**
+ * arts 106–107: **the thresholds stir, and almost nothing else does.**
+ *
+ * `stir` is which frame of the doorway's own loop this is. What it moves is
+ * the darkness and nothing else: the reveal's faces and, where the door
+ * stands open, the dark behind it — in the bottom of the wall's own ramp,
+ * never enough to read as an event. The architrave, the leaf, the iron and
+ * the lock take no phase, because none of them is darkness.
+ *
+ * It is the one *constant* motion in an ordinary room, and that is the whole
+ * argument for it: a glance finds the exits without a word being written.
+ */
+export function threshold(
+  school: School,
+  mark: WorldMark,
+  state: ThresholdState,
+  stir = 0,
+): Prop {
   return {
     name: state.warden ? 'the black door' : 'the door',
     z: mark.z,
@@ -894,7 +949,7 @@ export function threshold(school: School, mark: WorldMark, state: ThresholdState
           // A jamb, the soffit, or the sill: each face turned a different way,
           // so each takes a different step (art. 103's read, on a small solid).
           const side = x <= back.x0 || x >= back.x1
-          b.px(b.dither(x, y, side ? 7 : 4) ? reveal[0] : reveal[1], x, y)
+          b.px(b.dither(x, y + stir, side ? 7 : 4) ? reveal[0] : reveal[1], x, y)
         }
       }
 
@@ -903,7 +958,7 @@ export function threshold(school: School, mark: WorldMark, state: ThresholdState
         // going-on — this room's darkness, breathing (art. 16).
         for (let y = back.y0; y < back.y1; y++) {
           for (let x = back.x0; x < back.x1; x++) {
-            b.px(b.dither(x, y, 3) ? school.breath : inside, x, y)
+            b.px(b.dither(x, y + stir, 3) ? school.breath : inside, x, y)
           }
         }
       } else if (state.warden) {
@@ -961,6 +1016,185 @@ export function threshold(school: School, mark: WorldMark, state: ThresholdState
       }
       b.px(school.coin, plate, at - g(1))
       b.px(school.accent[2]!, plate, at + g(1))
+    },
+  }
+}
+
+// ── What moves (arts 101, 106–108, 117) ────────────────────────────────
+
+/**
+ * art. 106 for a doorway that was never drawn: a **junction's turn**.
+ *
+ * Its lefts and rights are holes the cast put in the walls, not thresholds
+ * standing on the floor, so there is no prop to repaint at a phase. What
+ * there is instead is the cast's own answer to which pixels are the dark a
+ * turn goes on into — art. 16's mouth, and in a chamber with turns in it the
+ * only mouth there is.
+ *
+ * Additive, and it has to be: an overlay repaints on the frame under it, so a
+ * stir may add breath to the dark and may never take the dark's own back out.
+ */
+export function turnStir(school: School, phase: number): Prop {
+  return {
+    name: 'the turn',
+    z: 0.5,
+    paint(b: Brush): void {
+      const { frame } = b.view
+      for (let y = 0; y < frame.height; y++) {
+        for (let x = 0; x < frame.width; x++) {
+          if (b.surfaceAt(x, y) !== Surface.Mouth) continue
+          if (b.hash(x, y * 3 + phase * 29) < 7) b.px(school.breath, x, y)
+        }
+      }
+    },
+  }
+}
+
+/**
+ * arts 101, 107: the sky, turning over. A field may drift and it may twinkle,
+ * and a star that is not there this tick is one the cast's own sky is showing
+ * through — which is what an overlay on a clean frame gets for free.
+ */
+export function starTwinkle(school: School, phase: number): Prop {
+  const lit = lookOf(school).palette.rim
+  return {
+    name: 'the stars',
+    z: 0.4,
+    paint(b: Brush): void {
+      const { frame } = b.view
+      for (let y = 0; y < frame.height; y++) {
+        for (let x = 0; x < frame.width; x++) {
+          if (b.surfaceAt(x, y) !== Surface.Sky) continue
+          if (b.hash(x * 11 + phase * 37, y * 7) < 1) b.px(lit, x, y)
+        }
+      }
+    },
+  }
+}
+
+/**
+ * art. 117: something coming down off something. Dust off a niche, ash off
+ * the stack, grit off a tread, motes out of a shaft — one painter, because
+ * what makes each of them that room's own is the mark it is given and the
+ * tone it falls in, not the arithmetic of falling.
+ */
+export function sifting(
+  school: School,
+  mark: WorldMark,
+  frame: number,
+  frames: number,
+  tone = 0,
+): Prop {
+  return {
+    name: 'the fall',
+    z: mark.z,
+    paint(b: Brush): void {
+      const at = b.project(mark.X, mark.Y, mark.z)
+      const half = (b.view.f * mark.width) / mark.z / 2
+      const drop = (b.view.f * mark.height) / mark.z
+      const along = frames <= 1 ? 1 : frame / (frames - 1)
+      const specks = [school.bone[0]!, school.bone[1]!, school.bone[2]!, school.grime]
+      for (let n = 0; n < 22; n++) {
+        // Each speck leaves at its own moment and falls at its own rate, so
+        // the fall has a head and a tail rather than a front.
+        const late = b.hash(n * 13, 3) / 97
+        const gone = along * 1.5 - late * 0.5
+        if (gone <= 0 || gone >= 1) continue
+        const x = at.x + ((b.hash(n * 7, 11) / 97) * 2 - 1) * half
+        b.px(specks[(n + tone) % specks.length]!, x, at.y + gone * drop)
+      }
+    },
+  }
+}
+
+/**
+ * art. 117: a ring crossing standing water. One circle, widening and thinning
+ * to nothing — the room's own water, doing the one thing water does when
+ * nobody is watching it.
+ */
+export function ripple(
+  school: School,
+  mark: WorldMark,
+  frame: number,
+  frames: number,
+): Prop {
+  return {
+    name: 'the ring',
+    z: mark.z,
+    paint(b: Brush): void {
+      const along = frames <= 1 ? 1 : frame / (frames - 1)
+      const wide = mark.width * (0.15 + along * 0.85)
+      const tone = along < 0.6 ? school.accent[2]! : school.accent[1]!
+      // A ring in world space, so it is an ellipse on the frame for the same
+      // reason everything else is: the floor recedes (art. 15).
+      for (let step = 0; step < 96; step++) {
+        const round = (step / 96) * Math.PI * 2
+        const at = b.project(
+          mark.X + Math.cos(round) * wide,
+          mark.Y,
+          mark.z + Math.sin(round) * wide,
+        )
+        if (b.hash(step, frame * 7) < 74) b.px(tone, at.x, at.y)
+      }
+    },
+  }
+}
+
+/**
+ * art. 117: the brazier spitting. Sparks leave the fire, go up, and are gone
+ * — the one thing a fire does that is not the fire.
+ */
+export function sparks(
+  school: School,
+  mark: WorldMark,
+  frame: number,
+  frames: number,
+  glow: string,
+): Prop {
+  return {
+    name: 'the sparks',
+    z: mark.z - 0.1,
+    paint(b: Brush): void {
+      const at = b.project(mark.X, mark.Y + mark.height, mark.z)
+      const rise = (b.view.f * mark.height) / mark.z
+      const half = (b.view.f * mark.width) / mark.z / 2
+      const along = frames <= 1 ? 1 : frame / (frames - 1)
+      for (let n = 0; n < 9; n++) {
+        const late = b.hash(n * 17, 5) / 97
+        const gone = along * 1.4 - late * 0.4
+        if (gone <= 0 || gone >= 1) continue
+        // They lean over as they climb, and they go out at the top.
+        const x = at.x + ((b.hash(n * 3, 29) / 97) * 2 - 1) * half * (0.3 + gone)
+        const y = at.y - gone * rise
+        b.px(gone > 0.7 ? school.grime : glow, x, y)
+        if (gone < 0.4) b.px(glow, x, y - 1)
+      }
+    },
+  }
+}
+
+/**
+ * art. 117: something crossing the sky. The stars go out in a band and come
+ * back, and the barrow never says what it was — the room is the furniture
+ * here, because the roof is the thing the room does not have.
+ */
+export function passing(school: School, frame: number, frames: number): Prop {
+  return {
+    name: 'the passing',
+    z: 0.3,
+    paint(b: Brush): void {
+      const { frame: box } = b.view
+      const along = frames <= 1 ? 1 : frame / (frames - 1)
+      const centre = along * box.width * 1.4 - box.width * 0.2
+      const wide = box.width * 0.18
+      for (let y = 0; y < box.height; y++) {
+        for (let x = 0; x < box.width; x++) {
+          if (b.surfaceAt(x, y) !== Surface.Sky) continue
+          const into = 1 - Math.abs(x - centre) / wide
+          if (into <= 0) continue
+          if (b.dither(x, y, into * 16)) b.px(school.hollow, x, y)
+        }
+      }
     },
   }
 }

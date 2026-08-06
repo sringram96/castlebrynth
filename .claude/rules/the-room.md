@@ -9,7 +9,8 @@ a rail and panels under art. 67 as amended.
 
 What a room is *made of* — parts, shape, thresholds, detail, things,
 composition, motion — is the graphics amendment (arts 93–112), at the
-foot of this file. It is the same law as arts 13–28 carried one level
+foot of this file, with the light and the rim after it (arts 113–115) and
+the unbidden beat last (art. 117). It is the same law as arts 13–28 carried one level
 down: those articles say the box cannot lie, these say what may stand
 in it.
 
@@ -395,3 +396,37 @@ coordinates and scale by 1/z (arts 19, 99). Palette and light are
 authorial per scene; there is no global light rule and there should never
 be one (art. 21). And nothing here assumes a device pixel: the units are
 world units and ramp steps (arts 22–23).
+
+## The unbidden beat (ratified 2026-08-06)
+Drafted from the life wave, whose playtest verdict was that the game is
+"not much if anything but a clicker simulator". Arts 106–110 were built
+in the same wave; this is the article that says the world may also move
+when the thumb has not.
+
+117. SETTLED (ruled 2026-08-06) — **A room may do one small thing of its
+     own accord.** Rarely, scheduled off the world clock (art. 109), and
+     deterministic per instance — the same room does its one thing at the
+     same moment every time you stand still in it. **Pixels first**: a
+     mote shower off the ceiling, the brazier spitting, a ring crossing
+     the standing water, the hanged swaying once, dust off a niche.
+
+     At most **one unbidden line** per room instance, said once. It may
+     never gate anything, never repeat, and **never move the player's
+     beat position** — the word band restores to where the player was, so
+     nothing about the candle they are on is spent by a thing they did
+     not ask for. An unbidden beat may never be required reading: miss it
+     and you have missed nothing but the place being alive.
+
+     It is not a fourth kind of motion beside art. 107's three; it is a
+     one-shot the room fires rather than the thumb, and it answers to
+     everything art. 107 already says — it ends in the settled state, and
+     the settled state is a room in which nothing happened (art. 1). It
+     is therefore also exempt from art. 108's rule that a moving thing
+     must be tappable: the beat is the room moving, and a room is a thing
+     you are standing in (art. 68).
+
+     Nothing happening except what the thumb causes is what makes a world
+     read as a vending machine. **How rare, how long, and how many rooms
+     have one are tuning; that most rooms do not is not** — a depth where
+     every room does something unasked is a depth where none of it means
+     anything, which is art. 107's argument carried one step out.

@@ -79,8 +79,12 @@
         background: #000000ee; padding: 10px 12px; overflow-y: auto; }
       #sheet.on { display: flex; }
       #sheet h1 { font-size: 1em; font-weight: normal; margin: 0 0 8px; color: var(--dim); }
+      /* A Book line carries an ending's sentence now, so it wraps rather than
+         squeezing the numbers off the edge of a phone. */
       #sheet .line { display: flex; justify-content: space-between; gap: 10px;
-        padding: 3px 0; border-bottom: 1px solid #1c1915; font-size: .9em; }
+        flex-wrap: wrap; padding: 3px 0; border-bottom: 1px solid #1c1915; font-size: .9em; }
+      /* The numbers beside an ending, on every line alike (art. 11). */
+      #sheet .line .tag { color: var(--dim); white-space: nowrap; }
       #sheet .line.spent { color: #5c574e; text-decoration: line-through; }
       #sheet .line.sealed { color: var(--gold); }
       #sheet .line.open { color: var(--ink); }

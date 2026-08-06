@@ -21,6 +21,9 @@
 
 import type { Chain, ChainNode, Dealer, Door, Fill } from '../gen/index.js'
 import { deal, nodeAt } from '../gen/index.js'
+
+export type { Pick, Touch } from './pick.js'
+export { isPicked, onArrival, picking, pickedDoor } from './pick.js'
 import type { RegionId } from '../gen/index.js'
 import type { Good } from '../lots/index.js'
 import type { WorldMark } from '../room/index.js'

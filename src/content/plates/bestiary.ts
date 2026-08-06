@@ -16,6 +16,14 @@
  * Drawings are small on purpose. Readable size is a property of the drawing
  * (art. 100), so a thing declares the distance past which it is not placed
  * rather than letting the projection shrink it into noise.
+ *
+ * **A loop's frames share one silhouette** (arts 107, 110). Animation is
+ * overlay repaint on the frame the cast already made, so a frame that covers
+ * fewer cells than the one under it leaves the one under it showing — a
+ * flame that shrank would smear. What an authored frame varies is what its
+ * cells are *made of*, never which cells it has: the fire moves through the
+ * flame rather than the flame changing shape, and the blink is the same face
+ * with the light out of it.
  */
 
 import type { Drawn } from '../../room/index.js'
@@ -77,6 +85,57 @@ export const BEARER: Drawn = drawn([
 ])
 
 /**
+ * art. 107: the bearer's lantern, moving. The same stoop, the same lamp, and
+ * the fire running through it — two further frames, and no cell of the
+ * silhouette moves in either.
+ */
+export const BEARER_FRAMES: readonly Drawn[] = [
+  BEARER,
+  drawn([
+    '.....444......',
+    '....45554.....',
+    '....45554.....',
+    '.....444......',
+    '...4444444....',
+    '..455555554...',
+    '..455555554...',
+    '..4555555+4...',
+    '...4555554+...',
+    '...455555+7+..',
+    '...45555+*7*+.',
+    '...4555.+7**+.',
+    '...4555..+*+..',
+    '...4555...+...',
+    '...44.44......',
+    '...4...44.....',
+    '...4....4.....',
+    '..44....44....',
+    '..33....33....',
+  ]),
+  drawn([
+    '.....444......',
+    '....45554.....',
+    '....45554.....',
+    '.....444......',
+    '...4444444....',
+    '..455555554...',
+    '..455555554...',
+    '..4555555+4...',
+    '...4555554+...',
+    '...455555+*+..',
+    '...45555+7*7+.',
+    '...4555.+*7*+.',
+    '...4555..+7+..',
+    '...4555...+...',
+    '...44.44......',
+    '...4...44.....',
+    '...4....4.....',
+    '..44....44....',
+    '..33....33....',
+  ]),
+]
+
+/**
  * The many. Low, wide, and it does not have a front — the legs are the same
  * on every side, which is the thing about it that is wrong.
  */
@@ -127,6 +186,32 @@ export const CHOIR: Drawn = drawn([
   '...3.3.3..3.3.',
 ])
 
+/**
+ * art. 108: the choir, with the light out of it. One frame, very rarely, and
+ * the same faces — what goes out is the lit point in each of them, which is
+ * the smallest change in this file and the loudest.
+ */
+export const CHOIR_DARK: Drawn = drawn([
+  '..............',
+  '...44....44...',
+  '..4554..4554..',
+  '..4334..4334..',
+  '..4554..4554..',
+  '...44....44...',
+  '....44554444..',
+  '...444554444..',
+  '..45544554554.',
+  '..43344334334.',
+  '..45544554554.',
+  '...4444444444.',
+  '....44444444..',
+  '.....444444...',
+  '....33333333..',
+  '...3333333333.',
+  '...3.3.3..3.3.',
+  '...3.3.3..3.3.',
+])
+
 /** Something with a long neck that is not looking at you yet. */
 export const WATCHER: Drawn = drawn([
   '........444...',
@@ -143,6 +228,30 @@ export const WATCHER: Drawn = drawn([
   '..44554.......',
   '.4555554......',
   '.455665554....',
+  '.455555554....',
+  '.445555554....',
+  '..4455554.....',
+  '...44..44.....',
+  '...3....3.....',
+  '..33....33....',
+])
+
+/** art. 108: the same, for the long neck. It is not looking at you now. */
+export const WATCHER_DARK: Drawn = drawn([
+  '........444...',
+  '.......45554..',
+  '.......43354..',
+  '.......45554..',
+  '........444...',
+  '........44....',
+  '.......44.....',
+  '......44......',
+  '.....44.......',
+  '....44........',
+  '...444........',
+  '..44554.......',
+  '.4555554......',
+  '.455335554....',
   '.455555554....',
   '.445555554....',
   '..4455554.....',
@@ -275,6 +384,35 @@ export const LANTERN: Drawn = drawn([
   '..+++++..',
 ])
 
+/** art. 107: the same lantern, with the flame turning over inside it. */
+export const LANTERN_FRAMES: readonly Drawn[] = [
+  LANTERN,
+  drawn([
+    '...+++...',
+    '..+...+..',
+    '.+.....+.',
+    '+++++++++',
+    '+**7**7*+',
+    '+*7666**+',
+    '+**666*7+',
+    '+*7***7*+',
+    '+++++++++',
+    '..+++++..',
+  ]),
+  drawn([
+    '...+++...',
+    '..+...+..',
+    '.+.....+.',
+    '+++++++++',
+    '+*7***7*+',
+    '+**666*7+',
+    '+*7666**+',
+    '+**7**7*+',
+    '+++++++++',
+    '..+++++..',
+  ]),
+]
+
 /** A ring, and the finger it did not come off cleanly. */
 export const RING: Drawn = drawn([
   '..+++..',
@@ -347,6 +485,47 @@ export const BRAZIER: Drawn = drawn([
   '...++.++...',
   '..++...++..',
 ])
+
+/**
+ * art. 107: the brazier burning. Three authored frames on the slow clock, and
+ * the flame's outline is the same cell for cell in all three — what moves is
+ * the fire inside it, which is what fire actually does at this scale.
+ */
+export const BRAZIER_FRAMES: readonly Drawn[] = [
+  BRAZIER,
+  drawn([
+    '....*7*....',
+    '...**8**...',
+    '..*7***8*..',
+    '.***7*8***.',
+    '..**8*7**..',
+    '.+++++++++.',
+    '.+8888888+.',
+    '..+66666+..',
+    '...+444+...',
+    '....+++....',
+    '.....+.....',
+    '....+++....',
+    '...++.++...',
+    '..++...++..',
+  ]),
+  drawn([
+    '....8**....',
+    '...*7*8*...',
+    '..**8*7**..',
+    '.**8***7**.',
+    '..*7***8*..',
+    '.+++++++++.',
+    '.+8888888+.',
+    '..+66666+..',
+    '...+444+...',
+    '....+++....',
+    '.....+.....',
+    '....+++....',
+    '...++.++...',
+    '..++...++..',
+  ]),
+]
 
 /** A throne, and nobody has sat in it for as long as the stone has been cold. */
 export const THRONE: Drawn = drawn([

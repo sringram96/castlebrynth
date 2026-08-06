@@ -14,7 +14,8 @@ import type { RenderConfig } from './config.js'
 import { dither, hash } from './dither.js'
 import type { Framebuffer } from './framebuffer.js'
 import { fill, plot } from './framebuffer.js'
-import type { Brush, Prop, Scene } from './scene.js'
+import type { Brush, Prop, Scene, SurfaceId } from './scene.js'
+import { Surface } from './scene.js'
 import type { View } from './view.js'
 import { viewOf } from './view.js'
 
@@ -24,6 +25,19 @@ export { dither, hash, ign } from './dither.js'
 export type { CellKind, Drawn } from './drawn.js'
 export type { Mass } from './mass.js'
 export { dune, marchMass, slopeAt } from './mass.js'
+export type { Blink, Loop, LoopKind, Motion, Unbidden } from './motion.js'
+export {
+  MOST_FRAMES,
+  MOST_LOOPS,
+  blinks,
+  breathing,
+  loopFrame,
+  overspent,
+  phaseOf,
+  stirring,
+  swelling,
+  unbidding,
+} from './motion.js'
 export { Cell, drawn, lightFrom } from './drawn.js'
 export type { Standing } from './place.js'
 export { standing } from './place.js'
@@ -63,7 +77,7 @@ export interface RenderedRoom {
 export function renderRoom(scene: Scene, config: RenderConfig): RenderedRoom {
   const view = viewOf(scene.shape, config)
   const cast = castBox(view, scene.look, scene.surfaces, scene.mass)
-  const brush = brushOf(view, cast.target, cast.depth)
+  const brush = brushOf(view, cast.target, cast.depth, cast.surface)
   // art. 19: painted near over far. The plate declares that order — see
   // `far2near`, which says whether a plate keeps its promise — because the
   // reference lays one prop over an atmosphere that stands nearer than it,
@@ -84,7 +98,7 @@ export function overpaint(room: RenderedRoom, props: readonly Prop[]): Framebuff
     height: room.frame.height,
     pixels: new Uint8ClampedArray(room.frame.pixels),
   }
-  const brush = brushOf(room.view, copy, room.depth)
+  const brush = brushOf(room.view, copy, room.depth, room.surface)
   for (const prop of props) prop.paint(brush)
   return copy
 }
@@ -94,7 +108,14 @@ export function far2near(props: readonly Prop[]): boolean {
   return props.every((prop, i) => i === 0 || props[i - 1]!.z >= prop.z)
 }
 
-function brushOf(view: View, target: Framebuffer, depth: Float32Array): Brush {
+function brushOf(
+  view: View,
+  target: Framebuffer,
+  depth: Float32Array,
+  surface: Uint8Array,
+): Brush {
+  const outside = (x: number, y: number): boolean =>
+    x < 0 || y < 0 || x >= target.width || y >= target.height
   return {
     view,
     target,
@@ -106,8 +127,15 @@ function brushOf(view: View, target: Framebuffer, depth: Float32Array): Brush {
     depthAt(x, y) {
       const px = x | 0
       const py = y | 0
-      if (px < 0 || py < 0 || px >= target.width || py >= target.height) return Infinity
+      if (outside(px, py)) return Infinity
       return depth[py * target.width + px]!
+    },
+    surfaceAt(x, y) {
+      const px = x | 0
+      const py = y | 0
+      // Off the frame is the mouth, which is what off the frame always is.
+      if (outside(px, py)) return Surface.Mouth
+      return surface[py * target.width + px]! as SurfaceId
     },
   }
 }

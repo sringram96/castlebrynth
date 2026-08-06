@@ -18,6 +18,7 @@ import type { Clue, ClueId, RoomId, Vault } from '../src/state/index.js'
 import {
   collect,
   finish,
+  THE_SCRAWL,
   firstPermanent,
   learn,
   load,
@@ -107,7 +108,10 @@ describe('death — art. 32 (every death reseeds), art. 11 (the permanent surviv
     // The permanent survived: the clue, the keepsake, the Book (arts 10–11).
     expect(woken.permanent.known).toEqual([CLUE])
     expect(woken.permanent.keepsakes).toEqual([THE_OSSUARY])
+    // art. 11 (the reason wave): the line that was already there, and then
+    // yours written under it. The Book you are adding to was open before you.
     expect(woken.permanent.bookOfEnds).toEqual([
+      THE_SCRAWL,
       { seed: knowing.run!.seed, depth: 1, cause: 'end.gnawing' },
     ])
   })
@@ -147,7 +151,8 @@ describe('death — art. 32 (every death reseeds), art. 11 (the permanent surviv
     const restored = load(kill())
     expect(restored).not.toBeNull()
     expect(snapshot(restored!)).toEqual(snapshot(woken))
-    expect(restored!.permanent.bookOfEnds).toHaveLength(1)
+    // The line that was already there, and the one this death wrote.
+    expect(restored!.permanent.bookOfEnds).toHaveLength(2)
     expect(restored!.permanent.known).toEqual([CLUE])
     expect(restored!.permanent.keepsakes).toEqual([THE_OSSUARY])
     expect(restored!.run!.carried).toEqual([])
@@ -159,11 +164,15 @@ describe('death — art. 32 (every death reseeds), art. 11 (the permanent surviv
     const ledgers = wake(permanent, seedOf(33))
     const died = routeDeath(ledgers, 'end.gnawing')
     const finished = finish(died, 'end.warden')
-    expect(finished.bookOfEnds.map((line) => line.cause)).toEqual(['end.gnawing', 'end.warden'])
+    expect(finished.bookOfEnds.map((line) => line.cause)).toEqual([
+      THE_SCRAWL.cause,
+      'end.gnawing',
+      'end.warden',
+    ])
 
     // And a fresh waking off the finish keeps every line of it.
     const again = wake(finished, seedOf(34))
-    expect(again.permanent.bookOfEnds).toHaveLength(2)
+    expect(again.permanent.bookOfEnds).toHaveLength(3)
     expect(again.run!.at.step).toBe(0)
   })
 

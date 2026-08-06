@@ -269,10 +269,11 @@ describe('the walk — five bones, a traveler, a fork, and a death', () => {
     expect(hasMet(carrying.permanent, who)).toBe(true)
 
     const woken = routeDeath(carrying, 'end.gnawing')
-    // The run burned: a fresh road, nothing carried, one line in the Book.
+    // The run burned: a fresh road, nothing carried, a line in the Book under
+    // the one that was already in it (art. 11, the reason wave).
     expect(woken.run!.carried).toEqual([])
     expect(woken.run!.history.taken).toEqual([])
-    expect(woken.permanent.bookOfEnds).toHaveLength(1)
+    expect(woken.permanent.bookOfEnds).toHaveLength(2)
     // The collection did not, and neither did the meeting (arts 11, 84).
     expect(woken.permanent.signature).toBe(bone.id)
     expect(woken.permanent.pouch.dice.map((die) => die.id)).toContain(bone.id)
@@ -346,6 +347,6 @@ describe('the walk — five bones, a traveler, a fork, and a death', () => {
     expect(restored!.permanent.signature).toBe(bone.id)
     expect(restored!.permanent.pouch.dice.map((die) => die.id)).toContain(bone.id)
     expect(restored!.permanent.met.length).toBeGreaterThan(0)
-    expect(restored!.permanent.bookOfEnds).toHaveLength(1)
+    expect(restored!.permanent.bookOfEnds).toHaveLength(2)
   })
 })

@@ -33,8 +33,11 @@ in the-thumb.md (arts 66–76, 90–92).
    them. Spire skeleton, Layton flesh. Forward only — the engine has no back.
 10. SETTLED — Knowledge is a key: learned clues are game state, live on the
     permanent ledger, and survive death.
-11. STANDING — Two ledgers. The run burns at death; the permanent survives:
-    dice, signature, keepsakes, knowledge, the Book of Ends.
+11. STANDING (clarified by the reason wave, 2026-08-06) — Two ledgers. The
+    run burns at death; the permanent survives: dice, signature, keepsakes,
+    knowledge, the Book of Ends. The Book does not open empty: one line
+    stands in it from the first waking — the player's own scrawl, not an
+    ending — and every ending is written beneath it.
 12. REPEALED (ruled 2026-08-05) — Classes. There are none, ever. A build is
     who you have found: the labyrinth deals its own starting hands, one dead
     traveler at a time (art. 86). Art. 56's curated-starting-hand clause

@@ -21,12 +21,29 @@
 
 /** The word band, one candle at a time (art. 29). */
 export const BEATS: Readonly<Record<string, readonly string[]>> = {
+  /**
+   * The waking (the reason wave). GAME.md's fantasy opens with the premise
+   * and the game had never shipped it: you wake beneath Castlebrynth with a
+   * pouch of bones and a name you keep saying — your brother's. Down is where
+   * your brother is, which is why forward-is-forever (art. 9) is the premise
+   * and not only the rule.
+   *
+   * Four candles, and none of them explains anything. He is never named: the
+   * naming belongs to a depth this build does not have, and what ships is the
+   * *saying* of it. The third candle is the whole of art. 86 becoming the
+   * search — every die down here belonged to somebody, so you check every
+   * body you pass, and one of these days one of them will not be a stranger.
+   */
   'room.crossing': [
-    'The Crossing. You wake, and the ceiling is close enough to touch.',
+    'The Crossing. You wake with the ceiling close enough to touch and your brother’s name already in your mouth.',
     // arts 55–56: five bones against a hand that holds six. The hole is the
     // whole of the invitation, and the room does not explain it.
     'Five bones lie in your open hand. Your hand holds six.',
-    'The corridor goes down. Behind you the stone is unbroken.',
+    // art. 86: the dice are the dead, and this is the line that makes the
+    // implication land. The traveler against the wall is the room's own
+    // scenery, so the room may speak of it (art. 83 untouched).
+    'The traveler against the wall is not the one you are looking for. You check anyway. You check every one.',
+    'The corridor goes down. Behind you the stone is unbroken, and down is where the name goes.',
   ],
   'room.passage.drip': [
     'The wet passage. Water runs in a cut down the middle of the floor.',
@@ -325,17 +342,56 @@ export const SOCKET_BEATS: Readonly<Record<string, readonly string[]>> = {
 
 /**
  * art. 78: the first room after the lock announces the arrival. Every run
- * arrives somewhere, and this is the somewhere saying so — once, in one
- * candle, and never again (the labyrinth never explains itself twice).
+ * arrives somewhere, and this is the somewhere saying so — once, and never
+ * again (the labyrinth never explains itself twice).
+ *
+ * Two candles each (the reason wave), because an arrival is the payoff of a
+ * whole depth of committing and one flat sentence was collecting it. The
+ * first says what the *choosing* did — art. 77's twenty questions, answered
+ * — so a region reads as the labyrinth leaning where you leaned rather than
+ * as a biome loading. The second names the place and says what it does with
+ * what it is given.
+ *
+ * A run sees exactly one of these, so the shared shape is a refrain and not
+ * a repetition: the thing a player learns across runs is that Castlebrynth
+ * keeps everything, and only the keeping changes.
  */
 export const ARRIVALS: Readonly<Record<string, readonly string[]>> = {
-  'region.drowned': ['The floor slopes, and stays sloped. Everything under this runs to water.'],
-  'region.burnt': ['The air dries out. Everything under this has burned once already.'],
-  'region.ossuary': ['The walls go pale. Everything under this is bone, and set in courses.'],
+  'region.drowned': [
+    'Every door you take leans down toward water, and the labyrinth stops offering the others.',
+    'The floor slopes, and stays sloped. What Castlebrynth is given down here, it keeps under water.',
+  ],
+  'region.burnt': [
+    'Every door you take opens on something already burnt, and the labyrinth stops offering the others.',
+    'The air dries out. What Castlebrynth is given down here, it keeps as ash, and the ash is deep.',
+  ],
+  'region.ossuary': [
+    'Every door you take goes further in among the dead, and the labyrinth stops offering the others.',
+    'The walls go pale. What Castlebrynth is given down here, it keeps in the courses, and the courses are bone.',
+  ],
 }
 
-/** One line per death, and one for the door that is not a death (art. 11). */
+/**
+ * One line per death, and one for the door that is not a death (art. 11).
+ *
+ * These reach the player now. They were authored for the Book of Ends and
+ * the Book had never drawn them — it drew a depth and a seed, which is a
+ * receipt rather than a record — so a line of the Book is this sentence, and
+ * the numbers ride beside it.
+ *
+ * `scrawl` is the line that is already there at the first waking, and it is
+ * the only one of these that is **not an ending**. It is your own hand: an
+ * order left at the top of the Book for whoever opens it next, which is you,
+ * and it is short because it was written in a hurry. Every ending is written
+ * underneath it.
+ *
+ * It is the one place in the game where prose carries an imperative, and it
+ * is not the breach of art. 66 it looks like: the labyrinth is not telling
+ * the player what to do, the player is. It commits nothing, it is not on the
+ * strip, and there is no press behind it.
+ */
 export const END_LINES: Readonly<Record<string, string>> = {
+  scrawl: 'Find your brother. Whatever else goes, keep this.',
   'end.gnawing': 'The Gnawing opens you and goes back to its corner.',
   'end.marrow': 'The Marrow closes over you. The scratching starts again behind it.',
   'end.silt-mother': 'The Silt Mother puts a hand on your chest, and the water comes up over it.',
@@ -345,6 +401,9 @@ export const END_LINES: Readonly<Record<string, string>> = {
   'end.warden': 'The Warden goes down, and stays down. The stair keeps going.',
   'end.warden.keeper': 'The Warden takes the key back out of the lock, and sets you down beside its door.',
   'end.kept': 'The door does not open, and the corridor behind you is stone.',
+  // Giving a run up is an ending like any other, and the Book takes its line
+  // like any other — so the line exists. It never had one.
+  'end.abandoned': 'You stop at the door and go no further. The depth behind it shuts.',
 }
 
 /**
@@ -381,6 +440,28 @@ export const INTENT_SAYS: Readonly<Record<string, string>> = {
   KEEP: 'It brings the whole door down on you.',
 }
 
+/**
+ * art. 117: what a room says when it does something of its own accord.
+ *
+ * **One line per room, said once, and never required reading.** It may not
+ * gate anything, it may not repeat, and it does not move the candle the
+ * player is on — miss it and you have missed nothing but the place being
+ * alive. Each one is keyed to that room's own furniture, because a line that
+ * would fit any room says only that a timer went off.
+ *
+ * Seven of twenty-two rooms have one, and the six-in-seven that do not are
+ * what makes the seven worth standing still in.
+ */
+export const UNBIDDEN: Readonly<Record<string, string>> = {
+  'room.crossing': 'Dust lets go of the grate and comes down through the shaft, a little at a time.',
+  'room.trove.alcove': 'The far niche gives up a handful of dust. Nothing puts it there and nothing catches it.',
+  'room.passage.stair': 'A tread lets go of what lies on it. The sound goes further down than the light does.',
+  'room.sanctum.font': 'A ring crosses the water and dies against the steps. Nothing drops into it.',
+  'room.lair.kiln': 'The brazier throws a handful of sparks at the ceiling. They go out before they get there.',
+  'room.omen.pyre': 'Ash sifts down through the stack. Something inside it settles, and the shape holds.',
+  'room.open.barrow': 'A line of stars goes out across the sky and comes back. Whatever crosses them makes no sound.',
+}
+
 /** The lines the shell says at the seams of a run. */
 export const NOTICES: Readonly<Record<string, string>> = {
   'door.locked': 'The lock holds. Whatever opens it is not on you.',
@@ -405,16 +486,29 @@ export const NOTICES: Readonly<Record<string, string>> = {
   // art. 63: a fled fight pauses. Nothing about it refills.
   'fight.fled': 'You back out of the door. It waits where you leave it.',
   'fight.resumed': 'It is where you leave it, and it remembers the rest.',
-  'run.dead': 'The floor comes up. The run ends here.',
-  'run.finished': 'You go through, and the stair keeps going down.',
+  // The two endings. A death says what death is *for* in this game — the run
+  // burns and the knowledge does not (arts 10–11) — and the Warden's door
+  // says what finishing a depth is worth, which is that it is not the thing
+  // you came down for.
+  'run.dead': 'The floor comes up. The run ends here, and everything you know of it keeps. So does the name.',
+  'run.finished':
+    'You go through, and the stair keeps going down. Your brother is not on this depth.',
   // art. 60: an ending with a choice waiting behind it says so, because the
   // next screen is a question rather than the labyrinth. It states what is
   // true of the pouch and stops there — the Choose verb is what instructs.
-  'run.dead.choose': 'The floor comes up. The run ends here. What is on you now is more than your hand holds.',
+  'run.dead.choose':
+    'The floor comes up. The run ends here, and everything you know of it keeps. What is on you now is more than your hand holds.',
   'run.finished.choose':
-    'You go through, and the stair keeps going down. What is on you now is more than your hand holds.',
+    'You go through, and the stair keeps going down. Your brother is not on this depth. What is on you now is more than your hand holds.',
+  // The Book is never empty now — one line stands in it from the first waking
+  // (art. 11, the reason wave) — so this is the answer to a Book that somehow
+  // holds nothing, and not a state the game deals.
   'book.empty': 'Nothing is written here yet.',
-  'book.title': 'The Book of Ends.',
+  // art. 111: the sheet names itself, and then says how to read down it.
+  // "Under the first line" is the whole of what the framing has to do: it
+  // says the thing at the top is not one of the endings, without saying what
+  // it is instead. The line says that itself, in your own hand.
+  'book.title': 'The Book of Ends. Every ending is written here, under the first line.',
   // art. 66: the prose states what is true and never instructs. The verb on
   // the strip is the only thing that says what pressing it does.
   'forget.asked':
@@ -428,7 +522,11 @@ export const NOTICES: Readonly<Record<string, string>> = {
   'pouch.spares': 'What is past the line is yours, and is not going down with you.',
   // art. 60: the choosing screen. It states the situation and never
   // instructs — the verb on the strip is the only thing that says what to do.
-  'choose.which': 'More bones than your hand holds. The rest stay up here.',
+  // art. 86: the screen that asks which bones descend is the screen where
+  // what a bone *is* costs nothing to say. Every one of them came off
+  // somebody, and choosing six of them is choosing who comes with you.
+  'choose.which':
+    'More bones than your hand holds. Each one belongs to somebody who does not come back up. The rest stay here.',
   'choose.full': 'Your hand is full. Put one back to take another.',
   'choose.short': 'Your hand is not full yet.',
   // art. 72: claim offers match the exact selection, so a selection that
@@ -446,15 +544,21 @@ export const NOTICES: Readonly<Record<string, string>> = {
   // The threshold — the front door. The first pixels a new player sees, so
   // it is in register like everything else: it states where you are standing
   // and never instructs, and the verbs on the strip are what tell you.
-  'gate.cold': 'The way down. Stone stops at a shut door, and what comes up under it is colder than the room.',
+  // It also names the place and says the one thing the door is for. The name
+  // is never spoken aloud in the game and never will be at this depth — what
+  // ships is the saying of it, and the waking is where you learn whose it is.
+  'gate.cold':
+    'The way down into Castlebrynth. Stone stops at a shut door, and what comes up under it is colder than the room. You say the name to it again.',
   // art. 71: a press may not lie about where it takes you, so the line says
   // plainly that there is something to go back to.
-  'gate.held': 'The way down. The door stands as you left it, and the run behind it is still yours.',
+  'gate.held':
+    'The way down. The door stands as you left it, and the run behind it is still yours. Your brother is further down than that.',
   // Abandoning is never quiet: what it costs is said before the press, and
   // the press that costs it is not the press that starts a new one.
   'gate.abandon.asked':
-    'The run ends here, unfinished. The depth behind it goes with it, and the Book takes the line.',
-  'gate.abandoned': 'The door shuts on it. What you carried down is down there.',
+    'The run ends here, unfinished. The depth behind it goes with it, the Book takes the line, and the way down starts again at the Crossing.',
+  'gate.abandoned':
+    'The door shuts on it. What you carried down stays down there, and the name comes back up with you.',
   // art. 116: settings. These change how the game is presented and never
   // what is true, and the screen says so in the only way that matters —
   // there is nothing on it that could change what is true.
@@ -553,6 +657,10 @@ export const READOUT: Readonly<Record<string, string>> = {
   ends: 'ends',
   depth: 'depth',
   seed: 'seed',
+  // art. 11 (the reason wave): the Book holds one line whose run this vault
+  // never dealt, so its depth and its seed are not numbers it can print. The
+  // honest word for a number nobody has is this one.
+  unknown: 'unknown',
 }
 
 /**
