@@ -45,7 +45,7 @@ import {
   saysIntent,
   saysItem,
 } from './content/index.js'
-import type { Act, Bands, Tappable } from './descent/index.js'
+import type { Act, Bands, Pick, Tappable } from './descent/index.js'
 import {
   act,
   breathFor,
@@ -53,11 +53,15 @@ import {
   chooseDoor,
   doors,
   enterRoom,
+  isPicked,
   look,
   looking,
   mayLeave,
   nextBeat,
+  onArrival,
   openDoor,
+  picking,
+  pickedDoor,
   remember,
   sceneKey,
   sceneStateOf,
@@ -215,8 +219,12 @@ let notice: string | null = null
 let refused = false
 /** art. 74: the card and the Book live behind glyphs, never mid-screen. */
 let sheet: 'card' | 'book' | null = null
-/** Which door the thumb has sensed. Sensing and going are two acts (art. 71). */
-let chosen: Door | null = null
+/**
+ * Which door the thumb has picked. Sensing and going are two acts (art. 71),
+ * and under the ruling of 2026-08-06 the act strip serves the *last* look:
+ * tapping anything else releases this, and no pick means no door verb.
+ */
+let pick: Pick = null
 /**
  * art. 60: the dice picked out on the choosing screen, in the order they
  * were picked. Empty everywhere else — the pouch itself is informative and
@@ -280,7 +288,7 @@ function boot(): void {
   ledgers = { ...ledgers, run: tookIntoRun(ledgers.run!, ledgers.permanent) }
   chain = deal(ledgers.run!.seed, ledgers.run!.depth, CATALOG, GRAMMAR, ledgers.run!.history)
   bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
-  chosen = doors(bands)[0] ?? null
+  pick = onArrival(doors(bands))
   greet()
   // art. 75: a half-spent turn survives the lock screen. If one was in
   // flight rather than paused, boot lands back inside it, selection and all.
@@ -449,6 +457,11 @@ function markFor(target: Tappable): HTMLButtonElement {
   el.setAttribute('aria-label', target.noun)
   el.onclick = () => {
     settle()
+    // art. 71 (strengthened 2026-08-06): the act strip serves the last look.
+    // Attention has moved to this thing, so the door the thumb was holding is
+    // released and its verb leaves the strip — nothing irreversible may be
+    // one press away from a thumb that is looking somewhere else.
+    pick = picking({ kind: 'thing', id: target.id })
     // art. 68: the tap is the inspection — the word band is the whole of it,
     // and there is no button behind it. And looking summons: the verb about
     // this thing appears in ACTS once it has been looked at.
@@ -469,13 +482,13 @@ function markFor(target: Tappable): HTMLButtonElement {
  */
 function doorMark(door: Door): HTMLButtonElement {
   const el = document.createElement('button')
-  el.className = `door${chosen?.at === door.at ? ' chosen' : ''}`
+  el.className = `door${isPicked(pick, door) ? ' chosen' : ''}`
   el.setAttribute('aria-label', LABELS['door.ahead'] ?? 'the door')
   el.onclick = () => {
     settle()
     // art. 71: a bare tap never walks you through a door. It picks it out,
     // and the going is a verb in the act strip.
-    chosen = door
+    pick = picking({ kind: 'door', door })
     notice = NOTICES['door.blind'] ?? ''
     paint()
   }
@@ -638,7 +651,7 @@ function settleEverything(): void {
   closeness = 1
   wiping = false
   sheet = null
-  chosen = null
+  pick = null
   picked = []
   refused = false
   abandoning = false
@@ -1197,8 +1210,11 @@ function roomActs(): void {
   }
 
   const ahead = doors(bands)
-  if (chosen === null || !ahead.some((door) => door.at === chosen!.at)) chosen = ahead[0] ?? null
-  const door = chosen
+  // art. 71 as strengthened: a door verb may only ever commit the door
+  // currently picked, and no pick means no door verb on the strip. There is
+  // deliberately no fallback to the first door — the strip re-picking on its
+  // own is exactly the defect, said in the shell instead of in a variable.
+  const door = pickedDoor(pick, ahead)
   if (door !== null) {
     actStrip.append(
       verb(door.fight !== undefined ? 'fight' : door.ends === true ? 'descend' : 'open', () =>
@@ -1465,7 +1481,7 @@ function abandonTheRun(): void {
   ledgers = routeDeath(ledgers, 'end.abandoned')
   chain = deal(ledgers.run!.seed, ledgers.run!.depth, CATALOG, GRAMMAR, ledgers.run!.history)
   bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
-  chosen = doors(bands)[0] ?? null
+  pick = onArrival(doors(bands))
   greet()
   refused = false
   abandoning = false
@@ -1532,7 +1548,7 @@ function walk(door: Door, said: string | null = null): void {
   ledgers = walked.ledgers
   chain = walked.chain
   bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
-  chosen = doors(bands)[0] ?? null
+  pick = onArrival(doors(bands))
   greet()
   notice = said
   persist()
@@ -1545,7 +1561,7 @@ function finishTheDepth(): void {
   ledgers = wake(permanent, reseed(ledgers.run!.seed))
   chain = deal(ledgers.run!.seed, ledgers.run!.depth, CATALOG, GRAMMAR, ledgers.run!.history)
   bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
-  chosen = doors(bands)[0] ?? null
+  pick = onArrival(doors(bands))
   greet()
   screen = { kind: 'finished' }
   focus(panelAfter('finished'))
@@ -1813,7 +1829,7 @@ function runFromTheFight(): void {
   // it. Re-entering the door force-focuses FIGHT again (`openTheFight`).
   focus(panelAfter('fight-fled'))
   bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
-  chosen = doors(bands)[0] ?? null
+  pick = onArrival(doors(bands))
   notice = NOTICES['fight.fled'] ?? ''
   persist()
   paint()
@@ -1826,7 +1842,7 @@ function died(cause: string = endLineOf(fight?.horror.id ?? '')): void {
   ledgers = routeDeath(ledgers, cause)
   chain = deal(ledgers.run!.seed, ledgers.run!.depth, CATALOG, GRAMMAR, ledgers.run!.history)
   bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
-  chosen = doors(bands)[0] ?? null
+  pick = onArrival(doors(bands))
   greet()
   fight = null
   refused = false
