@@ -179,6 +179,7 @@ export {
 
 import { GNAWING_SCRIPT, MARROW_SCRIPT } from './horrors.js'
 import { LADDER } from './ladder.js'
+import { CROSSING as THE_CROSSING } from './rooms.js'
 import {
   ARRIVALS,
   BEATS,
@@ -197,16 +198,32 @@ import type { Utterance } from './voice.js'
 import { asLabels, asPlaceholders, asScrawls, asThoughts } from './voice.js'
 
 /**
+ * art. 37: the Crossing opens every run, so the Crossing's beats are the
+ * waking — the one room the mind wave rewrote. The other thirteen are
+ * cards 27–28's.
+ */
+const WAKING = THE_CROSSING as string
+
+/**
  * Which of the shell's notices have been rewritten into the amended
  * register. Everything else in `NOTICES` is prose in the repealed voice and
  * is declared a placeholder rather than quietly counted as passing.
  *
  * It is an explicit list because the honest answer is a list: a string is in
  * the new voice because somebody wrote it in the new voice, never because a
- * regular expression failed to object to it. **Empty until this wave's third
- * commit**, which is the one that does the writing.
+ * regular expression failed to object to it.
  */
-const AMENDED_NOTICES: readonly string[] = []
+const AMENDED_NOTICES: readonly string[] = [
+  'gate.cold',
+  'gate.held',
+  'gate.abandon.asked',
+  'gate.abandoned',
+  'run.finished',
+  'run.finished.choose',
+  'choose.which',
+  'book.title',
+  'book.empty',
+]
 
 /**
  * Every player-facing string in the game, for the voice lint. If a string
@@ -233,15 +250,22 @@ export function everyString(): readonly Utterance[] {
     // The amended register, as far as it has been written. Everything the
     // wave has not reached yet is a declared placeholder below rather than a
     // string the lint was talked into passing.
-    ...asThoughts(noticesIn(true)),
+    ...asThoughts([
+      // The waking, in his head. The candle before it is the scrawl, and it
+      // is not in `BEATS` at all — the Book lays it down (`RoomBook.scrawl`).
+      ...(BEATS[WAKING] ?? []),
+      // art. 78: the arrival is one candle like any other, and it is him
+      // working out what his own choosing has done.
+      ...Object.values(ARRIVALS).flat(),
+      ...noticesIn(true),
+    ]),
     // The Book of Ends is the pile of things he wrote down, and the line at
     // the head of it is the oldest of them.
     ...asScrawls(Object.values(END_LINES)),
     ...asPlaceholders([
-      ...Object.values(BEATS).flat(),
-      // art. 78: the arrival is one candle like any other, and waits on the
-      // same rewriting.
-      ...Object.values(ARRIVALS).flat(),
+      ...Object.entries(BEATS)
+        .filter(([room]) => room !== WAKING)
+        .flatMap(([, said]) => said),
       // art. 83: a socket's words reach the player exactly as a room's do,
       // so they are judged exactly as a room's are — and wait on the same
       // card.

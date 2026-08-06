@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  CROSSING,
   FAR_SOCKET,
   FLOOR_SOCKET,
   GRID,
@@ -157,11 +158,28 @@ describe('rooms — art. 21 (palette is authorial), art. 19 (props stand somewhe
     expect(new Set(stamps).size).toBe(ROOMS.length)
   })
 
-  it('says its own name in its first candle (art. 34)', () => {
+  /**
+   * art. 34 hangs knowledge on room identity, so a room the player cannot
+   * name is a room they cannot learn. Every room says its own name as it
+   * opens.
+   *
+   * **One room has a candle in front of that** (the mind wave): the waking
+   * opens on the last line of the Book — his own handwriting, laid there by
+   * `RoomBook.scrawl` — and the Crossing's first authored candle is him
+   * answering it. He does not name a room before he has worked out that he
+   * is reading his own writing, so the naming lands in the candle after.
+   * The rule is not weakened anywhere else, and it is not weakened here
+   * either: it is still the room opening by saying what it is.
+   */
+  it('says its own name as it opens (art. 34)', () => {
     for (const held of ROOMS) {
-      const first = ROOM_BOOK.beats(held.id)[0] ?? ''
+      const said = ROOM_BOOK.beats(held.id)
+      const opening = ((held.id as string) === (CROSSING as string)
+        ? said.slice(0, 2)
+        : said.slice(0, 1)
+      ).join(' ')
       const name = (LABELS[held.id as string] ?? '').replace(/^the /, '')
-      expect(first.toLowerCase(), held.id as string).toContain(name.toLowerCase())
+      expect(opening.toLowerCase(), held.id as string).toContain(name.toLowerCase())
     }
   })
 
