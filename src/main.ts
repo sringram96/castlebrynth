@@ -107,6 +107,7 @@ import {
 import type {
   Beat,
   Card,
+  Hit,
   Die,
   DieId,
   Fight,
@@ -191,6 +192,7 @@ import {
 
 // ── The bands ──────────────────────────────────────────────────────────
 
+const stage = must<HTMLDivElement>('stage')
 const wordBand = must<HTMLDivElement>('word')
 const worldBand = must<HTMLElement>('world')
 const canvas = must<HTMLCanvasElement>('view')
@@ -478,14 +480,29 @@ function world(marks = true): void {
   const content = roomContent(node.room)
   const state = sceneStateOf(ledgers, ROOM_BOOK, node)
   const scene = content.scene(state)
-  const base = castOf(scene, sceneKey(state))
+  // art. 119 §3: the telegraph, which reaches the light and the body alike.
+  const told = telling()
+  const base = castOf(scene, sceneKey(state), told)
   // art. 30: no battle screen — the horror is a prop laid into this room's
   // own frame, so the box behind it is never cast twice for a motion.
   //
   // art. 100, card 31: a horror that has been drawn advances as its drawing.
   // Everything else keeps the mass the hinge draws, which is art. 26's first
   // tier and right for a shape at the end of a corridor.
-  const close = screen.kind === 'fight' && fight !== null ? [advanceWith(fight, closeness)] : []
+  // art. 119 §3: **the lunge** — your strike sends it back and returns it,
+  // settling where it stood. The knock is a fraction of the advance's own
+  // travel, so it is the same motion in reverse rather than a second one.
+  const close =
+    screen.kind === 'fight' && fight !== null
+      ? [
+          advanceWith(
+            fight,
+            closeness - knocked * LUNGE,
+            flare === 'them' ? 1 : 0,
+            told ? SWELL : 0,
+          ),
+        ]
+      : []
   // arts 106–110: and the stir, which is overlay repaint and never a recast.
   // art. 116: with the world held still there is no overlay at all, so what
   // shows is the cast frame — which is the settled state, and art. 107 says
@@ -512,27 +529,64 @@ function world(marks = true): void {
  * chooses between two prepared frames rather than changing what a pixel
  * means (art. 17, unamended).
  */
-function castOf(scene: Scene, key: string): RenderedRoom {
+function castOf(scene: Scene, key: string, dim = false): RenderedRoom {
   const lit = !stillness() && swelling(scene, tick)
-  const stamp = `${key}:${frameHeight()}${lit ? ':lit' : ''}`
+  // art. 119 §3: **the light dims a step.** It is the same two-prepared-
+  // frames trick art. 110 already uses for a room that breathes — a cast and
+  // not an overlay, because the light reaches every surface and what colour
+  // a surface takes is the cast's to decide (art. 15). One more cached
+  // frame, held for as long as the tell stands.
+  const stamp = `${key}:${frameHeight()}${lit ? ':lit' : ''}${dim ? ':told' : ''}`
   let held = painted.get(stamp)
   if (held === undefined) {
-    held = renderRoom(
-      lit ? breathing(scene, scene.motion?.swell ?? 0) : scene,
-      atGrid(GRID, frameHeight()),
-    )
+    const shown_ = lit ? breathing(scene, scene.motion?.swell ?? 0) : scene
+    held = renderRoom(dim ? breathing(shown_, -DIM_STEPS) : shown_, atGrid(GRID, frameHeight()))
     painted.set(stamp, held)
   }
   return held
 }
 
-/** art. 30: the thing come close, in whichever body content gave it. */
-function advanceWith(now: Fight, close: number): Prop {
+/** art. 119 §3: how many ramp steps the light drops for the tell. Tuning. */
+const DIM_STEPS = 3
+
+/**
+ * art. 30: the thing come close, in whichever body content gave it.
+ *
+ * art. 119 §3: and `flare` is the flash — the struck thing at the top of its
+ * own ramp. It is passed through rather than painted here because what a
+ * body's own ramp is, is the body's business (arts 100, 115).
+ */
+function advanceWith(now: Fight, close: number, flare = 0, swell = 0): Prop {
   const drawn = advanceBodyOf(now.horror.id)
   return drawn === null
-    ? advance(now, close).prop
-    : advance(now, close, (_, settled) => drawn(settled)).prop
+    ? advance(now, close, undefined, flare, swell).prop
+    : advance(now, close, (_, settled, lit) => drawn(settled, lit), flare, swell).prop
 }
+
+/**
+ * art. 119 §3: **the telegraph.** An intent that declares one shows its tell
+ * a turn early — the horror swells, the light dims a step, the chip marks
+ * itself. It is the highest-value thing in the wave: BELLOW 16 is the
+ * biggest hit in the depth and the thing the death scrawl tells the player
+ * to count, and the tell is what makes *count the swipes* learnable by
+ * watching rather than only by dying.
+ *
+ * It says *something is coming* and never *what*, so art. 42 is untouched:
+ * the intent on the chip is still this turn's and only this turn's. And
+ * which intents tell is content's, read off the script rather than off a
+ * threshold the engine holds.
+ */
+function telling(): boolean {
+  const now = fight
+  if (now === null || screen.kind !== 'fight' || now.outcome !== 'fighting') return false
+  // A timeline running is a turn resolving, and the turn it would be telling
+  // about has not opened yet. The tell belongs to a turn the thumb is in.
+  if (playing !== null) return false
+  return now.horror.intentFor(now.turnNumber + 1).telegraph === true
+}
+
+/** How much more of the lens a telegraphing horror fills. Tuning. */
+const SWELL = 0.09
 
 function show(frame: Framebuffer): void {
   present(frame, canvas)
@@ -541,6 +595,10 @@ function show(frame: Framebuffer): void {
   const scale = fillScale(frame, worldBand.clientWidth, worldBand.clientHeight)
   canvas.style.width = `${frame.width * scale}px`
   canvas.style.height = `${frame.height * scale}px`
+  // art. 22: nothing is fixed in device pixels. The shake is **two game
+  // pixels** (art. 119 §3), so it is stated in the frame's own units and
+  // handed to the stylesheet in whatever those come to on this device.
+  document.documentElement.style.setProperty('--shake', `${(SHAKE_PIXELS * scale).toFixed(2)}px`)
 }
 
 /** The smallest a mark may be drawn, in device pixels. A thumb is a thumb. */
@@ -865,17 +923,23 @@ function crown(): void {
 
   const name = document.createElement('span')
   name.className = 'name'
-  name.textContent = `${LABELS[now.horror.id] ?? now.horror.id} ${now.horrorHealth}/${now.horror.health}`
+  // art. 119 §3: **the crown falls as the blow lands** — not before it and
+  // not after. So the bar reads the beat, and the beat that moves it is the
+  // strike, which is where the whole cascade has been going.
+  const health = shown?.horrorHealth ?? now.horrorHealth
+  name.textContent = `${LABELS[now.horror.id] ?? now.horror.id} ${health}/${now.horror.health}`
 
   const bar = document.createElement('span')
-  bar.className = 'bar'
+  bar.className = `bar${flare === 'them' ? ' struck' : ''}`
   const fill = document.createElement('i')
-  fill.style.width = `${Math.max(0, (100 * now.horrorHealth) / now.horror.health)}%`
+  fill.style.width = `${Math.max(0, (100 * health) / now.horror.health)}%`
   bar.append(fill)
 
   // art. 73: the intent is tappable, and explains itself in plain words.
+  // art. 119 §3: and it marks itself when the room can feel the next one
+  // coming. The mark says *something*, never *what* (art. 42).
   const intent = document.createElement('button')
-  intent.className = 'intent'
+  intent.className = `intent${telling() ? ' telling' : ''}`
   intent.textContent = intentChip(now.turn.intent)
   intent.onclick = () => {
     settle()
@@ -1195,14 +1259,22 @@ function vitals(): void {
   // running totals belong to the fight, so art. 57 keeps them pinned in the
   // FIGHT panel's header rather than in a rail that is always on screen.
   const corroded = now !== null && inAFight() && now.turn.intent.effect?.kind === 'corrode'
+  const armor = reading(
+    READOUT.armor ?? '',
+    corroded ? `0 ${READOUT.corroded}` : `${now !== null && inAFight() ? now.armor : run.armor}`,
+  )
+  // art. 65 (`corrode`), art. 119 §3: **the armour flakes off the vitals**,
+  // on the beat the blow that ate it lands and on no other.
+  if (corroded && beatNow?.kind === 'struck') armor.className = 'flaking'
   vitalsRegion.append(
-    reading(READOUT.health ?? '', now !== null && inAFight()
-      ? `${now.yourHealth}/${now.yourHealthMax}`
-      : `${run.health}/${run.healthMax}`),
     reading(
-      READOUT.armor ?? '',
-      corroded ? `0 ${READOUT.corroded}` : `${now !== null && inAFight() ? now.armor : run.armor}`,
+      READOUT.health ?? '',
+      // art. 119: while a timeline runs, the body reads what the beat says.
+      now !== null && inAFight()
+        ? `${shown?.yourHealth ?? now.yourHealth}/${now.yourHealthMax}`
+        : `${run.health}/${run.healthMax}`,
     ),
+    armor,
   )
   // art. 74: the card lives behind a small, persistent glyph — and while a
   // fight is on it lives in the fight's own header, where the rest of that
@@ -1261,11 +1333,23 @@ function theFightPanel(): void {
   // after armor — the fight's own armor, because corrosion is something an
   // *intent* does and a bleed is not this turn's intent.
   if (now.bleed !== null) {
-    totals.append(reading(READOUT.bleeding ?? '', `${Math.max(0, now.bleed.amount - now.armor)}`))
+    const mark = reading(READOUT.bleeding ?? '', `${Math.max(0, now.bleed.amount - now.armor)}`)
+    // art. 65 (`bleed`), art. 119 §3: **a mark that ticks each turn**, and
+    // this is the tick. It is on the readout the plan was made against, so
+    // the thing that moves is the thing the player was counting on.
+    if (beatNow?.kind === 'bled') mark.className = 'ticking'
+    totals.append(mark)
   }
   const offer = claimOffer()
   if (offer !== null) totals.append(reading('', offer))
-  totals.append(cardGlyph())
+  const glyph = cardGlyph()
+  // art. 65 (`seal`), art. 119 §3: **it shuts the pair-shaped lines**, and
+  // the lines live behind the glyph (art. 74) — so the glyph is where a seal
+  // landing can be seen. One tap from the mark to the card it is about.
+  if (sealed(now.turn.intent).length > 0 && beatNow?.kind === 'struck') {
+    glyph.classList.add('sealed')
+  }
+  totals.append(glyph)
   fightPanel.append(totals)
 
   // The hand, as it lies. art. 72's four states are the die slot's business
@@ -1304,7 +1388,10 @@ function theFightPanel(): void {
  * there is nothing to commit, which is the point of it.
  */
 function boundSlot(die: Die, horror: string): HTMLButtonElement {
-  const el = slot('die bound')
+  // art. 65 (`bind`), art. 119 §3: **it drags the die out of the tray**, on
+  // the beat it takes it. After that the die is simply somebody else's, and
+  // the bar across it is what says so (art. 70).
+  const el = slot(`die bound${beatNow?.kind === 'bound' ? ' dragged' : ''}`)
   el.append(pips(die.faces[0]?.value ?? 1))
   el.setAttribute('aria-label', saysBound(die, horror))
   el.onclick = () => {
@@ -1473,13 +1560,22 @@ function dieSlot(die: Die, landed: Landed | null, claimed: boolean): HTMLButtonE
   // there is hashed off its identity, never rolled, because nothing is
   // decided during an animation.
   const air = landed !== null && shown !== null && !shown.landed.includes(landed.die)
+  // art. 65 (`curse`), art. 119 §3: **the sixes go grey.** An intent that
+  // attacks the plan has to be visible on the plan, and the plan is the dice
+  // as they lie — a value counting for nothing is a fact about this turn, so
+  // it stands for the turn rather than flickering for a frame (art. 70).
+  const cursed =
+    landed !== null &&
+    fight !== null &&
+    inAFight() &&
+    cursedValue(fight.turn.intent) === landed.face.value
   // art. 119 §2: **a claimed die lifts, alone**, brightening — and it stays
   // lifted, because the total it fed is still climbing off it.
   const lift = landed !== null && (shown?.lifted.includes(landed.die) ?? false)
   const el = slot(
     `die${landed === null ? ' rest' : ''}${air ? ' rolling' : ''}${lift ? ' lifted' : ''}${
-      kept ? ' kept' : ''
-    }${isSelected ? ' sel' : ''}${claimed ? ' claimed' : ''}${idle}`,
+      cursed ? ' cursed' : ''
+    }${kept ? ' kept' : ''}${isSelected ? ' sel' : ''}${claimed ? ' claimed' : ''}${idle}`,
   )
   if (landed !== null) {
     const face = air ? die.faces[tumblingFace(landed.die, spun, die.body)] : landed.face
@@ -2181,6 +2277,23 @@ let beatNow: Beat | null = null
  * band is for prose, which in a cascade is what the riders say.
  */
 let named: string | null = null
+/**
+ * art. 119 §3: **the blow.** Which body the beat now is flashing, how far
+ * the lunge has knocked the horror back, and whether the frame is offset.
+ *
+ * All three are one frame long: the beat after clears them, which is why
+ * every timeline ends on a settled beat. Nothing here can be left standing.
+ */
+let flare: Hit = 'none'
+let knocked = 0
+let jolted = false
+/** Whether the world band is showing a flash or a lunge and owes a settle. */
+let moved = false
+
+/** How far back a lunge sends it, as a fraction of the advance's own travel. */
+const LUNGE = 0.14
+/** art. 22: the shake, in **game** pixels. `show` turns it into device ones. */
+const SHAKE_PIXELS = 2
 
 function begin(frames: readonly Frame[], lands: () => void = paint): void {
   stopBeats()
@@ -2208,6 +2321,13 @@ function stepBeat(draw: () => void = showBeat): void {
   spun += 1
   shown = frame.shows
   beatNow = frame.beat
+  // art. 119 §3: the blow's three marks, each exactly one beat long.
+  flare = frame.shows.hit
+  knocked = frame.beat.kind === 'strike' ? 1 : 0
+  // **The only time the room itself moves.** The frame is the player's body,
+  // and spending that gesture anywhere else spends it for nothing — so it is
+  // the intent landing on you, and nothing else in the game, ever.
+  jolted = frame.beat.kind === 'struck' && frame.beat.amount > 0
   speak(frame.beat)
   draw()
   const next = now.frames[now.at]
@@ -2251,6 +2371,22 @@ function showBeat(): void {
   vitals()
   crown()
   theFightPanel()
+  // art. 119 §3: the blow is the one beat that reaches the world band. It
+  // repaints on the beat that flashes and once more on the beat after, so
+  // the flash and the lunge settle rather than standing (art. 1).
+  const reaches = flare !== 'none' || knocked !== 0
+  if (reaches || moved) world(false)
+  moved = reaches
+  jolt()
+}
+
+/**
+ * art. 119 §3: **the shake.** Two game pixels, for about three frames, and
+ * only when the blow lands on you. It is a class on the stage rather than a
+ * repaint, because the frame moving is not the frame changing.
+ */
+function jolt(): void {
+  stage.classList.toggle('shaken', jolted)
 }
 
 /**
@@ -2268,6 +2404,14 @@ function landBeats(): void {
   spun = 0
   beatNow = null
   named = null
+  flare = 'none'
+  knocked = 0
+  jolted = false
+  jolt()
+  if (moved) {
+    moved = false
+    world(false)
+  }
   now.lands()
 }
 
@@ -2283,6 +2427,11 @@ function stopBeats(): void {
   spun = 0
   beatNow = null
   named = null
+  flare = 'none'
+  knocked = 0
+  jolted = false
+  moved = false
+  jolt()
 }
 
 /** Every entry point settles whatever pulse is running first (art. 1). */

@@ -145,6 +145,39 @@
         padding: 6px 8px; resize: vertical; width: 100%; }
       .panel .strip { flex: 1 0 100%; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
 
+      /* art. 119 §3: **the shake.** Two game pixels for about three frames,
+         and the only time the room itself moves — the frame is the player's
+         body, and spending that gesture anywhere else spends it for nothing.
+         `--shake` is set by the shell from the frame's own scale, because
+         art. 22 says nothing is fixed in device pixels. */
+      #stage.shaken { transform: translate(var(--shake, 2px),
+        calc(var(--shake, 2px) * -0.6)); }
+
+      /* art. 119 §3: the crown falls as the blow lands, and the bar it falls
+         on says so for the beat the blow stands. */
+      #crown .bar.struck { border-color: var(--ink); }
+      #crown .bar.struck i { background: #e0a08c; }
+      /* The tell, one turn early. It marks itself — it never says what is
+         coming, which is art. 42's line and this does not cross it. */
+      #crown .intent.telling { border-color: var(--blood); color: #e8c9a0;
+        box-shadow: 0 0 0 1px var(--blood) inset; }
+
+      /* art. 65, art. 119 §3: each effect gets a signature, because art. 65
+         attacks the plan and the plan is on screen. */
+      /* seal — it shuts the pair-shaped lines, and the lines live behind
+         the glyph (art. 74), so the glyph is where the seal can be seen. */
+      #fight .totals .glyph.sealed { border-color: var(--gold); color: var(--gold); }
+      /* corrode — the armour flakes off the vitals as the blow eats it. */
+      #vitals .flaking b, #vitals .flaking { color: var(--blood); }
+      /* bleed — a mark that ticks, on the readout the plan was made against. */
+      #fight .totals .ticking b { color: var(--blood); }
+      /* bind — the die drags out of the tray on the beat it is taken. */
+      .slot.bound.dragged { transform: translate(4px, 3px); opacity: .35; }
+      /* curse — the cursed value goes grey, and stays grey for the turn it
+         is cursed for (art. 70: pixels prove). */
+      .slot.cursed { border-style: dashed; }
+      .slot.cursed .pips i { background: #55504a; }
+
       /* art. 116: with the world held still, nothing eases into anything.
          The settled state is unchanged — art. 29's word band is still faded
          after its beat — so what goes is the travel, not the truth. */

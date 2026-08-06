@@ -105,6 +105,19 @@ export const CASCADE = {
   /** Section 2: how long the total takes to climb, and in how many frames. */
   climb: 350,
   climbs: 7,
+  /**
+   * Section 3: before the blow. The longest pause in the whole timeline,
+   * because *then, and only then* is a pause and not a transition.
+   */
+  blow: 320,
+  /**
+   * Section 3: how long the struck thing stands at the top of its ramp, and
+   * how long the frame stays offset when the blow lands on you. The article
+   * counts them in frames — a couple, and three — and this is that at the
+   * world clock's own rate, near enough to be tuned against it.
+   */
+  flash: 170,
+  shake: 220,
 } as const
 
 /** The same room on the 480 dial. art. 23: a re-render, never a rewrite. */

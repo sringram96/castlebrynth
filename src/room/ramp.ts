@@ -28,6 +28,20 @@ import { colorOf } from './framebuffer.js'
 export type Ramp = readonly string[]
 
 /**
+ * art. 119 §3: **the flash.** A ramp read `steps` higher, so a thing drawn
+ * as ramp indices (art. 100) jumps to the top of its own ramp without ever
+ * being given a colour it does not already own — art. 17 unamended, because
+ * every pixel is still a step on the ramp it was already on.
+ *
+ * It saturates at the light end rather than wrapping: a thing already lit
+ * cannot be lit further, which is what a ramp having a top means.
+ */
+export function lifted(tones: Ramp, steps: number): Ramp {
+  if (steps <= 0 || tones.length === 0) return tones
+  return tones.map((_, at) => tones[Math.min(tones.length - 1, at + steps)]!)
+}
+
+/**
  * A ramp as it is authored (art. 94 as amended by the look wave).
  *
  * The old nine-or-ten was a consequence of quantising hard at every step.

@@ -40,6 +40,7 @@ import type {
   Goods,
   Landed,
   Line,
+  Outcome,
   Resolution,
   Rider,
   RiderEffect,
@@ -119,6 +120,30 @@ export type Beat =
    */
   | { readonly kind: 'climb' }
   /**
+   * Section 3: **your blow lands.** The horror flashes to the top of its own
+   * ramp, and the lunge sends it back and returns it, settling where it
+   * stood (art. 28: a motion that matters never undoes itself, and this one
+   * does not matter — the wound does, and the wound stays).
+   */
+  | { readonly kind: 'strike'; readonly amount: number }
+  /** art. 65 (`hunger`): a turn that claimed nothing, and what it gave back. */
+  | { readonly kind: 'fed'; readonly amount: number }
+  /**
+   * Section 3: **its blow lands on you.** The one beat in the game that
+   * moves the frame itself — the frame is the player's body, and spending
+   * that gesture anywhere else spends it for nothing. `blocked` rides with
+   * it because armour eating a blow is the same beat wearing a different
+   * face, and a player who cannot tell those apart cannot tell whether the
+   * armour is doing anything (art. 57).
+   */
+  | { readonly kind: 'struck'; readonly amount: number; readonly blocked: number }
+  /** art. 65 (`bleed`): a tick, after armour, at the top of the turn. */
+  | { readonly kind: 'bled'; readonly amount: number }
+  /** art. 65 (`bind`): the die dragged out of the tray, and who has it. */
+  | { readonly kind: 'bound'; readonly dice: readonly DieId[] }
+  /** The crown falls as the blow lands — not before it and not after. */
+  | { readonly kind: 'ended'; readonly outcome: Outcome }
+  /**
    * art. 119: the settled state, which is where every timeline ends. It is
    * a beat rather than an absence because art. 1 asks a one-shot to *end* in
    * its settled state — a mark that is cleared by the beat after it can
@@ -146,6 +171,15 @@ export interface Timings {
   /** Section 2: how long the total takes to climb, and in how many frames. */
   readonly climb: number
   readonly climbs: number
+  /** Section 3: before the blow, which is the beat everything else was for. */
+  readonly blow: number
+  /**
+   * Section 3: how long the struck thing stands at the top of its ramp, and
+   * how long the frame stays offset when the blow lands on you. Both are
+   * counted in the article as "a couple of frames"; both are tuning.
+   */
+  readonly flash: number
+  readonly shake: number
 }
 
 /**
@@ -326,7 +360,7 @@ export function cascadeBeats(
   // being assembled where the player can watch it.
   let attack = 0
   let yourHealth = before.yourHealth
-  const horrorHealth = before.horrorHealth
+  let horrorHealth = before.horrorHealth
   const push = (beat: Beat, wait: number, hit: Hit = 'none'): void => {
     frames.push({
       beat,
@@ -396,9 +430,66 @@ export function cascadeBeats(
     }
   }
 
+  // ── Section 3: the blow (card 76) ────────────────────────────────────
+  //
+  // **Then, and only then.** And it is read straight off the events the
+  // advance already wrote: the beats do not re-derive what happened, they
+  // narrate the engine's own transcript at the grain a player can follow.
+  // The one thing this reorders is *when the horror's health is seen to
+  // fall* — the engine takes it at the top of the exchange and the blow
+  // shows it at the end, which changes nothing about the outcome and is the
+  // whole of what "then, and only then" asks for.
+  let blocked = 0
+  let struck = false
+  for (const event of after.events.slice(before.events.length)) {
+    switch (event.kind) {
+      case 'dealt':
+        horrorHealth = Math.max(0, horrorHealth - event.amount)
+        push({ kind: 'strike', amount: event.amount }, timings.blow, 'them')
+        break
+      case 'fed':
+        horrorHealth = Math.min(before.horror.health, horrorHealth + event.amount)
+        push({ kind: 'fed', amount: event.amount }, timings.blow, 'them')
+        break
+      case 'blocked':
+        // Held for the blow it belongs to. Armour eating a blow is not an
+        // event of its own — it is what happened to the one event there was.
+        blocked = event.amount
+        break
+      case 'struck':
+        yourHealth -= event.amount
+        struck = true
+        push({ kind: 'struck', amount: event.amount, blocked }, timings.blow, 'you')
+        blocked = 0
+        break
+      case 'bled':
+        yourHealth -= event.amount
+        push({ kind: 'bled', amount: event.amount }, timings.blow, 'you')
+        break
+      case 'bound':
+        push({ kind: 'bound', dice: event.dice }, timings.blow)
+        break
+      case 'ended':
+        // **The crown falls as the blow lands** — the beat before this one
+        // is the blow, and there is nothing between them.
+        push({ kind: 'ended', outcome: event.outcome }, timings.flash)
+        break
+      default:
+        // `claimed`, `healed`, `cost` are the cascade above, at a finer
+        // grain; `turn-opened` is the next turn and not this event.
+        break
+    }
+  }
+  // art. 57: armour that ate the whole blow still happened. Without this the
+  // one turn a player most needs to see their armour work is the one turn
+  // nothing on screen moves.
+  if (blocked > 0 && !struck) {
+    push({ kind: 'struck', amount: 0, blocked }, timings.blow, 'you')
+  }
+
   frames.push({
     beat: { kind: 'settled' },
-    after: frames.length === 0 ? 0 : timings.line,
+    after: frames.length === 0 ? 0 : timings.flash,
     shows: {
       attack: climbTo,
       horrorHealth: after.horrorHealth,
