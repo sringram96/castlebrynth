@@ -41,6 +41,34 @@ export const RENDER: RenderConfig = {
   blendAbove: 0.2,
 }
 
+/**
+ * The motion budget's numbers (arts 107–110, 117). The *shape* of these rules
+ * is law and lives in the articles; every number below is tuning and lives
+ * here, which is the same seam every other dial in the game sits on.
+ */
+export const MOTION = {
+  /** art. 109: one world clock. ~150 ms, and everything that loops rides it. */
+  tick: 150,
+  /**
+   * art. 108: how many ticks between blinks. A little over a minute at the
+   * clock above — the rarest motion reads the largest, and rarity is the
+   * whole of the effect.
+   */
+  blinkEvery: 420,
+  /**
+   * art. 110: how many ramp steps a fire's light swells by between the two
+   * cast frames. One step reads as the room breathing; more reads as a switch.
+   */
+  swell: 1,
+  /**
+   * art. 117: what a room does of its own accord. `soonest` is how long the
+   * thumb must be still first and `spread` is how much later than that it may
+   * fall — the actual delay is hashed from the instance, so it is the same
+   * every time you stand in that room and different between rooms.
+   */
+  unbidden: { soonest: 56, spread: 96, frames: 9 },
+} as const
+
 /** The same room on the 480 dial. art. 23: a re-render, never a rewrite. */
 export function atGrid(grid: number, height: number): RenderConfig {
   return { ...RENDER, grid, height }

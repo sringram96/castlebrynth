@@ -400,6 +400,28 @@ export const INTENT_SAYS: Readonly<Record<string, string>> = {
   REND: 'It opens you from the shoulder down.',
 }
 
+/**
+ * art. 117: what a room says when it does something of its own accord.
+ *
+ * **One line per room, said once, and never required reading.** It may not
+ * gate anything, it may not repeat, and it does not move the candle the
+ * player is on — miss it and you have missed nothing but the place being
+ * alive. Each one is keyed to that room's own furniture, because a line that
+ * would fit any room says only that a timer went off.
+ *
+ * Seven of twenty-two rooms have one, and the six-in-seven that do not are
+ * what makes the seven worth standing still in.
+ */
+export const UNBIDDEN: Readonly<Record<string, string>> = {
+  'room.crossing': 'Dust lets go of the grate and comes down through the shaft, a little at a time.',
+  'room.trove.alcove': 'The far niche gives up a handful of dust. Nothing puts it there and nothing catches it.',
+  'room.passage.stair': 'A tread lets go of what lies on it. The sound goes further down than the light does.',
+  'room.sanctum.font': 'A ring crosses the water and dies against the steps. Nothing drops into it.',
+  'room.lair.kiln': 'The brazier throws a handful of sparks at the ceiling. They go out before they get there.',
+  'room.omen.pyre': 'Ash sifts down through the stack. Something inside it settles, and the shape holds.',
+  'room.open.barrow': 'A line of stars goes out across the sky and comes back. Whatever crosses them makes no sound.',
+}
+
 /** The lines the shell says at the seams of a run. */
 export const NOTICES: Readonly<Record<string, string>> = {
   'door.locked': 'The lock holds. Whatever opens it is not on you.',

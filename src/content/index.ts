@@ -5,7 +5,7 @@
  * way around.
  */
 
-export { GRID, AUTHORED_GRID, AUTHORED_HEIGHT, RENDER, atGrid } from './render.js'
+export { GRID, AUTHORED_GRID, AUTHORED_HEIGHT, MOTION, RENDER, atGrid } from './render.js'
 export type { School, Shading } from './palettes.js'
 export {
   ASH,
@@ -20,6 +20,21 @@ export {
   shadingOf,
 } from './palettes.js'
 export { WAKE, masonry } from './plates/wake.js'
+// arts 100, 107–108: the things drawn once by hand, and the further frames
+// the ones that move are drawn in. A loop's frames share one silhouette, and
+// that is a claim about these drawings rather than about the renderer.
+export {
+  BEARER,
+  BEARER_FRAMES,
+  BRAZIER,
+  BRAZIER_FRAMES,
+  CHOIR,
+  CHOIR_DARK,
+  LANTERN,
+  LANTERN_FRAMES,
+  WATCHER,
+  WATCHER_DARK,
+} from './plates/bestiary.js'
 export { GATE } from './plates/gate.js'
 export type { Dressing } from './plates/plain.js'
 export { BARE, plainScene } from './plates/plain.js'
@@ -134,6 +149,7 @@ export {
   LABELS,
   READOUT,
   TABS,
+  UNBIDDEN,
   VERBS,
 } from './prose.js'
 export {
@@ -184,6 +200,7 @@ import {
   READOUT,
   TABS,
   SOCKET_BEATS,
+  UNBIDDEN,
 } from './prose.js'
 import type { Utterance } from './voice.js'
 import { asBeats, asLabels } from './voice.js'
@@ -211,6 +228,9 @@ export function everyString(): readonly Utterance[] {
       ...Object.values(SOCKET_BEATS).flat(),
       // art. 78: the arrival is one candle like any other.
       ...Object.values(ARRIVALS).flat(),
+      // art. 117: a room speaking of its own accord is still the labyrinth
+      // speaking, and it is judged as everything else the labyrinth says.
+      ...Object.values(UNBIDDEN),
       ...Object.values(LOOKS),
       // art. 87: an origin is prose that reaches the player, so it is judged
       // as prose. If a sentence cannot pass the lint the item does not ship,

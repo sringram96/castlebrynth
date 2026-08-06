@@ -35,7 +35,7 @@ Test: kill the process anywhere; restart; nothing is lost.
 Never: unresumable state, a hardcoded pixel, content logic in the engine.
 
 ## The law
-`.claude/rules/` holds 116 numbered articles, cited in tasks as "art. N".
+`.claude/rules/` holds 117 numbered articles, cited in tasks as "art. N".
 Two are spent: art. 12 is repealed (there are no classes, ever) and
 art. 47's BRACE is repealed. The rest:
 - **the-world.md** — time, touch, structure, the chain, room grammar, the
