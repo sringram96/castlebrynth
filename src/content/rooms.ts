@@ -147,8 +147,12 @@ import {
   KNIFE,
   LANTERN,
   LANTERN_FRAMES,
+  GNAWING as GNAWING_BODY,
+  KINDLED as KINDLED_BODY,
   MANY,
+  MARROW as MARROW_BODY,
   RING,
+  SILT_MOTHER as SILT_MOTHER_BODY,
   SKULL,
   STATUE,
   THRONE,
@@ -1988,13 +1992,90 @@ const WARDEN_COMING = comingCloser(IRON, WARDEN_KEEPER_BODY, 'the keeper', {
 })
 
 /**
- * The body a horror advances with, if it has one drawn. `null` is the
- * ordinary answer, and the hinge's own mass is what it means.
+ * **Every horror comes at you as itself now** (card 78).
+ *
+ * The default was art. 26's first tier — a mass, deliberately basic — and it
+ * was the right thing to ship while a fight had no beats in it. The fight
+ * wave gave the blow a flash and a lunge (art. 119 §3) and immediately
+ * showed what the mass costs: the flash was the *first frame in which the
+ * shape was legible at all*, which is a strange job for a hit reaction, and
+ * a lunge by something with no silhouette is a dark smudge moving. Both
+ * beats were landing on nothing.
+ *
+ * So each horror brings its drawing to the near depth, on the pattern the
+ * Warden already proved. Three things follow from art. 100 and are the whole
+ * reason this is drawings rather than better procedural masses:
+ *
+ * - **A silhouette is what makes a horror the same horror twice.** The
+ *   Gnawing is wide and jawed, the Marrow is a ribcage on legs, the Silt
+ *   Mother is tall and narrow, the Kindled is cracked open, the Warden is a
+ *   hood too big for its door. None of them can be mistaken for another at
+ *   any distance the projection leaves them readable at.
+ * - **They are ramp indices, so they cannot fall out of palette** — and the
+ *   flash is the same drawing read further up the same ramp (art. 119 §3),
+ *   which is what makes a hit reaction cost no new colours.
+ * - **They grow by coming nearer**, at world coordinates, so the advance is
+ *   honest perspective rather than a sprite being scaled (arts 15, 30).
+ *
+ * Each carries its own school rather than the room's. That is the Warden's
+ * precedent and it is deliberate: a region is known by its light (art. 114)
+ * and a horror is not a region — the thing that walks out of the dark at you
+ * should be in its own key wherever the drift happens to have put it.
+ *
+ * The sizes are the fiction's, in world units. The Gnawing is wider than it
+ * is tall because it is mostly jaw; the Marrow is the reverse.
+ */
+/** art. 100: what the Kindled's cracks burn as, in any school (encounters). */
+const EMBER_LIGHT = '#ff8a3c'
+
+const GNAWING_COMING = comingCloser(MUTED, GNAWING_BODY, 'the gnawing', {
+  wide: 15,
+  high: 12,
+  from: 34,
+  to: 14,
+})
+
+const MARROW_COMING = comingCloser(ASH, MARROW_BODY, 'the marrow', {
+  wide: 9,
+  high: 20,
+  from: 34,
+  to: 12,
+})
+
+const SILT_MOTHER_COMING = comingCloser(WET, SILT_MOTHER_BODY, 'the shape in the water', {
+  wide: 10,
+  high: 19,
+  from: 34,
+  to: 12,
+})
+
+// art. 100: the cracks in the Kindled are a light that carries, so the room
+// does not get to colour them — the same ember in the burnt and the drowned.
+const KINDLED_COMING = comingCloser(
+  OCHRE,
+  KINDLED_BODY,
+  'the kindled',
+  { wide: 11, high: 17, from: 34, to: 12 },
+  EMBER_LIGHT,
+)
+
+const COMING: Readonly<Record<string, (closeness: number, flare?: number) => Prop>> = {
+  'horror.gnawing': GNAWING_COMING,
+  'horror.marrow': MARROW_COMING,
+  'horror.silt-mother': SILT_MOTHER_COMING,
+  'horror.kindled': KINDLED_COMING,
+  'horror.warden': WARDEN_COMING,
+}
+
+/**
+ * The body a horror advances with, if it has one drawn. `null` is still the
+ * honest answer for a horror content has not drawn yet, and the hinge's own
+ * mass is what it means — nothing here assumes the table is complete.
  */
 export function advanceBodyOf(
   horror: string,
 ): ((closeness: number, flare?: number) => Prop) | null {
-  return horror === 'horror.warden' ? WARDEN_COMING : null
+  return COMING[horror] ?? null
 }
 
 /**
