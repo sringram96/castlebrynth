@@ -1149,6 +1149,14 @@ function paint(): void {
   // art. 117: the thumb has just done something, so the room's own moment
   // starts counting again from here.
   stillFor = 0
+  // arts 121, 124: **the choosing is a screen, and now it is one.** It always
+  // said so — "a screen, no tabs", "there is nowhere else to be until it is
+  // answered" — and it was drawn into the tray's panel area anyway, which is a
+  // band sized for a hand of dice and three verbs. A pouch of ten rows plus
+  // Swap and Descend does not fit in it, and what fell off the bottom was the
+  // verb that leaves: the screen the player could not answer was the screen
+  // whose whole job is being answered. It takes the stage now.
+  stage.classList.toggle('choosing', screen.kind === 'choosing')
   say()
   tray()
   world()
@@ -1610,6 +1618,17 @@ function vitals(): void {
   if (atTheDoor()) return
   const run = ledgers.run!
   const now = fight
+  // **The bulb fills.** The reliquary carries a glass orb where the body's
+  // numbers go, and an orb that never changes is an ornament. It reads the
+  // same health the line beside it reads — one truth, said twice, once as a
+  // number for the player who is counting and once as a level for the player
+  // who is glancing. It is presentation and it changes nothing (art. 116).
+  const health = now !== null && inAFight() ? (shown?.yourHealth ?? now.yourHealth) : run.health
+  const most = now !== null && inAFight() ? now.yourHealthMax : run.healthMax
+  const bulb = document.createElement('i')
+  bulb.className = 'bulb'
+  bulb.style.setProperty('--fill', `${Math.max(0, Math.min(100, (health / Math.max(1, most)) * 100))}%`)
+  vitalsRegion.append(bulb)
   // art. 67 (amended): the rail is the body and nothing else. The turn's
   // running totals belong to the fight, so art. 57 keeps them pinned in the
   // FIGHT panel's header rather than in a rail that is always on screen.
