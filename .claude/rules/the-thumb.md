@@ -293,47 +293,40 @@ them.
      down is a record they could scrub by walking away from the runs that
      went badly.
 
-124. SETTLED (ruled 2026-08-07) — **The order is the interface.**
+124. SETTLED (amended by the choosing-table ruling of 2026-08-07) —
+     **The choice is the table.**
 
-     Art. 60 already says the pouch is ordered and the hand is its first
-     `handSize`. The choosing screen therefore does not need a second
-     model of what a hand is — it draws the one that already exists: the
-     **hand above a rule, the spares below it**, and a swap is the only
-     move.
+     The screen exists only when there is a choice: the pouch contains more
+     dice than the hand can carry. A starting pouch of six against a hand of
+     six goes straight through. Presenting a screen whose only possible answer
+     is all six is a form and therefore a bug.
 
-     **A swap is tap-tap-Swap**, which is the staged vocabulary a claim
-     already uses (art. 72) — one tap marks what leaves, one marks what
-     comes in, one plain verb commits. There is no per-die *chosen* state
-     to learn, no counter to satisfy, and nothing to undo, because a tap
-     on a marked die un-marks it and that is the whole of undo (art. 41's
-     reasoning, in a second place).
+     When the screen does exist, **the reliquary is gone.** Black is the
+     ground. Every owned die is visible at once around an empty centre, in a
+     deterministic orbit. The screen never turns a die into a row of text or
+     six miniature face diagrams. A die is its body and a telling face; its
+     full truth still answers in the word band when tapped (arts 54, 68–69).
 
-     **The screen opens on the hand you last took down.** The order
-     carries it for free, so this costs nothing and means **Descend is one
-     press when nothing has changed** — which is the ordinary case, and a
-     screen that charges six presses for the ordinary case is a form. The
-     screen is an *offer to reorder*, not a form to fill in.
+     **Selection is physical.** A tap toggles that die's identity. Selected
+     dice rise off the ground and take the light; unselected dice stay down.
+     No checkbox, border cell, counter form or second selection vocabulary is
+     introduced. Tapping a raised die puts it back down and is the whole of
+     undo. Selection never exceeds `handSize`.
 
-     **Identical spares stack, and individuals do not.** Six bare bones
-     are not six decisions; `bone ×4` is one row and one thing to think
-     about. A special die never stacks, however many of it there are,
-     because each **is** somebody — art. 86 makes a die's shape how its
-     owner died, and art. 87 gives each one a sentence. A thing with an
-     origin is an individual and is drawn as one.
+     **Confirm does not exist until the hand is whole.** Exactly `handSize`
+     raised dice make one plain Confirm appear in the bottom-right safe area.
+     Pressing it reorders the pouch so those identities are the hand, arms the
+     already-begun run with that hand, and enters the room. Before the hand is
+     whole there is no disabled Confirm and no press that can fail (art. 118).
 
-     **The word band never restates a standing truth.** A tap on a thing
-     whose line is already up answers with the pick's motion and not with
-     the sentence reprinted — *draw it, do not name it*. Art. 69 is
-     satisfied by the answer, and the answer to *I already told you* is a
-     pixel (art. 70), not the same sentence again.
+     Larger collections remain a table, not a spreadsheet. If one orbit would
+     crowd, a second concentric orbit opens. The screen does not scroll and no
+     owned die is hidden: what can be chosen must remain visible at the moment
+     the choice is made.
 
-     The reading problem this screen used to have is already solved
-     elsewhere and is not solved again here: a die at rest draws its whole
-     face set with the cost face marked where it sits, so art. 54 is
-     satisfied by a drawing rather than by a sentence (card 94). What this
-     article settles is the **individuation** problem, which is the only
-     one that was left — a pouch of thirty that scrolls and groups is a
-     screen, and a pouch of thirty that does not is a spreadsheet.
+     The superseded tap-tap-Swap design — hand above a rule, spares below,
+     Swap as a third press — is repealed by this amendment. It must not return
+     from old screenshots, comments, tests or implementation helpers.
 
 ## The hand is a collection (ratified 2026-08-07)
 Drafted from the plate amendment's migration (arts 126–127). It found a

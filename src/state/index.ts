@@ -964,9 +964,11 @@ export const QUARANTINE_KEY = 'castlebrynth.quarantine'
  * carries what a player has turned down as well as who they have met. 12 is
  * card 93's rolling goods, which are collectible and therefore permanent — and
  * a snapshot from before them carries none, which is the normal state of the
- * game rather than a loss.
+ * game rather than a loss. 13 repairs the obsolete five-slot starting hand:
+ * old saves could carry five forward even after the starting pouch became six,
+ * which manufactured a choosing screen where the current rules have no choice.
  */
-export const VAULT_VERSION = 12
+export const VAULT_VERSION = 13
 
 // ── The migration ladder ───────────────────────────────────────────────
 
@@ -1231,6 +1233,30 @@ export const MIGRATIONS: readonly Migration[] = [
         ...permanent,
         trinkets: Array.isArray(permanent.trinkets) ? permanent.trinkets : [],
       })),
+  },
+  /**
+   * 12 → 13. The bare hand was amended from five to six before this schema,
+   * but the older migration deliberately preserved any explicit `handSize`.
+   * A player who came through that ladder therefore owned the six new starting
+   * bones and still carried a five-slot body, so `mustChoose` correctly — but
+   * absurdly — asked which of the starting six should stay behind.
+   *
+   * No shipped v12 mechanic writes a permanent hand size of five. Repair that
+   * one legacy value when the pouch can actually fill six slots; preserve every
+   * other authored size untouched.
+   */
+  {
+    from: 12,
+    up: (snapshot) =>
+      fillingThePermanent(snapshot, (permanent) => {
+        const pouch = asRaw(permanent.pouch)
+        const dice = Array.isArray(pouch?.dice) ? pouch.dice : []
+        const handSize = typeof permanent.handSize === 'number' ? permanent.handSize : 6
+        return {
+          ...permanent,
+          handSize: handSize === 5 && dice.length >= 6 ? 6 : handSize,
+        }
+      }),
   },
 ]
 

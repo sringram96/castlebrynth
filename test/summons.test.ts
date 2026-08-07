@@ -161,9 +161,12 @@ describe('art. 68 — the summons rides the vault', () => {
     // is the company wave — a paused fight now carries what a bind took and
     // what a bleed is taking (art. 65). 11 is the descent wave's refusals, and
     // 12 is card 93's rolling goods, which are collectible and therefore
-    // permanent. All of them are the filling kind — nothing about the
-    // arrangement moves — so no descent was lost to any.
-    expect(VAULT_VERSION).toBe(12)
+    // permanent. All of those are the filling kind — nothing about the
+    // arrangement moves — so no descent was lost to any. 13 is the one
+    // exception and it is a repair: a legacy five-slot hand against a pouch
+    // that can fill six becomes six, because no shipped v12 mechanic writes
+    // that value and carrying it forward manufactured a choosing screen.
+    expect(VAULT_VERSION).toBe(13)
     expect(MIGRATIONS.map((one) => one.from).sort((a, b) => a - b)).toEqual(
       Array.from({ length: VAULT_VERSION - 1 }, (_, at) => at + 1),
     )
