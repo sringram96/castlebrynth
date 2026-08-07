@@ -261,6 +261,7 @@ const tabBar = must<HTMLDivElement>('tabs')
 const pouchRegion = must<HTMLDivElement>('pouch')
 const actStrip = must<HTMLDivElement>('acts')
 const fightPanel = must<HTMLDivElement>('fight')
+const trayBand = must<HTMLDivElement>('tray')
 
 function must<T extends HTMLElement>(id: string): T {
   const found = document.getElementById(id)
@@ -626,8 +627,29 @@ const plates = assetCache(imageDecoder(import.meta.env.BASE_URL))
  */
 function loadPlates(): void {
   void plates.load(PLATES).then(() => {
+    plateTheTray()
     if (document.body.isConnected) world()
   })
+}
+
+/**
+ * art. 126, art. 127's tenth band: **the tray is a painting once one arrives.**
+ *
+ * It is a class and a URL rather than a rebuild, because the tray's anatomy
+ * does not change (art. 67): the same rail, the same panels, in the same
+ * places, standing in the recesses of a picture instead of on three
+ * gradients. With no picture the class is absent and the stylesheet's own
+ * carved tray stands, which is art. 26's floor said about the HUD.
+ *
+ * The manifest is still the only thing that knows a filename — this reads the
+ * one it declared, and the id is what the shell names.
+ */
+function plateTheTray(): void {
+  const ready = plates.get('tray.reliquary')
+  if (ready === null || ready.asset.kind !== 'plate') return
+  const url = `${import.meta.env.BASE_URL}${ready.asset.src}`
+  trayBand.style.setProperty('--reliquary', `url("${url}")`)
+  trayBand.classList.add('plated')
 }
 
 /**
@@ -827,10 +849,18 @@ const SWELL = 0.09
  * undressed room and the gate itself hand in.
  */
 function show(frame: Framebuffer, draws: readonly Draw[] = []): void {
-  paintFrame(canvas, frame, draws, plates)
   // art. 25 (amended): exact fill via sharp upscale. The frame's height came
   // from this band's aspect, so filling one dimension all but fills both.
   const box = viewportOf(frame.width, frame.height, worldBand.clientWidth, worldBand.clientHeight)
+  // The hero-art wave: the canvas holds **device** pixels, so a painting is
+  // never resampled down to `GRID` on its way in. The box inside it is still
+  // cast at `GRID` and stretched, which is what art. 25 always did — the
+  // stretch simply happens on the canvas now instead of in CSS.
+  const ratio = Math.min(3, Math.max(1, window.devicePixelRatio || 1))
+  paintFrame(canvas, frame, draws, plates, {
+    width: box.cssWidth * ratio,
+    height: box.cssHeight * ratio,
+  })
   canvas.style.width = `${box.cssWidth}px`
   canvas.style.height = `${box.cssHeight}px`
   // art. 22: nothing is fixed in device pixels. The shake is **two game
