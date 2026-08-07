@@ -127,8 +127,9 @@ doors, each of which leaks its region's sense on a tap; the room behind a
 door is dealt when the door is opened; a lean of four doors locks a region
 and the next room announces the arrival; the rest of the depth deals from
 that pool and its bound encounters wake; the Warden's door ends it, and the
-keeper behind it wakes when the key turns. Fights are begun by tapping the
-horror and resolve in beats. Death writes a line in the Book, burns the run
+keeper behind it wakes when the key turns. **Every** fight is begun by tapping
+the thing — the keeper included, which has a body in the hall for the player
+who ran out of it — and every fight resolves in beats. Death writes a line in the Book, burns the run
 and keeps the pouch, the meetings and the knowledge.
 
 Fourteen hand-authored rooms, five horrors, one depth of nine rooms, three
@@ -140,7 +141,7 @@ tier and not its second, much of the prose is still in the repealed
 register (below), and phase 0's non-goals hold.
 
 ### What is green
-`npm test`: 58 files, 673 tests.
+`npm test`: 58 files, 687 tests.
 
 | area | what it enforces |
 | --- | --- |
@@ -250,6 +251,9 @@ history — what was owed and why it closed — is in `CHRONICLE.md`.
 - **The fight's timings have never been felt.** ~3.1s of animation per turn,
   measured in a headless browser at 390×844 and never under a thumb. The
   cuts are pre-registered in `.claude/skills/phone-pass/SKILL.md`.
+- **The phone pass itself is owed.** The ritual exists and the walk is nine
+  beats; nobody has performed it. Standing rule 4 says every wave ends in a
+  hand, and this one did not — there was no phone.
 - **The Warden's body does not thin as it is hurt.** Art. 70 wants a wounded
   horror to stay wounded and the hinge's default mass does that; a drawn
   body cannot, so the keeper's wounds read only from the bar above it.

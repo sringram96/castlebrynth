@@ -328,6 +328,11 @@
       .reading.spare { opacity: .66; }
       .reading.sel { border-color: var(--gold); background: #1c1710; }
       .reading.sel .name { color: var(--ink); }
+      /* art. 124: identical spares stack, so a row may stand for more than
+         one of itself. It sits at the end of the row, out of the way of the
+         faces, because it is a fact about the stack and not about the die. */
+      .reading .count { margin-left: auto; flex: 0 0 auto; font-size: .74em;
+        color: var(--dim); }
       /* card 94: once the materials differ, a dashed hairline is the whole
          separator the tray needs. No heading, no label. */
       .panel .rule.iron { background: none; height: 0; border-top: 1px dashed #2f3846; }

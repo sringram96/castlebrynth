@@ -270,7 +270,16 @@ export interface SocketWords {
  */
 export interface RoomBook {
   beats(room: RoomId): readonly string[]
-  tappables(room: RoomId): readonly Tappable[]
+  /**
+   * `done` for the same reason `socket` takes it: one room's own tappables
+   * depend on what has happened in it. The Warden's hall has a keeper
+   * standing in it once the key has turned and not after it falls, and the
+   * keeper stands in no socket (art. 37), so the room itself is what has to
+   * answer. The default is *nothing has happened here*, which is the right
+   * answer for every caller asking what a room is rather than what this one
+   * has become.
+   */
+  tappables(room: RoomId, done?: readonly string[]): readonly Tappable[]
   /**
    * art. 6: looking is free and always answers.
    *
@@ -411,7 +420,7 @@ export function tappablesIn(
   done: readonly string[] = [],
 ): readonly Tappable[] {
   return [
-    ...book.tappables(node.room),
+    ...book.tappables(node.room, done),
     ...node.fills.flatMap((fill) => book.socket(node.room, fill, done).tappables),
   ]
 }

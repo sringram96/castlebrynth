@@ -88,6 +88,7 @@ outcome already decided).
 | the Savior's memory of you | **permanent** (`memories`) | 84 |
 | the doorway stir, and the room's one unbidden beat | — (hashed off identity) | 106–110, 117 |
 | the advance — the thing come close | run (`fight.advanced`) | 28, 30 |
+| the lock, the key turning, and the keeper it wakes | run (a deed) | 37, 68, 97, 118 |
 
 ### The Fight
 

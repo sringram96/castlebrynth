@@ -161,6 +161,20 @@ not about the thumb.
     the hall empty and the lock answering, which is what makes the turning
     of the key the event rather than the arrival in the room. Its numbers,
     its script and its body are content like every other horror's.
+
+    **Amended by the mend, 2026-08-07: once it exists, it is a thing standing
+    in the room.** Both clauses above are untouched — no socket, nothing until
+    the key turns — and what is added is what follows from them the moment a
+    player is in the hall with the keeper up. That happens exactly one way,
+    because the fight opens on the turn of the key: **you ran out of it.** The
+    hall you came back to had nothing in it to tap, so the only way back into
+    the fight was the door's own verb — the last door-fight in a game that had
+    abolished them (card 95). A keeper with no body is a horror that breaks the
+    interaction model for one room, so it has one: it stands in the hall, it
+    answers a tap (art. 69), it shuts every door in the room while it is up
+    (art. 118), and the verb that re-enters the fight is summoned by looking at
+    **it** (art. 68). Standing in no socket was never a claim about having no
+    pixels.
 38. SETTLED (amended) — Rules, not templates. The generator's mercy lives
     in the math: just-in-time placement makes stranding impossible
     (art. 80), and rhythm obligations (fight-count bands, no-clump rules)

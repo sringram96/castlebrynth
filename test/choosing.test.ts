@@ -10,6 +10,7 @@ import {
   THE_RUNNER,
 } from '../src/content/index.js'
 import type { Seed } from '../src/state/index.js'
+import { stacked, swapped } from '../src/shell/screens/choosing.js'
 import {
   collect,
   firstPermanent,
@@ -187,5 +188,111 @@ describe('arts 60, 63 — the hand and the run in flight', () => {
     expect(ids(tookIntoRun({ ...paused, fight: null }, chosen).hand.dice)).toContain(
       THE_RUNNER.id as string,
     )
+  })
+})
+
+/**
+ * art. 124 (ruled 2026-08-07): **the order is the interface.**
+ *
+ * The first cut of the screen asked the player to pick six dice out of the
+ * whole pouch before Descend would light — a form, charging six presses for
+ * the case where nothing has changed since the last descent. Art. 60 already
+ * said the pouch is ordered and the hand is its first `handSize`, so the
+ * screen draws that and the only move is a swap.
+ *
+ * These are the two decisions the screen makes, and they are in
+ * `src/shell/screens/choosing.ts` rather than in `main.ts` for the reason
+ * `strip.ts` exists: a question the harness cannot ask is a question CI
+ * cannot answer.
+ */
+describe('art. 124 — identical spares stack, individuals never do', () => {
+  it('draws six bare bones as one row of six', () => {
+    expect(stacked(PLAIN_POUCH.dice)).toEqual([
+      { die: PLAIN_POUCH.dice[0], count: HAND_SIZE },
+    ])
+  })
+
+  /**
+   * art. 87: a good with an origin sentence is somebody. Three travelers'
+   * bones are three people and three rows, however alike their bodies look.
+   */
+  it('never stacks a die that came off somebody', () => {
+    const rows = stacked([THE_PUSHER, THE_CAREFUL, THE_RUNNER])
+    expect(rows).toHaveLength(3)
+    expect(rows.every((row) => row.count === 1)).toBe(true)
+  })
+
+  it('gathers a scattered stack into one row, and keeps the individual apart', () => {
+    const rows = stacked([...PLAIN_POUCH.dice.slice(0, 3), THE_PUSHER, ...PLAIN_POUCH.dice.slice(3)])
+    // One row per distinct thing, wherever in the pouch its copies lie: six
+    // bones interrupted by a traveler are still one decision and one row.
+    expect(rows.map((row) => row.count)).toEqual([HAND_SIZE, 1])
+    // The die a stack keeps is the first of it, so a swap out of a stack
+    // takes the one nearest the hand.
+    expect(rows[0]!.die.id).toBe(PLAIN_POUCH.dice[0]!.id)
+    expect(rows[1]!.die.id).toBe(THE_PUSHER.id)
+  })
+
+  /**
+   * The key is the name and the faces, never the id: `bone.1` and `bone.2`
+   * are different ids and the same thing to a player, which is exactly the
+   * distinction the article says is not a decision.
+   */
+  it('stacks on what the player can see, not on the id', () => {
+    expect(stacked([PLAIN_POUCH.dice[0]!, PLAIN_POUCH.dice[5]!])).toEqual([
+      { die: PLAIN_POUCH.dice[0], count: 2 },
+    ])
+  })
+})
+
+describe('art. 124 — a swap moves one thing', () => {
+  const hand = PLAIN_POUCH.dice
+
+  it('replaces the marked die where it stands and disturbs nothing else', () => {
+    const after = swapped(hand, hand[2]!.id, THE_PUSHER.id)
+    expect(after).toEqual([
+      hand[0]!.id,
+      hand[1]!.id,
+      THE_PUSHER.id,
+      hand[3]!.id,
+      hand[4]!.id,
+      hand[5]!.id,
+    ])
+  })
+
+  it('is not a swap with either half unmarked, and changes nothing', () => {
+    expect(swapped(hand, null, THE_PUSHER.id)).toEqual(hand.map((die) => die.id))
+    expect(swapped(hand, hand[0]!.id, null)).toEqual(hand.map((die) => die.id))
+  })
+
+  /**
+   * `chooseHand` de-duplicates, so a hand naming one die twice would come
+   * back a slot short and fill itself from the spares. Nothing on the screen
+   * can mark a hand die as *entering*; this is the guard behind that one.
+   */
+  it('refuses to take a die that is already in the hand', () => {
+    expect(swapped(hand, hand[0]!.id, hand[4]!.id)).toEqual(hand.map((die) => die.id))
+  })
+
+  /** The whole point: a swap is a reordering, and the order is the hand. */
+  it('lands as the hand once the pouch is reordered around it', () => {
+    const found = collect(bare(), THE_PUSHER)
+    const chosen = chooseHand(found, swapped(handFrom(found), handFrom(found)[1]!.id, THE_PUSHER.id))
+    expect(ids(handFrom(chosen))).toContain(THE_PUSHER.id as string)
+    expect(handFrom(chosen)).toHaveLength(HAND_SIZE)
+    // Nothing destroyed: what left the hand is a spare, not gone (art. 60).
+    expect(chosen.pouch.dice).toHaveLength(HAND_SIZE + 1)
+    expect(sparesOf(chosen)).toHaveLength(1)
+  })
+
+  /**
+   * art. 124: **Descend is one press when nothing changed.** The screen
+   * opens on the hand you last took down, which the order carries for free,
+   * so leaving without swapping is a no-op rather than a re-pick.
+   */
+  it('leaves the hand exactly as it stood when nothing is marked', () => {
+    const found = collect(bare(), THE_PUSHER)
+    const before = ids(handFrom(found))
+    expect(ids(handFrom(chooseHand(found, swapped(handFrom(found), null, null))))).toEqual(before)
   })
 })

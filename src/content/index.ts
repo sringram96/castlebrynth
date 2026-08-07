@@ -273,6 +273,8 @@ export {
   // card 95: the thing a fight is summoned by tapping, and whether it stands.
   horrorMarkIn,
   horrorStanding,
+  // the mend: the keeper, once the key has turned and before it goes down.
+  keeperAwake,
   keeperStanding,
   horrorOf,
   roomContent,
@@ -402,6 +404,9 @@ const AMENDED_LOOKS: readonly string[] = [
   'bowl.thing',
   'notch.thing',
   'zealot.thing',
+  // card 95, the mend: the fled keeper's own line, written after the
+  // register changed and judged by it.
+  'warden.keeper',
 ]
 
 function amendedLook(key: string): boolean {

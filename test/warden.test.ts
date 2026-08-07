@@ -35,6 +35,9 @@ import {
   horrorById,
   horrorIn,
   horrorOf,
+  horrorMarkIn,
+  horrorStanding,
+  keeperAwake,
   keeperStanding,
   lintVoice,
 } from '../src/content/index.js'
@@ -71,10 +74,12 @@ import {
   lockActFor,
   mayLeave,
   opens,
+  looking,
   sceneKey,
   sceneStateOf,
   stranded,
   summoned,
+  tappablesIn,
   turnedHere,
 } from '../src/descent/index.js'
 import { act } from '../src/descent/index.js'
@@ -83,6 +88,8 @@ import { hereIn } from '../src/gen/index.js'
 import type { Ledgers } from '../src/state/index.js'
 import { movedTo } from '../src/state/index.js'
 import { DEALER, alwaysLeft, coinFlip, lookAround, opened, runOf, takeable } from './drift.js'
+import { fightSummoned, wayOn } from '../src/shell/strip.js'
+import { walkDepth } from './screen.js'
 
 /**
  * **The key is turned** (card 67, arts 68, 70, 82, 97).
@@ -682,6 +689,103 @@ describe('card 67 — it generalises: every lock is a deed-gated door', () => {
         ledgers = walked.ledgers
         chain = walked.chain
       }
+    }
+  })
+})
+
+/**
+ * **The fled keeper has a body** (the mend, wave 2, arts 37, 68, 118).
+ *
+ * Card 95 made every fight in the game begin by tapping the horror, and left
+ * one exception standing. The keeper stands in no socket (art. 37), so a
+ * player who ran out of its fight came back to a hall with *nothing in it* —
+ * and the only way back in was the door's own Fight verb. That was the last
+ * door-fight in a game that had abolished them, and it was reachable exactly
+ * one way: by fleeing.
+ *
+ * Art. 37 is untouched — the keeper is still dealt by nothing, still in no
+ * socket, and still not in the hall at all until the key turns. What it has
+ * now is the one thing card 95 asks of a horror: a place to stand in the room
+ * and be looked at.
+ */
+describe('the mend — the fled keeper is a thing in the hall', () => {
+  const deeds = (held: Ledgers, node: ChainNode) => sceneStateOf(held, ROOM_BOOK, node).done
+
+  it('puts nothing in the hall before the key turns', () => {
+    const { ledgers, node } = inTheHall()
+    const done = deeds(ledgers, node)
+    expect(keeperAwake(done)).toBe(false)
+    expect(horrorMarkIn(node, done)).toBeNull()
+    expect(horrorStanding(node, done)).toBe(false)
+    expect(tappablesIn(ROOM_BOOK, node, done).map((one) => one.id)).not.toContain('warden.keeper')
+  })
+
+  it('stands it in the hall on the turn of the key, with a body and a noun', () => {
+    const { ledgers, node } = inTheHall()
+    const turned = act(ledgers, unlockOf(node))
+    const done = deeds(turned, node)
+    expect(keeperAwake(done)).toBe(true)
+    expect(horrorStanding(node, done)).toBe(true)
+    expect(horrorMarkIn(node, done)).toBe('warden.keeper')
+    const there = tappablesIn(ROOM_BOOK, node, done).find((one) => one.id === 'warden.keeper')
+    expect(there).toBeDefined()
+    // art. 69: it answers, and art. 111: it names itself first.
+    expect(LOOKS['warden.keeper'] ?? '').not.toBe('')
+    expect(there!.noun).toBe('the keeper')
+  })
+
+  /**
+   * The article this closes. While the keeper stands the hall is `guarded`
+   * like any other room with teeth in it: no door gives, and what the player
+   * gets instead is the door's answer saying why (art. 118's second clause).
+   */
+  it('offers no door verb at all while it stands, and Descend once it is down', () => {
+    const { ledgers, node } = inTheHall()
+    const door = node.doors[0]!
+    const turned = act(ledgers, unlockOf(node))
+    expect(wayOn(turned, ROOM_BOOK, node, door, horrorStanding(node, deeds(turned, node)))).toBeNull()
+
+    const beaten = { ...turned, run: didHere(turned.run!, node.instance, WARDEN_DOWN) }
+    expect(horrorStanding(node, deeds(beaten, node))).toBe(false)
+    expect(wayOn(beaten, ROOM_BOOK, node, door, horrorStanding(node, deeds(beaten, node)))).toBe(
+      'descend',
+    )
+  })
+
+  /**
+   * **The case that was broken.** Run out of the keeper's fight, come back to
+   * the hall: the thing is standing there, looking at it summons the verb,
+   * and the verb is the horror's rather than the door's.
+   */
+  it('is re-entered by tapping it after a flight, never by a door', () => {
+    const { turned, node, door, keeper } = theBeat()
+    const away = routeFlight(
+      turned,
+      saveFight(openFightDoor(turned, { door, horror: keeper }), node.instance, 'pre', [], true, false),
+    )
+    const done = deeds(away, node)
+    const mark = horrorMarkIn(node, done)
+    expect(mark).toBe('warden.keeper')
+
+    // art. 68: not until it has been looked at, and then yes.
+    expect(fightSummoned(away, node, mark, horrorStanding(node, done))).toBe(false)
+    const seen = looking(away, tappablesIn(ROOM_BOOK, node, done).find((one) => one.id === mark)!)
+    expect(fightSummoned(seen, node, mark, horrorStanding(node, deeds(seen, node)))).toBe(true)
+
+    // And the door still gives nothing — the fight is about the thing.
+    expect(wayOn(seen, ROOM_BOOK, node, door, horrorStanding(node, deeds(seen, node)))).toBeNull()
+  })
+
+  /**
+   * The proof rather than the consequence: `WayOn` has no `fight` member any
+   * more, so the type could not express a door-fight if somebody wanted one.
+   * This walks every door of every room a depth can deal and asserts it.
+   */
+  it('leaves no door in the catalog able to say Fight', () => {
+    for (const seed of [1, 2, 3, 5, 8, 13]) {
+      const walked = walkDepth(seed)
+      expect(walked.outcome, `seed ${seed}`).not.toBe('stuck')
+      expect(walked.held, `seed ${seed}`).toEqual([])
     }
   })
 })

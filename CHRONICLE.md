@@ -95,6 +95,106 @@ fixes wave**.
 
 ---
 
+## The mend, wave 2 — thumb (arts 37 amended, 123, 124)
+
+**Green means served.** `pages.yml` documented its own defect honestly and
+kept shipping it: `deploy-pages` polls for ten minutes — a hard ceiling in
+that action, not a default — then gives up and *cancels* a deployment that
+lands anyway. Three runs went red on 2026-08-06 while the site published
+correctly each time, and a signal that cries wolf gets ignored, and then a
+real failure walks past it.
+
+The fix is three lines of policy and one of them is the whole thing.
+`npm run build` stamps the commit into the artifact as `dist/version.txt` —
+a rollup asset rather than a file written to disk, so it goes wherever the
+bundle goes; `dev` when there is no commit to stamp. `deploy-pages` gets
+`continue-on-error: true`, so its poller stops being the verdict while
+staying the thing that does the work. And a **verify** step polls the known
+Pages URL for `/version.txt` until it equals `$GITHUB_SHA`, forty attempts
+at fifteen seconds. It polls the *known* URL rather than the deployment
+step's output, because a cancelled step may not emit one — which is the
+entire reason the step exists.
+
+No `@types/node` was added for `process.env`: the one shape used is declared
+in `vite.config.ts`, because a build-time environment variable does not
+justify a dependency (CLAUDE.md).
+
+**The phone pass is a ritual now, and it is still not performed.**
+`.claude/skills/phone-pass/SKILL.md` is the first skill this repo has hired,
+and it was hired on its own terms — the same procedure re-explained until
+its absence was the recurring bug, which is three waves closing with *the
+hand pass is still owed*. It carries the nine-beat walk, the pre-registered
+cut order for the beat timings (`lift` first, `blow` second, `rider` never,
+because a rider that goes by at the speed of a die teaches nothing), and the
+shape a finding takes. **This wave did not perform it. There was no phone.**
+Recording that is the honest form and is what got the skill hired.
+
+**Art. 123 — the threshold stands.** Flagged as a straw default when it
+shipped and never vetoed, which is an argument nobody closed rather than a
+ruling. Boot lands at the front door, always; Continue is one press back to
+exactly where you were. The alternative — booting into the run with the
+threshold reachable *from somewhere* — is not adopted because nobody has
+ever proposed the somewhere, and finding one would mean amending art. 67 as
+well. The cost is one press per reload, and it is accepted.
+
+**Art. 124 — the order is the interface.** The choosing screen was a form:
+it asked the player to pick six dice out of the whole pouch before Descend
+would light, charging six presses for the case where nothing has changed
+since the last descent. Art. 60 already said the pouch is ordered and the
+hand is its first `handSize`, so the screen draws *that* — hand above a
+rule, spares below — and the only move is a swap, staged tap-tap-Swap in the
+vocabulary a claim already uses (art. 72). Four consequences:
+
+- **Descend is one press when nothing changed.** The order carries last
+  run's hand for free, so there is nothing to seed and nothing pre-marked.
+- **Identical spares stack** (`bone ×4`) and individuals never do. The test
+  is `originOf`, not a flag, because that is already what makes a good an
+  individual (arts 86–87) — so a good given an origin tomorrow stops
+  stacking without anybody remembering to come back.
+- **The word band never restates a standing truth.** A tap on a die whose
+  line is already up answers with the mark moving. Draw it, do not name it.
+- **Nothing can be half-made**, so `choose.full`, `choose.short`,
+  `swap.none` and `swap.locked` are deleted rather than left unreachable.
+
+The two decisions live in `src/shell/screens/choosing.ts` rather than in
+`main.ts`, for the reason `strip.ts` exists: a question the harness cannot
+ask is a question CI cannot answer. `stacked` and `swapped` are pure and
+have eleven tests.
+
+**The fled keeper has a body** (art. 37, amended). Card 95 made every fight
+begin by tapping the horror and left one exception: the keeper stands in no
+socket, so a player who ran out of its fight came back to a hall with
+nothing in it, and the only way back in was the door's own Fight verb — the
+last door-fight in a game that had abolished them, reachable exactly one way.
+
+Art. 37's two clauses are untouched. What is added is what follows from them
+once the player is standing in the hall with the keeper up: it is drawn at
+the far end, it answers a tap, it shuts every door in the room while it is
+up, and the verb is summoned by looking at *it*. **Standing in no socket was
+never a claim about having no pixels.**
+
+The proof is a type. `WayOn` lost its `fight` member, so a door-fight is now
+inexpressible rather than merely unused, and `wayOn` lost the parameter that
+carried it. `RoomBook.tappables` gained `done` for the same reason `socket`
+already had it — one room's own tappables depend on what has happened in it.
+
+Two things the harness taught, both kept: `things()` was reading a room's
+tappables without `done` and so could not see the keeper at all; and
+`walkDepth` now **looks again after pressing**, because a press can put
+something in the room. A thumb does that without being told.
+
+`npm test`: 58 files, 687 tests, green.
+
+### The phone pass
+**Not done.** No device. The walk in `.claude/skills/phone-pass/SKILL.md` is
+written and the beat timings' cut order is pre-registered against it;
+`blendAbove` is still a guess at a fifth and the numbers in `CASCADE` are
+still the desktop demo's. Nothing was changed in their place, because a
+value settled on the wrong panel is worse than a value openly marked as a
+guess.
+
+---
+
 ## The legible wave (cards 94–95)
 
 Two playtest complaints from 2026-08-06, and neither of them moves a number.

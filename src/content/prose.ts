@@ -201,6 +201,9 @@ export const NOUNS: Readonly<Record<string, string>> = {
   'tally.bell': 'the bell',
   'warden.lock': 'the lock',
   'warden.door': 'the black door',
+  // card 95, the mend: the keeper standing in its own hall, which is the one
+  // thing in the game that arrives without a socket to stand in (art. 37).
+  'warden.keeper': 'the keeper',
   // art. 83: what stands in a socket names itself, wherever it stands.
   'gnawing.shape': 'the wet shape',
   'marrow.shape': 'the tall shape',
@@ -291,6 +294,16 @@ export const LOOKS: Readonly<Record<string, string>> = {
   'warden.lock': 'One keyhole, cut for three teeth. Nothing on you is cut that way.',
   'warden.lock.fits': 'One keyhole, cut for three teeth. The iron in your hand is cut for this.',
   'warden.door': 'Black iron. The stone around it is scored where it swings.',
+  /**
+   * card 95, the mend: **what the fled keeper answers with.**
+   *
+   * It is the one look in the game a player can only reach one way — the
+   * fight opens the moment the key turns, so standing in the hall with the
+   * keeper up means having run out of it. The line is written for that
+   * player, and it says the noun first (art. 111) and then the one fact that
+   * matters, which is that running bought nothing.
+   */
+  'warden.keeper': 'The keeper. Back at the far end, exactly where it started. It has all the time there is and I do not.',
   'gnawing.shape': 'It keeps to the far end. When you stop, the scratching stops.',
   'marrow.shape': 'It stands a head above the door beside it, and it does not lean.',
   'mother.shape': 'A woman, and the water is still coming off her. Her eyes hold a light the room does not.',
@@ -1059,8 +1072,6 @@ export const NOTICES: Readonly<Record<string, string>> = {
   // somebody, so choosing a hand is choosing who comes down with him.
   'choose.which':
     'More bones than my hand holds. Every one of them came off somebody who did not come back up. The rest stay here.',
-  'choose.full': 'Your hand is full. Put one back to take another.',
-  'choose.short': 'Your hand is not full yet.',
   // art. 72: claim offers match the exact selection, so a selection that
   // fits nothing says why. The shape must be exactly what is chosen — a
   // full house is the five, never the five and one more.
@@ -1095,12 +1106,12 @@ export const NOTICES: Readonly<Record<string, string>> = {
   'claim.sealed': 'sealed this turn',
   'claim.spent': 'already spent',
   'claim.none': 'Nothing is chosen yet.',
-  // arts 60, 86: the hand is a chosen six, and choosing is a swap. Neither
-  // of these instructs — they say what is true of the tray right now, and
-  // the verb on the strip is the only thing that tells you what to press.
-  'swap.none': 'Nothing is chosen to leave, and nothing to take its place.',
+  // art. 124: what a committed swap answers with. It is the only line the
+  // choosing screen needs beyond the one that states the situation — a hand
+  // that cannot be short and a swap that cannot be half-made leave nothing
+  // for a refusal to say (art. 118: an act that cannot change anything is
+  // not offered, so the strip is where "not yet" is said, in pixels).
   'swap.done': 'The bone goes into your hand. The other one keeps.',
-  'swap.locked': 'Something is waiting behind that door. Your hand stays as it is.',
   'pouch.spare': 'Yours, and not in your hand.',
   // The threshold — the front door. The first pixels a new player sees, so
   // it is in register like everything else: it states where you are standing
