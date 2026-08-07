@@ -245,9 +245,9 @@ import { PLATES, artFor, horrorPlateAt, horrorPlateFor } from './content/visual/
 import type { TrayLayout } from './shell/tray.js'
 import { DIE_DIAL, layoutDice } from './shell/tray.js'
 import { canonicalChain, canonicalNode, canonicalRequest } from './shell/canonical.js'
-import { grown, place, trayScale } from './shell/tray-space.js'
+import { grown, place, traySizeFor } from './shell/tray-space.js'
 import {
-  DIE_ART,
+  DIE_SPRITE,
   DIE_TARGET_HEIGHT,
   DIE_TARGET_WIDTH,
   RELIQUARY,
@@ -677,29 +677,37 @@ function plateTheTray(): void {
  */
 function poseTray(): void {
   if (!plated()) return
-  const scale = trayNow()
-  place(vitalsRegion, RELIQUARY.healthText, scale)
+  const size = trayNow()
+  place(vitalsRegion, RELIQUARY.healthText, size)
   const bulb = vitalsRegion.querySelector<HTMLElement>('.bulb')
   if (bulb !== null) {
-    place(bulb, RELIQUARY.healthOrb, scale)
-    // The orb is placed against the tray and the numerals are placed against
-    // it, so the level is taken out of the text's box and put in the glass.
-    bulb.style.left = `${(RELIQUARY.healthOrb.x - RELIQUARY.healthText.x) * scale}px`
-    bulb.style.top = `${(RELIQUARY.healthOrb.y - RELIQUARY.healthText.y) * scale}px`
+    // The glass is placed against the panel and the numerals against the
+    // panel, so the level lives in the orb rather than in the text's box.
+    place(bulb, RELIQUARY.healthOrb, size)
+    bulb.style.left = `${(RELIQUARY.healthOrb.x - RELIQUARY.healthText.x) * size.width}px`
+    bulb.style.top = `${(RELIQUARY.healthOrb.y - RELIQUARY.healthText.y) * size.height}px`
   }
   const totals = fightPanel.querySelector<HTMLElement>('.totals')
-  if (totals !== null) place(totals, RELIQUARY.statusRail, scale)
+  if (totals !== null) place(totals, RELIQUARY.statusRail, size)
+  // The panel carves a small recess at its top right; the card's glyph is the
+  // one thing in the tray that wants exactly that (art. 74 — one glyph, and it
+  // is never parked mid-screen).
+  const glyph = fightPanel.querySelector<HTMLElement>('.totals .glyph')
+  if (glyph !== null) place(glyph, grown(RELIQUARY.menu, RELIQUARY.menu.width, 0.16), size)
   const score = fightPanel.querySelector<HTMLElement>('.score')
-  if (score !== null) place(score, RELIQUARY.score, scale)
+  if (score !== null) place(score, RELIQUARY.score, size)
   for (const el of fightPanel.querySelectorAll<HTMLElement>(':scope > button')) {
-    place(el, RELIQUARY.action, scale)
+    place(el, RELIQUARY.action, size)
   }
+  // The beds are 12% of a short panel — twenty-odd pixels — so the *target*
+  // is grown about each one exactly as a die's is, and the word still sits on
+  // the carving (art. 128: the floor is a fact about what a thumb presses).
   const beds = RELIQUARY.tabs
   ;[...tabBar.children].forEach((el, at) => {
     const bed = beds[at]
-    if (bed !== undefined && el instanceof HTMLElement) place(el, bed, scale)
+    if (bed !== undefined && el instanceof HTMLElement) place(el, grown(bed, bed.width, 0.2), size)
   })
-  debugTray(scale)
+  debugTray(size)
 }
 
 /**
@@ -708,7 +716,7 @@ function poseTray(): void {
  *
  *     …/?debugTray=1
  */
-function debugTray(scale: number): void {
+function debugTray(size: { width: number; height: number }): void {
   const on = new URLSearchParams(location.search).get('debugTray') === '1'
   const had = trayBand.querySelector('#trayDebug')
   had?.remove()
@@ -717,7 +725,7 @@ function debugTray(scale: number): void {
   layer.id = 'trayDebug'
   const mark = (rect: Parameters<typeof place>[1], ink: string): void => {
     const el = document.createElement('i')
-    place(el, rect, scale)
+    place(el, rect, size)
     el.style.border = `1px solid ${ink}`
     el.style.pointerEvents = 'none'
     layer.append(el)
@@ -726,6 +734,8 @@ function debugTray(scale: number): void {
   mark(RELIQUARY.healthText, '#e04a3a88')
   mark(RELIQUARY.statusRail, '#4aa8e0')
   mark(RELIQUARY.mainWell, '#e0d24a55')
+  mark(RELIQUARY.diceZone, '#4aa8e055')
+  mark(RELIQUARY.menu, '#e0824a')
   mark(RELIQUARY.score, '#4ae08a')
   mark(RELIQUARY.action, '#b04ae0')
   for (const bed of RELIQUARY.tabs) mark(bed, '#e0c24a')
@@ -2267,7 +2277,7 @@ function measureHand(count: number): TrayLayout {
   // In the painted tray nothing is measured: the die is the size the artwork
   // draws it, scaled with the rest of the apparatus (`src/content/ui`).
   handLayout = plated()
-    ? { size: DIE_ART * trayNow(), gap: 0, perRow: count, rows: 1 }
+    ? { size: DIE_SPRITE * trayNow().width, gap: 0, perRow: count, rows: 1 }
     : layoutDice(count, free)
   return handLayout
 }
@@ -2277,9 +2287,9 @@ function plated(): boolean {
   return trayBand.classList.contains('plated')
 }
 
-/** The one number: rendered tray width over authored artwork width (art. 22). */
-function trayNow(): number {
-  return trayScale(RELIQUARY, trayBand.clientWidth || stage.clientWidth)
+/** What the panel came to on this device. Everything projects into it (art. 22). */
+function trayNow(): { width: number; height: number } {
+  return traySizeFor(RELIQUARY, trayBand.clientWidth || stage.clientWidth)
 }
 
 /**
@@ -2296,14 +2306,14 @@ function trayNow(): number {
  * a die's identity and never on where it sits.
  */
 function poseHand(row: HTMLElement): void {
-  const scale = trayNow()
+  const size = trayNow()
   const slots = [...row.children].filter((el): el is HTMLElement => el instanceof HTMLElement)
   const poses = posesFor(slots.length)
   slots.forEach((slot, at) => {
     const pose = poses[at]
     if (pose === undefined) return
     const target = grown(pose, DIE_TARGET_WIDTH, DIE_TARGET_HEIGHT)
-    place(slot, pose.rotation === undefined ? target : { ...target, rotation: pose.rotation }, scale)
+    place(slot, pose.rotation === undefined ? target : { ...target, rotation: pose.rotation }, size)
   })
 }
 
@@ -2333,7 +2343,7 @@ function handRow(layout: TrayLayout): HTMLDivElement {
 function faceSizeFor(layout: TrayLayout): number {
   // In the painted tray the drawing is the artwork's own size, scaled with the
   // apparatus — never a fraction of whatever the target came to.
-  if (plated()) return Math.max(16, Math.round(DIE_ART * trayNow()))
+  if (plated()) return Math.max(14, Math.round(DIE_SPRITE * trayNow().width))
   return Math.max(24, Math.round(layout.size * (FACE_IN_SLOT / DIE_DIAL.preferred)))
 }
 

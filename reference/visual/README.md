@@ -49,3 +49,23 @@ like when the art budget reaches it. `DESIGN.md` lists what is still owed.
 The visual language is Castlebrynth's own. These images set a bar for
 density, contrast and composition; no asset, palette or design is traced
 from any other game.
+
+## `reliquary-zones.png` — the tray's coordinate spec
+
+The art director's own diagram of the combat panel: its four zones (top rail
+0–18%, dice 18–42%, main well 42–88%, footer 88–100%), the orb, the menu
+recess, the three tab beds and the die slots, all in **fractions of the panel**
+rather than in pixels.
+
+It is the source `src/content/ui/reliquary.ts` is built from, and it is what
+makes the tray an authored object rather than a responsive layout over a
+picture. Two notes on reading it against the shipped panel:
+
+- **Its die-slot table and the painting disagree.** The table puts six
+  0.11-wide slots at a pitch of 0.14 from x 0.14, which overlaps the orb it
+  also declares at 0.02–0.20 and does not sit on the six recesses the panel
+  carries. The painted cells win for the *drawing*; the table's sizes are used
+  for the **hit areas**, which is what its own note says they are.
+- **A zone is not a hit target.** The footer beds are 12% of a panel whose
+  aspect is 2:1, so on a phone they are about twenty pixels tall. The word
+  sits on the carving and the target is grown about it, exactly as a die's is.

@@ -208,7 +208,7 @@ export const PLATES: AssetManifest = {
    * strip below is the verbs. Nothing about the duel was flattened into the
    * picture, which is the whole difference between a HUD and a mock-up.
    */
-  'tray.reliquary': plate('tray.reliquary', 'ui/reliquary.png', 1619, 971, 'carried'),
+  'tray.reliquary': plate('tray.reliquary', 'ui/reliquary.png', 1460, 727, 'carried'),
 
   /**
    * **What you are holding.** art. 126's second frame-anchored thing, and the

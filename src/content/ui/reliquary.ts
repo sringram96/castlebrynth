@@ -12,106 +12,113 @@
  * recess; nothing at runtime infers a position from a flex box. When the art
  * director moves something, they move it here.
  *
- * Coordinates are the artwork's native pixels — 1619 × 971 — because that is
- * the space an art direction is given in: *put it at x=728, y=397* is an
- * instruction an engineer does not have to interpret.
+ * Coordinates are **fractions of the panel**, 0 to 1 across and 0 to 1 down,
+ * which is the space the art direction arrives in
+ * (`reference/visual/reliquary-zones.png`). An art director reads a number
+ * back off their own diagram; nobody converts anything.
  */
 
 import type { TrayFrame, TrayPose, TrayRect } from '../../shell/tray-space.js'
 
-/** The plate's own dimensions. The manifest declares the same two numbers. */
+/** The panel's own dimensions. The manifest declares the same two numbers. */
 export const RELIQUARY_FRAME: TrayFrame = {
-  authoredWidth: 1619,
-  authoredHeight: 971,
+  authoredWidth: 1460,
+  authoredHeight: 727,
 }
 
 export interface ReliquaryMap extends TrayFrame {
   /** The glass the body's level rises in. */
   readonly healthOrb: TrayRect
-  /** Where the two numerals sit under it. */
+  /** Where the numerals sit, under the glass. */
   readonly healthText: TrayRect
-  /** The inscription rail: what is coming, and what is unspent. */
+  /** The inscription line: what is coming, and what is unspent. */
   readonly statusRail: TrayRect
-  /** The dark central recess the hand rests in. */
+  /** The row the dice stand in. */
+  readonly diceZone: TrayRect
+  /** The dark central recess. */
   readonly mainWell: TrayRect
   /** The running total, at the well's near corner. */
   readonly score: TrayRect
   /**
-   * The turn's verb. **There is no painted plaque for an action** — the three
-   * beds along the foot are the tabs — so this is a bare anchor and the verb
-   * is text on the apparatus. An authored bed would let it be inscribed; it is
-   * reported as owed rather than drawn in CSS.
+   * The turn's verb. **There is no painted plaque for an action**, so this is
+   * a bare anchor and the verb is text on the apparatus. Reported as owed
+   * rather than drawn in CSS.
    */
   readonly action: TrayRect
-  /** The three beds along the foot, which the painted divisions really do map. */
+  /** The small utility glyph the panel carves a place for. */
+  readonly menu: TrayRect
+  /** The three beds along the foot. */
   readonly tabs: readonly TrayRect[]
 }
 
+/**
+ * **The zones, from the art director's diagram.**
+ *
+ * Top rail 0–18%, dice 18–42%, main well 42–88%, footer 88–100%. The orb, the
+ * menu glyph and the three tab beds are the diagram's own numbers.
+ */
 export const RELIQUARY: ReliquaryMap = {
   ...RELIQUARY_FRAME,
-  healthOrb: { x: 104, y: 301, width: 236, height: 258 },
-  healthText: { x: 78, y: 566, width: 288, height: 96 },
-  statusRail: { x: 372, y: 292, width: 940, height: 52 },
-  mainWell: { x: 340, y: 272, width: 1004, height: 408 },
-  score: { x: 400, y: 596, width: 300, height: 70 },
-  action: { x: 1000, y: 562, width: 344, height: 104 },
+  healthOrb: { x: 0.055, y: 0.27, width: 0.128, height: 0.42 },
+  healthText: { x: 0.025, y: 0.70, width: 0.19, height: 0.16 },
+  statusRail: { x: 0.26, y: 0.44, width: 0.52, height: 0.08 },
+  diceZone: { x: 0.0, y: 0.18, width: 1.0, height: 0.24 },
+  mainWell: { x: 0.0, y: 0.42, width: 1.0, height: 0.46 },
+  score: { x: 0.26, y: 0.70, width: 0.24, height: 0.1 },
+  action: { x: 0.6, y: 0.68, width: 0.18, height: 0.14 },
+  menu: { x: 0.9, y: 0.04, width: 0.06, height: 0.1 },
   tabs: [
-    { x: 280, y: 720, width: 309, height: 124 },
-    { x: 615, y: 720, width: 355, height: 124 },
-    { x: 1000, y: 720, width: 329, height: 124 },
+    { x: 0.13, y: 0.86, width: 0.24, height: 0.12 },
+    { x: 0.38, y: 0.86, width: 0.24, height: 0.12 },
+    { x: 0.63, y: 0.86, width: 0.24, height: 0.12 },
   ],
 }
 
 /**
- * **The six carved cells the dice rest in**, measured once off the artwork.
+ * **The six carved cells the dice rest in**, measured off the panel.
  *
- * The strip across the top of the reliquary is six recesses at a pitch of
- * about 117 authored pixels, each roughly 105 wide and 72 deep. The dice go in
- * them — that is the art direction, and this is where it is written down.
+ * The diagram's own slot table puts six 0.11-wide slots at a pitch of 0.14
+ * starting at x 0.14 — which overlaps the orb it also declares at 0.02–0.20,
+ * and does not line up with the six recesses the panel actually carries. The
+ * painted cells win, because the direction that has been given twice is *the
+ * dice go in the six top slots*. The diagram's slot sizes are used for the
+ * **hit areas** instead, which is what its own note says they are.
  */
 export const DIE_CELLS: readonly TrayRect[] = [
-  { x: 482, y: 191, width: 108, height: 72 },
-  { x: 605, y: 191, width: 105, height: 72 },
-  { x: 725, y: 191, width: 100, height: 72 },
-  { x: 840, y: 191, width: 100, height: 72 },
-  { x: 955, y: 191, width: 100, height: 72 },
-  { x: 1070, y: 191, width: 100, height: 72 },
+  { x: 0.270, y: 0.131, width: 0.072, height: 0.13 },
+  { x: 0.348, y: 0.131, width: 0.070, height: 0.13 },
+  { x: 0.423, y: 0.131, width: 0.070, height: 0.13 },
+  { x: 0.499, y: 0.131, width: 0.069, height: 0.13 },
+  { x: 0.574, y: 0.131, width: 0.070, height: 0.13 },
+  { x: 0.649, y: 0.131, width: 0.070, height: 0.13 },
 ]
 
 /**
  * **How large a die is drawn, and how large a die is pressed.**
  *
- * Two different rectangles about one point. The drawing is sized to the cell
- * it sits in — 72 authored pixels, which at a 390-pixel stage is about 17 CSS
- * pixels. The target is the largest rectangle that fits the cell's *pitch*
- * without touching its neighbour, and it is taller than the strip because
- * there is free room above and below it: about 27 × 36 CSS pixels.
+ * *"These are hit areas. Draw dice centered within each slot."* — the diagram,
+ * and it is the same separation that solved the dice once already. The drawing
+ * is the painted cell; the target is grown about it to the cell's own pitch
+ * and to the full depth of the dice zone.
  *
- * **That is under art. 128's forty-pixel floor, and it is a deliberate
- * choice** — the painted cells were preferred to the target size, twice and
- * knowingly. It is recorded here rather than hidden because it is a real tax
- * on every press in the duel, and because the repair is a number in this file
- * the day a wider strip is drawn.
+ * At a 390-pixel stage that is a target of about **30 × 47 CSS pixels**. The
+ * height clears art. 128's floor; **the width does not, and cannot** — it is
+ * bounded by the pitch of the painted cells, and widening it would overlap the
+ * neighbouring die. The diagram's own 0.11-wide slots would fix it and do not
+ * sit on the carving. That is the one open question in this file.
  */
-export const DIE_ART = 72
-export const DIE_TARGET_WIDTH = 112
-export const DIE_TARGET_HEIGHT = 150
+export const DIE_SPRITE = 0.062
+export const DIE_TARGET_WIDTH = 0.0757
+export const DIE_TARGET_HEIGHT = 0.24
 
 /**
  * **The hand, as authored placement — and the hand is six.**
  *
- * `HAND_SIZE` is six (art. 60, in content) and the plate carries six cells, so
- * the composition is the plain one: **one die per cell, and that is the
- * picture.** No layout algorithm, no flex box, no arrangement decided at
- * runtime.
- *
- * Other counts are **handled, not designed**. A wound can shorten a hand and
- * an intent can bind a die, so the engine may hand this fewer than six; a
- * mercy may someday hand it more. Those cases sit in the middle cells or
- * overflow into a second row beneath, which keeps the tray honest without
- * anybody art-directing a five-die tableau nobody has asked for. art. 128 is
- * unchanged: the tray renders the hand it is given, nothing caps it, and
- * nothing here is a slot a die is required to fill.
+ * `HAND_SIZE` is six (art. 60, in content) and the panel carries six cells, so
+ * the composition is one die per cell and that is the picture. Other counts
+ * are handled and not designed: fewer sit in the middle cells, more overflow
+ * to a row beneath. art. 128 is unchanged — the tray renders the hand it is
+ * given, nothing caps it, and a cell is not a slot a die must fill.
  */
 export type DiePose = TrayPose
 
@@ -126,14 +133,15 @@ export function posesFor(count: number): readonly DiePose[] {
   for (let i = 0; i < count; i++) {
     const row = Math.floor(i / perRow)
     const inRow = Math.min(perRow, count - row * perRow)
-    // A short row is centred among the cells rather than left-packed.
     const from = Math.floor((perRow - inRow) / 2)
     const cell = cells[from + (i % perRow)] ?? cells[cells.length - 1]!
+    const side = DIE_SPRITE
+    const tall = (side * RELIQUARY.authoredWidth) / RELIQUARY.authoredHeight
     out.push({
-      x: cell.x + (cell.width - DIE_ART) / 2,
-      y: cell.y + (cell.height - DIE_ART) / 2 + row * (DIE_ART + 22),
-      width: DIE_ART,
-      height: DIE_ART,
+      x: cell.x + (cell.width - side) / 2,
+      y: cell.y + (cell.height - tall) / 2 + row * (tall + 0.04),
+      width: side,
+      height: tall,
       rotation: TILTS[i % TILTS.length] ?? 0,
     })
   }
