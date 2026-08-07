@@ -123,20 +123,28 @@ export const PLATES: AssetManifest = {
 
   /**
    * **The room, painted.** It covers the frame (art. 24's cover anchor), so
-   * its aspect is 2:3 and what overflows is cropped — sides on a tall phone,
-   * top and bottom on a short one. The safe zone that follows is the central
-   * 92% of width and 80% of height, and the brief states it as a rule the
+   * its aspect is 2:3 and what overflows is cropped — top and bottom on a
+   * short screen, sides on a tall narrow one. The safe zone that follows is
+   * the central 86% of width and 76% of height, measured across the phones in
+   * the brief rather than guessed, and the brief states it as a rule the
    * composition is built to rather than a surprise it discovers.
    */
   'ossuary.hall': awaited('ossuary.hall', 'regions/ossuary/hall.png', 1024, 1536, 'ossuary'),
 
   /**
    * **The carved reliquary the interface sits in.** Its aspect is what sets
-   * the tray band's height (1.7067:1), so of every number in the brief this is
-   * the one that may not drift: the recesses in it are where the live
-   * controls are positioned from, in fractions of this file.
+   * the tray band's height (4:3), so of every number in the brief this is the
+   * one that may not drift: the recesses in it are where the live controls are
+   * positioned from, in fractions of this file.
+   *
+   * It is 4:3 and not the reference's three-and-a-quarter-to-one because that
+   * proportion gives a 120-pixel band on a 390-pixel phone, and the live tray
+   * has to hold a rail, up to eight dice at a size a thumb can hit, a running
+   * total and three verbs — measured, about 265 pixels. The reference's tray is
+   * an illustration at 1088 across; this is the same object at the size a hand
+   * holds.
    */
-  'tray.reliquary': awaited('tray.reliquary', 'ui/reliquary.png', 1536, 900, 'carried'),
+  'tray.reliquary': awaited('tray.reliquary', 'ui/reliquary.png', 1536, 1152, 'carried'),
 
   /**
    * **What you are holding.** art. 126's second frame-anchored thing, and the

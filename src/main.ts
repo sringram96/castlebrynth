@@ -261,6 +261,7 @@ const tabBar = must<HTMLDivElement>('tabs')
 const pouchRegion = must<HTMLDivElement>('pouch')
 const actStrip = must<HTMLDivElement>('acts')
 const fightPanel = must<HTMLDivElement>('fight')
+const trayBand = must<HTMLDivElement>('tray')
 
 function must<T extends HTMLElement>(id: string): T {
   const found = document.getElementById(id)
@@ -626,8 +627,29 @@ const plates = assetCache(imageDecoder(import.meta.env.BASE_URL))
  */
 function loadPlates(): void {
   void plates.load(PLATES).then(() => {
+    plateTheTray()
     if (document.body.isConnected) world()
   })
+}
+
+/**
+ * art. 126, art. 127's tenth band: **the tray is a painting once one arrives.**
+ *
+ * It is a class and a URL rather than a rebuild, because the tray's anatomy
+ * does not change (art. 67): the same rail, the same panels, in the same
+ * places, standing in the recesses of a picture instead of on three
+ * gradients. With no picture the class is absent and the stylesheet's own
+ * carved tray stands, which is art. 26's floor said about the HUD.
+ *
+ * The manifest is still the only thing that knows a filename — this reads the
+ * one it declared, and the id is what the shell names.
+ */
+function plateTheTray(): void {
+  const ready = plates.get('tray.reliquary')
+  if (ready === null || ready.asset.kind !== 'plate') return
+  const url = `${import.meta.env.BASE_URL}${ready.asset.src}`
+  trayBand.style.setProperty('--reliquary', `url("${url}")`)
+  trayBand.classList.add('plated')
 }
 
 /**

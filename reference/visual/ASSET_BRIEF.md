@@ -28,23 +28,31 @@ viewport height.
 │   backdrop · horror · weapon  │
 │                               │
 ├───────────────────────────────┤
-│        THE TRAY BAND          │   height = SW ÷ 1.7067
+│        THE TRAY BAND          │   height = min(SW ÷ 1.3333, 36% of viewport)
 │   frame art + live controls   │
 └───────────────────────────────┘
 ```
 
 | device | stage | tray band | world band | world aspect |
 | --- | --- | --- | --- | --- |
-| iPhone 14/15 · 390×844 | 390 | 390×229 | 390×615 | 0.634 |
-| Pro Max · 428×926 | 428 | 428×251 | 428×675 | 0.634 |
-| Pixel · 412×915 | 412 | 412×241 | 412×674 | 0.612 |
-| small Android · 360×640 | 360 | 360×211 | 360×429 | 0.839 |
-| desktop (stage max) | 460 | 460×270 | 460×730 | 0.630 |
+| iPhone 14/15 · 390×844 | 390 | 390×293 | 390×552 | 0.707 |
+| Pro Max · 428×926 | 428 | 428×321 | 428×605 | 0.707 |
+| Pixel · 412×915 | 412 | 412×309 | 412×606 | 0.680 |
+| small Android · 360×640 | 360 | 360×230 | 360×410 | 0.879 |
+| tall narrow · 360×900 | 360 | 360×270 | 360×630 | 0.571 |
+| desktop (stage max) | 460 | 460×345 | 460×655 | 0.702 |
 
-The world band's aspect therefore ranges about **0.61 → 0.84**. The backdrop
-is authored at **0.667 (2:3)** and cover-fitted, which crops the sides on tall
-phones and the top and bottom on short ones. That gives the safe zone below,
-and it is the single most important constraint in this file.
+**Why the tray is 4:3 and not the reference's proportion.** The reference's
+tray is 1088 × 333 — three and a quarter to one. At 390 px that is a band 120
+px tall, and the live tray has to hold a rail, up to eight dice at a size a
+thumb can hit, a running total and three verbs. Measured, that needs about 265
+px. So the tray art is **4:3**, which gives 293 px on the commonest phone, and
+it is capped at 36% of the viewport so a short screen does not lose its world.
+
+The world band's aspect therefore ranges about **0.57 → 0.88**. The backdrop
+is authored at **0.667 (2:3)** and cover-fitted, which crops the top and bottom
+on a short screen and the sides on a tall narrow one. That gives the safe zone
+below, and it is the single most important constraint in this file.
 
 ---
 
@@ -58,27 +66,26 @@ and it is the single most important constraint in this file.
 ### The safe zone — non-negotiable
 
 ```
-        ← 4% →                     ← 4% →
-      ┌────┬───────────────────────┬────┐   ↑ 10%   cropped on short screens
+        ← 7% →                     ← 7% →
+      ┌────┬───────────────────────┬────┐   ↑ 12%   cropped on a short screen
       │////│░░░░░░░░░░░░░░░░░░░░░░░│////│   ↓
       │////├───────────────────────┤////│
       │////│                       │////│
       │////│      A L W A Y S      │////│
-      │////│      V I S I B L E    │////│   central 92% × 80%
+      │////│      V I S I B L E    │////│   central 86% × 76%
       │////│                       │////│
       │////├───────────────────────┤////│
-      │////│░░░░░░░░░░░░░░░░░░░░░░░│////│   ↑ 10%   cropped on short screens
+      │////│░░░░░░░░░░░░░░░░░░░░░░░│////│   ↑ 12%   cropped on a short screen
       └────┴───────────────────────┴────┘   ↓
-       cropped on tall phones
+       cropped on a tall narrow screen
 ```
 
 - Everything that must be seen — the corridor, its vanishing point, the
-  doorways, the niches, the candle — lives inside the central **92% of width
-  and 80% of height**.
+  doorways, the niches, the candle — lives inside the central **86% of width
+  and 76% of height**.
 - The outer margin is atmosphere only: more wall, more dark, more ceiling.
-- The **bottom 22% of the height will usually be behind nothing**, but the
-  weapon plate covers the lower right of it, so do not put anything essential
-  in the bottom-right corner.
+- **The word band overlays the top ~14%** behind a dark scrim, and **the weapon
+  covers the lower right quarter**. Nothing essential in either.
 
 ### What is in it
 
@@ -185,11 +192,15 @@ Name them `weapon.<thing>` and they drop straight in.
 ## 4 · `tray.reliquary` — the carved frame the interface sits in
 
 **File** `public/assets/visual/ui/reliquary.png`
-**Size** **exactly 1536 × 900** (1.7067 : 1) — this aspect sets the tray
-band's height, so of every number here it is the one that may not drift
+**Size** **exactly 1536 × 1152** (4:3) — this aspect sets the tray band's
+height, so of every number here it is the one that may not drift
 **Alpha** none along the bottom and sides; the **top edge may fade to
 transparent** so the room's darkness runs into it
 **Layer** 10 (HUD) — it is the background of the DOM tray
+
+On a short screen the band is capped and the plate is cropped **from its
+sides**, so keep the outer 4% of the width free of anything that has to be
+seen — the frame's own moulding is exactly what belongs there.
 
 ### This is a frame with empty recesses. The live interface goes in them.
 
