@@ -98,16 +98,20 @@ export const DIE_TARGET_WIDTH = 112
 export const DIE_TARGET_HEIGHT = 150
 
 /**
- * **The hand, as authored placement.**
+ * **The hand, as authored placement — and the hand is six.**
  *
- * Not a layout algorithm and not a flex box: a die stands in a carved cell,
- * and which cells are used is the composition. A hand shorter than the strip
- * is centred in it; a hand longer than the strip puts the overflow in a
- * second row directly beneath, at the same size and the same pitch, so eight
- * dice still read as one handful in one apparatus.
+ * `HAND_SIZE` is six (art. 60, in content) and the plate carries six cells, so
+ * the composition is the plain one: **one die per cell, and that is the
+ * picture.** No layout algorithm, no flex box, no arrangement decided at
+ * runtime.
  *
- * The dice remain a collection (art. 128 unchanged): nothing here caps the
- * hand, and a count past the strip is arranged rather than refused.
+ * Other counts are **handled, not designed**. A wound can shorten a hand and
+ * an intent can bind a die, so the engine may hand this fewer than six; a
+ * mercy may someday hand it more. Those cases sit in the middle cells or
+ * overflow into a second row beneath, which keeps the tray honest without
+ * anybody art-directing a five-die tableau nobody has asked for. art. 128 is
+ * unchanged: the tray renders the hand it is given, nothing caps it, and
+ * nothing here is a slot a die is required to fill.
  */
 export type DiePose = TrayPose
 
