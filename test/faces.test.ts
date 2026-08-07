@@ -17,8 +17,10 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  ALL_RIDERS,
   BONE_BODY,
   BONE_RAMP,
+  BONE_RAMP_BOON,
   BONE_RAMP_LIT,
   BONE_SCAR,
   FACE_GRID,
@@ -33,6 +35,7 @@ import {
   READOUT,
   ROLLING_GOODS,
   TRAVELER_DICE,
+  THE_LEECH,
   THE_SISTERS,
   faceSays,
   glyphFor,
@@ -145,6 +148,53 @@ describe('§2 — a die shows its faces, and a sentence is not a declaration', (
         )
       }
     }
+  })
+
+  /**
+   * **A face that does something is marked, and no two dice that differ look
+   * the same.**
+   *
+   * The first cut of this wave marked only *wounds*, and the hand pass found
+   * what that costs: the leech's six heals you, carried no mark and no word,
+   * and so the leech was drawn pixel for pixel like a plain bone — a die that
+   * does something looking exactly like a die that does nothing, which is the
+   * defect card 94 exists to end. This is the bar that stops it coming back
+   * for the next rider kind somebody adds.
+   */
+  it('marks and words every rider face of every die that ships', () => {
+    const dice = [...TRAVELER_DICE, ...THE_SISTERS, THE_LEECH]
+    let marked = 0
+    for (const die of dice) {
+      for (const face of die.faces) {
+        if (face.rider === undefined) continue
+        const rider = ALL_RIDERS.find((one) => one.id === face.rider)
+        expect(rider, `${die.id as string}: ${face.rider as string} is not a shipped rider`)
+          .toBeDefined()
+        // The word it wears is authored, carries the rider's own number, and
+        // has no template left unfilled.
+        const said = (rider!.onUse.kind === 'wound' ? READOUT.costs : READOUT.heals) ?? ''
+        expect(said, `${die.id as string}: ${rider!.onUse.kind}`).not.toBe('')
+        expect(said).toContain('{n}')
+        marked += 1
+      }
+    }
+    expect(marked, 'no shipped die carries a rider at all').toBeGreaterThan(0)
+    // And the two inks differ, or the mark says *something happens* without
+    // ever saying which way it cuts.
+    expect(BONE_RAMP_BOON).not.toEqual(BONE_RAMP)
+    expect(BONE_RAMP_BOON.length).toBe(BONE_RAMP.length)
+  })
+
+  /**
+   * The leech, by name, because it is the die the defect was found on: its
+   * faces are a plain bone's, so the mark is the *only* thing that can tell
+   * them apart.
+   */
+  it('draws the leech differently from a plain bone', () => {
+    const plain = PLAIN_POUCH.dice[0]!
+    expect(THE_LEECH.faces.map((f) => f.value)).toEqual(plain.faces.map((f) => f.value))
+    const riders = (die: typeof plain) => die.faces.map((f) => f.rider !== undefined)
+    expect(riders(THE_LEECH)).not.toEqual(riders(plain))
   })
 
   /** arts 54, 86: the cost face is marked **where it sits**, not in general. */

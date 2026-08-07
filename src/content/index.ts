@@ -215,6 +215,7 @@ export type { Drawing } from './faces.js'
 export {
   BONE_BODY,
   BONE_RAMP,
+  BONE_RAMP_BOON,
   BONE_RAMP_LIT,
   BONE_SCAR,
   FACE_GRID,
