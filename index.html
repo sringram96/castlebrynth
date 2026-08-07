@@ -215,6 +215,18 @@
       #tray.plated .panel.on.rack .chip:active { border-color: var(--gold); }
       #tray.plated .panel.on.rack .slot { width: 40px; height: 40px; padding: 0;
         min-width: 0; font-size: 0; }
+      /* POUCH's canonical six live in the same crown sockets as FIGHT.
+         This layer spans the painted apparatus but takes no taps itself; only
+         the six dice do. The central #pouch remains the well for extras. */
+      #tray.plated #pouchHand { position: absolute; inset: 0; z-index: 4;
+        pointer-events: none; }
+      #tray.plated #pouchHand.posed .chip { display: grid; place-items: center;
+        padding: 0; min-width: 0; background: none; border: none;
+        border-radius: 0; box-shadow: none; pointer-events: auto; }
+      #tray.plated #pouchHand.posed .chip canvas { display: block; }
+      #tray.plated #pouchHand.posed .chip.on .mark {
+        filter: drop-shadow(0 0 3px #d9b36a) drop-shadow(0 0 1px #d9b36a); }
+
       #tray.plated #fight { margin: 0; padding: 0; background: none;
         border-top: none; box-shadow: none; }
       #tray.plated #trayDebug { position: absolute; inset: 0; pointer-events: none;
@@ -625,6 +637,7 @@
           <div id="pouch" class="panel"></div>
           <div id="fight" class="panel"></div>
         </div>
+        <div id="pouchHand"></div>
       </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
