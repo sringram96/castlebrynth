@@ -140,10 +140,39 @@ const DRESSED: Readonly<Record<string, SceneArt>> = {
         layer: Layer.Distant,
         anchor: { space: 'frame', x: 0.22, y: 0.055, origin: 'top-center', width: 0.27 },
       },
+      /**
+       * **The heap, raised off the frame's bottom edge, because that edge is
+       * behind the tray.** It stood at `y: 1.0` and had never once been seen:
+       * art. 29 anchors the reliquary over the lower edge of the frame, and on
+       * a 390 × 844 phone the tray owns from 0.752 down, so a thing standing
+       * on the frame's floor stands under the picture. It was drawn every
+       * frame and occluded every frame — found by looking, which is the only
+       * way this one could have been found.
+       *
+       * So it stands on the tray's own top edge instead, which is where the
+       * visible frame actually ends, and it is sized to sit in the bottom
+       * corner rather than to fill it: the Marrow takes the middle when it
+       * arrives, and art. 104 is emphatic that two things competing to be the
+       * one thing leaves the room with none.
+       *
+       * The master is the trimmed one (`assets.ts`), so `bottom-center` means
+       * the base of the heap and not the base of a canvas.
+       */
+      /**
+       * art. 127: **and it moves off the foreground band onto the distant
+       * one.** The Marrow arrives centred at 0.7 of the lens, which spans
+       * 0.15 to 0.85 — there is no width at which a heap this size and the
+       * arrived thing do not overlap, so the only question is which of them
+       * is in front, and a thing that has come *closer than the room* cannot
+       * be behind something lying on the room's floor (art. 30). Foreground
+       * is for what is nearer than the hero; this is not. Standing off, the
+       * Marrow's feet clip the heap's crest by a few pixels, which is the
+       * cheaper of the two errors by a wide margin.
+       */
       {
         asset: 'ossuary.skull-pile',
-        layer: Layer.Foreground,
-        anchor: { space: 'frame', x: 0.42, y: 1.0, origin: 'bottom-center', width: 0.74 },
+        layer: Layer.Distant,
+        anchor: { space: 'frame', x: 0.66, y: 0.765, origin: 'bottom-center', width: 0.44 },
       },
     ],
     // art. 107: one loop, and it is the candle on the right-hand sconce. Its
