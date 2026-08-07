@@ -44,6 +44,36 @@ They are also the density bar for the **third tier** (art. 26's hero
 moments, and the CINE band): what a horror plate should eventually look
 like when the art budget reaches it. `DESIGN.md` lists what is still owed.
 
+## `ossuary/` — the three surface tiles, and why they are not plates
+
+`wall-tile.png`, `floor-tile.png`, `ceiling-tile.png`: seamless 1254² gothic
+ossuary material — small blocks, deep seams, bone set into the masonry, wax
+and soot and damp, a vaulted ribbed ceiling, flagstones with bone in the
+joints. They arrived in the same delivery as the dressing kit and they are
+**deliberately not in `public/`**.
+
+The reason is that the compositor has exactly three anchor spaces — `world`,
+`cover` and `frame` (`src/visual/scene.ts`) — and every one of them resolves a
+plate to an **axis-aligned screen rectangle**. A world anchor scales by 1/z,
+which is honest for a thing standing in the room; none of them shears a raster
+onto a receding plane. So a wall tile pushed through `SceneArt.overlays` is a
+picture of a wall pasted over the wall, running flat across the frame while
+the box behind it recedes — which is the flat-crest defect art. 102 named
+about masses, said one level up about materials. It would look better in a
+screenshot and worse in motion, and it would cost the one thing the renderer
+is for.
+
+What they are for is **art direction on `masonry()`** — `src/content/plates/`,
+where a surface's grammar is authored in world coordinates and therefore
+recedes correctly: unit size, seam depth, defect, inclusion and the gradient
+art. 98 calls the knob that matters most. Read the tiles for that grammar and
+re-author the shader; the perspective stays computed and the density arrives
+in the material (arts 15, 98, 126).
+
+Making them loadable would need a fourth anchor space that maps a raster onto
+a surface plane in the cast, which is a renderer amendment and not a
+placement.
+
 ## Nothing here is copied
 
 The visual language is Castlebrynth's own. These images set a bar for

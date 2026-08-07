@@ -2,7 +2,15 @@
 
 > **Delivered so far** (the ossuary art pass): the hall, the reliquary frame,
 > the ritual knife, and a seven-piece ossuary dressing kit — wall, niche,
-> pillar, archway, hanging cluster, skull pile, candle ledge. **Still owed:**
+> pillar, archway, hanging cluster, skull pile, candle ledge. **Repainted since**
+> (the ossuary repaint): niche, pillar, archway, hanging cluster and skull pile
+> came back denser and warmer and replaced their originals in place; the wall
+> and the ledge were not in that delivery and stand as first painted. Two new
+> slots came with it — `ossuary.shrine`, a built reliquary with a skull set in
+> it, and `ossuary.gate`, a barred crypt door composed as a whole 2:3 scene the
+> way `ossuary.hall` is. Both are registered and **neither is placed**: one is
+> a hero and the other is a threshold, and where each stands is a design
+> decision rather than a dressing choice (arts 37, 104). **Still owed:**
 > the Marrow hero plate, the six bone die faces, the iron trinket die, and the
 > three candle-flame patch frames. Their slots are declared and flagged
 > `awaiting`; until they land the game falls back, and the Marrow is drawn as

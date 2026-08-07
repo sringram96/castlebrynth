@@ -181,11 +181,25 @@ export const PLATES: AssetManifest = {
     1536,
     'ossuary',
   ),
+  /**
+   * **The heap, and its canvas is its content.** The painting that replaced
+   * the first one is a taller thing — the heap now carries a stack of candles
+   * rising out of it — and it arrived on a portrait canvas with a third of its
+   * height empty. A frame anchor pins the *canvas* and derives the height from
+   * the master's own aspect (`frameRect`), so dead margin is not neutral: it
+   * is a plate whose declared bottom edge is not where the thing's bottom edge
+   * is, and an anchor that says `bottom-center` then means something else.
+   *
+   * So this one master is trimmed to its alpha bounding box on the way in and
+   * declared at that size. Nothing about the art is touched — the crop is the
+   * transparent border and only the transparent border — and afterwards the
+   * anchor in `rooms.ts` means what it says.
+   */
   'ossuary.skull-pile': plate(
     'ossuary.skull-pile',
     'regions/ossuary/skull-pile-candles.png',
-    1536,
     1024,
+    808,
     'ossuary',
   ),
   'ossuary.candle-ledge': plate(
@@ -195,6 +209,35 @@ export const PLATES: AssetManifest = {
     1024,
     'ossuary',
   ),
+
+  /**
+   * **The shrine, and it is not dressing.** A niche is a piece of wall and a
+   * pillar is a piece of architecture; this is a built thing with a skull set
+   * in it and five candles burning on it, and at the density it is painted at
+   * it wins any frame it is put in. So it is registered and **not placed**:
+   * art. 104 says one hero per room and *if two things compete to be the one
+   * thing, the room has none*, which makes it the wrong piece to scatter
+   * through the kit and the right piece to build a room around.
+   *
+   * It is here rather than waiting on disk because a declared slot is what
+   * lets the room that wants it be a placement rather than an art request.
+   */
+  'ossuary.shrine': plate('ossuary.shrine', 'regions/ossuary/shrine.png', 1024, 1536, 'ossuary'),
+
+  /**
+   * **The barred gate, and it is a whole scene rather than a cut-out.** Like
+   * `ossuary.hall` it is opaque and composed to a 2:3 frame — floor, jambs,
+   * far darkness and all — so it belongs on the material band under a `cover`
+   * anchor, and it is the wrong shape for a world coordinate: a room's own
+   * cast would be standing behind a picture of a different room's walls.
+   *
+   * Also unplaced, and for a stronger reason than the shrine's. A gate that a
+   * player meets in an ordinary corridor is scenery; the one this was painted
+   * for is a threshold that means something — the Warden's door is the
+   * candidate art. 37 already names — and which room it stands in is a design
+   * decision with a fight behind it, not a dressing choice.
+   */
+  'ossuary.gate': plate('ossuary.gate', 'regions/ossuary/gate.png', 1024, 1536, 'ossuary'),
 
   /**
    * **The carved reliquary the interface sits in.** Its aspect is what sets
