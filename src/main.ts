@@ -73,6 +73,7 @@ import {
   // at paint time; nothing about what they are is decided here (art. 100).
   BONE_BODY,
   BONE_RAMP,
+  BONE_RAMP_BOON,
   BONE_RAMP_LIT,
   BONE_SCAR,
   IRON_BODY,
@@ -1877,7 +1878,7 @@ function slot(className: string): HTMLButtonElement {
 // ways without a second drawing existing (art. 115).
 
 /** How large a face is drawn in a tray slot, and in a row of an inspect. */
-const FACE_IN_SLOT = 32
+const FACE_IN_SLOT = 40
 const FACE_IN_ROW = 24
 
 function faceCanvas(layers: readonly Layer[], size: number): HTMLCanvasElement {
@@ -1898,14 +1899,21 @@ function faceCanvas(layers: readonly Layer[], size: number): HTMLCanvasElement {
  */
 function boneFace(
   value: number,
-  { lit = false, scar = false, size = FACE_IN_SLOT } = {},
+  {
+    lit = false,
+    mark = null as 'cost' | 'boon' | null,
+    size = FACE_IN_SLOT,
+  } = {},
 ): HTMLCanvasElement {
   const ramp = lit ? BONE_RAMP_LIT : BONE_RAMP
   const layers: Layer[] = [
     { draw: BONE_BODY, ramp },
     { draw: pipsFor(value), ramp },
   ]
-  if (scar) layers.push({ draw: BONE_SCAR, ramp })
+  // The same notch either way; only its ink says which way the face cuts.
+  if (mark !== null) {
+    layers.push({ draw: BONE_SCAR, ramp: mark === 'cost' ? BONE_RAMP : BONE_RAMP_BOON })
+  }
   return faceCanvas(layers, size)
 }
 
@@ -1938,21 +1946,34 @@ function ironFace(
 }
 
 /**
- * arts 54, 86: whether this face is the one that costs. It is read off the
- * rider the face declares rather than off a flag, so a die whose price is
- * retuned cannot end up wearing its scar on the wrong face.
+ * arts 54, 86: **which of a face's two marks it wears, or neither.**
+ *
+ * It is read off the rider the face declares rather than off a flag, so a die
+ * whose numbers are retuned cannot end up wearing its mark on the wrong face.
+ *
+ * card 94, amended: it used to answer only about *wounds*, which left the
+ * leech — whose six heals you — drawn pixel for pixel like a plain bone. A die
+ * that does something looking exactly like a die that does nothing is the
+ * defect this wave exists to end, so every rider face is marked and the ink is
+ * what says which way it cuts.
  */
-function bites(face: Face): boolean {
-  if (face.rider === undefined) return false
+function markOn(face: Face): 'cost' | 'boon' | null {
+  if (face.rider === undefined) return null
   const carried = ALL_RIDERS.find((one) => one.id === face.rider)
-  return carried !== undefined && carried.onUse.kind === 'wound'
+  if (carried === undefined) return null
+  return carried.onUse.kind === 'wound' ? 'cost' : 'boon'
 }
 
-/** What a bone's cost face says under it, in the same words the band uses. */
-function costSays(face: Face): string {
+/**
+ * What a marked face says under it, in the same words the band uses — the
+ * plain verb and the rider's own number, so the mark says *something happens
+ * here* and the word says what (art. 111's noun-first rule, one level down).
+ */
+function riderSays(face: Face): string {
   const carried = ALL_RIDERS.find((one) => one.id === face.rider)
-  if (carried === undefined || carried.onUse.kind !== 'wound') return ''
-  return (READOUT.costs ?? '').replace('{n}', `${carried.onUse.amount}`)
+  if (carried === undefined) return ''
+  const said = carried.onUse.kind === 'wound' ? READOUT.costs : READOUT.heals
+  return (said ?? '').replace('{n}', `${carried.onUse.amount}`)
 }
 
 /**
@@ -1999,7 +2020,7 @@ function dieSlot(die: Die, landed: Landed | null, claimed: boolean): HTMLButtonE
     el.append(
       boneFace(face?.value ?? landed.face.value, {
         lit: lift,
-        scar: face !== undefined && bites(face),
+        mark: face === undefined ? null : markOn(face),
       }),
     )
   }
@@ -2101,11 +2122,14 @@ function dieReading(die: Die, kind: string, said = saysDie(die)): HTMLButtonElem
   const faces = document.createElement('span')
   faces.className = 'faces'
   for (const face of die.faces) {
-    faces.append(faceWell(
-      boneFace(face.value, { scar: bites(face), size: FACE_IN_ROW }),
-      costSays(face),
-      KIND_INK.cost,
-    ))
+    const mark = markOn(face)
+    faces.append(
+      faceWell(
+        boneFace(face.value, { mark, size: FACE_IN_ROW }),
+        riderSays(face),
+        mark === 'boon' ? KIND_INK.block : KIND_INK.cost,
+      ),
+    )
   }
   el.append(faces)
   el.onclick = () => {

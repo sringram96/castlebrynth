@@ -196,7 +196,11 @@
          not four border colours, which the playtest could not read. The face
          inverts when selected, wears a tab when kept, and is ringed and sunk
          when claimed. Unused dice dim at resolve. */
-      .slot { width: 42px; height: 42px; padding: 0; position: relative; background: var(--sunk);
+      /* card 94, amended after a hand: the dice were hard to read at 42px on a
+         phone. 48 with a 40px face is a quarter larger and still fits six on
+         one row at 390px — the verbs wrap to their own line beneath, which
+         reads better than sharing a row with the hand anyway. */
+      .slot { width: 48px; height: 48px; padding: 0; position: relative; background: var(--sunk);
         border: 1px solid var(--line); display: flex; align-items: center;
         justify-content: center; }
       .slot.empty { border-style: dashed; opacity: .5; }

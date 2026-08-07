@@ -71,6 +71,25 @@ export const BONE_RAMP_LIT: readonly string[] = BONE_RAMP.map((step, at) =>
   at === 3 ? (BONE_RAMP[4] as string) : step,
 )
 
+/**
+ * **A face that does something is marked, and the ink says which way it cuts.**
+ *
+ * The first cut of this wave marked only the *cost* faces, because art. 86
+ * talks about the mistake that killed somebody. That left the leech — whose
+ * six heals you — drawn pixel for pixel like a plain bone, which is the exact
+ * defect card 94 exists to end: a die that does something looking like a die
+ * that does nothing.
+ *
+ * So the mark is the same notch either way and only its ink changes: red for
+ * a price, cold for a boon. One shape means *this face is not ordinary*, which
+ * is the thing a player has to see at a glance; which of the two it is comes
+ * off the colour and off the word underneath it (art. 111 — the noun first,
+ * then the rest).
+ */
+export const BONE_RAMP_BOON: readonly string[] = BONE_RAMP.map((step, at) =>
+  at === 5 ? 'hsl(196, 30%, 62%)' : step,
+)
+
 /** Rounded, and lit on the near corner, so it never reads as a UI chip. */
 export const BONE_BODY: Drawing = [
   '................',
@@ -92,10 +111,11 @@ export const BONE_BODY: Drawing = [
 ]
 
 /**
- * arts 54, 86: **the cost face is marked where it sits.** The pusher's price
- * is on its 1, and looking at the die is how a player learns it is on the 1 —
- * which is the difference between *it costs you sometimes* and knowing which
- * face to dread.
+ * arts 54, 86: **the face that does something is marked where it sits.** The
+ * pusher's price is on its 1, and looking at the die is how a player learns it
+ * is on the 1 — which is the difference between *it costs you sometimes* and
+ * knowing which face to dread. The leech's boon is on its 6, and the same
+ * notch says so in a different ink (`BONE_RAMP_BOON`).
  */
 export const BONE_SCAR: Drawing = [
   '................',

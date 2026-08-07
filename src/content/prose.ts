@@ -1261,6 +1261,8 @@ export const READOUT: Readonly<Record<string, string>> = {
    * answered in pixels rather than in a sentence about the die in general.
    */
   costs: 'costs {n}',
+  /** card 94, amended: and the other way a face can be worth marking. */
+  heals: 'heals {n}',
   /** card 94: the two boxes of the one readout — `sum × line`, then the blow. */
   sum: 'sum',
   line: 'line',
