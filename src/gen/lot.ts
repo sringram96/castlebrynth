@@ -147,3 +147,61 @@ export function pickSome<T>(
   }
   return out
 }
+
+/**
+ * art. 125: **one item, drawn by band.** A weight names a *band*, and a band
+ * declares how often a draw lands in it — never how one item compares to
+ * another.
+ *
+ * The rule this replaces was `pick`, where a weight was a share of the whole
+ * pool. That is right until the catalog grows: adding a seventh good at
+ * `uncommon` made the six already there rarer, and it made the whole
+ * uncommon band heavier than the common one, so the bands had quietly
+ * inverted without anybody choosing that. Nobody would ever write that
+ * ruling down; it fell out of arithmetic.
+ *
+ * Here a band's share is fixed. Adding a good to a band dilutes **that band
+ * and nothing else**, which is what a rarity band has to mean if the word is
+ * to survive thirty goods. Inside a band the draw is uniform — a band is a
+ * statement about how often, and the things in it are peers by construction.
+ *
+ * **A band with nothing left in it deals nothing**, and its share goes to the
+ * bands that still have something. That is what bounds the depletion bias
+ * art. 125 names: a good that is placed leaves *its own* band likelier and
+ * leaves every other band exactly where it was.
+ *
+ * One draw, not two. The roll picks the band and its remainder picks inside
+ * it, so a banded draw consumes exactly what `pick` consumed and no seeded
+ * sequence changes length under it.
+ */
+export function pickBanded<T>(
+  items: readonly T[],
+  weightOf: (item: T) => number,
+  lot: Lot,
+): T | null {
+  const bands = new Map<number, T[]>()
+  for (const item of items) {
+    const band = Math.max(0, weightOf(item))
+    if (band <= 0) continue
+    const held = bands.get(band)
+    if (held === undefined) bands.set(band, [item])
+    else held.push(item)
+  }
+  const ordered = [...bands.entries()].sort(([a], [b]) => b - a)
+  const total = ordered.reduce((sum, [band]) => sum + band, 0)
+  if (total <= 0) return null
+
+  let roll = lot.next() * total
+  for (const [band, held] of ordered) {
+    if (roll >= band) {
+      roll -= band
+      continue
+    }
+    // The remainder inside this band, uniform across its members.
+    const at = Math.min(held.length - 1, Math.floor((roll / band) * held.length))
+    return held[at] ?? null
+  }
+  // Floating point can leave the roll a hair short of the last band.
+  const last = ordered[ordered.length - 1]
+  return last === undefined ? null : (last[1][0] ?? null)
+}

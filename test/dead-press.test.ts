@@ -113,8 +113,17 @@ describe('art. 118 — an act that cannot change anything is not offered', () =>
       const node = hereIn(chain)
       if (node === null) break
       ledgers = lookAround(ledgers, node)
-      for (const offer of enterRoom(ledgers, chain, ROOM_BOOK, node.instance).tray) {
-        if (offer.kind !== 'act') continue
+      // **The tray is re-read between presses, because the shell re-reads it**
+      // (`doAct`). Art. 89's fork is the case that makes this load-bearing:
+      // taking one half takes the other half's verb off the strip, so a walk
+      // that pressed a snapshot would press a verb the game had already
+      // withdrawn and call the article broken. `test/screen.ts` walks this
+      // way for the same reason.
+      for (let guard = 0; guard < 8; guard++) {
+        const offer = enterRoom(ledgers, chain, ROOM_BOOK, node.instance).tray.find(
+          (one) => one.kind === 'act',
+        )
+        if (offer === undefined || offer.kind !== 'act') break
         const after = act(ledgers, offer.act)
         expect(after, `${offer.act.id} in ${node.instance} is a dead press`).not.toBe(ledgers)
         ledgers = after

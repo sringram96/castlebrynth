@@ -7,7 +7,7 @@ not the art.
 ## `canonical-screen.png` — the canonical composition
 
 The target for **composition, density and material language**, and the still
-the dev fixture is pointed at (`?scene=canonical`, art. 121). What it is
+the dev fixture is pointed at (`?scene=canonical`, art. 126). What it is
 authoritative about:
 
 - portrait, first-person, the world holding most of the frame;
@@ -28,7 +28,7 @@ What it is **not** authoritative about:
   stands (arts 15, 19, 68, 121).
 - **its exact tray geometry.** Flask left, dice centre, rack right is an
   illustration's composition at 1088 pixels. On a 390-pixel phone, side
-  columns take the width the dice need to stay hittable (art. 123), and
+  columns take the width the dice need to stay hittable (art. 128), and
   art. 67's rail already puts the body on one side and the ways through on
   the other.
 

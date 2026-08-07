@@ -16,7 +16,7 @@ import type { RoomId, RunHistory, Seed } from '../state/index.js'
 import { instanceOf } from '../state/index.js'
 import { FRESH_DRIFT, locked, poolRooms, pools, pull, tallied } from './drift.js'
 import type { Lot } from './lot.js'
-import { SALT, lotAt, pick, pickAt, pickSome } from './lot.js'
+import { SALT, lotAt, pick, pickAt, pickBanded, pickSome } from './lot.js'
 import type {
   Catalog,
   Chain,
@@ -63,7 +63,7 @@ export type {
   SocketId,
 } from './types.js'
 export type { Lot } from './lot.js'
-export { lotFrom, reseed, shuffle } from './lot.js'
+export { lotFrom, pickBanded, reseed, shuffle } from './lot.js'
 export { FRESH_DRIFT, NEUTRAL, tallyOf } from './drift.js'
 
 /** A run that has opened no door yet. Every run starts here (art. 36). */
@@ -282,8 +282,15 @@ export function deal(
       return other
     }
 
-    const stand = (socket: Socket, one: Encounter): void => {
-      const other = forkFor(one)
+    /**
+     * art. 89 as amended: **a fork is offered, never stumbled into.** The
+     * caller says whether this is the socket's fork, so a good that happens
+     * to name an alternative stands alone when it was drawn ordinarily —
+     * otherwise the fork rate would be the sum of two numbers and one of
+     * them would still be an accident.
+     */
+    const stand = (socket: Socket, one: Encounter, asFork = false): void => {
+      const other = asFork ? forkFor(one) : null
       fills.push(
         other === null
           ? { socket: socket.id, encounter: one.id }
@@ -331,8 +338,28 @@ export function deal(
           inBand(one, step) &&
           !(once(one) && placed.has(one.id as string)),
       )
-      const drawn = pick(offers, (one) => one.weight, lot)
-      if (drawn !== null) stand(socket, drawn)
+      // art. 125: **by band, not by share.** A weight names how often a draw
+      // lands in that band, so a seventh good at `uncommon` dilutes the
+      // uncommon band and leaves the common one exactly where it was. Under
+      // the old relative draw the seven uncommons already outweighed the
+      // three commons, which is a rarity nobody chose.
+      const drawn = pickBanded(offers, (one) => one.weight, lot)
+      if (drawn === null) continue
+      // art. 89 as amended: **the fork's frequency is declared.** It is asked
+      // *after* the draw and never before it, because a draw aimed at the
+      // goods that can fork would promote exactly those goods and quietly
+      // break art. 125 — the fork would be paying for itself out of the
+      // rarity bands. So the rate a player feels is the chance an initiator
+      // is dealt, which art. 125 now makes a chosen number, times this one.
+      //
+      // The roll is only taken where a fork could actually form, so a socket
+      // with no fork available consumes exactly what it always did.
+      // The roll is taken whenever a fork *could* form, whatever the chance
+      // is set to — a short-circuit at one would make the draw count depend
+      // on the knob, and then turning the knob would reshuffle the whole deal
+      // instead of only deciding forks.
+      const forking = forkFor(drawn) !== null && lot.next() < grammar.forkChance
+      stand(socket, drawn, forking)
     }
 
     return fills

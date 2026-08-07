@@ -4,7 +4,10 @@ the-world.md. This file governs how the game is touched; it stands
 beside the touch laws (arts 5–8, the-world.md) and the screen laws
 (arts 29–30, the-room.md). Ratified 2026-08-04 from the first
 skeleton playtest. Settings are art. 116; the dead-press ruling of
-2026-08-06 is art. 118, at the foot of this file.
+2026-08-06 is art. 118. The two screens the mend closed — the front door
+(art. 123) and the choosing (art. 124) — are at the foot of this file.
+Which screens exist at all, and what each one asks, is art. 121 in
+journey.md.
 
 ## The two registers
 66. SETTLED — Controls and prose are different languages. A control is
@@ -42,9 +45,10 @@ skeleton playtest. Settings are art. 116; the dead-press ruling of
     are standing at *is* the fight.
 
     **And FIGHT holds only the duel** (amended by ruling of 2026-08-05).
-    What the duel needs is the dice and the verbs that move a turn:
-    Roll, Recast, Keep all, Claim, Take back, End turn. **Run is not one
-    of them** — running is not a move in the duel, it is the one thing
+    What the duel needs is the dice and the verbs that move a turn — under
+    art. 41 as amended the same day, that is **Roll, Reroll, Attack**, with
+    End turn standing in for Attack when the selection claims nothing.
+    **Run is not one of them** — running is not a move in the duel, it is the one thing
     you can still do about the door you are standing at, so it lives in
     ACTS with the room's other verbs. FIGHT's strip is three different
     sets across a turn; a verb that *leaves* the fight has no business
@@ -249,8 +253,90 @@ take a thing you have not found, and I will not tell you what it is.*
      stops offering — and a verb that is offered and does nothing is a
      punishment wearing an offer's coat.
 
+## The two screens (ratified 2026-08-07)
+Both were flagged as straw defaults when they shipped and both went three
+waves without a veto, which is not a ruling — it is an argument nobody
+closed, and an open argument is where scope leaks in. The mend closes
+them.
+
+123. SETTLED (ruled 2026-08-07) — **The threshold stands. Boot lands at
+     the front door, always.** Cold, or standing in the middle of a fight:
+     the first screen is the door, and **Continue** is one press back to
+     exactly where you were, focus and all (arts 75, 91).
+
+     **A waking is not a descent, and that is state rather than an
+     inference.** `wake` deals a labyrinth on a first install, after a
+     death, after the Warden's door and after an abandonment — every one
+     of those is a run nobody has chosen to take. `descending` is set by
+     the one press that chooses to. This is art. 91's reasoning applied to
+     a second kind of state: a fact the shell has to work out from four
+     other fields is a fact it can work out wrongly.
+
+     The alternative — booting into the run with the threshold *reachable
+     from somewhere* — is not adopted, and the reason is that nobody has
+     ever proposed the somewhere. It needs a place, and a place is a
+     region on a screen that is already full of the room, the word and the
+     tray; art. 67 says the tray holds acts, the pouch and the fight and
+     nothing else, so it would need an amendment as well. Against that it
+     buys one press per reload, on a game whose sessions are short pushes
+     and whose reloads are rare. **The cost is honest and accepted**: one
+     press, and it loses nothing.
+
+     Two things follow and are the article rather than the layout. **The
+     door offers only what is true** — Continue only when a run is in
+     flight, Descend only when there is none, the Book only when the
+     permanent holds one — which is art. 71 applied to a front door: no
+     press may lie about where it takes you. And **abandoning is never
+     quiet**: its own verb, never the same button as Descend, what it
+     costs stated before the press that pays it, and a line written in the
+     Book, because an ending a player could take without it being written
+     down is a record they could scrub by walking away from the runs that
+     went badly.
+
+124. SETTLED (ruled 2026-08-07) — **The order is the interface.**
+
+     Art. 60 already says the pouch is ordered and the hand is its first
+     `handSize`. The choosing screen therefore does not need a second
+     model of what a hand is — it draws the one that already exists: the
+     **hand above a rule, the spares below it**, and a swap is the only
+     move.
+
+     **A swap is tap-tap-Swap**, which is the staged vocabulary a claim
+     already uses (art. 72) — one tap marks what leaves, one marks what
+     comes in, one plain verb commits. There is no per-die *chosen* state
+     to learn, no counter to satisfy, and nothing to undo, because a tap
+     on a marked die un-marks it and that is the whole of undo (art. 41's
+     reasoning, in a second place).
+
+     **The screen opens on the hand you last took down.** The order
+     carries it for free, so this costs nothing and means **Descend is one
+     press when nothing has changed** — which is the ordinary case, and a
+     screen that charges six presses for the ordinary case is a form. The
+     screen is an *offer to reorder*, not a form to fill in.
+
+     **Identical spares stack, and individuals do not.** Six bare bones
+     are not six decisions; `bone ×4` is one row and one thing to think
+     about. A special die never stacks, however many of it there are,
+     because each **is** somebody — art. 86 makes a die's shape how its
+     owner died, and art. 87 gives each one a sentence. A thing with an
+     origin is an individual and is drawn as one.
+
+     **The word band never restates a standing truth.** A tap on a thing
+     whose line is already up answers with the pick's motion and not with
+     the sentence reprinted — *draw it, do not name it*. Art. 69 is
+     satisfied by the answer, and the answer to *I already told you* is a
+     pixel (art. 70), not the same sentence again.
+
+     The reading problem this screen used to have is already solved
+     elsewhere and is not solved again here: a die at rest draws its whole
+     face set with the cost face marked where it sits, so art. 54 is
+     satisfied by a drawing rather than by a sentence (card 94). What this
+     article settles is the **individuation** problem, which is the only
+     one that was left — a pouch of thirty that scrolls and groups is a
+     screen, and a pouch of thirty that does not is a spreadsheet.
+
 ## The hand is a collection (ratified 2026-08-07)
-Drafted from the plate amendment's migration (arts 121–122). It found a
+Drafted from the plate amendment's migration (arts 126–127). It found a
 number where a rule should have been: the tray drew a 48-pixel slot and
 trusted that six of them fitted a phone. Art. 60 has always said hand
 size is a body stat — grown by mercies, shrunk by wounds and curses — and
@@ -258,7 +344,7 @@ size is a body stat — grown by mercies, shrunk by wounds and curses — and
 the only thing in the game that believed in six, and it believed in it
 in a stylesheet, where no rule can reach.
 
-123. SETTLED (ruled 2026-08-07) — **The tray renders the hand it is
+128. SETTLED (ruled 2026-08-07) — **The tray renders the hand it is
      given, and never a number of dice it was told to expect.**
 
      No fixed slots, no positional selectors, no tuple of six. The row is

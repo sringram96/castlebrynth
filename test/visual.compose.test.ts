@@ -13,7 +13,7 @@ import {
 } from '../src/visual/index.js'
 
 /**
- * art. 122: the layer order is one declared list, and composition is a pure
+ * art. 127: the layer order is one declared list, and composition is a pure
  * function of the art, the view and the clock.
  *
  * The reason these are tests and not comments: composition is the part of a
@@ -63,7 +63,7 @@ const ctx = (assets: AssetCache): Parameters<typeof composite>[1] => ({
   moment,
 })
 
-describe('the layer order — art. 122', () => {
+describe('the layer order — art. 127', () => {
   it('is ascending, gapless and has one entry per band', () => {
     expect(LAYER_ORDER).toEqual([...LAYER_ORDER].sort((a, b) => a - b))
     expect(new Set(LAYER_ORDER).size).toBe(LAYER_ORDER.length)
@@ -119,7 +119,7 @@ describe('the layer order — art. 122', () => {
   })
 })
 
-describe('the compositor — art. 121 (missing art falls back)', () => {
+describe('the compositor — art. 126 (missing art falls back)', () => {
   it('composes nothing at all for a room with no art', () => {
     expect(composite(NO_ART, ctx(cacheOf()))).toEqual([])
   })

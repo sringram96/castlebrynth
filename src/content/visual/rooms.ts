@@ -1,10 +1,10 @@
 /**
- * Where the authored plates stand — art. 121, art. 122.
+ * Where the authored plates stand — art. 126, art. 127.
  *
  * A room's *geometry* is `src/content/rooms.ts`: its three numbers, its
  * shape, its school, its features, its props. None of that moves. This file
  * is the layer above it — what a room additionally carries, as placements
- * into the bands art. 122 declares.
+ * into the bands art. 127 declares.
  *
  * It is keyed on the room template (art. 34: knowledge attaches to things,
  * not places) and it is a **lookup, not a field**, so a room with no art here
@@ -48,7 +48,7 @@ const candle = (id: string, mark: WorldMark, every = 3): AnimatedPatch => ({
 })
 
 /**
- * art. 121: **what you are carrying, at the bottom edge of the lens.**
+ * art. 126: **what you are carrying, at the bottom edge of the lens.**
  *
  * It is anchored to the frame and not to the room, so it does not diminish,
  * does not move when the box does, and sits in the same corner on a phone of

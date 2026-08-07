@@ -1,5 +1,5 @@
 /**
- * The asset manifest — every authored plate the game ships (art. 121).
+ * The asset manifest — every authored plate the game ships (art. 126).
  *
  * This is the **only** file in the repository that knows a filename.
  * Gameplay names a thing by id; placement names a thing by id; the fixture
@@ -33,14 +33,14 @@ const plate = (
 })
 
 /**
- * art. 121: the first slice. Five masters, and each is here to prove one
+ * art. 126: the first slice. Five masters, and each is here to prove one
  * thing the architecture claims:
  *
  * - `ossuary.bone-stack` — an authored overlay standing in a computed room;
  * - `horror.marrow` — a focal plate at a world coordinate, which the fight
  *   then brings closer without a second screen (art. 30);
  * - `patch.candle.*` — two frames of a thing five pixels wide, repainted
- *   without recasting the room (arts 110, 122);
+ *   without recasting the room (arts 110, 127);
  * - `hand.lantern` — what you are carrying, anchored to the frame rather
  *   than to the room.
  *

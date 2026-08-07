@@ -1,5 +1,5 @@
 /**
- * Which frame a patch is showing — arts 107, 109, 116, 122.
+ * Which frame a patch is showing — arts 107, 109, 116, 127.
  *
  * Pure arithmetic on the world clock, so a patch's state is a function of
  * the tick and its own identity and of nothing else. Two things follow, and

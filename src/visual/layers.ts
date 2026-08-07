@@ -1,5 +1,5 @@
 /**
- * The layer order — art. 122.
+ * The layer order — art. 127.
  *
  * Before this file, z-order was an implicit property of the sequence a
  * caller happened to paint in: `renderRoom` painted props far to near
@@ -8,7 +8,7 @@
  * order. Three different statements of "what is in front of what", none of
  * them written down, and nothing that could be tested.
  *
- * art. 122 makes the order one declared list. Everything composited into a
+ * art. 127 makes the order one declared list. Everything composited into a
  * frame names a band on it, and the compositor sorts by band and then by
  * declaration order — so a plate cannot be in front of the thing it is
  * behind by accident, and a new kind of thing has to *say* where it goes.
@@ -26,7 +26,7 @@ export const Layer = {
   Void: 0,
   /** The computed box: surfaces, thresholds, mass, contour (arts 15, 93). */
   Room: 1,
-  /** Authored material laid over a school's own surfaces (art. 121). */
+  /** Authored material laid over a school's own surfaces (art. 126). */
   Material: 2,
   /** Architecture standing on or against the walls (art. 99). */
   Architecture: 3,
@@ -36,11 +36,11 @@ export const Layer = {
   Hero: 5,
   /** Objects nearer the camera than the hero (art. 105). */
   Foreground: 6,
-  /** arts 107, 122: the small moving parts, repainted alone. */
+  /** arts 107, 127: the small moving parts, repainted alone. */
   Patch: 7,
   /** Fields on the air — motes, dust, rain (art. 101). */
   Atmosphere: 8,
-  /** What you are carrying, at the bottom edge of the world (art. 121). */
+  /** What you are carrying, at the bottom edge of the world (art. 126). */
   FirstPerson: 9,
   /** DOM: the tray, the marks, the crown (arts 29, 67). */
   Hud: 10,

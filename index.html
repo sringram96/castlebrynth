@@ -22,7 +22,7 @@
         --blood: #a8331f;
         --cold: #7fa8b8;
 
-        /* arts 121, 123: **the tray is a made object.**
+        /* arts 126, 128: **the tray is a made object.**
            The reference (`reference/visual/canonical-screen.png`) puts the
            interface *in* the world: a carved reliquary of bone and oxidised
            iron sitting at the bottom of the lens, with the dice recessed into
@@ -113,7 +113,7 @@
 
       /* art. 67: the tray is anatomy. Four regions, always in these places,
          always in this order, whatever the moment holds. */
-      /* art. 121: the tray is carved, not drawn. Three things do the work and
+      /* art. 126: the tray is carved, not drawn. Three things do the work and
          nothing else is needed: a lit top edge so it reads as a lip standing
          proud of the world above it, a dark body with a vertical grain, and
          an inner shadow under the lip so the panel sits *inside* the frame
@@ -144,7 +144,7 @@
       #panels { padding-top: 8px; }
       .panel { display: none; }
       .panel.on { display: block; }
-      /* art. 67: the rail never changes, and art. 121 makes it a carved band
+      /* art. 67: the rail never changes, and art. 126 makes it a carved band
          across the top of the reliquary — the body on the left, the ways
          through on the right, cut into the same bone. */
       #vitals { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px;
@@ -162,7 +162,7 @@
       /* art. 30: no battle screen — the world band is still the room. What
          changes mode is the tray, so the fight panel gets its own ground:
          darker, ruled off, and lit along the top edge. */
-      /* art. 121: the duel's ground is a shelf cut into the reliquary — sunk
+      /* art. 126: the duel's ground is a shelf cut into the reliquary — sunk
          below the rail, lit along its lip, with the room's darkness pooling
          at the bottom of it. */
       #fight { margin: -8px -10px -12px; padding: 10px 10px 12px;
@@ -244,7 +244,7 @@
          phone. 48 with a 40px face is a quarter larger and still fits six on
          one row at 390px — the verbs wrap to their own line beneath, which
          reads better than sharing a row with the hand anyway. */
-      /* art. 123: **the hand is a collection, and its row is computed.**
+      /* art. 128: **the hand is a collection, and its row is computed.**
          There are no six slots and no `nth-child` — there is one row, whose
          die size, gap and wrap point arrive from `src/shell/tray.ts` as
          custom properties. `--per-row` is what makes a two-row hand break
@@ -265,7 +265,7 @@
          not know what a pip is and must not: a colour here would be a colour
          off the ramp, which is the one thing art. 100 forbids. */
       .slot .mark { display: block; image-rendering: pixelated; }
-      /* art. 121: a die is a thing sitting in a tray, not a browser control.
+      /* art. 126: a die is a thing sitting in a tray, not a browser control.
          The well it sits in is carved (dark, sunk, hard-edged); the die is
          warm bone standing proud of it. The reference gets this right and it
          is most of why its interface reads as part of the image. */
@@ -390,6 +390,11 @@
       .reading.spare { opacity: .66; }
       .reading.sel { border-color: var(--gold); background: #1c1710; }
       .reading.sel .name { color: var(--ink); }
+      /* art. 124: identical spares stack, so a row may stand for more than
+         one of itself. It sits at the end of the row, out of the way of the
+         faces, because it is a fact about the stack and not about the die. */
+      .reading .count { margin-left: auto; flex: 0 0 auto; font-size: .74em;
+        color: var(--dim); }
       /* card 94: once the materials differ, a dashed hairline is the whole
          separator the tray needs. No heading, no label. */
       .panel .rule.iron { background: none; height: 0; border-top: 1px dashed #2f3846; }

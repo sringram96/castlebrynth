@@ -42,24 +42,30 @@ import { hasLooked } from '../state/index.js'
  * every door of such a room the same fight. While it stands, none of them
  * gives; when it falls, all of them do.
  *
- * The keeper keeps its word. It stands in no socket, it is not in the hall
- * until the key turns (art. 37), and the ceremony that wakes it is already a
- * verb pressed about a thing.
+ * **And the keeper is no longer the exception** (the mend, wave 2). It stands
+ * in no socket and is not in the hall until the key turns (art. 37), both
+ * unchanged — but once it *is* standing there, it is a horror standing in a
+ * room with you, and this function stopped having a special case for it. A
+ * hall with its keeper up is `guarded` like any other room with teeth in it:
+ * no door gives, the door's look says why, and the way back into the fight is
+ * the keeper's own verb, summoned by looking at it.
+ *
+ * That closes the last door-fight in the game. `WayOn` therefore no longer
+ * has a `fight` member, which is the proof rather than the consequence — the
+ * type could not express a door-fight now if somebody wanted one.
  */
-export type WayOn = 'open' | 'fight' | 'descend'
+export type WayOn = 'open' | 'descend'
 
 export function wayOn(
   ledgers: Ledgers,
   book: RoomBook,
   node: ChainNode,
   door: Door,
-  keeperStanding: boolean,
   guarded = false,
 ): WayOn | null {
   // art. 3 and card 67 in one question: may this press take me out of here.
   if (!mayLeave(ledgers, book, node, door)) return null
   if (guarded) return null
-  if (keeperStanding) return 'fight'
   return door.ends === true ? 'descend' : 'open'
 }
 

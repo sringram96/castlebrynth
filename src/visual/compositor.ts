@@ -1,5 +1,5 @@
 /**
- * The compositor — art. 122.
+ * The compositor — art. 127.
  *
  * It answers one question and paints nothing: *given a scene's art, the
  * view, and the clock, what stands where, in what order?* The answer is a
@@ -48,7 +48,7 @@ export interface Composition {
  * Three rules, and each of them is a defect this wave found:
  *
  * **Missing art is dropped, never faked.** An id with no asset behind it
- * contributes nothing and the band stays empty (art. 121). A room whose hero
+ * contributes nothing and the band stays empty (art. 126). A room whose hero
  * has not been drawn renders as the computed room it always was — art. 26's
  * first tier is a floor, so a hole in the art is a plainer room and never a
  * broken one.
@@ -65,7 +65,7 @@ export interface Composition {
  * frame entirely is not in the list, so the painter never asks a canvas to
  * clip something it could have skipped.
  *
- * **The order is the article's** (art. 122), not the order somebody happened
+ * **The order is the article's** (art. 127), not the order somebody happened
  * to write the overlays in. Declaration order breaks ties *within* a band and
  * nothing else.
  */

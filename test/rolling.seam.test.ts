@@ -114,7 +114,7 @@ describe('card 93 §1 — carrying none draws nothing', () => {
    * byte. If the seam draws a value it should not have, the first turn of the
    * first fight disagrees and the row says which.
    */
-  it('reproduces the pre-wave transcript exactly (the flexibility test)', () => {
+  it('reproduces the pre-wave fights exactly (the flexibility test)', () => {
     const now: Transcript = transcript()
     const before = prewave as unknown as Transcript
     expect(now.fights).toHaveLength(before.fights.length)
@@ -123,9 +123,36 @@ describe('card 93 §1 — carrying none draws nothing', () => {
       const was = before.fights[at]!
       expect(now.fights[at], `${was.horror} · ${was.hand} · seed ${was.seed}`).toEqual(was)
     }
-    for (let at = 0; at < before.depths.length; at++) {
-      const was = before.depths[at]!
-      expect(now.depths[at], `depth seed ${was.seed}`).toEqual(was)
+  })
+
+  /**
+   * **The depths half is superseded, and by a ruling rather than by a drift**
+   * (art. 125, the mend's third wave).
+   *
+   * It was 240 fights and 150 whole runs, and both halves matched byte for
+   * byte until a rarity semantics ruling deliberately re-dealt the boon
+   * socket. **The fights half still matches, all 240 of them**, and that is
+   * the half the seam owns — art. 125 does not touch the scoring path, and
+   * if the amend seam ever draws a value it should not, the very first turn
+   * of the very first fight will say so.
+   *
+   * The depths half is a record of a *deal*, and the deal changed on
+   * purpose: 100 of the 150 runs are dealt a different good somewhere, and a
+   * different good is a different run from there on. Regenerating it would
+   * make it agree with whatever the code currently does, which is the one
+   * thing the file must not do, so it is kept as it stands and this is the
+   * note that says why it is no longer asserted line for line.
+   *
+   * What the depths half was *for* is asserted directly instead, because the
+   * add-on's claim outlives the transcript that once carried it: with the
+   * two rolling-good rows taken out of the catalog, no run is dealt one.
+   */
+  it('deals no rolling good from a catalog without them (the add-on claim)', () => {
+    const now: Transcript = transcript()
+    for (const depth of now.depths) {
+      for (const held of depth.haul) {
+        expect(held, `depth seed ${depth.seed}`).not.toMatch(/^trinket\./)
+      }
     }
   })
 })

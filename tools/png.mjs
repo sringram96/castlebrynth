@@ -1,7 +1,7 @@
 /**
  * A PNG encoder, for the plate pipeline. Not shipped and not imported by
  * anything under `src` — it exists so that a master authored as text can be
- * written out as the raster the runtime loads (art. 121).
+ * written out as the raster the runtime loads (art. 126).
  *
  * It writes 8-bit RGBA with **binary alpha only**: every pixel is 0 or 255
  * and `encode` throws on anything between. That is art. 17 enforced at the
@@ -75,7 +75,7 @@ export function encode(width, height, rgba) {
  *
  * This is the same shape art. 100's alphabet has, said about a plate: the
  * difference is that a plate's characters index its own palette rather than
- * the room's ramp, which is the whole of what art. 121 added.
+ * the room's ramp, which is the whole of what art. 126 added.
  */
 export function fromText(rows, palette) {
   const height = rows.length

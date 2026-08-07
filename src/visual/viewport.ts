@@ -10,7 +10,7 @@
  * There is no second resolution. The reference image is 1088 pixels wide and
  * that is its *authoring* density, not a runtime requirement: a master is
  * reduced to the frame's own scale before it ships, so a dense-looking frame
- * costs the same as a plain one (art. 121).
+ * costs the same as a plain one (art. 126).
  */
 
 import { fillScale } from '../room/index.js'

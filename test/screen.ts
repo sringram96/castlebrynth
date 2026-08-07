@@ -33,6 +33,7 @@
 
 import {
   HORROR_DOWN,
+  WARDEN_DOWN,
   NOTICES,
   ROOM_BOOK,
   horrorIn,
@@ -155,8 +156,8 @@ export function shellAt(seed: number): Shell {
     )
 
   /** card 95: whether the thing standing in this room is still on its feet. */
-  const standing = (): boolean =>
-    horrorStanding(node(), sceneStateOf(ledgers, ROOM_BOOK, node()).done)
+  const doneHere = (): readonly string[] => sceneStateOf(ledgers, ROOM_BOOK, node()).done
+  const standing = (): boolean => horrorStanding(node(), doneHere())
 
   const shell: Shell = {
     get ledgers() {
@@ -170,7 +171,10 @@ export function shellAt(seed: number): Shell {
     },
     node,
     said: () => bandLine(band, ambient()),
-    things: () => tappablesIn(ROOM_BOOK, node()),
+    // card 95, the mend: `done`, because one room's own tappables depend on
+    // what has happened in it — the keeper is in the hall only once the key
+    // has turned and only until it goes down.
+    things: () => tappablesIn(ROOM_BOOK, node(), doneHere()),
     tap(target) {
       // `markFor`: the look, the pocket, and art. 118's third question.
       const said = look(
@@ -203,8 +207,9 @@ export function shellAt(seed: number): Shell {
       band = answered(saysAct(one.id))
       return { verb: one.verb, moved: ledgers !== was, before, after: shell.said() }
     },
-    // card 95: and the room's own teeth, which is what shuts every door in it.
-    way: (door) => wayOn(ledgers, ROOM_BOOK, node(), door, keeperUp(door), standing()),
+    // card 95: and the room's own teeth, which is what shuts every door in
+    // it — the keeper included, since the mend gave it a body to be tapped.
+    way: (door) => wayOn(ledgers, ROOM_BOOK, node(), door, standing()),
     // `doorMark`: the sense first, because it is what the door is, then
     // card 95's *something is in the way*, then art. 118's stop.
     sense: (door) =>
@@ -217,8 +222,8 @@ export function shellAt(seed: number): Shell {
       ]
         .filter((said) => said !== '')
         .join(' '),
-    horror: () => horrorMarkIn(node()),
-    fightOffered: () => fightSummoned(ledgers, node(), horrorMarkIn(node()), standing()),
+    horror: () => horrorMarkIn(node(), doneHere()),
+    fightOffered: () => fightSummoned(ledgers, node(), horrorMarkIn(node(), doneHere()), standing()),
     walk(door) {
       const walked = chooseDoor(ledgers, chain, ROOM_BOOK, door, DEALER)
       ledgers = walked.ledgers
@@ -228,18 +233,27 @@ export function shellAt(seed: number): Shell {
       ledgers = greet(ledgers, chain)
     },
     // card 95: `openTheFight(null)` — a fight is about the horror, and the
-    // door it is standing in front of is not part of it.
+    // door it is standing in front of is not part of it. The keeper is the
+    // one exception, because beating it is what turns *its* door back into a
+    // way down (art. 37), so the shell hands that fight its door.
     enter() {
       const horror = horrorIn(node()) ?? horrorOf(node().fills)
       if (horror === null) throw new Error(`${node().instance} has nothing to fight`)
-      fight = openFightDoor(ledgers, { door: null, horror }, NO_GOODS)
+      const at = node().doors.find((door) => keeperUp(door)) ?? null
+      fight = openFightDoor(ledgers, { door: at, horror }, NO_GOODS)
       band = HUSHED
     },
-    // `wonTheFight`, minus the paint: the deed, and the room read again.
+    // `wonTheFight`, minus the paint: the deed, and the room read again. Which
+    // deed is the only thing that differs between the keeper and a stray.
     won() {
+      const keeper = node().doors.some((door) => keeperUp(door))
       ledgers = {
         ...ledgers,
-        run: didHere(ledgers.run!, ledgers.run!.at.instance, HORROR_DOWN),
+        run: didHere(
+          ledgers.run!,
+          ledgers.run!.at.instance,
+          keeper ? WARDEN_DOWN : HORROR_DOWN,
+        ),
       }
       reread()
     },
@@ -295,6 +309,14 @@ export function walkDepth(seed: number): Walked {
       presses.push(shell.press(one))
     }
 
+    // **And look again, because a press can put something in the room.** The
+    // Warden's hall is the one that does it: turning the key wakes a keeper
+    // that was not there to be tapped a moment ago (art. 37), and art. 68
+    // says the verb does not exist until the thing has been looked at. A
+    // thumb does this without being told — the hall says something took a
+    // step, and you look at it.
+    for (const target of shell.things()) shell.tap(target)
+
     // card 95: **the thing in the room, before the way out of it.** Looking at
     // every tappable is what summoned FIGHT (art. 68), and while the horror
     // stands no door offers anything — so a walk that went to the doors first
@@ -319,17 +341,6 @@ export function walkDepth(seed: number): Walked {
       return { outcome: 'stuck', rooms: room, presses, held }
     }
 
-    // The keeper is the one fight still entered at a door (art. 37, card 95).
-    if (open.way === 'fight') {
-      shell.enter()
-      for (let n = 0; n < 300 && shell.fight?.outcome === 'fighting'; n++) {
-        presses.push(shell.turn())
-      }
-      if (shell.fight?.outcome !== 'won') return { outcome: 'died', rooms: room, presses, held }
-      if (open.door.ends === true) return { outcome: 'finished', rooms: room, presses, held }
-      shell.walk(open.door)
-      continue
-    }
     if (open.way === 'descend') return { outcome: 'finished', rooms: room, presses, held }
     shell.walk(open.door)
   }

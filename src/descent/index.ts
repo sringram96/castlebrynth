@@ -270,7 +270,16 @@ export interface SocketWords {
  */
 export interface RoomBook {
   beats(room: RoomId): readonly string[]
-  tappables(room: RoomId): readonly Tappable[]
+  /**
+   * `done` for the same reason `socket` takes it: one room's own tappables
+   * depend on what has happened in it. The Warden's hall has a keeper
+   * standing in it once the key has turned and not after it falls, and the
+   * keeper stands in no socket (art. 37), so the room itself is what has to
+   * answer. The default is *nothing has happened here*, which is the right
+   * answer for every caller asking what a room is rather than what this one
+   * has become.
+   */
+  tappables(room: RoomId, done?: readonly string[]): readonly Tappable[]
   /**
    * art. 6: looking is free and always answers.
    *
@@ -411,7 +420,7 @@ export function tappablesIn(
   done: readonly string[] = [],
 ): readonly Tappable[] {
   return [
-    ...book.tappables(node.room),
+    ...book.tappables(node.room, done),
     ...node.fills.flatMap((fill) => book.socket(node.room, fill, done).tappables),
   ]
 }
@@ -504,10 +513,6 @@ export function doorKey(instance: InstanceId, door: Door): string {
   return `${instance}→${door.at}`
 }
 
-/** art. 70: whether this door has already been opened from this room. */
-export function isOpened(state: SceneState, door: Door): boolean {
-  return state.opened.includes(doorKey(state.instance, door))
-}
 
 export function enterRoom(
   ledgers: Ledgers,
@@ -830,7 +835,7 @@ export function nextBeat(bands: Bands): Bands {
 }
 
 /** Which candle the bands are on, for the run to write down (art. 36). */
-export function beatIndex(bands: Bands): number {
+function beatIndex(bands: Bands): number {
   return Math.max(0, bands.word?.index ?? 0)
 }
 
@@ -1125,15 +1130,6 @@ export function chooseDoor(
   }
 }
 
-/**
- * art. 70 for a door that changes no room: opening a fight-door is opening a
- * door, and the room it stands in has to show it.
- */
-export function openDoor(ledgers: Ledgers, door: Door): Ledgers {
-  const run = ledgers.run
-  if (run === null) return ledgers
-  return { ...ledgers, run: openedDoor(run, doorKey(run.at.instance, door)) }
-}
 
 /** art. 36: the candle you are on is part of where you are. */
 export function remember(ledgers: Ledgers, bands: Bands): Ledgers {

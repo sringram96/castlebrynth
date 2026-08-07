@@ -28,7 +28,7 @@ const scratch = new WeakMap<HTMLCanvasElement, ImageData>()
 
 /**
  * Paint a frame: the cast box, then everything authored over it, in the
- * article's order (art. 122).
+ * article's order (art. 127).
  *
  * A draw whose asset has no image behind it is skipped — that is a drawing
  * (art. 100's species, painted as a prop inside the cast) or art that has not

@@ -9,7 +9,7 @@ import type { Seed } from '../src/state/index.js'
 import { renderRoom } from '../src/room/index.js'
 
 /**
- * art. 121: the canonical screen is the surface future art work is measured
+ * art. 126: the canonical screen is the surface future art work is measured
  * against, so what it has to be is *the same picture twice*. These prove
  * that, and prove the one thing a rendering harness must never do — change
  * what is true (art. 116's first sentence, applied to a dev route).

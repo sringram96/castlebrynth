@@ -1,5 +1,5 @@
 /**
- * Assets are data — art. 121.
+ * Assets are data — art. 126.
  *
  * Two species of authored thing, and the difference between them is the
  * whole of the amendment:
@@ -10,7 +10,7 @@
  * burnt as one object in two keys. Everything already in `src/content/plates`
  * is one of these and none of it moves.
  *
- * A **plate** is art. 121's new thing: a raster master with its own palette,
+ * A **plate** is art. 126's new thing: a raster master with its own palette,
  * authored for one school and painted as it was drawn. It is what buys the
  * density of `reference/visual/canonical-screen.png`, which no ramp-indexed
  * grid was ever going to reach — the reference hoards its detail at eyes and
@@ -41,7 +41,7 @@
  */
 export const ASSET_ROOT = 'assets/visual/'
 
-/** A raster master, authored for one school and painted as drawn (art. 121). */
+/** A raster master, authored for one school and painted as drawn (art. 126). */
 export interface Plate {
   readonly kind: 'plate'
   readonly id: string
@@ -50,7 +50,7 @@ export interface Plate {
   readonly nativeWidth: number
   readonly nativeHeight: number
   /**
-   * art. 121: which school it was drawn in. A plate is in one key, so the
+   * art. 126: which school it was drawn in. A plate is in one key, so the
    * room it stands in has to be in that key too.
    */
   readonly school: string
@@ -89,7 +89,7 @@ export function faultsIn(manifest: AssetManifest): readonly string[] {
       if (!asset.src.startsWith(ASSET_ROOT)) {
         faults.push(`${asset.id}: src is outside ${ASSET_ROOT}`)
       }
-      // art. 121: a plate is in one key, and a key it does not name is a key
+      // art. 126: a plate is in one key, and a key it does not name is a key
       // nothing can check it against.
       if (asset.school.length === 0) faults.push(`${asset.id}: names no school`)
       continue
@@ -147,7 +147,7 @@ export type Decoder = (src: string) => Promise<{ image: unknown; width: number; 
  * **Missing art is not an error.** `get` answers null and the compositor
  * leaves the band empty, so a scene whose hero has not been drawn yet
  * renders as the computed room it was always going to be. That is the
- * fallback art. 121 requires, and it is why art. 26's first tier is a floor
+ * fallback art. 126 requires, and it is why art. 26's first tier is a floor
  * rather than a failure.
  */
 export interface AssetCache {
@@ -192,7 +192,7 @@ export function assetCache(decode: Decoder): LoadedCache {
             const decoded = await decode(asset.src)
             held.set(asset.id, { asset, ...decoded })
           } catch {
-            // art. 121: missing optional art falls back, it does not throw.
+            // art. 126: missing optional art falls back, it does not throw.
             // A plate that will not decode is a plate that is not there, and
             // the room stands without it.
             missing.add(asset.id)

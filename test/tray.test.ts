@@ -6,14 +6,14 @@ import { assembleHand, cast, casting, claim, claimable, keep, openFight } from '
 import type { DieId, Horror, Intent, Lot } from '../src/lots/index.js'
 
 /**
- * art. 123: the tray renders the hand it is given.
+ * art. 128: the tray renders the hand it is given.
  *
  * The engine has never assumed six — `Hand` has always been a collection —
  * so what these prove is the other half: that presentation does not assume
  * it either, and that six survives as a *rule* rather than as a shape
  * baked into a stylesheet.
  */
-describe('the tray — art. 123 (the hand is a collection)', () => {
+describe('the tray — art. 128 (the hand is a collection)', () => {
   /** A 390-pixel phone's fight panel, less its two ten-pixel gutters. */
   const PHONE = 370
 
@@ -75,7 +75,7 @@ describe('the tray — art. 123 (the hand is a collection)', () => {
 })
 
 /**
- * art. 123: and the *engine* half — a hand that is not six plays. These go
+ * art. 128: and the *engine* half — a hand that is not six plays. These go
  * through the real `openFight`, the real cast and the real claim, because
  * the claim about count-independence is only worth anything if the dice
  * engine can be handed a hand nobody tuned it for.

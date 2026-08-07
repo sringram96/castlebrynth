@@ -161,6 +161,20 @@ not about the thumb.
     the hall empty and the lock answering, which is what makes the turning
     of the key the event rather than the arrival in the room. Its numbers,
     its script and its body are content like every other horror's.
+
+    **Amended by the mend, 2026-08-07: once it exists, it is a thing standing
+    in the room.** Both clauses above are untouched — no socket, nothing until
+    the key turns — and what is added is what follows from them the moment a
+    player is in the hall with the keeper up. That happens exactly one way,
+    because the fight opens on the turn of the key: **you ran out of it.** The
+    hall you came back to had nothing in it to tap, so the only way back into
+    the fight was the door's own verb — the last door-fight in a game that had
+    abolished them (card 95). A keeper with no body is a horror that breaks the
+    interaction model for one room, so it has one: it stands in the hall, it
+    answers a tap (art. 69), it shuts every door in the room while it is up
+    (art. 118), and the verb that re-enters the fight is summoned by looking at
+    **it** (art. 68). Standing in no socket was never a claim about having no
+    pixels.
 38. SETTLED (amended) — Rules, not templates. The generator's mercy lives
     in the math: just-in-time placement makes stranding impossible
     (art. 80), and rhythm obligations (fight-count bands, no-clump rules)
@@ -238,17 +252,75 @@ not about the thumb.
     hundreds of them for a line each. What a flag changes is what a tap
     answers and what a good's origin sentence says (arts 87–88) — the
     machinery for both already exists and needed a sentence, not a system.
+### Rarity, and what a weight means (ratified 2026-08-07)
+125. SETTLED (ruled 2026-08-07) — **A weight names a band, and a band is a
+     share of finds.** It says how often a filled socket lands in that band.
+     It is not a share of the whole pool and it is never a comparison between
+     two particular goods.
+
+     **Per-good rarity is the band's share divided among its members**, which
+     is what the words still mean: three goods sharing `common` are each more
+     than twice as likely as seven sharing `uncommon`. What changes is that
+     the *bands* hold still.
+
+     The rule this replaces was arithmetic nobody wrote down. Under a
+     relative draw, adding a seventh good at `uncommon` made the six already
+     there rarer and made the whole uncommon band heavier than the common
+     one — the catalog's effective mix had drifted to 40 / 47 / 13 against
+     bands declared 6 / 3 / 1, and the two words had swapped places without
+     anybody choosing that. Fine at eight goods, wrong at thirty, and the fix
+     is a ruling about what a number means and not a number.
+
+     **A band with nothing left in it deals nothing, and its share goes to
+     the bands that still have something.** That is the whole of what happens
+     to the depletion bias: a good that is placed leaves *its own* band
+     likelier for the rest of the run and leaves every other band exactly
+     where it was. The bias is real, it is bounded inside a band, and it is
+     kept rather than fixed — finding one traveler making the next traveler
+     likelier is the labyrinth handing you the rest of a set, which is a
+     better run than one that re-rolls the same odds nine times.
+
+     **Inside a band the draw is uniform**, because a band is a statement
+     about how often and the things in it are peers by construction. A good
+     that wants to be rarer than its band-mates wants a band, not a thumb on
+     a scale.
+
+     **The shares are content, and moving them is a rebalance.** A change to
+     them owes a measured table like any other tuning claim; a change to what
+     they *mean* would owe an amendment to this article.
+
 85. PARKED — The trail. The run's history graph (art. 36) could someday
     be shown as where you have been; art. 31 bans the road ahead, not
     the road behind. Showing it still requires an amendment. Parked,
     tracked on the board.
-89. SETTLED (ruled 2026-08-05) — The fork. A floor socket may offer a
-    fork: two goods, where taking one forfeits the other. The room
-    states the terms plainly before the take (arts 66, 68), the
+89. SETTLED (ruled 2026-08-05; amended 2026-08-07) — The fork. A floor
+    socket may offer a fork: two goods, where taking one forfeits the other.
+    The room states the terms plainly before the take (arts 66, 68), the
     forfeiture shows in pixels (art. 70), and it is final. A room that
     offers two things is a collection point; a room that offers a fork
     is a decision, and the decision is the same shape as the one that
     made the dice good — a partition, not a purchase.
+
+    **How often a player meets one is declared, and it is two declared
+    numbers multiplied.** It used to be a residue: the chance an initiating
+    good was drawn times whatever the pool happened to look like, which is a
+    lever nobody was pulling on purpose. Art. 125 made the first factor a
+    band somebody chose; this article makes the second one exist — a
+    **declared chance that a fork which could be formed is**, asked *after*
+    the ordinary draw and never before it.
+
+    **After, because before would break art. 125.** A draw aimed at the goods
+    that can fork promotes exactly those goods, so the fork would be paying
+    for itself out of the rarity bands and one rule would be quietly
+    financing the other. Asked afterwards the two compose, and the rate is
+    the product of two numbers a reader can find.
+
+    **The chance ships at one, and 0.17 of runs is the chosen rate.** A fork
+    is what its two goods *are* — sustain against consistency, build against
+    body — so a pair that is dealt and then not offered as a fork would be
+    the game declining to ask its own question. **The lever for meeting more
+    of them is pairs, not the chance**: turning the chance below one only
+    ever makes forks rarer, and every new pair owes art. 87 its sentence.
 
 ## Puzzles & the QTE guardrails
 59. DEFAULT — Puzzles are in-scene locks opened by observation and

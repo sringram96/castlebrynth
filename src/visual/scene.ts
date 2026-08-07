@@ -1,5 +1,5 @@
 /**
- * What art a scene has, as data — art. 121.
+ * What art a scene has, as data — art. 126.
  *
  * A room is still a box, a school, a shape and its things (art. 93). This
  * file is what a room may additionally *carry*: authored material over its
@@ -55,7 +55,7 @@ export type FrameOrigin =
 
 /** One authored thing, placed. */
 export interface PlacedPlate {
-  /** An id in the manifest. Never a path (art. 121). */
+  /** An id in the manifest. Never a path (art. 126). */
   readonly asset: string
   readonly layer: VisualLayer
   readonly anchor: Anchor
@@ -74,7 +74,7 @@ export interface PlacedPlate {
 }
 
 /**
- * arts 107, 122: **a patch is a one-shot or a loop that covers only the part
+ * arts 107, 127: **a patch is a one-shot or a loop that covers only the part
  * that changes.**
  *
  * This is art. 110's overlay repaint said about authored art instead of
@@ -121,14 +121,14 @@ export type PatchTrigger = 'idle' | 'fight' | 'event'
  *
  * Every field is optional and the empty object is legal: a room with no
  * `SceneArt` is exactly the room the renderer drew before this wave, which
- * is what makes the migration additive rather than a rewrite (art. 121).
+ * is what makes the migration additive rather than a rewrite (art. 126).
  */
 export interface SceneArt {
   /** Material and architecture laid over the school's own surfaces. */
   readonly overlays?: readonly PlacedPlate[]
   /** art. 104: the one thing. If two things compete to be it, the room has none. */
   readonly hero?: PlacedPlate
-  /** What you are carrying, at the bottom edge of the lens (art. 121). */
+  /** What you are carrying, at the bottom edge of the lens (art. 126). */
   readonly foreground?: PlacedPlate
   readonly patches?: readonly AnimatedPatch[]
 }

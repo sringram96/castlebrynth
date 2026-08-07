@@ -53,7 +53,7 @@ export const PLAIN_POUCH: Pouch = {
  * different questions, because a mercy may grow the hand past the pouch and
  * a wound may shrink it below.
  *
- * **art. 123: this is where six lives, and it is the only place it lives.**
+ * **art. 128: this is where six lives, and it is the only place it lives.**
  * The engine has never assumed it — `Hand` is a collection and always has
  * been — and after the visual migration the tray does not assume it either.
  * So changing the game to some other number is changing this constant and
@@ -63,7 +63,7 @@ export const PLAIN_POUCH: Pouch = {
 export const HAND_SIZE = 6
 
 /**
- * A pouch of `n` plain bones (art. 123).
+ * A pouch of `n` plain bones (art. 128).
  *
  * It exists so that nothing outside this file has to know how a plain bone
  * is made in order to ask for a different number of them — the canonical

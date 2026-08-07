@@ -11,6 +11,12 @@
     "noFallthroughCasesInSwitch": true,
     "exactOptionalPropertyTypes": true,
     "noImplicitReturns": true,
+    // The mend, 2026-08-07: an unused import is how a repealed mechanic goes
+    // on looking alive. `openDoor` outlived the door-fight card 95 abolished
+    // and `main.ts` was still importing it; the shell was still importing
+    // `canOpen` and `harm` from waves that had stopped calling them. The
+    // build says so now rather than a reader having to notice.
+    "noUnusedLocals": true,
     "isolatedModules": true,
     "verbatimModuleSyntax": true,
     "useDefineForClassFields": true,

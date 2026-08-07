@@ -1,5 +1,5 @@
 /**
- * The tray's dice, laid out — art. 123.
+ * The tray's dice, laid out — art. 128.
  *
  * The hand has never been six in the engine: `Hand` is a collection and
  * art. 60 has always said hand size is a body stat, grown by mercies and
@@ -23,7 +23,7 @@
  * plan with (art. 42).
  */
 
-/** How large a die wants to be, and how small it may be made (art. 123). */
+/** How large a die wants to be, and how small it may be made (art. 128). */
 export interface DieDial {
   /** What a die is at the canonical hand. Card 94's 48, unchanged. */
   readonly preferred: number
@@ -71,7 +71,7 @@ export interface TrayLayout {
  * `count` of zero is legal and answers a layout with no rows. Nothing in the
  * current rules deals a hand of nothing, but a bind that took the last die
  * would, and presentation code that divides by the count is presentation
- * code that crashes the day the rules change (art. 123).
+ * code that crashes the day the rules change (art. 128).
  */
 export function layoutDice(count: number, width: number, dial: DieDial = DIE_DIAL): TrayLayout {
   if (count <= 0) return { size: dial.preferred, gap: dial.gap, perRow: 0, rows: 0 }
@@ -115,7 +115,7 @@ export function layoutDice(count: number, width: number, dial: DieDial = DIE_DIA
  * It returns indices rather than dice so that nothing here has to know what
  * a die is — the tray hands it a count and gets back the shape, and
  * selection stays a property of a die's identity rather than of where it
- * happens to sit (art. 123).
+ * happens to sit (art. 128).
  */
 export function diceRows(count: number, layout: TrayLayout): readonly (readonly number[])[] {
   if (count <= 0 || layout.rows === 0) return []

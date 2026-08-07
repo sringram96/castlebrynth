@@ -12,7 +12,7 @@ import {
 } from '../src/visual/index.js'
 
 /**
- * arts 107, 109, 116, 122: a patch is a function of the world clock and its
+ * arts 107, 109, 116, 127: a patch is a function of the world clock and its
  * own identity, and of nothing else. That is what makes "the same room
  * breathes the same way every time you stand in it" a fact rather than a
  * hope.

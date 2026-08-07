@@ -443,9 +443,9 @@ accident, forbade the density arts 26 and 104 already promised.
 
 The amendment separates the two. What the renderer owes is *truth about
 space*; what it owes about *appearance* is only that appearance be
-deterministic and in key. Arts 121–123 say so.
+deterministic and in key. Arts 126–128 say so.
 
-121. SETTLED (ruled 2026-08-07, amending arts 15, 17 and 100) —
+126. SETTLED (ruled 2026-08-07, amending arts 15, 17 and 100) —
      **Perspective is computed; appearance may be authored.**
 
      The renderer remains answerable for every spatial fact in a room:
@@ -497,7 +497,7 @@ deterministic and in key. Arts 121–123 say so.
      *past* where the box has depth left to describe, which is why
      `horrorProp` always worked in the frame's own fractions).
 
-122. SETTLED (ruled 2026-08-07) — **The order of a frame is one declared
+127. SETTLED (ruled 2026-08-07) — **The order of a frame is one declared
      list.**
 
      Before this article, z-order was three unwritten statements that

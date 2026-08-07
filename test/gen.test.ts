@@ -18,6 +18,7 @@ const BARE_GRAMMAR: Grammar = {
   clumpPenalty: 1,
   driftPull: 0,
   bandPull: 0,
+  forkChance: 0,
 }
 
 describe('gen — the drift, one run at a time', () => {

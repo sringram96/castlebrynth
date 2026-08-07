@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { ALL_RIDERS, LADDER, NOTICES, THE_CAREFUL, THE_GNAWING } from '../src/content/index.js'
+import { ALL_RIDERS, LADDER, NOTICES, THE_GNAWING } from '../src/content/index.js'
 import { lotFrom } from '../src/gen/index.js'
 import type { DieId, Fight, Goods, Line, Lot, Value } from '../src/lots/index.js'
 import {
@@ -21,7 +21,6 @@ import {
 } from '../src/lots/index.js'
 import { openFightDoor } from '../src/hinge/index.js'
 import type { Ledgers } from '../src/state/index.js'
-import { collect } from '../src/state/index.js'
 import { atAFight } from './drift.js'
 import { seedOf, turnOf } from './helpers.js'
 

@@ -1,5 +1,5 @@
 /**
- * Build the plate masters (art. 121).
+ * Build the plate masters (art. 126).
  *
  *     node tools/plates.mjs
  *

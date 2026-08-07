@@ -1,5 +1,5 @@
 /**
- * The authored plate masters (art. 121).
+ * The authored plate masters (art. 126).
  *
  * These are **the first slice, not the art**. They exist to prove the
  * pipeline end to end — authored pixels here, a deterministic PNG in
@@ -156,7 +156,7 @@ export const MASTERS = [
    * The candle, in two frames. art. 107: a loop is at most three authored
    * frames, and the flame is one of the three things an ossuary room may
    * spend a loop on. Only the top four rows differ between them — which is
-   * the whole argument for patches (art. 122): the thing that moves is nine
+   * the whole argument for patches (art. 127): the thing that moves is nine
    * pixels, so the repaint is nine pixels and not a room.
    */
   {
@@ -202,7 +202,7 @@ export const MASTERS = [
    * What you are carrying, at the bottom edge of the lens — the reference's
    * lantern, in the corner it holds it in.
    *
-   * It is anchored to the *frame* and not to the room (art. 121): it is not
+   * It is anchored to the *frame* and not to the room (art. 126): it is not
    * in the box, it is between you and the box, so it does not diminish and
    * it does not move when the room does. That is also why it is the one
    * plate with no school — it is yours, and it comes down every corridor

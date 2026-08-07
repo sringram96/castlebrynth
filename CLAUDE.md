@@ -1,9 +1,22 @@
 # Contributing to Castlebrynth
 A first-person, forward-only descent in the browser: computed parallax
 rooms, blind chains, poker-dice duels, death as the progression system.
-Users: README.md. The shape and current cut: DESIGN.md. The fantasy:
-`reference/GAME.md`. The law: `.claude/rules/` — 123 numbered articles,
-cited as "art. N". Where a rule conflicts with GAME.md, the rule wins.
+
+Four documents, and each answers one question:
+
+- **README.md** — how do I play it and run it? (users)
+- **DESIGN.md** — what is the game right now? The spec: components, key
+  decisions, the cut, and a Status of one screen — what runs, what is
+  green, what is owed. **Nothing chronological lives there.**
+- **CHRONICLE.md** — how did it get here? Every wave journal, newest
+  first, append-only. History, and it binds nothing.
+- **`.claude/rules/`** — the law: 128 numbered articles, cited as
+  "art. N". Start at `journey.md`: it is the five modes, the one
+  question each asks, and the table of every mechanic with its mode, its
+  ledger and its articles.
+
+The fantasy is `reference/GAME.md`. Where a rule conflicts with GAME.md,
+the rule wins.
 
 ## Get it running
 Install: npm install
@@ -29,10 +42,10 @@ Test:    npm test
   the named rituals in src/state (art. 11).
 - Nothing may assume a device pixel or the number 240 outside render
   config (arts 22–23), and nothing outside `src/content` may assume the
-  hand is six (art. 123).
-- Perspective is computed; appearance may be authored (art. 121). `src/room`
+  hand is six (art. 128).
+- Perspective is computed; appearance may be authored (art. 126). `src/room`
   owns every spatial fact; `src/visual` lays authored plates over the frame
-  it produces, in the order art. 122 declares. Assets are data: only
+  it produces, in the order art. 127 declares. Assets are data: only
   `src/content/visual/assets.ts` knows a filename.
 - Every player-facing string obeys rules/voice.md: it is the protagonist
   thinking or the protagonist writing, never a narrator. Content review is
@@ -45,9 +58,26 @@ See AGENTS.md. Four agents, by concern: **arithmetic** (is it fair?),
 change should survive all four; if two disagree, that's a Blocked
 question for the human, not a compromise to invent.
 
-`.claude/skills/` is empty on purpose. A skill is hired, not
-scaffolded — when the same procedure has been re-explained enough times
-that its absence is the recurring bug, propose it.
+A skill is hired, not scaffolded — when the same procedure has been
+re-explained enough times that its absence is the recurring bug, propose
+it. One is hired: `.claude/skills/phone-pass/`, because three waves in a
+row closed with "the hand pass is still owed."
+
+## The standing rules
+Adopted by the mend, 2026-08-07. Five, and they are kept forever.
+
+1. **Green means served.** The deploy verdict is the served commit hash
+   and nothing else. A step that cries wolf is a step nobody reads.
+2. **Status is one screen.** History goes to `CHRONICLE.md` the day it
+   becomes history.
+3. **No mechanic without its row** (art. 122). Mode + ledger + articles
+   in `journey.md`, or it does not ship.
+4. **Every wave ends in a hand.** The phone pass is the last section of
+   every wave's chronicle entry — performed, or declared not done and
+   why.
+5. **The fantasy table never goes stale.** A wave that ships a beat of
+   `reference/GAME.md`'s opening marks its carrier in DESIGN.md; a wave
+   that cannot, says undelivered.
 
 ## How work happens
 Tasks live on the Asana board "castlebrynth". Pick up only tasks in

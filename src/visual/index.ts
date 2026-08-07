@@ -1,5 +1,5 @@
 /**
- * src/visual — the compositor above the room renderer (arts 121–122).
+ * src/visual — the compositor above the room renderer (arts 126–127).
  *
  * `src/room` computes the box: lens, width, ceiling, surfaces, thresholds,
  * mass, occlusion, contour. It is the stage and it did not need replacing.
@@ -8,7 +8,7 @@
  * repainted alone.
  *
  * The seam is exactly one sentence: **perspective is computed; appearance
- * may be authored** (art. 121). Nothing here may move a surface, and nothing
+ * may be authored** (art. 126). Nothing here may move a surface, and nothing
  * in `src/room` may know that a plate exists.
  */
 

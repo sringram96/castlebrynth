@@ -41,6 +41,25 @@ export const THE_OSSUARY: Talisman = {
  * tax. That is why the dull that every ladder talisman owes (art. 54) is
  * not asked of the shape species — the condition *is* the declaration, and
  * `test/goods.test.ts` says which species owes which.
+ *
+ * **Audited by the mend, 2026-08-07** — it was the one shipped good with no
+ * number beside it, which made it the strongest thing in the game *and* the
+ * only unexamined one. 3000 fights per cell, bare six-bone hand, greedy
+ * thumb:
+ *
+ * | | bare | + the Zealot | + the Ossuary |
+ * | --- | --- | --- | --- |
+ * | the Gnawing | 0.576 | 0.848 (**+0.272**) | 0.799 (+0.223) |
+ * | the Warden | 0.138 | 0.421 (**+0.283**) | 0.454 (+0.316) |
+ *
+ * **The finding is that it is not an outlier.** It sits inside the band the
+ * Ossuary already set — under it against the keeper, a little over it
+ * against the ordinary teeth — and the Ossuary is a shipped, declared,
+ * bare-powered talisman that nobody has argued with. So art. 54 is answered
+ * the way this comment always claimed it was: the condition prices it, and
+ * the table is the proof rather than the claim. What would have been a
+ * finding is a good half again the size of everything else in its species,
+ * and that is not what is there.
  */
 export const THE_ZEALOT: Talisman = {
   id: talisman('talisman.zealot'),
@@ -56,8 +75,8 @@ export const THE_ZEALOT: Talisman = {
  * art. 87: the luck someone brought. It is a knotted cord, and its owner
  * counted the way down with it — so what it lifts is the shape that has to
  * be in order, and nothing else. The straight is deliberately not in the
- * list: it is already the top of the ladder, and a hand of five cannot make
- * one anyway (art. 55).
+ * list: it is already the top of the ladder, and a hand shortened by a wound
+ * cannot make one anyway (arts 46, 55).
  *
  * **And it dulls the quad now** (card 90). It was the one ladder talisman in
  * the game and it paid nothing, which was survivable while it was the only

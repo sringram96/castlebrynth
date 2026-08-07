@@ -26,7 +26,7 @@ import {
   horrorOf,
 } from '../src/content/index.js'
 import { act, chooseDoor, opens } from '../src/descent/index.js'
-import type { Catalog, Chain, ChainNode, Door } from '../src/gen/index.js'
+import type { Catalog, ChainNode, Door } from '../src/gen/index.js'
 import { dealerOf, hereIn } from '../src/gen/index.js'
 import { AMEND_LOT, carryOut, openFightDoor, turnLots } from '../src/hinge/index.js'
 import type {

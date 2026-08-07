@@ -91,8 +91,6 @@ import type { Act, Bands, Pick, Tappable } from './descent/index.js'
 import {
   act,
   actsIn,
-  breathFor,
-  canOpen,
   chooseDoor,
   doors,
   enterRoom,
@@ -102,7 +100,6 @@ import {
   looking,
   nextBeat,
   onArrival,
-  openDoor,
   opens,
   picking,
   pickedDoor,
@@ -119,6 +116,7 @@ import { REAL_CLOCK, playBeats } from './shell/beats.js'
 import type { Layer } from './shell/faces.js'
 import { paintFace } from './shell/faces.js'
 import { fightSummoned, wayOn } from './shell/strip.js'
+import { stacked, swapped } from './shell/screens/choosing.js'
 import type { Held } from './shell/band.js'
 import { HUSHED, answered, bandLine, holding, noticed } from './shell/band.js'
 import type { Chain, ChainNode, Door } from './gen/index.js'
@@ -171,7 +169,6 @@ import {
   decide,
   fitsNothing,
   freshCard,
-  harm,
   keep,
   loadedFaces,
   openFight,
@@ -203,6 +200,7 @@ import {
   load,
   meet,
   save,
+  handFrom,
   sparesOf,
   chooseHand,
   mustChoose,
@@ -232,7 +230,7 @@ import {
   swelling,
   unbidding,
 } from './room/index.js'
-// arts 121–122: the compositor above the renderer. `src/room` computes the
+// arts 126–127: the compositor above the renderer. `src/room` computes the
 // box; this lays the authored plates over it, in the article's order.
 import type { Draw, SceneArt } from './visual/index.js'
 import {
@@ -361,11 +359,13 @@ let sheet: 'card' | 'book' | null = null
  */
 let pick: Pick = null
 /**
- * art. 60: the dice picked out on the choosing screen, in the order they
- * were picked. Empty everywhere else — the pouch itself is informative and
- * commits nothing (art. 67).
+ * art. 124: the choosing screen's staged swap — the die marked to leave the
+ * hand, and the spare marked to take its place. Null everywhere else: the
+ * POUCH panel is informative and commits nothing (art. 67), and the order
+ * *is* the hand, so there is nothing to pick and only a thing to exchange.
  */
-let picked: readonly DieId[] = []
+let leaving: DieId | null = null
+let entering: DieId | null = null
 
 /** A first casting holds nothing back: everything in the hand is in the air. */
 const NOTHING_HELD: ReadonlySet<string> = new Set<string>()
@@ -419,7 +419,7 @@ function goods(): Goods {
 
 /** art. 82: the room the run is standing in, as dealt. */
 function here(): ChainNode {
-  // art. 121: the canonical harness stands in one authored room, so that is
+  // art. 126: the canonical harness stands in one authored room, so that is
   // the room. Development only, and null in every build.
   if (fixture !== null) return fixture
   const node = nodeAt(chain, ledgers.run!.at.instance)
@@ -496,7 +496,7 @@ function boot(): void {
 // ── The canonical screen (development only) ────────────────────────────
 
 /**
- * art. 121: **the still the art is iterated against.**
+ * art. 126: **the still the art is iterated against.**
  *
  * Set only by `openCanonical`, and only under `import.meta.env.DEV`. While
  * it stands, `here()` answers the fixture's room instead of the run's, which
@@ -514,7 +514,7 @@ let fixture: ChainNode | null = null
  * comes off. `?dice=n` is the one knob, and it moves the *hand* — a real
  * pouch of n bones against a hand size of n — rather than the tray, so what
  * is being looked at is the tray solving a real hand and not a mock-up of
- * one (art. 123).
+ * one (art. 128).
  */
 function openCanonical(): void {
   const asked = canonicalRequest(location.search)
@@ -525,7 +525,7 @@ function openCanonical(): void {
   fixture = canonicalNode(room)
   const seed = reseed(CANONICAL.seed as unknown as Seed)
   // A real waking, with a real pouch. `plainPouchOf` is content's, so the
-  // fixture asks for a hand the same way a future rule would (art. 123).
+  // fixture asks for a hand the same way a future rule would (art. 128).
   ledgers = woken(null, firstPermanent(plainPouchOf(size), size, BARE_BODY), seed)
   ledgers = { ...ledgers, run: tookIntoRun(ledgers.run!, ledgers.permanent) }
   chain = canonicalChain(fixture, seed)
@@ -608,7 +608,7 @@ function frameHeight(): number {
 }
 
 /**
- * art. 121: **the authored plates, decoded once.**
+ * art. 126: **the authored plates, decoded once.**
  *
  * Preloaded at boot and never touched during a paint — a plate is an
  * `Image` that was decoded before the first frame, so compositing it costs a
@@ -620,7 +620,7 @@ function frameHeight(): number {
 const plates = assetCache(imageDecoder(import.meta.env.BASE_URL))
 
 /**
- * art. 121: the load is a repaint and never a block. The first frame is the
+ * art. 126: the load is a repaint and never a block. The first frame is the
  * computed room; the plates land on the next one, which on a phone is the
  * same frame as far as anybody can tell.
  */
@@ -631,7 +631,7 @@ function loadPlates(): void {
 }
 
 /**
- * art. 122: what the compositor needs to know about this moment.
+ * art. 127: what the compositor needs to know about this moment.
  *
  * `still` is art. 116's reduced motion, so a player who asked the world to
  * hold still gets every patch on its settled frame — which art. 107 says is
@@ -706,7 +706,7 @@ function world(marks = true): void {
   // art. 119 §3: **the lunge** — your strike sends it back and returns it,
   // settling where it stood. The knock is a fraction of the advance's own
   // travel, so it is the same motion in reverse rather than a second one.
-  // art. 121: **a horror that has been plated advances as its plate.** The
+  // art. 126: **a horror that has been plated advances as its plate.** The
   // hinge's massed body and the authored plate are the same event at art. 26's
   // two tiers, so exactly one of them is ever in the frame: a plated horror
   // leaves the overpaint empty and takes the hero band instead, and one with
@@ -737,7 +737,7 @@ function world(marks = true): void {
       ]
   const over = [...close, ...moving]
   const frame = over.length === 0 ? base.frame : overpaint(base, over)
-  // arts 121–122: and the authored layer over the computed one. The room's
+  // arts 126–127: and the authored layer over the computed one. The room's
   // own plates are a lookup on the template (art. 34), so a room that has
   // not been dressed composes an empty list and shows exactly the frame it
   // always showed. art. 83: the horror's plate is the *horror's*, joined on
@@ -820,7 +820,7 @@ function telling(): boolean {
 const SWELL = 0.09
 
 /**
- * arts 25, 122: the frame reaches the device.
+ * arts 25, 127: the frame reaches the device.
  *
  * `draws` is the compositor's list — the authored bands, over the cast box.
  * Empty is the room as it was before this wave, which is what every
@@ -1285,7 +1285,8 @@ function settleEverything(): void {
   wiping = false
   sheet = null
   pick = null
-  picked = []
+  leaving = null
+  entering = null
   spoken.clear()
   unbidden = null
   refused = false
@@ -1653,7 +1654,7 @@ function theFightPanel(): void {
   const laid = casting(now.turn)
   const byId = new Map(ledgers.run!.hand.dice.map((die) => [die.id as string, die] as const))
   const heldFast = new Set<string>(now.turn.bound)
-  // art. 123: the row is measured against what is actually going into it —
+  // art. 128: the row is measured against what is actually going into it —
   // the dice on the table plus the ones an intent is holding shut, because a
   // bound die still takes a place in the row (art. 65: the hole is the
   // visible part of the effect).
@@ -2041,7 +2042,7 @@ function slot(className: string): HTMLButtonElement {
   return el
 }
 
-// ── The hand, however many it is (art. 123) ────────────────────────────
+// ── The hand, however many it is (art. 128) ────────────────────────────
 //
 // The tray used to draw a 48-pixel slot and trust that six of them fitted a
 // phone. Six is a *rule* — `HAND_SIZE`, in content, where art. 60 puts it —
@@ -2072,7 +2073,7 @@ function measureHand(count: number): TrayLayout {
 
 /**
  * The row the dice stand in. Its size is a custom property rather than a
- * class, because there is no finite set of sizes to name — art. 123's whole
+ * class, because there is no finite set of sizes to name — art. 128's whole
  * point is that the number is computed.
  */
 function handRow(layout: TrayLayout): HTMLDivElement {
@@ -2450,7 +2451,6 @@ function acts(): void {
 // ── The room ───────────────────────────────────────────────────────────
 
 function roomActs(): void {
-  const run = ledgers.run!
   for (const one of bands.tray.flatMap((offer) => (offer.kind === 'act' ? [offer.act] : []))) {
     actStrip.append(verb(one.id, () => doAct(one)))
   }
@@ -2470,21 +2470,22 @@ function roomActs(): void {
   // article: a room still owed something offers no door verb at all, rather
   // than a press that fails and leaves the strip exactly as it was.
   //
-  // card 31: the Warden's door is a fight-door for as long as its keeper is
-  // standing, and Descend is what is left once it is not — art. 71, since
-  // those two words mean different journeys and neither may lie.
   // card 95: **the horror's own verb, summoned by looking at it** (art. 68).
   // It is not a door verb and does not answer to the pick: the fight is about
   // the thing, and the doors are what the thing is standing in front of.
-  if (fightSummoned(ledgers, here(), horrorMarkIn(here()), horrorUp())) {
-    actStrip.append(verb('fight', () => openTheFight(null)))
+  //
+  // The mend, wave 2: **including the keeper.** The Warden's door used to
+  // carry a Fight verb, which made it the last door-fight in a game that had
+  // abolished them — and it was reachable only by fleeing, because that is
+  // the one way to end up in the hall with the keeper up. It has a body in
+  // the hall now, so it is summoned the way everything else is.
+  if (fightSummoned(ledgers, here(), horrorMark(), horrorUp())) {
+    actStrip.append(verb('fight', () => openTheFight(keeperDoor())))
   }
 
   const door = pickedDoor(pick, ahead)
   const way =
-    door === null
-      ? null
-      : wayOn(ledgers, ROOM_BOOK, here(), door, keeperUp(door), horrorUp())
+    door === null ? null : wayOn(ledgers, ROOM_BOOK, here(), door, horrorUp())
   if (door !== null && way !== null) {
     actStrip.append(verb(way, () => commitDoor(door)))
   }
@@ -2540,7 +2541,26 @@ function actsInAFight(): void {
  * rule is content's, like the keeper's; this is the shell asking it.
  */
 function horrorUp(): boolean {
-  return horrorStanding(here(), sceneStateOf(ledgers, ROOM_BOOK, here()).done)
+  return horrorStanding(here(), doneHere())
+}
+
+/** card 95, the mend: what a fight in this room is summoned by tapping. */
+function horrorMark(): string | null {
+  return horrorMarkIn(here(), doneHere())
+}
+
+/**
+ * card 95: **the door is null for every fight but the keeper's**, and this is
+ * the one place that is still true. A fight is about the thing you tapped;
+ * only the Warden's is also about a door, because beating it is what turns
+ * that door back into a way down (art. 37).
+ */
+function keeperDoor(): Door | null {
+  return here().doors.find((door) => keeperUp(door)) ?? null
+}
+
+function doneHere(): readonly string[] {
+  return sceneStateOf(ledgers, ROOM_BOOK, here()).done
 }
 
 /** card 31: the rule is content's; this is the shell asking it (arts 63, 71). */
@@ -2587,64 +2607,123 @@ function doAct(one: Act): void {
 }
 
 /**
- * art. 60: the choosing screen — which dice come down.
+ * art. 124: the choosing screen — which dice come down. **The order is the
+ * interface.**
  *
  * It opens where a descent opens: after an ending, when the pouch has
  * outgrown the hand. Nothing about it is new vocabulary — the dice are
- * tapped the way every die in the game is tapped, the picks are staged the
- * way a claim is (art. 72), and one plain verb commits (art. 66).
+ * tapped the way every die in the game is tapped, the swap is staged the way
+ * a claim is (art. 72), and plain verbs commit (art. 66).
  *
- * card 94: **and the screen whose whole job is telling dice apart now does
- * it.** It drew every die as its first face, so a plain bone, the pusher and
- * the careful all rendered as a 1 — a wall of ones, with the best die in the
- * game advertising itself as the worst. Each is its name and its whole face
- * set now, and the cost face wears its scar where it sits.
+ * The first cut asked the player to pick six dice out of the whole pouch
+ * before Descend would light. That was a *form*: it charged six presses for
+ * the ordinary case, in which nothing has changed since the last descent and
+ * the answer is the hand you already had. Art. 60 has always said the pouch
+ * is ordered and the hand is its first `handSize`, so the screen draws that
+ * — the hand above a rule, the spares below it — and the only move is a
+ * swap. Descend is one press when nothing changed.
+ *
+ * card 94: and every die is its name and its whole face set, with the cost
+ * face wearing its scar where it sits, so art. 54 is satisfied by a drawing
+ * rather than by a sentence.
  */
 function choosingPanel(): void {
   const permanent = ledgers.permanent
-  const size = permanent.handSize
-  for (const die of permanent.pouch.dice) {
-    const at = picked.indexOf(die.id)
-    const el = dieReading(die, at < 0 ? '' : 'sel')
-    el.onclick = () => {
-      settle()
-      // art. 68: a tap answers first, always — the pick is what it leaves.
-      band = noticed(saysDie(die))
-      picked =
-        at >= 0
-          ? picked.filter((one) => one !== die.id)
-          : picked.length >= size
-            ? picked
-            : [...picked, die.id]
-      if (at < 0 && picked.length >= size && !picked.includes(die.id)) {
-        // Full: the tap still answered, and the hand did not move (art. 5).
-        band = noticed(NOTICES['choose.full'] ?? saysDie(die))
-      }
-      paint()
-    }
-    pouchRegion.append(el)
+  const hand = handFrom(permanent)
+  const spares = sparesOf(permanent)
+
+  for (const die of hand) {
+    pouchRegion.append(
+      chooseRow(die, 1, leaving === die.id, () => {
+        leaving = leaving === die.id ? null : die.id
+      }),
+    )
+  }
+  // arts 55, 60: a hand grown past the pouch shows the slot it cannot fill.
+  for (let n = hand.length; n < permanent.handSize; n++) pouchRegion.append(emptySlot())
+
+  pouchRegion.append(hairline(''))
+  // art. 124: identical spares stack, individuals never do. Six bare bones
+  // are not six decisions; a die somebody died holding is one apiece.
+  for (const { die, count } of stacked(spares)) {
+    pouchRegion.append(
+      chooseRow(die, count, entering === die.id, () => {
+        entering = entering === die.id ? null : die.id
+      }),
+    )
   }
 
+  // art. 69: the screen says what is true of the pouch and never instructs —
+  // the verbs are the only thing that says what to press (art. 66). There is
+  // no branch for an empty spare row because the screen only opens when the
+  // pouch has outgrown the hand, which is what makes one (art. 60).
   const aside = document.createElement('div')
   aside.className = 'aside'
-  aside.textContent = `${picked.length}/${size}`
+  aside.textContent = NOTICES['choose.which'] ?? ''
   pouchRegion.append(aside)
-  pouchRegion.append(verb('descend', commitChoice, picked.length !== size))
+  // art. 66: two plain verbs, and neither of them lies about where it takes
+  // you (art. 71). Swap moves one die; Descend leaves.
+  pouchRegion.append(
+    verb('swap', commitSwap, leaving === null || entering === null),
+    verb('descend', commitChoice),
+  )
 }
 
 /**
- * art. 60: the choice, committed. The pouch is reordered so the chosen dice
- * are its first `handSize` — the order *is* the hand — and the run is then
- * re-read off it. Nothing is destroyed; the rest are spares.
+ * art. 124: one row of the choosing screen, marked or not, with the count if
+ * it is standing for more than one of itself.
+ *
+ * **The word band never restates a standing truth.** A tap on a die whose
+ * line is already up leaves the line where it is and answers with the mark
+ * moving instead — *draw it, do not name it*. Art. 69 is satisfied by the
+ * first tap, and the answer to *I already told you* is a pixel (art. 70) and
+ * not the same sentence again.
+ */
+function chooseRow(die: Die, count: number, marked: boolean, mark: () => void): HTMLButtonElement {
+  const said = saysDie(die, undefined, undefined, knownMarks(ledgers.permanent))
+  const el = dieReading(die, marked ? 'sel' : '', said)
+  if (count > 1) {
+    const many = document.createElement('span')
+    many.className = 'count'
+    many.textContent = `×${count}`
+    el.append(many)
+  }
+  el.onclick = () => {
+    settle()
+    if (band.look !== said) band = noticed(said)
+    mark()
+    paint()
+  }
+  return el
+}
+
+/**
+ * art. 124: the swap, committed. The hand keeps its order and the marked die
+ * is replaced in place, so a swap moves one thing and nothing else — the
+ * pouch is reordered around it and nothing is destroyed.
+ */
+function commitSwap(): void {
+  if (leaving === null || entering === null) return
+  const permanent = chooseHand(
+    ledgers.permanent,
+    swapped(handFrom(ledgers.permanent), leaving, entering),
+  )
+  ledgers = { permanent, run: tookIntoRun(ledgers.run!, permanent) }
+  leaving = null
+  entering = null
+  band = answered(NOTICES['swap.done'] ?? '')
+  persist()
+  paint()
+}
+
+/**
+ * art. 124: leaving the screen. The hand is already whole — the pouch's
+ * order *is* the hand and every swap committed as it was made — so this
+ * commits nothing and is one press whenever nothing has changed.
  */
 function commitChoice(): void {
-  if (picked.length !== ledgers.permanent.handSize) {
-    band = answered(NOTICES['choose.short'] ?? '')
-    return paint()
-  }
-  const permanent = chooseHand(ledgers.permanent, picked)
-  ledgers = { permanent, run: tookIntoRun(ledgers.run!, permanent) }
-  picked = []
+  leaving = null
+  entering = null
   screen = { kind: 'room' }
   band = HUSHED
   persist()
@@ -2819,7 +2898,12 @@ function beginDescent(): void {
   // later — Continue may only ever be offered for a run this press began.
   ledgers = { ...ledgers, run: descending(ledgers.run!) }
   if (mustChoose(ledgers.permanent)) {
-    picked = ledgers.run!.hand.dice.map((die) => die.id)
+    // art. 124: **the screen opens on the hand you last took down.** The
+    // pouch's order carries it for free, so there is nothing to seed here
+    // and nothing marked — an empty stage is a screen offering a swap, and
+    // a pre-marked one would be a screen proposing a change nobody asked for.
+    leaving = null
+    entering = null
     // art. 91: the choosing screen is a screen and not a panel, so it moves
     // no focus. The first cut focused POUCH to draw itself there and never
     // moved it back, which left the tray on the pouch when the run opened —
@@ -3621,7 +3705,7 @@ addEventListener('resize', () => {
 })
 
 boot()
-// art. 121: the plates, after the first frame. The computed room is what the
+// art. 126: the plates, after the first frame. The computed room is what the
 // game opens on either way, so a slow decode costs a repaint and never a
 // blank screen.
 loadPlates()

@@ -8,7 +8,7 @@ import { roomContent } from '../src/content/index.js'
 import { ASSET_ROOT, assetCache, faultsIn, merge } from '../src/visual/index.js'
 
 /**
- * art. 121: the manifest is the only place a filename is written down, so it
+ * art. 126: the manifest is the only place a filename is written down, so it
  * is the one place a filename can be wrong. These read the actual masters off
  * disk, because every fault they catch is a fault nothing else can: a
  * declared size that disagrees with the file lays a plate out wrong for one
@@ -60,7 +60,7 @@ function readPng(path: string): { width: number; height: number; alphas: Set<num
   return { width, height, alphas }
 }
 
-describe('the manifest — art. 121', () => {
+describe('the manifest — art. 126', () => {
   it('validates', () => {
     expect(faultsIn(PLATES)).toEqual([])
   })
@@ -134,7 +134,7 @@ describe('the masters on disk — arts 17, 121', () => {
   }
 })
 
-describe('what the game asks for — art. 121 (missing art falls back, but a typo should not)', () => {
+describe('what the game asks for — art. 126 (missing art falls back, but a typo should not)', () => {
   it('has a manifest entry for every plate a dressed room places', () => {
     for (const id of assetsWanted()) {
       expect(PLATES[id], `no manifest entry for ${id}`).toBeDefined()
@@ -154,7 +154,7 @@ describe('what the game asks for — art. 121 (missing art falls back, but a typ
   })
 })
 
-describe('the cache — art. 121 (missing optional art has a valid fallback)', () => {
+describe('the cache — art. 126 (missing optional art has a valid fallback)', () => {
   it('answers null for art that never arrived, and says which', async () => {
     const cache = assetCache(async () => {
       throw new Error('no such plate')
