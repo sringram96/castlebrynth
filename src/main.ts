@@ -246,6 +246,7 @@ import type { TrayLayout } from './shell/tray.js'
 import { DIE_DIAL, layoutDice } from './shell/tray.js'
 import { canonicalChain, canonicalNode, canonicalRequest } from './shell/canonical.js'
 import { grown, place, traySizeFor } from './shell/tray-space.js'
+import { wellFlow } from './shell/well.js'
 import {
   DIE_SPRITE,
   DIE_TARGET_HEIGHT,
@@ -687,10 +688,12 @@ function poseTray(): void {
     bulb.style.left = `${(RELIQUARY.healthOrb.x - RELIQUARY.healthText.x) * size.width}px`
     bulb.style.top = `${(RELIQUARY.healthOrb.y - RELIQUARY.healthText.y) * size.height}px`
   }
-  // A room's verbs stand inside the central recess, centred in it. Without a
-  // place of their own they fell back to the panel's origin, which under an
-  // inset-zero panel is the top-left corner of the whole apparatus.
-  place(actStrip, RELIQUARY.actsRow, size)
+  // **The well.** Whichever panel the thumb is on stands in the panel's one
+  // wide recess, and its rows flow inside it (`src/shell/well.ts`) — one
+  // column while they fit, two when they do not. The well does not know what
+  // it holds, so putting something new in the tray is writing rows and
+  // nothing else.
+  fillWell()
   const totals = fightPanel.querySelector<HTMLElement>('.totals')
   if (totals !== null) place(totals, RELIQUARY.statusRail, size)
   // The panel carves a small recess at its top right; the card's glyph is the
@@ -720,6 +723,50 @@ function poseTray(): void {
     if (bed !== undefined) place(el, grown(bed, bed.width, 0.2), size)
   }
   debugTray(size)
+}
+
+/**
+ * **The well, flowed.**
+ *
+ * The box is authored (`RELIQUARY.mainWell`) and never moves; what changes is
+ * how many rows are in it and therefore how they are arranged. The tabs along
+ * the foot are what swap the contents — pressing one focuses a panel, and the
+ * panel that is on *is* the well — so a new kind of content is a new panel and
+ * not a new layout.
+ *
+ * The duel keeps its own composition: its dice stand in carved cells and its
+ * readouts are anchored, so it is placed part by part rather than flowed.
+ */
+function fillWell(): void {
+  const size = trayNow()
+  const box = RELIQUARY.mainWell
+  const on = [actStrip, pouchRegion].find((el) => el.classList.contains('on'))
+  for (const el of [actStrip, pouchRegion]) {
+    if (el !== on) el.classList.remove('well', 'rack', 'scrolls')
+  }
+  if (on === undefined) return
+  place(on, box, size)
+  // **A well flows rows; a rack keeps its own shape.** Both stand in the same
+  // authored recess, and which one a panel is depends on what it holds rather
+  // than on where it is. Verbs are rows — a verb is a word and a press, and
+  // one is as tall as the next — so ACTS flows. A die is a *drawing* with its
+  // whole face set on it (card 94), and a drawing squeezed into a row's height
+  // is a drawing nobody can read, so the pouch keeps its rack and scrolls.
+  const flows = on === actStrip
+  on.classList.toggle('well', flows)
+  on.classList.toggle('rack', !flows)
+  if (!flows) {
+    on.classList.remove('scrolls')
+    return
+  }
+  const rows = [...on.children].filter(
+    (el): el is HTMLElement => el instanceof HTMLElement && !el.classList.contains('aside'),
+  )
+  const flow = wellFlow(rows.length, box.height * size.height)
+  on.style.setProperty('--well-cols', String(Math.max(1, flow.columns)))
+  on.style.setProperty('--well-item', `${flow.item}px`)
+  on.style.setProperty('--well-gap', `${flow.gap}px`)
+  on.classList.toggle('scrolls', flow.overflows)
 }
 
 /**
@@ -2219,7 +2266,8 @@ function bestLine(): Line | null {
 function pouch(): void {
   pouchRegion.replaceChildren()
   const run = ledgers.run!
-  for (const die of run.hand.dice) pouchRegion.append(dieReading(die, ''))
+  // One die, one slot (art. 67). The face set is the choosing screen's job.
+  run.hand.dice.forEach((die, n) => pouchRegion.append(dieChip(die, `hand:${n}`)))
   // arts 55–56: the invitation, until the first find fills it.
   for (let n = run.hand.dice.length; n < ledgers.permanent.handSize; n++) {
     pouchRegion.append(emptySlot())
@@ -2228,7 +2276,7 @@ function pouch(): void {
   const spares = sparesOf(ledgers.permanent)
   if (spares.length > 0) {
     pouchRegion.append(hairline(''))
-    for (const die of spares) pouchRegion.append(dieReading(die, 'spare'))
+    spares.forEach((die, n) => pouchRegion.append(dieChip(die, `spare:${n}`)))
   }
 
   // card 94: **and the carried things, where they can be read.** A trinket
@@ -2382,6 +2430,8 @@ function faceSizeFor(layout: TrayLayout): number {
 /** How large a face is drawn in a tray slot, and in a row of an inspect. */
 const FACE_IN_SLOT = 40
 const FACE_IN_ROW = 24
+/** How large a die is drawn in the pouch's recess. */
+const CHIP_FACE = 30
 
 function faceCanvas(layers: readonly Layer[], size: number): HTMLCanvasElement {
   const el = document.createElement('canvas')
@@ -2613,6 +2663,52 @@ function faceWell(mark: HTMLCanvasElement, label: string, ink?: string): HTMLSpa
   if (ink !== undefined && label !== '') said.style.color = ink
   well.append(mark, said)
   return well
+}
+
+/**
+ * **The face that tells one die from another.** A rider face if the die has
+ * one — that is the whole of what makes it somebody's rather than a bone
+ * (art. 86) — and the top of its range if it does not.
+ */
+function tellingFace(die: Die): Face {
+  return (
+    die.faces.find((face) => markOn(face) !== null) ??
+    die.faces.reduce((best, face) => (face.value > best.value ? face : best), die.faces[0]!)
+  )
+}
+
+/** Which die in the pouch the thumb is on. Attention, not state — it commits nothing. */
+let heldDie: string | null = null
+
+/**
+ * **A die in the pouch is a die, and nothing else.**
+ *
+ * art. 67 calls the pouch *visible slots*, and a slot holds a thing rather
+ * than a row about a thing. So a chip is the drawing and no words: six plain
+ * bones at a waking are six dice sitting in the recess, which is what the
+ * pouch is for — hand size is a stat you can *see*.
+ *
+ * Tapping is art. 68 exactly: the look is free, it highlights what you are
+ * looking at, and the word band says what it is. It commits nothing — which
+ * dice descend is settled at the waking (art. 60) and never here — so the pick
+ * is attention and dies with the panel.
+ */
+function dieChip(die: Die, key: string): HTMLButtonElement {
+  const said = saysDie(die)
+  const el = document.createElement('button')
+  el.className = heldDie === key ? 'chip on' : 'chip'
+  el.append(boneFace(tellingFace(die).value, { mark: markOn(tellingFace(die)), size: CHIP_FACE }))
+  el.setAttribute('aria-label', said)
+  el.setAttribute('aria-pressed', String(heldDie === key))
+  el.onclick = () => {
+    settle()
+    // A second tap on the die you are already holding puts it down — the same
+    // whole-of-undo a chosen die has in a turn (art. 41).
+    heldDie = heldDie === key ? null : key
+    band = heldDie === null ? HUSHED : noticed(said)
+    paint()
+  }
+  return el
 }
 
 /**
