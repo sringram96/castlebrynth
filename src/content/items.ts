@@ -75,8 +75,8 @@ export const THE_ZEALOT: Talisman = {
  * art. 87: the luck someone brought. It is a knotted cord, and its owner
  * counted the way down with it — so what it lifts is the shape that has to
  * be in order, and nothing else. The straight is deliberately not in the
- * list: it is already the top of the ladder, and a hand of five cannot make
- * one anyway (art. 55).
+ * list: it is already the top of the ladder, and a hand shortened by a wound
+ * cannot make one anyway (arts 46, 55).
  *
  * **And it dulls the quad now** (card 90). It was the one ladder talisman in
  * the game and it paid nothing, which was survivable while it was the only

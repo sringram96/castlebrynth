@@ -238,8 +238,9 @@ export interface Door {
   /** Which door of this room it is. The index *is* the choice (art. 36). */
   readonly at: number
   /**
-   * art. 77: the hidden region tag. The player never sees it; a door's sense
-   * would be exactly this leaking, and senses are parked with the hints.
+   * art. 77: the hidden region tag. The player never sees the tag — a door's
+   * sense *is* it leaking (art. 31 as amended 2026-08-06, `SENSES`), and the
+   * tally it feeds is never shown in any form.
    */
   readonly region: RegionId | null
   readonly demands: readonly KeyId[]

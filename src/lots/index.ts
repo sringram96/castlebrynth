@@ -138,7 +138,6 @@ export {
   armorFrom,
   audit,
   healedBy,
-  riderIds,
   ridersFired,
   shapeTriggers,
   woundedBy,
@@ -176,7 +175,7 @@ export {
   worthOf,
 } from './rolling.js'
 
-export { advanceFight, openFight, outcomeOf, withTurn } from './fight.js'
+export { advanceFight, openFight, withTurn } from './fight.js'
 
 /**
  * art. 119: **a fight event resolves in beats.** The script is computed off

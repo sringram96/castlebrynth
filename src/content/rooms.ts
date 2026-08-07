@@ -104,7 +104,6 @@ import {
 } from './plates/features.js'
 import { plainScene } from './plates/plain.js'
 import {
-  alcove,
   ashBanks,
   boneDrifts,
   comingCloser,
@@ -371,7 +370,6 @@ const NARROWEST = 2.2
  * mush and not depth.
  */
 export function doorMarks(kind: ShapeKind, count: number): readonly WorldMark[] {
-  const plan = DOOR_PLAN[kind]
   const n = Math.max(1, count)
   // art. 96: a junction deals directions. One way on is a corner, two are a
   // left and a right, and three put the way straight on between them — so

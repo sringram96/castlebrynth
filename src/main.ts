@@ -90,8 +90,6 @@ import type { Act, Bands, Pick, Tappable } from './descent/index.js'
 import {
   act,
   actsIn,
-  breathFor,
-  canOpen,
   chooseDoor,
   doors,
   enterRoom,
@@ -101,7 +99,6 @@ import {
   looking,
   nextBeat,
   onArrival,
-  openDoor,
   opens,
   picking,
   pickedDoor,
@@ -171,7 +168,6 @@ import {
   decide,
   fitsNothing,
   freshCard,
-  harm,
   keep,
   loadedFaces,
   recast,
@@ -2220,7 +2216,6 @@ function acts(): void {
 // ── The room ───────────────────────────────────────────────────────────
 
 function roomActs(): void {
-  const run = ledgers.run!
   for (const one of bands.tray.flatMap((offer) => (offer.kind === 'act' ? [offer.act] : []))) {
     actStrip.append(verb(one.id, () => doAct(one)))
   }

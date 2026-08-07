@@ -21,7 +21,6 @@ import type {
   Goods,
   Hand,
   Horror,
-  Outcome,
   Resolution,
   Turn,
 } from './types.js'
@@ -202,7 +201,3 @@ export function advanceFight(fight: Fight, resolution: Resolution): Fight {
   }
 }
 
-/** Where a fight stands, for a caller that would rather not read events. */
-export function outcomeOf(fight: Fight): Outcome {
-  return fight.outcome
-}

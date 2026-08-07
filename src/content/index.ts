@@ -320,13 +320,6 @@ import type { VoiceCategory } from './voice.js'
 import { asLabels, asPlain, asPlaceholders, asScrawls, asThoughts } from './voice.js'
 
 /**
- * art. 37: the Crossing opens every run, so the Crossing's beats are the
- * waking — the one room the mind wave rewrote. The other thirteen are
- * cards 27–28's.
- */
-const WAKING = THE_CROSSING as string
-
-/**
  * Which of the shell's notices have been rewritten into the amended
  * register. Everything else in `NOTICES` is prose in the repealed voice and
  * is declared a placeholder rather than quietly counted as passing.

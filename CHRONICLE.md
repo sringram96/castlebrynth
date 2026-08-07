@@ -145,6 +145,20 @@ Old garbage, named and removed rather than left to be rediscovered.
   and the four notices the choosing screen can no longer reach are gone
   rather than left unreachable.
 
+
+**And the build says so now.** `noUnusedLocals` is on in `tsconfig.json`,
+because an unused import is how a repealed mechanic goes on looking alive:
+`openDoor` outlived the door-fight card 95 abolished and `main.ts` was still
+importing it; the shell was still importing `canOpen` and `harm` from waves
+that had stopped calling them. Twenty-five unused declarations came out, and
+the flag is what stops the twenty-sixth.
+
+Four more exports died with them: `outcomeOf` and `riderIds` (one-line
+accessors for public fields, called by nothing), `openDoor` itself, and
+`beatIndex`, which is used once and inside its own module. Stale comments
+went with them — `gen/types.ts` still said the senses were parked when
+art. 31 unparked them, and two content files still described a hand of five.
+
 `npm test`: 58 files, 698 tests, green. `npm run build` clean.
 
 ### The phone pass

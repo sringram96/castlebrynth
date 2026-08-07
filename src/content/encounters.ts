@@ -48,7 +48,6 @@ import {
   deadTraveler,
   goodOnFloor,
   leftMark,
-  lurker,
   stillBasin,
   theKey,
   theMender,

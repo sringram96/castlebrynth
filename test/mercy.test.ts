@@ -10,7 +10,6 @@ import {
   GRID,
   MENDER,
   MERCY_SOCKET,
-  NOTICES,
   SANCTUM_BREATH,
   SAVIOR_MERCY,
   ROOM_BOOK,
@@ -24,31 +23,28 @@ import {
   act,
   actsIn,
   breathOf,
-  chooseDoor,
   enterRoom,
   sceneStateOf,
 } from '../src/descent/index.js'
 import type { Catalog, Chain, ChainNode, RegionId } from '../src/gen/index.js'
-import { FRESH_DRIFT, hereIn } from '../src/gen/index.js'
+import { FRESH_DRIFT } from '../src/gen/index.js'
 import { renderRoom, viewOf } from '../src/room/index.js'
 import type { Ledgers, RoomId, Vault } from '../src/state/index.js'
 import { hasMet, instanceOf, load, movedTo, remembers, save, wounded } from '../src/state/index.js'
 import { routeDeath } from '../src/hinge/index.js'
 import type { Policy } from './drift.js'
 import {
-  DEALER,
   alwaysLeft,
   alwaysRight,
   avoiding,
   coinFlip,
-  greet,
   leaning,
   opened,
   runOf,
   runWith,
   seedOf,
   walkTo,
-  takeable, lookAround } from './drift.js'
+  lookAround } from './drift.js'
 import { BURNT, DROWNED, OSSUARY } from '../src/content/index.js'
 
 /**

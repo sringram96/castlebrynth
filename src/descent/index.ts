@@ -835,7 +835,7 @@ export function nextBeat(bands: Bands): Bands {
 }
 
 /** Which candle the bands are on, for the run to write down (art. 36). */
-export function beatIndex(bands: Bands): number {
+function beatIndex(bands: Bands): number {
   return Math.max(0, bands.word?.index ?? 0)
 }
 
@@ -1130,15 +1130,6 @@ export function chooseDoor(
   }
 }
 
-/**
- * art. 70 for a door that changes no room: opening a fight-door is opening a
- * door, and the room it stands in has to show it.
- */
-export function openDoor(ledgers: Ledgers, door: Door): Ledgers {
-  const run = ledgers.run
-  if (run === null) return ledgers
-  return { ...ledgers, run: openedDoor(run, doorKey(run.at.instance, door)) }
-}
 
 /** art. 36: the candle you are on is part of where you are. */
 export function remember(ledgers: Ledgers, bands: Bands): Ledgers {

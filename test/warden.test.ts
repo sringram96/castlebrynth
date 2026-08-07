@@ -410,7 +410,7 @@ describe('card 31 — the Warden is the keeper the door was built for', () => {
   })
 
   it('arrives at the near depth, in a body of its own (arts 30, 100)', () => {
-    const { turned, node, door, keeper } = theBeat()
+    const { turned, door, keeper } = theBeat()
     const fight = openFightDoor(turned, { door, horror: keeper })
     const drawn = advanceBodyOf(keeper.id)
     expect(drawn).not.toBeNull()

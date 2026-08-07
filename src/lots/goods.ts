@@ -11,9 +11,7 @@ import type {
   Claim,
   Die,
   DieId,
-  Goods,
   Rider,
-  RiderId,
   Talisman,
   Wearable,
 } from './types.js'
@@ -82,10 +80,6 @@ export function shapeTriggers(
   )
 }
 
-/** Which rider ids a set of goods can actually fire. */
-export function riderIds(goods: Goods): readonly RiderId[] {
-  return goods.riders.map((rider) => rider.id)
-}
 
 // ── The audit ──────────────────────────────────────────────────────────
 
