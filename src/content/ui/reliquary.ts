@@ -12,7 +12,6 @@
 
 import type { TrayFrame, TrayPose, TrayRect } from '../../shell/tray-space.js'
 
-/** Keep the current runtime contract: the supplied painting is shipped at this size. */
 export const RELIQUARY_FRAME: TrayFrame = {
   authoredWidth: 1460,
   authoredHeight: 727,
@@ -30,35 +29,26 @@ export interface ReliquaryMap extends TrayFrame {
   readonly tabs: readonly TrayRect[]
 }
 
-/**
- * Measured from reference/visual/reliquary-runtime-target.png and then tuned
- * against the phone composition rather than against decorative sub-cells.
- *
- * The crown belongs to the six-die hand. The central recess belongs to the
- * fight's changing information — especially scoring. The footer remains the
- * three stable beds. The right-hand cavities remain secondary/future space.
- */
 export const RELIQUARY: ReliquaryMap = {
   ...RELIQUARY_FRAME,
 
-  healthOrb: { x: 0.043, y: 0.220, width: 0.190, height: 0.390 },
-  healthText: { x: 0.055, y: 0.585, width: 0.145, height: 0.105 },
+  // The meter is now deliberately INSIDE the dark glass. It is a direct tray
+  // child, not a child of the text box, so these are real panel coordinates.
+  healthOrb: { x: 0.060, y: 0.300, width: 0.145, height: 0.335 },
+  healthText: { x: 0.060, y: 0.635, width: 0.145, height: 0.085 },
 
-  // Situational fight text, when there is any, lives at the top of the well.
-  // The old always-on incoming/unused pair is no longer part of the visual
-  // composition.
-  statusRail: { x: 0.275, y: 0.305, width: 0.390, height: 0.070 },
+  // Kept as a reserved exceptional-status region. Ordinary fight bookkeeping
+  // no longer occupies a permanent rail.
+  statusRail: { x: 0.275, y: 0.305, width: 0.410, height: 0.060 },
 
-  // Six large dice across the crown. This zone is deliberately taller and a
-  // little wider than the carved recesses so the bones read before the frame.
   diceZone: { x: 0.185, y: 0.050, width: 0.610, height: 0.225 },
 
-  // The large authored recess is the combat information stage.
+  // The whole dark recess is the fight's information stage.
   mainWell: { x: 0.250, y: 0.270, width: 0.480, height: 0.455 },
 
-  // Scoring owns the visual centre of the well rather than a tiny lower-left
-  // inscription. `sum × line` is the primary changing object in combat.
-  score: { x: 0.285, y: 0.390, width: 0.405, height: 0.205 },
+  // Scoring is a compact reading centered in the main well. The visual is
+  // not a second dashboard: it is simply sum × multiplier.
+  score: { x: 0.250, y: 0.270, width: 0.480, height: 0.455 },
   action: { x: 0.585, y: 0.620, width: 0.145, height: 0.085 },
 
   menu: { x: 0.800, y: 0.095, width: 0.055, height: 0.105 },
@@ -70,10 +60,6 @@ export const RELIQUARY: ReliquaryMap = {
   ],
 }
 
-/**
- * Six authored crown positions. They intentionally consume almost the whole
- * available rail: the dice are game pieces, not tiny icons decorating it.
- */
 export const DIE_CELLS: readonly TrayRect[] = [
   { x: 0.188, y: 0.058, width: 0.096, height: 0.205 },
   { x: 0.289, y: 0.058, width: 0.096, height: 0.205 },
@@ -83,18 +69,12 @@ export const DIE_CELLS: readonly TrayRect[] = [
   { x: 0.693, y: 0.058, width: 0.096, height: 0.205 },
 ]
 
-/**
- * The bone nearly fills the crown compartment. Interaction size follows the
- * authored apparatus; it is not allowed to force the artwork back into a
- * generic responsive grid.
- */
 export const DIE_SPRITE = 0.091
 export const DIE_TARGET_WIDTH = 0.099
 export const DIE_TARGET_HEIGHT = 0.210
 
 export type DiePose = TrayPose
 
-/** Sockets keep the canonical six square; only defensive overflow receives a tiny tilt. */
 const TILTS = [0, 0, 0, 0, 0, 0, -2, 2] as const
 
 export function posesFor(count: number): readonly DiePose[] {

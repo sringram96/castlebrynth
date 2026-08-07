@@ -61,7 +61,7 @@ function pressed(at: AtTheDoor): readonly string[] {
   return keys
 }
 
-const NOTHING: AtTheDoor = { inFlight: false, hasBook: false, abandoning: false }
+const NOTHING: AtTheDoor = { inFlight: false, abandoning: false }
 
 describe('the threshold — art. 71 (no press lies about where it takes you)', () => {
   it('offers Descend and never Continue when there is no run to come back to', () => {
@@ -92,11 +92,6 @@ describe('the threshold — art. 71 (no press lies about where it takes you)', (
     // Armed, the strip is the two presses and nothing else: the one that
     // pays and the one that walks away.
     expect(pressed(armed)).toEqual(['abandon.all', 'keep'])
-  })
-
-  it('offers the Book only when the permanent holds one', () => {
-    expect(pressed(NOTHING)).not.toContain('read')
-    expect(pressed({ ...NOTHING, hasBook: true })).toContain('read')
   })
 
   it('always offers settings, and offers nothing else it has not been told is true', () => {

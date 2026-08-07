@@ -135,22 +135,20 @@ journey.md.
     (extends arts 42, 65).
 
 ## Persistence & the card
-74. SETTLED (ruled) — The card lives behind the glyph. A small,
-    persistent info glyph — the way Balatro keeps hand stats aside —
-    opens the card in one tap. The card is never parked mid-screen;
-    placement of the glyph is the design lead's within this
-    constraint.
+74. SETTLED (amended 2026-08-07) — The card lives behind its small
+    persistent glyph. The Book lives behind **Read in the third footer bed**.
+    Neither is parked mid-screen and neither needs a duplicate action row in
+    ACTS. Placement inside the authored apparatus is the design lead's.
 75. SETTLED — Interaction is state. A half-made selection, a
     half-read scene, a half-spent turn all survive the lock screen
     (art. 36 applied to the fingertip).
 
 ## Panels & focus (ratified 2026-08-05)
-90. SETTLED (ruled) — Tabs are taps. A tab bar spends nothing from
-    art. 76's budget: it is the vocabulary the game already has, used
-    on a new surface, so it needs no admission. A tab is a **label**
-    and not a control — it names a place and commits nothing — so
-    art. 66 does not govern it and this article does instead: one or
-    two words, a place rather than an action.
+90. SETTLED (amended 2026-08-07) — The footer is three authored
+    beds, not necessarily three tabs. A navigation bed is a label and moves
+    between tray panels; a utility bed may hold one persistent plain action.
+    For now the first two are Actions and Pouch, and the third is **Read**.
+    Read opens the Book and therefore does not also appear as a row in ACTS.
 
     **The slide is a named option.** Swiping between panels was
     weighed at the same stand-up and not admitted. It remains eligible
@@ -167,13 +165,10 @@ journey.md.
     focuses what it names. Nothing else moves focus. A focus that moves
     on its own is a focus the player has to keep checking, which is the
     opposite of anatomy.
-92. SETTLED (ruled) — The map is a socket. A tab may stand for a panel
-    that does not exist, drawn plainly disabled, so that an absence
-    reads as a decision rather than as an oversight. Behind this one
-    there is nothing and there may be nothing: art. 31 bans the road
-    ahead and art. 85 parks the trail behind. **A disabled tab is
-    legal; pixels behind it are not.** Filling it requires amending
-    those articles, not this one.
+92. REPEALED (2026-08-07) — The disabled Map socket was placeholder
+    chrome, not useful anatomy. It is gone. The third footer bed carries Read
+    until a real map exists and earns that space; no empty/disabled Map label
+    is required to reserve the idea.
 
 ## The interaction budget
 76. SETTLED (ruled) — No interaction type is banned, and none enters

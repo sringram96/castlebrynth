@@ -1,37 +1,66 @@
-# Fight tray — art-direction authority
+# Reliquary — canonical runtime contract
 
-This file supersedes older tray-layout interpretations when they conflict with
-the painted reliquary.
+The authored reliquary is the bottom interface. There is no second CSS-drawn
+tray underneath it.
 
-## Canonical composition
+## The four fixed visual jobs
 
-- Six dice are the shipped combat hand.
-- Those six dice occupy the six authored crown positions.
-- They are game pieces, not icons; fill the crown generously.
-- The central dark well is the combat information stage.
-- Live scoring (`sum × line`, including the line name) is the primary object in
-  that well.
-- `incoming` and `unused` do not get permanent readouts. The horror's intent
-  already says what is coming; unused dice are visible as dice state.
-- Health remains the left orb.
-- The footer remains the three carved beds, with the fight action borrowing the
-  middle bed while Pouch is unavailable.
+1. left health instrument;
+2. six-die crown;
+3. central content/scoring well;
+4. three footer beds.
 
-## Screen relationship
+The right vertical cavities remain secondary/future carried-item space.
 
-The plated reliquary overlays the bottom of the room instead of consuming a
-separate black band. Transparent pixels in the PNG reveal the room behind it.
-Do not add a flat black matte behind the plate.
+## Health
 
-The tray scales uniformly from normalized tray coordinates. Internal combat
-composition does not reflow with viewport width.
+The red health level is a persistent direct child of the tray. It is never
+destroyed/recreated during fight animation. Only its fill percentage changes.
+Its bounds sit inside the dark glass of the painted orb.
 
-## Engineering boundary
+## Fight
 
-The generic engine may continue to represent a hand as a collection. That does
-not require the canonical fight UI to auto-layout arbitrary counts. The
-unpainted fallback may remain generic; the painted combat plate is authored.
+The six dice stay in the crown.
 
-Do not reintroduce an absolute 40px rule that forces the plate to be redesigned
-or the dice to wrap. Make targets as generous as the authored geometry allows,
-keep them non-overlapping, and preserve the composition.
+The central well replaces the old score widget with one compact live reading:
+
+`sum × multiplier`
+
+There is no separate result box. The line name may sit beneath it. Exceptional
+decision-relevant arithmetic such as cost, bleed, or a withheld line can wrap
+quietly beneath the reading inside the same well.
+
+`incoming` and `unused` do not get permanent duplicate readouts.
+
+## Footer
+
+The beds are, for now:
+
+- Actions
+- Pouch / current fight action
+- Read
+
+Read opens the Book. It is a persistent footer action, not a room action and
+not a row in the main well.
+
+Map is parked until a real map exists.
+
+## No legacy tray
+
+The old gradient/CSS reliquary is retired. Before the plate is decoded, the
+tray is hidden rather than replaced with a second visual system. The choosing
+screen is the explicit exception: it owns its own black stage and never uses
+the reliquary.
+
+
+## Crown sockets
+
+The six bones themselves are unchanged. The panel supplies a tight square
+recess behind each one, only a hair larger than the bone, so the die looks
+seated into the reliquary like a fitted puzzle piece rather than floating in a
+large generic button.
+
+The touch target may remain slightly larger than that visible recess.
+
+Selection changes the socket, not the die: a selected recess gets a strong
+cyan rim/glow. Do not recolor or redraw the bone to indicate selection.

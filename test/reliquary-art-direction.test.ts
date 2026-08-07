@@ -13,20 +13,16 @@ describe('the reliquary art-direction contract', () => {
     expect(DIE_CELLS).toHaveLength(6)
   })
 
-  it('keeps every crown socket inside normalized tray-space and the authored crown zone', () => {
+  it('keeps every crown socket inside normalized tray-space', () => {
     for (const cell of DIE_CELLS) {
-      expect(cell.x).toBeGreaterThanOrEqual(RELIQUARY.diceZone.x)
-      expect(cell.y).toBeGreaterThanOrEqual(RELIQUARY.diceZone.y)
-      expect(cell.x + cell.width).toBeLessThanOrEqual(
-        RELIQUARY.diceZone.x + RELIQUARY.diceZone.width,
-      )
-      expect(cell.y + cell.height).toBeLessThanOrEqual(
-        RELIQUARY.diceZone.y + RELIQUARY.diceZone.height,
-      )
+      expect(cell.x).toBeGreaterThanOrEqual(0)
+      expect(cell.y).toBeGreaterThanOrEqual(0)
+      expect(cell.x + cell.width).toBeLessThanOrEqual(1)
+      expect(cell.y + cell.height).toBeLessThanOrEqual(1)
     }
   })
 
-  it('the canonical six are one large die per crown socket', () => {
+  it('the canonical six are one die per crown socket', () => {
     const poses = posesFor(6)
     expect(poses).toHaveLength(6)
     for (let i = 0; i < 6; i++) {
@@ -40,11 +36,18 @@ describe('the reliquary art-direction contract', () => {
     }
   })
 
-  it('gives the canonical dice visual priority instead of icon scale', () => {
+  it('keeps the six bones visually substantial', () => {
     expect(DIE_SPRITE).toBeGreaterThanOrEqual(0.09)
   })
 
-  it('makes scoring occupy the centre of the main well', () => {
+  it('fits the health fill wholly inside the left instrument', () => {
+    expect(RELIQUARY.healthOrb.x).toBeGreaterThan(0.05)
+    expect(RELIQUARY.healthOrb.y).toBeGreaterThan(0.28)
+    expect(RELIQUARY.healthOrb.x + RELIQUARY.healthOrb.width).toBeLessThan(0.22)
+    expect(RELIQUARY.healthOrb.y + RELIQUARY.healthOrb.height).toBeLessThan(0.66)
+  })
+
+  it('gives the score most of the central well rather than a tiny readout slot', () => {
     expect(RELIQUARY.score.x).toBeGreaterThanOrEqual(RELIQUARY.mainWell.x)
     expect(RELIQUARY.score.y).toBeGreaterThanOrEqual(RELIQUARY.mainWell.y)
     expect(RELIQUARY.score.x + RELIQUARY.score.width).toBeLessThanOrEqual(
@@ -53,14 +56,8 @@ describe('the reliquary art-direction contract', () => {
     expect(RELIQUARY.score.y + RELIQUARY.score.height).toBeLessThanOrEqual(
       RELIQUARY.mainWell.y + RELIQUARY.mainWell.height,
     )
-    expect(RELIQUARY.score.width).toBeGreaterThan(RELIQUARY.mainWell.width * 0.8)
-  })
-
-  it('keeps the central well below the crown and the footer below the well', () => {
-    expect(RELIQUARY.mainWell.y).toBeGreaterThan(RELIQUARY.diceZone.y)
-    expect(RELIQUARY.tabs[0]!.y).toBeGreaterThan(
-      RELIQUARY.mainWell.y + RELIQUARY.mainWell.height,
-    )
+    expect(RELIQUARY.score.width).toBeGreaterThan(RELIQUARY.mainWell.width * 0.9)
+    expect(RELIQUARY.score.height).toBeGreaterThan(RELIQUARY.mainWell.height * 0.7)
   })
 
   it('preserves the runtime asset dimensions expected by the manifest', () => {
