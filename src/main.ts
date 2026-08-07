@@ -1874,17 +1874,13 @@ function theFightPanel(): void {
   const now = fight
   if (now === null) return
 
-  const corroded = now.turn.intent.effect?.kind === 'corrode'
-  const armorNow = corroded ? 0 : now.armor
   const totals = document.createElement('div')
   totals.className = 'totals'
-  // card 94: **the attack is not read here any more.** There is exactly one
-  // running readout and it is the score row below — a number that stood in
-  // two places would be the spreadsheet the fight wave was told it was.
-  totals.append(
-    reading(READOUT.incoming ?? '', `${Math.max(0, now.turn.intent.amount - armorNow)}`),
-    reading(READOUT.unused ?? '', `${unused(now.turn).length}`),
-  )
+  // 2026-08-07 art-direction ruling: the horror's intent already declares
+  // what is coming, and an unused die is visible on the table. Repeating both
+  // as tiny ledger numbers made the tray read like debug UI. This header is
+  // now reserved for exceptional, actionable state (cost, bleed, withheld
+  // line) while the live score owns the main well.
   const priced = pricedNow()
   if (priced > 0) totals.append(reading(READOUT.cost ?? '', `${priced}`))
   // art. 57: everything visible, and art. 65: a bleed is a number the plan
