@@ -268,6 +268,7 @@ const sheetBand = must<HTMLDivElement>('sheet')
 const vitalsRegion = must<HTMLDivElement>('vitals')
 const tabBar = must<HTMLDivElement>('tabs')
 const pouchRegion = must<HTMLDivElement>('pouch')
+const pouchHandRegion = must<HTMLDivElement>('pouchHand')
 const actStrip = must<HTMLDivElement>('acts')
 const fightPanel = must<HTMLDivElement>('fight')
 const trayBand = must<HTMLDivElement>('tray')
@@ -694,6 +695,13 @@ function poseTray(): void {
   // it holds, so putting something new in the tray is writing rows and
   // nothing else.
   fillWell()
+  // POUCH uses the same authored six crown sockets as FIGHT. This is
+  // deliberately outside the central well: the hand is anatomy; the
+  // well is the panel's changing contents.
+  if (pouchHandRegion.childElementCount > 0) {
+    pouchHandRegion.classList.add('posed')
+    poseHand(pouchHandRegion)
+  }
   const totals = fightPanel.querySelector<HTMLElement>('.totals')
   if (totals !== null) place(totals, RELIQUARY.statusRail, size)
   // The panel carves a small recess at its top right; the card's glyph is the
@@ -1712,6 +1720,10 @@ function tabs(): void {
 }
 
 function panels(): void {
+  // The crown hand is panel-state, not well content. Rebuild it only
+  // when POUCH is the active panel so stale dice never survive focus.
+  pouchHandRegion.replaceChildren()
+  pouchHandRegion.classList.remove('posed')
   // A screen takes the whole panel area: there is nowhere else to be until
   // it is answered, so ACTS is the only thing under it and the other two are
   // shut (art. 67).
@@ -2266,34 +2278,43 @@ function bestLine(): Line | null {
 function pouch(): void {
   pouchRegion.replaceChildren()
   const run = ledgers.run!
-  // One die, one slot (art. 67). The face set is the choosing screen's job.
-  run.hand.dice.forEach((die, n) => pouchRegion.append(dieChip(die, `hand:${n}`)))
-  // arts 55–56: the invitation, until the first find fills it.
-  for (let n = run.hand.dice.length; n < ledgers.permanent.handSize; n++) {
-    pouchRegion.append(emptySlot())
+
+  // In the painted reliquary the canonical hand belongs to the six authored
+  // crown sockets. It is not repeated as generic rack content in the central
+  // well. The fallback tray keeps the old behavior so missing art never breaks
+  // the game (art. 126).
+  if (plated()) {
+    run.hand.dice.forEach((die, n) =>
+      pouchHandRegion.append(dieChip(die, `hand:${n}`)),
+    )
+  } else {
+    run.hand.dice.forEach((die, n) =>
+      pouchRegion.append(dieChip(die, `hand:${n}`)),
+    )
+    for (let n = run.hand.dice.length; n < ledgers.permanent.handSize; n++) {
+      pouchRegion.append(emptySlot())
+    }
   }
 
+  // Everything beyond the canonical hand belongs in the central pouch well:
+  // spares, rolling goods and carried things. The well can flow those contents
+  // without ever making a composition decision about the six hand dice.
   const spares = sparesOf(ledgers.permanent)
   if (spares.length > 0) {
     pouchRegion.append(hairline(''))
-    spares.forEach((die, n) => pouchRegion.append(dieChip(die, `spare:${n}`)))
+    spares.forEach((die, n) =>
+      pouchRegion.append(dieChip(die, `spare:${n}`)),
+    )
   }
 
-  // card 94: **and the carried things, where they can be read.** A trinket
-  // could be inspected in a fight and nowhere else, which is the one place a
-  // player is too busy to read six faces. The dashed hairline is the whole
-  // separator the two materials need now that they are two materials.
   const trinkets = carriedTrinkets(goods())
   if (trinkets.length > 0) {
     pouchRegion.append(hairline('iron'))
     for (const one of trinkets) pouchRegion.append(trinketReading(one))
   }
 
-  // art. 68: what you carry is a possession and answers the same way.
   for (const item of run.carried) pouchRegion.append(carriedSlot(item))
 
-  // art. 69: the panel says what it is rather than leaving the spares
-  // unexplained. It never instructs — it states what is true of them.
   const aside = document.createElement('div')
   aside.className = 'aside'
   aside.textContent = NOTICES[spares.length > 0 ? 'pouch.spares' : 'pouch.whole'] ?? ''
