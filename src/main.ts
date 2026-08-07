@@ -243,9 +243,16 @@ import {
 } from './visual/index.js'
 import { PLATES, artFor, horrorPlateAt, horrorPlateFor } from './content/visual/index.js'
 import type { TrayLayout } from './shell/tray.js'
-import { DIE_DIAL, composedHand, layoutDice } from './shell/tray.js'
-import type { DieDial } from './shell/tray.js'
+import { DIE_DIAL, layoutDice } from './shell/tray.js'
 import { canonicalChain, canonicalNode, canonicalRequest } from './shell/canonical.js'
+import { grown, place, trayScale } from './shell/tray-space.js'
+import {
+  DIE_ART,
+  DIE_TARGET_HEIGHT,
+  DIE_TARGET_WIDTH,
+  RELIQUARY,
+  posesFor,
+} from './content/ui/reliquary.js'
 import { CANONICAL } from './content/visual/index.js'
 
 // ── The bands ──────────────────────────────────────────────────────────
@@ -657,6 +664,89 @@ function plateTheTray(): void {
   const url = `${import.meta.env.BASE_URL}${ready.asset.src}`
   trayBand.style.setProperty('--reliquary', `url("${url}")`)
   trayBand.classList.add('plated')
+}
+
+/**
+ * **Everything in the painted tray stands where the artwork says.**
+ *
+ * One projection, run after the tray has been filled: the orb, the
+ * inscription rail, the running total, the turn's verb and the three beds are
+ * placed from `src/content/ui/reliquary.ts` in the artwork's own pixels. The
+ * stylesheet is left with colour, type and taps — it decides no position, so
+ * there is nothing for a viewport width to rearrange.
+ */
+function poseTray(): void {
+  if (!plated()) return
+  const scale = trayNow()
+  place(vitalsRegion, RELIQUARY.healthText, scale)
+  const bulb = vitalsRegion.querySelector<HTMLElement>('.bulb')
+  if (bulb !== null) {
+    place(bulb, RELIQUARY.healthOrb, scale)
+    // The orb is placed against the tray and the numerals are placed against
+    // it, so the level is taken out of the text's box and put in the glass.
+    bulb.style.left = `${(RELIQUARY.healthOrb.x - RELIQUARY.healthText.x) * scale}px`
+    bulb.style.top = `${(RELIQUARY.healthOrb.y - RELIQUARY.healthText.y) * scale}px`
+  }
+  const totals = fightPanel.querySelector<HTMLElement>('.totals')
+  if (totals !== null) place(totals, RELIQUARY.statusRail, scale)
+  const score = fightPanel.querySelector<HTMLElement>('.score')
+  if (score !== null) place(score, RELIQUARY.score, scale)
+  for (const el of fightPanel.querySelectorAll<HTMLElement>(':scope > button')) {
+    place(el, RELIQUARY.action, scale)
+  }
+  const beds = RELIQUARY.tabs
+  ;[...tabBar.children].forEach((el, at) => {
+    const bed = beds[at]
+    if (bed !== undefined && el instanceof HTMLElement) place(el, bed, scale)
+  })
+  debugTray(scale)
+}
+
+/**
+ * Development only: the authored bounds, drawn over the artwork, so a
+ * disagreement about composition is a coordinate and not a feeling.
+ *
+ *     …/?debugTray=1
+ */
+function debugTray(scale: number): void {
+  const on = new URLSearchParams(location.search).get('debugTray') === '1'
+  const had = trayBand.querySelector('#trayDebug')
+  had?.remove()
+  if (!import.meta.env.DEV || !on) return
+  const layer = document.createElement('div')
+  layer.id = 'trayDebug'
+  const mark = (rect: Parameters<typeof place>[1], ink: string): void => {
+    const el = document.createElement('i')
+    place(el, rect, scale)
+    el.style.border = `1px solid ${ink}`
+    el.style.pointerEvents = 'none'
+    layer.append(el)
+  }
+  mark(RELIQUARY.healthOrb, '#e04a3a')
+  mark(RELIQUARY.healthText, '#e04a3a88')
+  mark(RELIQUARY.statusRail, '#4aa8e0')
+  mark(RELIQUARY.mainWell, '#e0d24a55')
+  mark(RELIQUARY.score, '#4ae08a')
+  mark(RELIQUARY.action, '#b04ae0')
+  for (const bed of RELIQUARY.tabs) mark(bed, '#e0c24a')
+  const hand = fightPanel.querySelector('.hand')
+  if (hand !== null) {
+    for (const slot of hand.children) {
+      if (!(slot instanceof HTMLElement)) continue
+      const r = slot.getBoundingClientRect()
+      const t = trayBand.getBoundingClientRect()
+      const el = document.createElement('i')
+      el.style.position = 'absolute'
+      el.style.left = `${r.x - t.x}px`
+      el.style.top = `${r.y - t.y}px`
+      el.style.width = `${r.width}px`
+      el.style.height = `${r.height}px`
+      el.style.border = '1px solid #4ae08a'
+      el.style.pointerEvents = 'none'
+      layer.append(el)
+    }
+  }
+  trayBand.append(layer)
 }
 
 /**
@@ -1461,6 +1551,9 @@ function tray(): void {
   vitals()
   tabs()
   panels()
+  // arts 22, 126: and then the whole apparatus is projected at once. Nothing
+  // above knows a coordinate; nothing below rearranges anything.
+  poseTray()
 }
 
 /**
@@ -1752,6 +1845,9 @@ function theFightPanel(): void {
   const standing = laid.length > 0 ? laid.length : ledgers.run!.hand.dice.length - heldFast.size
   const layout = measureHand(standing + now.turn.bound.length)
   const row = handRow(layout)
+  // arts 22, 128: in the painted tray the hand is an authored composition and
+  // the row is the field it stands in, not a box that arranges it.
+  if (plated()) row.classList.add('posed')
   if (laid.length > 0) {
     const spent = claimedDice(now.turn)
     for (const landed of laid) {
@@ -1769,6 +1865,7 @@ function theFightPanel(): void {
     const die = byId.get(id as string)
     if (die !== undefined) row.append(boundSlot(die, now.horror.id))
   }
+  if (plated()) poseHand(row)
   fightPanel.append(row)
   // card 93: **they render only if carried.** No empty row, no placeholder —
   // zero rolling goods is the normal state of the game, so a run carrying none
@@ -2167,34 +2264,48 @@ function measureHand(count: number): TrayLayout {
       Number.parseFloat(getComputedStyle(fightPanel).paddingRight || '0')
     : 0
   const free = Math.max(0, room - (Number.isFinite(pad) ? pad : 0))
-  // In the painted tray the hand is a composition, not a fit (`composedHand`).
-  handLayout = trayBand.classList.contains('plated')
-    ? composedHand(count, free, WELL_DIAL)
+  // In the painted tray nothing is measured: the die is the size the artwork
+  // draws it, scaled with the rest of the apparatus (`src/content/ui`).
+  handLayout = plated()
+    ? { size: DIE_ART * trayNow(), gap: 0, perRow: count, rows: 1 }
     : layoutDice(count, free)
   return handLayout
 }
 
-/**
- * **The target and the sprite are two different things**, and confusing them
- * is what made the painted frame look impossible.
- *
- * art. 128's floor is about the region a thumb has to hit, not about how much
- * bone is drawn inside it: a die drawn at thirty pixels inside a forty-four
- * pixel button is a die a thumb hits every time. The first reading of this
- * measured `count × visible width`, found that six of them would not cross the
- * frame's middle, and concluded the article and the artwork could not both be
- * obeyed. They can. The padding is the answer and it was there all along.
- *
- * So the well's dial keeps the floor and spends the room on **breathing space
- * rather than on bone**: the hit region is forty-four and never under forty,
- * and when a hand will not fit one row at that size it wraps, balanced, which
- * art. 128 already prefers to shrinking. Six dice as three and three look more
- * like bones thrown into a tray than six squeezed across a phone.
- */
-const WELL_DIAL: DieDial = { preferred: 42, min: 40, max: 46, gap: 3, minGap: 2 }
+/** Whether the tray is standing in its painted frame (art. 126's fallback). */
+function plated(): boolean {
+  return trayBand.classList.contains('plated')
+}
 
-/** How much of that button is bone. The rest is the padding that makes it hittable. */
-const BONE_IN_TARGET = 0.68
+/** The one number: rendered tray width over authored artwork width (art. 22). */
+function trayNow(): number {
+  return trayScale(RELIQUARY, trayBand.clientWidth || stage.clientWidth)
+}
+
+/**
+ * **The hand, posed.**
+ *
+ * Every die is put where the composition for this many dice says it goes, in
+ * the artwork's own pixels, scaled by the one number. There is no arranging
+ * here and no judgement: `src/content/ui/reliquary.ts` is the art direction
+ * and this projects it, which is the same division `src/room` has always had
+ * between a `WorldMark` and the cast that draws it.
+ *
+ * The **target is grown about the drawing's centre** and never drawn, so
+ * art. 128's floor is met by a rectangle nobody sees. Selection still keys on
+ * a die's identity and never on where it sits.
+ */
+function poseHand(row: HTMLElement): void {
+  const scale = trayNow()
+  const slots = [...row.children].filter((el): el is HTMLElement => el instanceof HTMLElement)
+  const poses = posesFor(slots.length)
+  slots.forEach((slot, at) => {
+    const pose = poses[at]
+    if (pose === undefined) return
+    const target = grown(pose, DIE_TARGET_WIDTH, DIE_TARGET_HEIGHT)
+    place(slot, pose.rotation === undefined ? target : { ...target, rotation: pose.rotation }, scale)
+  })
+}
 
 /**
  * The row the dice stand in. Its size is a custom property rather than a
@@ -2220,11 +2331,9 @@ function handRow(layout: TrayLayout): HTMLDivElement {
  * number that only made sense at one hand size.
  */
 function faceSizeFor(layout: TrayLayout): number {
-  // In the painted tray the die is drawn smaller than the thing you press, so
-  // the hand has room to breathe inside the frame without any target shrinking.
-  if (trayBand.classList.contains('plated')) {
-    return Math.max(20, Math.round(layout.size * BONE_IN_TARGET))
-  }
+  // In the painted tray the drawing is the artwork's own size, scaled with the
+  // apparatus — never a fraction of whatever the target came to.
+  if (plated()) return Math.max(16, Math.round(DIE_ART * trayNow()))
   return Math.max(24, Math.round(layout.size * (FACE_IN_SLOT / DIE_DIAL.preferred)))
 }
 
