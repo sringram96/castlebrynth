@@ -9,7 +9,7 @@
  * what is behind it, so a room still renders identical every visit.
  */
 
-import { deflateSync } from 'node:zlib'
+import { deflateSync, inflateSync } from 'node:zlib'
 
 const CRC = (() => {
   const table = new Int32Array(256)
@@ -41,11 +41,17 @@ function chunk(type, data) {
  * `rgba` is width × height × 4 bytes. Deterministic: the same pixels give
  * the same file, so a master is diffable and a rebuild is a no-op.
  */
-export function encode(width, height, rgba) {
+export function encode(width, height, rgba, { cutout = false } = {}) {
   if (rgba.length !== width * height * 4) throw new Error('rgba is the wrong size')
-  for (let i = 3; i < rgba.length; i += 4) {
-    if (rgba[i] !== 0 && rgba[i] !== 255) {
-      throw new Error(`art. 17: alpha is ${rgba[i]} at pixel ${(i - 3) / 4}; it must be 0 or 255`)
+  // art. 17 as amended by the hero-art wave: a plate may carry an edge. What
+  // the article was ever defending is determinism, and an authored alpha is as
+  // deterministic as an authored colour — but a master that *means* to be a
+  // cutout still says so, and is held to it here.
+  if (cutout) {
+    for (let i = 3; i < rgba.length; i += 4) {
+      if (rgba[i] !== 0 && rgba[i] !== 255) {
+        throw new Error(`cutout: alpha is ${rgba[i]} at pixel ${(i - 3) / 4}; it must be 0 or 255`)
+      }
     }
   }
   const raw = Buffer.alloc(height * (width * 4 + 1))
@@ -67,6 +73,74 @@ export function encode(width, height, rgba) {
     chunk('IDAT', deflateSync(raw, { level: 9 })),
     chunk('IEND', Buffer.alloc(0)),
   ])
+}
+
+/**
+ * Read an 8-bit PNG back into RGBA pixels.
+ *
+ * The screen art under `reference/visual/` is the source the runtime plates
+ * are **cut from** (`tools/slice.mjs`), and cutting one means reading it.
+ * 8-bit, greyscale / RGB / RGBA, not interlaced — which is everything the
+ * repository holds and everything this file writes.
+ */
+export function decode(buf) {
+  const view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength)
+  let at = 8
+  let width = 0
+  let height = 0
+  let channels = 4
+  const parts = []
+  while (at < buf.length) {
+    const len = view.getUint32(at)
+    const type = String.fromCharCode(...buf.subarray(at + 4, at + 8))
+    if (type === 'IHDR') {
+      width = view.getUint32(at + 8)
+      height = view.getUint32(at + 12)
+      const colour = buf[at + 17]
+      channels = colour === 6 ? 4 : colour === 2 ? 3 : colour === 4 ? 2 : colour === 0 ? 1 : 0
+      if (buf[at + 16] !== 8 || channels === 0 || buf[at + 20] !== 0) {
+        throw new Error('only 8-bit grey/RGB/RGBA, non-interlaced PNG is read here')
+      }
+    }
+    if (type === 'IDAT') parts.push(buf.subarray(at + 8, at + 8 + len))
+    at += len + 12
+    if (type === 'IEND') break
+  }
+  const raw = inflateSync(Buffer.concat(parts))
+  const stride = width * channels
+  const flat = new Uint8Array(width * height * channels)
+  for (let y = 0; y < height; y++) {
+    const filter = raw[y * (stride + 1)]
+    const line = raw.subarray(y * (stride + 1) + 1, y * (stride + 1) + 1 + stride)
+    for (let i = 0; i < stride; i++) {
+      const a = i >= channels ? flat[y * stride + i - channels] : 0
+      const b = y > 0 ? flat[(y - 1) * stride + i] : 0
+      const c = i >= channels && y > 0 ? flat[(y - 1) * stride + i - channels] : 0
+      let value = line[i]
+      if (filter === 1) value += a
+      else if (filter === 2) value += b
+      else if (filter === 3) value += (a + b) >> 1
+      else if (filter === 4) {
+        const p = a + b - c
+        const pa = Math.abs(p - a)
+        const pb = Math.abs(p - b)
+        const pc = Math.abs(p - c)
+        value += pa <= pb && pa <= pc ? a : pb <= pc ? b : c
+      }
+      flat[y * stride + i] = value & 0xff
+    }
+  }
+  if (channels === 4) return { width, height, rgba: flat }
+  const rgba = new Uint8Array(width * height * 4)
+  for (let i = 0; i < width * height; i++) {
+    const from = i * channels
+    const grey = channels <= 2
+    rgba[i * 4] = flat[from]
+    rgba[i * 4 + 1] = grey ? flat[from] : flat[from + 1]
+    rgba[i * 4 + 2] = grey ? flat[from] : flat[from + 2]
+    rgba[i * 4 + 3] = channels === 2 ? flat[from + 1] : 255
+  }
+  return { width, height, rgba }
 }
 
 /**

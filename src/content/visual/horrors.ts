@@ -52,8 +52,8 @@ const PLATED: Readonly<Record<string, HorrorPlate>> = {
    */
   'horror.marrow': {
     asset: 'horror.marrow',
-    far: 0.2,
-    near: 0.66,
+    far: 0.22,
+    near: 0.7,
     footFar: 0.62,
     footNear: 1.02,
   },

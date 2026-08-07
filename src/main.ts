@@ -827,10 +827,18 @@ const SWELL = 0.09
  * undressed room and the gate itself hand in.
  */
 function show(frame: Framebuffer, draws: readonly Draw[] = []): void {
-  paintFrame(canvas, frame, draws, plates)
   // art. 25 (amended): exact fill via sharp upscale. The frame's height came
   // from this band's aspect, so filling one dimension all but fills both.
   const box = viewportOf(frame.width, frame.height, worldBand.clientWidth, worldBand.clientHeight)
+  // The hero-art wave: the canvas holds **device** pixels, so a painting is
+  // never resampled down to `GRID` on its way in. The box inside it is still
+  // cast at `GRID` and stretched, which is what art. 25 always did — the
+  // stretch simply happens on the canvas now instead of in CSS.
+  const ratio = Math.min(3, Math.max(1, window.devicePixelRatio || 1))
+  paintFrame(canvas, frame, draws, plates, {
+    width: box.cssWidth * ratio,
+    height: box.cssHeight * ratio,
+  })
   canvas.style.width = `${box.cssWidth}px`
   canvas.style.height = `${box.cssHeight}px`
   // art. 22: nothing is fixed in device pixels. The shake is **two game

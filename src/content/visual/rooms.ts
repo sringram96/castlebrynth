@@ -64,6 +64,38 @@ export const LANTERN: PlacedPlate = {
 }
 
 /**
+ * **What you are holding**, at the painted density (the hero-art wave).
+ *
+ * The hand and the forearm are in the same file as the blade, which is the
+ * decision that makes a second weapon cheap: the grip is authored once, every
+ * weapon after this one is drawn into the same fist at the same size, and
+ * swapping one for another is swapping an id. Nothing about the anchor moves.
+ *
+ * It is the bottom-right corner of the lens because that is where the
+ * reference holds it and because the left of the frame is where the room's
+ * light is — a hand over the lit side would cover the one part of the picture
+ * that is doing any work.
+ */
+export const WEAPON: PlacedPlate = {
+  asset: 'weapon.knife',
+  layer: Layer.FirstPerson,
+  anchor: { space: 'frame', x: 1.0, y: 1.0, origin: 'bottom-right', width: 0.52 },
+}
+
+/**
+ * The first-person plate for what the run is carrying, or nothing.
+ *
+ * There is no equipment model in the game today — dice are the offense and
+ * only the offense (art. 45) — so this answers the one weapon there is. It
+ * exists as a function rather than as a constant because *which* file goes on
+ * the first-person band is a fact about the run, and the day a second weapon
+ * ships that fact wants one place to live rather than a lookup in the shell.
+ */
+export function carriedPlate(weapon: string | null = 'weapon.knife'): PlacedPlate | null {
+  return weapon === null ? null : { ...WEAPON, asset: weapon }
+}
+
+/**
  * The rooms that have been dressed. Everything absent from this map is a
  * room rendering as it always did (art. 26's first tier, which is a floor
  * and not a failure).
@@ -83,8 +115,27 @@ const DRESSED: Readonly<Record<string, SceneArt>> = {
    * things (the cage, the faces in the niches) stay props inside the cast.
    */
   'room.lair.choir': {
-    foreground: LANTERN,
-    patches: [candle('choir.candle.left', at(-10, 14, 1.5, 3.4, FLOOR + 6.5))],
+    // **The painted hall.** It covers the frame, so what the box computes is
+    // behind it and unseen — which is legal and is not a loophole: art. 15's
+    // first clause is about a room never *lying* about its geometry, and this
+    // room's geometry is exactly what the painting was composed to. The cast
+    // still runs, the marks still lie where the box puts them, and the day the
+    // painting is missing the room is the corridor it always was (art. 126).
+    overlays: [{ asset: 'ossuary.hall', layer: Layer.Material, anchor: { space: 'cover' } }],
+    foreground: WEAPON,
+    // art. 107: one loop, and it is the candle on the right-hand sconce. Its
+    // place in the painting is a fraction of the frame and not a world
+    // coordinate, because the thing it sits on is painted rather than cast.
+    patches: [
+      {
+        id: 'hall.candle',
+        frames: ['patch.hall.candle.a', 'patch.hall.candle.b', 'patch.hall.candle.c'],
+        every: 3,
+        anchor: { space: 'frame', x: 0.735, y: 0.415, origin: 'bottom-center', width: 0.058 },
+        layer: Layer.Patch,
+        trigger: 'idle',
+      },
+    ],
   },
 
   /**

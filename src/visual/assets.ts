@@ -54,6 +54,20 @@ export interface Plate {
    * room it stands in has to be in that key too.
    */
   readonly school: string
+  /**
+   * **Declared, not yet delivered.** The slot exists — its id, its path, its
+   * size, where it stands and which band it is on — and the painting has not
+   * arrived at it. art. 126 already says missing art is a plainer room and
+   * never a broken one, so this changes nothing at runtime; what it changes is
+   * that the *absence* is a stated fact with a size and a place, which is what
+   * lets `reference/visual/ASSET_BRIEF.md` be a brief somebody can build to
+   * rather than a wish.
+   *
+   * `test/visual.assets.test.ts` holds it to that both ways: a file that has
+   * arrived must match its declaration, and a file that has not must say so
+   * here. Dropping the flag is the whole of shipping the art.
+   */
+  readonly awaiting?: true
 }
 
 /** A ramp-indexed drawing — art. 100, unchanged, named as an asset. */

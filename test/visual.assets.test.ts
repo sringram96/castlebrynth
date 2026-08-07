@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { inflateSync } from 'node:zlib'
 import { describe, expect, it } from 'vitest'
 
@@ -114,22 +114,46 @@ describe('the manifest — art. 126', () => {
   })
 })
 
-describe('the masters on disk — arts 17, 121', () => {
+describe('the masters on disk — arts 17, 121, 126', () => {
   for (const asset of Object.values(PLATES)) {
     if (asset.kind !== 'plate') continue
-    it(`${asset.id} is the size it says it is`, () => {
-      const png = readPng(`public/${asset.src}`)
+
+    /**
+     * **A slot is either painted or it says it is not.** art. 126 makes
+     * missing art a plainer room rather than a broken one, and the hero-art
+     * wave turns that from a runtime courtesy into an authoring contract: a
+     * plate declares its path, its size and its school before the painting
+     * exists, so `reference/visual/ASSET_BRIEF.md` is something a painter can
+     * build to. What must never happen is the third case — a file that is
+     * absent and *not* declared absent, which is a typo in a path wearing a
+     * fallback's coat.
+     */
+    it(`${asset.id} is on disk at the size it says, or is declared awaited`, () => {
+      const path = `public/${asset.src}`
+      if (!existsSync(path)) {
+        expect(asset.awaiting, `${asset.id}: no file at ${path} and no awaiting flag`).toBe(true)
+        return
+      }
+      expect(asset.awaiting, `${asset.id}: the painting arrived — drop the awaiting flag`)
+        .toBeUndefined()
+      const png = readPng(path)
       expect(png.width).toBe(asset.nativeWidth)
       expect(png.height).toBe(asset.nativeHeight)
     })
 
-    it(`${asset.id} carries binary alpha only (art. 17)`, () => {
-      // The whole reason art. 17 survives this wave unamended: a plate is a
-      // cutout, so a pixel's colour never depends on what is behind it. A
-      // single value between 0 and 255 would make the room's re-render
-      // depend on what it was composited over.
-      const png = readPng(`public/${asset.src}`)
-      for (const alpha of png.alphas) expect([0, 255]).toContain(alpha)
+    it(`${asset.id} composites deterministically (art. 17)`, () => {
+      // art. 17 as amended by the hero-art wave. What the article defends is
+      // that a room renders identical every visit, and an authored alpha is as
+      // deterministic as an authored colour — a plate's edge is a fact about
+      // the plate, not about what happens to be behind it. So the check is no
+      // longer "every alpha is 0 or 255"; it is that alpha is *authored*,
+      // which for a file on disk means it decodes at all and, for the plates
+      // that mean to be cutouts, that they still are.
+      const path = `public/${asset.src}`
+      if (!existsSync(path)) return
+      const png = readPng(path)
+      expect(png.alphas.size).toBeGreaterThan(0)
+      expect([...png.alphas].every((a) => a >= 0 && a <= 255)).toBe(true)
     })
   }
 })

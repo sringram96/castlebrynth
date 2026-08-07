@@ -116,7 +116,9 @@ function rectOf(
   const box =
     anchor.space === 'world'
       ? worldRect(anchor.at, scale, ctx)
-      : frameRect(anchor, nativeWidth, nativeHeight, scale, ctx)
+      : anchor.space === 'cover'
+        ? coverRect(anchor, nativeWidth, nativeHeight, ctx)
+        : frameRect(anchor, nativeWidth, nativeHeight, scale, ctx)
   if (box.width < 1 || box.height < 1) return null
   // Off the frame entirely: nothing to draw and nothing to clip.
   if (box.x >= ctx.frame.width || box.y >= ctx.frame.height) return null
@@ -146,6 +148,39 @@ function worldRect(
     y: Math.round(rect.y - (height - rect.height)),
     width: Math.round(width),
     height: Math.round(height),
+  }
+}
+
+/**
+ * arts 24–25: **cover.** The thing is scaled until it covers the frame in both
+ * directions and centred (or biased) in whichever direction overflows.
+ *
+ * It is the only rectangle that may be larger than the frame. A painted room
+ * is authored once at one aspect and has to stand on a screen whose aspect is
+ * a fact about somebody's phone, so either it is cropped or it is stretched —
+ * and stretching an authored pixel is the one thing nearest neighbour cannot
+ * save (`frameRect` says the same about a plate). The crop is therefore the
+ * honest answer, and what it costs is stated as a safe zone the art is drawn
+ * to rather than discovered on a device.
+ */
+function coverRect(
+  anchor: Extract<Anchor, { space: 'cover' }>,
+  nativeWidth: number,
+  nativeHeight: number,
+  ctx: Composition,
+): { x: number; y: number; width: number; height: number } {
+  const scale = Math.max(
+    ctx.frame.width / Math.max(1, nativeWidth),
+    ctx.frame.height / Math.max(1, nativeHeight),
+  )
+  const width = Math.ceil(nativeWidth * scale)
+  const height = Math.ceil(nativeHeight * scale)
+  const bias = Math.min(1, Math.max(0, anchor.bias ?? 0.5))
+  return {
+    x: Math.round((ctx.frame.width - width) / 2),
+    y: Math.round((ctx.frame.height - height) * bias),
+    width,
+    height,
   }
 }
 

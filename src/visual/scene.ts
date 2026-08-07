@@ -33,6 +33,24 @@ import type { VisualLayer } from './layers.js'
 export type Anchor =
   | { readonly space: 'world'; readonly at: WorldMark }
   | {
+      /**
+       * arts 24, 126: **the whole band, filled.** A painted room is authored
+       * at one aspect and shown on every phone there is, so it is scaled up
+       * until it covers the frame and whatever overflows is cropped — sides on
+       * a tall screen, top and bottom on a short one. It is the one anchor
+       * that may place a thing larger than the frame, which is the point of
+       * it: `reference/visual/ASSET_BRIEF.md` states the safe zone that
+       * follows, and the art is authored to that.
+       */
+      readonly space: 'cover'
+      /**
+       * Which part survives a vertical crop: 0 keeps the top, 1 the bottom,
+       * absent is the middle. A corridor wants its horizon, so the middle is
+       * almost always right.
+       */
+      readonly bias?: number
+    }
+  | {
       readonly space: 'frame'
       /** 0 is the left edge, 1 the right. */
       readonly x: number
