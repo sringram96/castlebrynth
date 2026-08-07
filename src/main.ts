@@ -245,6 +245,14 @@ import { PLATES, artFor, horrorPlateAt, horrorPlateFor } from './content/visual/
 import type { TrayLayout } from './shell/tray.js'
 import { DIE_DIAL, layoutDice } from './shell/tray.js'
 import { canonicalChain, canonicalNode, canonicalRequest } from './shell/canonical.js'
+import { grown, place, traySizeFor } from './shell/tray-space.js'
+import {
+  DIE_SPRITE,
+  DIE_TARGET_HEIGHT,
+  DIE_TARGET_WIDTH,
+  RELIQUARY,
+  posesFor,
+} from './content/ui/reliquary.js'
 import { CANONICAL } from './content/visual/index.js'
 
 // ── The bands ──────────────────────────────────────────────────────────
@@ -656,6 +664,99 @@ function plateTheTray(): void {
   const url = `${import.meta.env.BASE_URL}${ready.asset.src}`
   trayBand.style.setProperty('--reliquary', `url("${url}")`)
   trayBand.classList.add('plated')
+}
+
+/**
+ * **Everything in the painted tray stands where the artwork says.**
+ *
+ * One projection, run after the tray has been filled: the orb, the
+ * inscription rail, the running total, the turn's verb and the three beds are
+ * placed from `src/content/ui/reliquary.ts` in the artwork's own pixels. The
+ * stylesheet is left with colour, type and taps — it decides no position, so
+ * there is nothing for a viewport width to rearrange.
+ */
+function poseTray(): void {
+  if (!plated()) return
+  const size = trayNow()
+  place(vitalsRegion, RELIQUARY.healthText, size)
+  const bulb = vitalsRegion.querySelector<HTMLElement>('.bulb')
+  if (bulb !== null) {
+    // The glass is placed against the panel and the numerals against the
+    // panel, so the level lives in the orb rather than in the text's box.
+    place(bulb, RELIQUARY.healthOrb, size)
+    bulb.style.left = `${(RELIQUARY.healthOrb.x - RELIQUARY.healthText.x) * size.width}px`
+    bulb.style.top = `${(RELIQUARY.healthOrb.y - RELIQUARY.healthText.y) * size.height}px`
+  }
+  const totals = fightPanel.querySelector<HTMLElement>('.totals')
+  if (totals !== null) place(totals, RELIQUARY.statusRail, size)
+  // The panel carves a small recess at its top right; the card's glyph is the
+  // one thing in the tray that wants exactly that (art. 74 — one glyph, and it
+  // is never parked mid-screen).
+  const glyph = fightPanel.querySelector<HTMLElement>('.totals .glyph')
+  if (glyph !== null) place(glyph, grown(RELIQUARY.menu, RELIQUARY.menu.width, 0.16), size)
+  const score = fightPanel.querySelector<HTMLElement>('.score')
+  if (score !== null) place(score, RELIQUARY.score, size)
+  for (const el of fightPanel.querySelectorAll<HTMLElement>(':scope > button')) {
+    place(el, RELIQUARY.action, size)
+  }
+  // The beds are 12% of a short panel — twenty-odd pixels — so the *target*
+  // is grown about each one exactly as a die's is, and the word still sits on
+  // the carving (art. 128: the floor is a fact about what a thumb presses).
+  const beds = RELIQUARY.tabs
+  ;[...tabBar.children].forEach((el, at) => {
+    const bed = beds[at]
+    if (bed !== undefined && el instanceof HTMLElement) place(el, grown(bed, bed.width, 0.2), size)
+  })
+  debugTray(size)
+}
+
+/**
+ * Development only: the authored bounds, drawn over the artwork, so a
+ * disagreement about composition is a coordinate and not a feeling.
+ *
+ *     …/?debugTray=1
+ */
+function debugTray(size: { width: number; height: number }): void {
+  const on = new URLSearchParams(location.search).get('debugTray') === '1'
+  const had = trayBand.querySelector('#trayDebug')
+  had?.remove()
+  if (!import.meta.env.DEV || !on) return
+  const layer = document.createElement('div')
+  layer.id = 'trayDebug'
+  const mark = (rect: Parameters<typeof place>[1], ink: string): void => {
+    const el = document.createElement('i')
+    place(el, rect, size)
+    el.style.border = `1px solid ${ink}`
+    el.style.pointerEvents = 'none'
+    layer.append(el)
+  }
+  mark(RELIQUARY.healthOrb, '#e04a3a')
+  mark(RELIQUARY.healthText, '#e04a3a88')
+  mark(RELIQUARY.statusRail, '#4aa8e0')
+  mark(RELIQUARY.mainWell, '#e0d24a55')
+  mark(RELIQUARY.diceZone, '#4aa8e055')
+  mark(RELIQUARY.menu, '#e0824a')
+  mark(RELIQUARY.score, '#4ae08a')
+  mark(RELIQUARY.action, '#b04ae0')
+  for (const bed of RELIQUARY.tabs) mark(bed, '#e0c24a')
+  const hand = fightPanel.querySelector('.hand')
+  if (hand !== null) {
+    for (const slot of hand.children) {
+      if (!(slot instanceof HTMLElement)) continue
+      const r = slot.getBoundingClientRect()
+      const t = trayBand.getBoundingClientRect()
+      const el = document.createElement('i')
+      el.style.position = 'absolute'
+      el.style.left = `${r.x - t.x}px`
+      el.style.top = `${r.y - t.y}px`
+      el.style.width = `${r.width}px`
+      el.style.height = `${r.height}px`
+      el.style.border = '1px solid #4ae08a'
+      el.style.pointerEvents = 'none'
+      layer.append(el)
+    }
+  }
+  trayBand.append(layer)
 }
 
 /**
@@ -1149,6 +1250,14 @@ function paint(): void {
   // art. 117: the thumb has just done something, so the room's own moment
   // starts counting again from here.
   stillFor = 0
+  // arts 121, 124: **the choosing is a screen, and now it is one.** It always
+  // said so — "a screen, no tabs", "there is nowhere else to be until it is
+  // answered" — and it was drawn into the tray's panel area anyway, which is a
+  // band sized for a hand of dice and three verbs. A pouch of ten rows plus
+  // Swap and Descend does not fit in it, and what fell off the bottom was the
+  // verb that leaves: the screen the player could not answer was the screen
+  // whose whole job is being answered. It takes the stage now.
+  stage.classList.toggle('choosing', screen.kind === 'choosing')
   say()
   tray()
   world()
@@ -1452,6 +1561,9 @@ function tray(): void {
   vitals()
   tabs()
   panels()
+  // arts 22, 126: and then the whole apparatus is projected at once. Nothing
+  // above knows a coordinate; nothing below rearranges anything.
+  poseTray()
 }
 
 /**
@@ -1610,27 +1722,53 @@ function vitals(): void {
   if (atTheDoor()) return
   const run = ledgers.run!
   const now = fight
+  // **The bulb fills.** The reliquary carries a glass orb where the body's
+  // numbers go, and an orb that never changes is an ornament. It reads the
+  // same health the line beside it reads — one truth, said twice, once as a
+  // number for the player who is counting and once as a level for the player
+  // who is glancing. It is presentation and it changes nothing (art. 116).
+  const health = now !== null && inAFight() ? (shown?.yourHealth ?? now.yourHealth) : run.health
+  const most = now !== null && inAFight() ? now.yourHealthMax : run.healthMax
+  const bulb = document.createElement('i')
+  bulb.className = 'bulb'
+  bulb.style.setProperty('--fill', `${Math.max(0, Math.min(100, (health / Math.max(1, most)) * 100))}%`)
+  vitalsRegion.append(bulb)
   // art. 67 (amended): the rail is the body and nothing else. The turn's
   // running totals belong to the fight, so art. 57 keeps them pinned in the
   // FIGHT panel's header rather than in a rail that is always on screen.
   const corroded = now !== null && inAFight() && now.turn.intent.effect?.kind === 'corrode'
+  const armorValue = corroded
+    ? `0 ${READOUT.corroded}`
+    : `${now !== null && inAFight() ? now.armor : run.armor}`
   const armor = reading(
-    READOUT.armor ?? '',
-    corroded ? `0 ${READOUT.corroded}` : `${now !== null && inAFight() ? now.armor : run.armor}`,
+    trayBand.classList.contains('plated') ? '' : (READOUT.armor ?? ''),
+    armorValue,
   )
+  armor.title = `${READOUT.armor ?? ''} ${armorValue}`.trim()
   // art. 65 (`corrode`), art. 119 §3: **the armour flakes off the vitals**,
   // on the beat the blow that ate it lands and on no other.
   if (corroded && beatNow?.kind === 'struck') armor.className = 'flaking'
-  vitalsRegion.append(
-    reading(
-      READOUT.health ?? '',
-      // art. 119: while a timeline runs, the body reads what the beat says.
-      now !== null && inAFight()
-        ? `${shown?.yourHealth ?? now.yourHealth}/${now.yourHealthMax}`
-        : `${run.health}/${run.healthMax}`,
-    ),
-    armor,
-  )
+  const full = now !== null && inAFight()
+    ? `${shown?.yourHealth ?? now.yourHealth}/${now.yourHealthMax}`
+    : `${run.health}/${run.healthMax}`
+  // **The orb reads before the text does.** In the painted tray the glass
+  // carries the proportion and the numerals shrink to the one number a
+  // decision needs; the whole reading stays on the element as its label, so
+  // nothing is lost to a screen reader or to a long press. Out of the painted
+  // tray it is the sentence it has always been.
+  const compact = trayBand.classList.contains('plated')
+  const health_ = compact
+    ? reading('', String(health))
+    : reading(READOUT.health ?? '', full)
+  health_.title = `${READOUT.health ?? ''} ${full}`.trim()
+  // **The orb is an instrument, not a text box.** The level in the glass is
+  // the reading a glance takes; the numbers are the reading a decision takes,
+  // and in the painted tray they are set small and out of the way rather than
+  // pasted across the artwork. Nothing about what is true has changed — the
+  // same two numbers are on the frame, in the same place, all the time.
+  health_.className = 'hp'
+  armor.classList.add('ar')
+  vitalsRegion.append(health_, armor)
   // art. 74: the card lives behind a small, persistent glyph — and while a
   // fight is on it lives in the fight's own header, where the rest of that
   // fight's numbers are. One glyph, never two.
@@ -1717,6 +1855,9 @@ function theFightPanel(): void {
   const standing = laid.length > 0 ? laid.length : ledgers.run!.hand.dice.length - heldFast.size
   const layout = measureHand(standing + now.turn.bound.length)
   const row = handRow(layout)
+  // arts 22, 128: in the painted tray the hand is an authored composition and
+  // the row is the field it stands in, not a box that arranges it.
+  if (plated()) row.classList.add('posed')
   if (laid.length > 0) {
     const spent = claimedDice(now.turn)
     for (const landed of laid) {
@@ -1734,6 +1875,7 @@ function theFightPanel(): void {
     const die = byId.get(id as string)
     if (die !== undefined) row.append(boundSlot(die, now.horror.id))
   }
+  if (plated()) poseHand(row)
   fightPanel.append(row)
   // card 93: **they render only if carried.** No empty row, no placeholder —
   // zero rolling goods is the normal state of the game, so a run carrying none
@@ -2131,8 +2273,48 @@ function measureHand(count: number): TrayLayout {
     ? Number.parseFloat(getComputedStyle(fightPanel).paddingLeft || '0') +
       Number.parseFloat(getComputedStyle(fightPanel).paddingRight || '0')
     : 0
-  handLayout = layoutDice(count, Math.max(0, room - (Number.isFinite(pad) ? pad : 0)))
+  const free = Math.max(0, room - (Number.isFinite(pad) ? pad : 0))
+  // In the painted tray nothing is measured: the die is the size the artwork
+  // draws it, scaled with the rest of the apparatus (`src/content/ui`).
+  handLayout = plated()
+    ? { size: DIE_SPRITE * trayNow().width, gap: 0, perRow: count, rows: 1 }
+    : layoutDice(count, free)
   return handLayout
+}
+
+/** Whether the tray is standing in its painted frame (art. 126's fallback). */
+function plated(): boolean {
+  return trayBand.classList.contains('plated')
+}
+
+/** What the panel came to on this device. Everything projects into it (art. 22). */
+function trayNow(): { width: number; height: number } {
+  return traySizeFor(RELIQUARY, trayBand.clientWidth || stage.clientWidth)
+}
+
+/**
+ * **The hand, posed.**
+ *
+ * Every die is put where the composition for this many dice says it goes, in
+ * the artwork's own pixels, scaled by the one number. There is no arranging
+ * here and no judgement: `src/content/ui/reliquary.ts` is the art direction
+ * and this projects it, which is the same division `src/room` has always had
+ * between a `WorldMark` and the cast that draws it.
+ *
+ * The **target is grown about the drawing's centre** and never drawn, so
+ * art. 128's floor is met by a rectangle nobody sees. Selection still keys on
+ * a die's identity and never on where it sits.
+ */
+function poseHand(row: HTMLElement): void {
+  const size = trayNow()
+  const slots = [...row.children].filter((el): el is HTMLElement => el instanceof HTMLElement)
+  const poses = posesFor(slots.length)
+  slots.forEach((slot, at) => {
+    const pose = poses[at]
+    if (pose === undefined) return
+    const target = grown(pose, DIE_TARGET_WIDTH, DIE_TARGET_HEIGHT)
+    place(slot, pose.rotation === undefined ? target : { ...target, rotation: pose.rotation }, size)
+  })
 }
 
 /**
@@ -2159,6 +2341,9 @@ function handRow(layout: TrayLayout): HTMLDivElement {
  * number that only made sense at one hand size.
  */
 function faceSizeFor(layout: TrayLayout): number {
+  // In the painted tray the drawing is the artwork's own size, scaled with the
+  // apparatus — never a fraction of whatever the target came to.
+  if (plated()) return Math.max(14, Math.round(DIE_SPRITE * trayNow().width))
   return Math.max(24, Math.round(layout.size * (FACE_IN_SLOT / DIE_DIAL.preferred)))
 }
 

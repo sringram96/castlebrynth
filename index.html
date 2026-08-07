@@ -140,71 +140,103 @@
       }
       /* **The reliquary, once it has been painted** (the hero-art wave).
          Above is the carved tray the stylesheet draws, and it stays: art. 126
-         says missing art is a plainer room and never a broken one, so a tray
-         with no painting behind it is the tray this game already had.
+         says missing art is a plainer room and never a broken one.
 
-         With the painting there, the band takes the painting's own aspect —
-         1619:971 — and the live controls stand in its recesses. The fractions
-         below are measured off `ui/reliquary.png` itself, so the art and the
-         layout cannot drift apart: the orb on the left holds the body's
-         numbers, the strip above holds the tabs, the wide middle holds the
-         hand and the verbs beneath it.
-
-         **It is a frame and not a screenshot.** Nothing about the duel is
-         painted into it — every recess is empty and everything in them is
-         live. */
-      /* **1.5 and not the painting's own 1.667.** The frame is stretched about
-         a tenth taller than it was drawn, on purpose and stated here rather
-         than discovered: at its native aspect the band is 234 px on a 390 px
-         phone, and the live controls measure 250. A tenth is not visible on an
-         ornate symmetrical frame and a clipped verb is visible immediately.
-         The honest fix is a taller frame, which is an art task and is on the
-         list; this is what stands until it lands. */
-      #tray.plated { position: relative; display: block; aspect-ratio: 1.5;
-        max-height: 42dvh; padding: 0; gap: 0;
+         **Placement is not here.** The tray is an authored object with its own
+         coordinate system — `src/content/ui/reliquary.ts` says where every
+         part of it stands, in the artwork's own pixels, and
+         `src/shell/tray-space.ts` scales the whole apparatus by one number
+         (art. 22, applied to the interface instead of to the room). So this
+         block carries colour, type and taps and **decides no position**: there
+         is nothing here for a viewport width to rearrange, which is the whole
+         reason three dice and eight dice are the same picture with a different
+         hand in it. */
+      #tray.plated { position: relative; display: block; aspect-ratio: 1460 / 727;
+        max-height: 46dvh; padding: 0; gap: 0;
         border-top: none; box-shadow: none;
         background: var(--reliquary) center / 100% 100% no-repeat, #050404; }
-      /* The rail's two regions do not sit one above the other in this frame —
-         the orb is beside the strip — so the wrapper dissolves and each region
-         takes its own recess. art. 67 is served, not weakened: a region still
-         lives in exactly one place and never moves. */
       #tray.plated #rail { display: contents; }
-      #tray.plated #vitals { position: absolute; left: 3.5%; top: 30%;
-        width: 16%; height: 36%; margin: 0; padding: 0; background: none;
-        box-shadow: none; border-radius: 0; min-height: 0;
-        display: flex; flex-direction: column; align-items: center;
-        justify-content: center; gap: 1px; font-size: .74em; text-align: center;
-        text-shadow: 0 1px 3px #000; }
-      #tray.plated #vitals .glyph { display: none; }
-      #tray.plated #tabs { position: absolute; left: 28.5%; top: 16.5%;
-        width: 44%; height: 12.5%; border-bottom: none; gap: 0;
-        justify-content: space-evenly; align-items: center; }
-      #tray.plated #tabs button { padding: 0 4px; font-size: .78em;
-        border-bottom-width: 1px; color: var(--bone-dim);
-        text-shadow: 0 1px 3px #000; }
-      #tray.plated #tabs button.on { color: #e8dcc0; }
-      /* The well and the beds under it, as one region: the hand stands in the
-         recess and the verbs on the shelf below, which is how the frame is
-         carved. */
-      #tray.plated #panels { position: absolute; left: 16.5%; top: 23%;
-        width: 69%; height: 68%; padding: 0; min-height: 0; overflow: hidden; }
-      /* The panel keeps the row-and-wrap flow it has everywhere else — a
-         column here turned `flex-wrap` into *column* wrap and threw the dice
-         and the verbs off the side of the tray. What the recess changes is how
-         much room there is, not how the panel is laid out (art. 67). */
-      #tray.plated .panel.on { height: 100%; gap: 3px; align-content: center; }
-      /* The panel stops drawing a well of its own — it is standing in one. */
+      #tray.plated #panels { position: absolute; inset: 0; padding: 0;
+        min-height: 0; overflow: visible; }
+      #tray.plated .panel.on { display: block; height: 100%; }
       #tray.plated #fight { margin: 0; padding: 0; background: none;
         border-top: none; box-shadow: none; }
-      #tray.plated #fight .totals { font-size: .68em; margin: 0; gap: 0 8px;
-        flex-wrap: nowrap; white-space: nowrap; }
-      #tray.plated #fight .totals .glyph { padding: 0 5px; }
-      #tray.plated #fight .score { padding: 0; gap: 6px; }
-      #tray.plated #fight .score .box { font-size: 1rem; min-width: 42px;
-        padding: 0 6px; }
+      #tray.plated #trayDebug { position: absolute; inset: 0; pointer-events: none;
+        z-index: 9; }
+
+      /* the orb: a level in glass, and two numerals under it */
+      #tray.plated #vitals { margin: 0; padding: 0; background: none;
+        box-shadow: none; border-radius: 0; min-height: 0;
+        display: flex; flex-direction: column; align-items: center;
+        justify-content: flex-start; gap: 0; overflow: visible; }
+      #tray.plated #vitals .glyph { display: none; }
+      #tray.plated #vitals .bulb { border-radius: 50%; overflow: hidden;
+        pointer-events: none; }
+      #tray.plated #vitals .bulb::after { content: ''; position: absolute;
+        left: 0; right: 0; bottom: 0; height: var(--fill, 100%);
+        background: linear-gradient(180deg, #8e2a17 0, #611709 60%, #3a0d06 100%);
+        box-shadow: inset 0 3px 7px -3px #ff9070aa; opacity: .9; }
+      #tray.plated #vitals .hp { font-size: .84rem; line-height: 1.05;
+        color: #ede2c8; text-shadow: 0 1px 2px #000, 0 0 6px #000; }
+      #tray.plated #vitals .hp b { color: #ede2c8; font-weight: normal; }
+      #tray.plated #vitals .ar { font-size: .58rem; line-height: 1.2;
+        color: #9a8f77; text-shadow: 0 1px 2px #000; }
+      #tray.plated #vitals .ar::before { content: '\25C7 '; color: #7d7461; }
+
+      /* the rail: an inscription in the apparatus */
+      #tray.plated #fight .totals { font-size: .6rem; margin: 0; gap: 0 10px;
+        flex-wrap: nowrap; white-space: nowrap; justify-content: flex-start;
+        align-items: flex-start; color: #9a8f77; letter-spacing: .02em;
+        text-shadow: 0 1px 2px #000; }
+      #tray.plated #fight .totals .glyph { margin: 0; padding: 0; min-height: 0;
+        background: none; border: none; color: #9a8f77;
+        display: flex; align-items: center; justify-content: center; }
+
+      /* the hand: a field of posed dice, and every pose is authored */
+      #tray.plated .hand.posed { position: absolute; inset: 0; display: block;
+        max-width: none; margin: 0; gap: 0; }
+      /* **The button draws nothing.** What the eye sees is the die; what the
+         thumb gets is a larger invisible rectangle centred on it (art. 128 —
+         the floor is a fact about the target, never about the sprite). */
+      #tray.plated .hand.posed .slot,
+      #tray.plated .hand.posed .slot.die { background: none; border: none;
+        box-shadow: none; border-radius: 0; padding: 0; }
+      #tray.plated .hand.posed .slot::after { display: none; }
+      /* art. 72 still needs the four states unmistakable: a mark on the die
+         and never a box around it. */
+      #tray.plated .hand.posed .slot.sel .mark {
+        filter: drop-shadow(0 0 3px #d9b36a) drop-shadow(0 0 1px #d9b36a); }
+      #tray.plated .hand.posed .slot.kept .mark { filter: drop-shadow(0 0 3px #7fa8b8); }
+      #tray.plated .hand.posed .slot.claimed { opacity: .7; }
+      #tray.plated .hand.posed .slot.unused { opacity: .45; }
+      #tray.plated .hand.posed .slot.bound { opacity: .5; }
+
+      /* the running total, and the turn's verb — text on the apparatus */
+      #tray.plated #fight .score { padding: 0; gap: 5px;
+        justify-content: flex-start; align-items: flex-start; }
+      #tray.plated #fight .score .box { font-size: .84rem; min-width: 0;
+        padding: 0 3px; border: none; background: none; color: #c8a765;
+        text-shadow: 0 1px 2px #000, 0 0 6px #000; }
       #tray.plated #fight .score .cap2 { display: none; }
-      #tray.plated button { min-height: 34px; padding: 5px 9px; }
-      #tray.plated #acts button { min-width: 62px; }
+      #tray.plated #fight .score .op { font-size: .68rem; color: #7d7461; }
+      /* **ACTION PLAQUE ART REQUIRED.** The frame carries no bed for an
+         action — the three along its foot are the tabs — so this is text at an
+         authored anchor rather than a plaque invented in CSS. */
+      #tray.plated .panel.on button { background: none; border: none;
+        border-radius: 0; color: #d6c8a8; font-size: .78rem;
+        letter-spacing: .03em; text-shadow: 0 1px 2px #000, 0 0 6px #000;
+        display: flex; align-items: center; justify-content: center; }
+      #tray.plated .panel.on button:active { color: var(--gold); }
+      #tray.plated .panel.on button:disabled { color: #6a6152; }
+
+      /* the tabs: the whole bed is the target */
+      #tray.plated #tabs { display: contents; }
+      #tray.plated #tabs button { border-bottom-width: 0; padding: 0;
+        font-size: .76rem; color: #9c927b; letter-spacing: .04em;
+        text-shadow: 0 1px 3px #000; }
+      #tray.plated #tabs button.on { color: #e8dcc0;
+        text-shadow: 0 0 7px #d9b36a66, 0 1px 3px #000; }
+
 
       /* art. 67: the rail. Two rows that are always there and always the
          same — what your body is, and where the thumb can go. */
@@ -271,6 +303,35 @@
         color: var(--dim); background: var(--sunk); border: 1px solid var(--line);
         padding: 6px 8px; resize: vertical; width: 100%; }
       .panel .strip { flex: 1 0 100%; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+
+      /* arts 121, 124: **the choosing takes the whole stage.**
+         It is a screen and not a panel — there is nowhere else to be until it
+         is answered — so the world band steps aside and the tray stops being a
+         band. It scrolls, because a pouch has no fixed length and a die you
+         cannot reach is a die you cannot choose; the dice *in a fight* still
+         never scroll (art. 128), and this is not that.
+         The reliquary comes off for this screen. The frame is the tray's, and
+         stretching a 1.6:1 carving to the height of a phone would be a picture
+         of a broken thing rather than a screen. */
+      #stage.choosing #world { display: none; }
+      #stage.choosing #word { position: static; background: none; }
+      #stage.choosing #tray { flex: 1 1 auto; aspect-ratio: auto; max-height: none;
+        min-height: 0; display: flex; flex-direction: column;
+        background: linear-gradient(180deg, #131210 0, #0b0a09 100%);
+        border-top: 2px solid var(--bone-deep); padding: 10px 12px 16px; }
+      #stage.choosing #tray.plated { position: static; }
+      #stage.choosing #rail { display: contents; }
+      #stage.choosing #vitals { position: static; width: auto; height: auto;
+        flex-direction: row; justify-content: flex-start; gap: 4px 12px;
+        font-size: .85em; margin-bottom: 6px; }
+      #stage.choosing #tabs { display: none; }
+      #stage.choosing #panels { position: static; width: auto; height: auto;
+        flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0; }
+      #stage.choosing .panel.on { height: auto; align-content: flex-start; }
+      /* The two verbs are the point of the screen, so they sit on a bar of
+         their own at the foot of it and nothing can push them off (art. 118:
+         an act that cannot be reached is worse than one that is not offered). */
+      #stage.choosing #panels button { min-height: 44px; }
 
       /* art. 119 §3: **the shake.** Two game pixels for about three frames,
          and the only time the room itself moves — the frame is the player's

@@ -125,3 +125,57 @@ export function diceRows(count: number, layout: TrayLayout): readonly (readonly 
   }
   return rows
 }
+
+// ── The painted tray's hand, as a composition ──────────────────────────
+//
+// `layoutDice` above answers *what fits*. In the painted tray that is the
+// wrong question: the dice are physical pieces resting in a well, not cells
+// in a grid, and how many stand on a row is an art-direction decision rather
+// than a consequence of the width left over. Five dice fit one row easily and
+// are still authored as three and two, because a hand reads as a hand.
+//
+// The table is the art direction, stated once. Past it the rule is four to a
+// row, which keeps the shape rather than inventing a new one — nothing here
+// caps the hand, and art. 128's collection is untouched.
+
+/** How many rows a hand of `n` is arranged in, in the painted tray. */
+export const HAND_ROWS: Readonly<Record<number, number>> = {
+  1: 1,
+  2: 1,
+  3: 1,
+  4: 1,
+  5: 2,
+  6: 2,
+  7: 2,
+  8: 2,
+}
+
+export function composedRows(count: number): number {
+  if (count <= 0) return 0
+  return HAND_ROWS[count] ?? Math.ceil(count / 4)
+}
+
+/**
+ * The hand as an arrangement rather than a fit.
+ *
+ * The row count is authored; the die size is then the largest that lets that
+ * arrangement stand in the room available, never below the floor a thumb
+ * needs (art. 128, unamended — the floor is on the *target*, and how much
+ * bone is drawn inside it is a separate question the shell answers).
+ *
+ * The gap stays tight on purpose: spreading the dice to fill the well would
+ * make them read as a toolbar. They are a handful, thrown down.
+ */
+export function composedHand(count: number, width: number, dial: DieDial = DIE_DIAL): TrayLayout {
+  if (count <= 0) return { size: dial.preferred, gap: dial.gap, perRow: 0, rows: 0 }
+  const rows = composedRows(count)
+  const perRow = Math.ceil(count / rows)
+  const room = Math.max(0, width)
+  const fits = (size: number, gap: number): boolean => perRow * size + (perRow - 1) * gap <= room
+  let gap = dial.gap
+  let size = dial.preferred
+  while (size > dial.min && !fits(size, gap)) size--
+  if (!fits(size, gap)) gap = dial.minGap
+  while (size > dial.min && !fits(size, gap)) size--
+  return { size, gap, perRow, rows }
+}

@@ -146,7 +146,6 @@ const DRESSED: Readonly<Record<string, SceneArt>> = {
         anchor: { space: 'frame', x: 0.42, y: 1.0, origin: 'bottom-center', width: 0.74 },
       },
     ],
-    foreground: WEAPON,
     // art. 107: one loop, and it is the candle on the right-hand sconce. Its
     // place in the painting is a fraction of the frame and not a world
     // coordinate, because the thing it sits on is painted rather than cast.
@@ -203,7 +202,6 @@ const DRESSED: Readonly<Record<string, SceneArt>> = {
        * from *this room*, not deleted from the game.
        */
     ],
-    foreground: WEAPON,
     patches: [candle('bonefield.candle', at(7.6, 13, 1.5, 3.4, FLOOR + 5))],
   },
 }
@@ -212,8 +210,25 @@ const DRESSED: Readonly<Record<string, SceneArt>> = {
  * What a room carries. `NO_ART` for anything undressed, which is most of
  * them and is not a defect.
  */
+const CARRIED = new Map<string, SceneArt>()
+
 export function artFor(room: string): SceneArt {
-  return DRESSED[room] ?? NO_ART
+  const held = CARRIED.get(room)
+  if (held !== undefined) return held
+  const dressed = DRESSED[room] ?? NO_ART
+  // **You are carrying it in every room, so it is in every room.** It was on
+  // the two rooms that had been dressed, which made the hand a property of
+  // *where you were standing* rather than of what you are holding — walk into
+  // an undressed corridor and the knife was gone. What you carry is anchored
+  // to the frame and not to the box (art. 126); it comes down every corridor
+  // with you, and a room may still override it by naming its own foreground.
+  const carried = dressed.foreground !== undefined ? null : carriedPlate()
+  // Held rather than rebuilt: `world()` asks once a frame, and a scene's art
+  // is a lookup on the template (art. 34) — so it is the same object every
+  // time, which keeps the composition a pure function of its inputs.
+  const art = carried === null ? dressed : { ...dressed, foreground: carried }
+  CARRIED.set(room, art)
+  return art
 }
 
 /** Every dressed room, for the manifest test and for the dev harness. */
