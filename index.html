@@ -159,6 +159,16 @@
       #tray.plated #panels { position: absolute; inset: 0; padding: 0;
         min-height: 0; overflow: visible; }
       #tray.plated .panel.on { display: block; height: 100%; }
+      /* **The verbs are the main content when ACTS is the panel** (art. 67:
+         ACTS is where the room is played from). They fill the central recess
+         as a centred row that wraps. The display is restated here because the
+         rule above sets `block` at a specificity this has to beat — without
+         it the verbs stack in a column down the left edge. */
+      #tray.plated #acts.on { display: flex; flex-direction: row; flex-wrap: wrap;
+        gap: 6px 10px; align-content: center; align-items: center;
+        justify-content: center; }
+      #tray.plated #acts.on button { min-width: 0; font-size: .82rem;
+        padding: 6px 8px; color: #e2d5b6; }
       #tray.plated #fight { margin: 0; padding: 0; background: none;
         border-top: none; box-shadow: none; }
       #tray.plated #trayDebug { position: absolute; inset: 0; pointer-events: none;
@@ -223,17 +233,21 @@
          action — the three along its foot are the tabs — so this is text at an
          authored anchor rather than a plaque invented in CSS. */
       #tray.plated .panel.on button { background: none; border: none;
-        border-radius: 0; color: #d6c8a8; font-size: .78rem;
+        border-radius: 0; color: #d6c8a8; font-size: .72rem; line-height: 1;
         letter-spacing: .03em; text-shadow: 0 1px 2px #000, 0 0 6px #000;
-        display: flex; align-items: center; justify-content: center; }
+        padding: 0 2px; display: flex; align-items: center;
+        justify-content: center; white-space: nowrap; overflow: hidden; }
       #tray.plated .panel.on button:active { color: var(--gold); }
       #tray.plated .panel.on button:disabled { color: #6a6152; }
 
       /* the tabs: the whole bed is the target */
       #tray.plated #tabs { display: contents; }
-      #tray.plated #tabs button { border-bottom-width: 0; padding: 0;
-        font-size: .76rem; color: #9c927b; letter-spacing: .04em;
-        text-shadow: 0 1px 3px #000; }
+      /* The word sits on the carving: centred in the bed, never wider than
+         it, and it shrinks rather than spilling over the moulding. */
+      #tray.plated #tabs button { border-bottom-width: 0; padding: 0 2px;
+        font-size: .72rem; line-height: 1; color: #9c927b; letter-spacing: .03em;
+        text-shadow: 0 1px 3px #000; display: flex; align-items: center;
+        justify-content: center; white-space: nowrap; overflow: hidden; }
       #tray.plated #tabs button.on { color: #e8dcc0;
         text-shadow: 0 0 7px #d9b36a66, 0 1px 3px #000; }
 

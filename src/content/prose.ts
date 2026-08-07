@@ -1399,7 +1399,9 @@ export const VERBS: Readonly<Record<string, string>> = {
  * they are labels, judged as labels, and bound by art. 90 instead.
  */
 export const TABS: Readonly<Record<string, string>> = {
-  acts: 'acts',
+  // The bed it stands in is wide enough for the whole word, and "acts" was
+  // only ever short for it (art. 90: a tab names a place, in one or two words).
+  acts: 'actions',
   pouch: 'pouch',
   // arts 31, 85: a socket, named so that the absence reads as a decision
   // rather than as something nobody got to.

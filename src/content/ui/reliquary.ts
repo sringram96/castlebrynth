@@ -45,6 +45,8 @@ export interface ReliquaryMap extends TrayFrame {
    * rather than drawn in CSS.
    */
   readonly action: TrayRect
+  /** Where a room's verbs stand: inside the central recess, centred. */
+  readonly actsRow: TrayRect
   /** The small utility glyph the panel carves a place for. */
   readonly menu: TrayRect
   /** The three beds along the foot. */
@@ -59,13 +61,14 @@ export interface ReliquaryMap extends TrayFrame {
  */
 export const RELIQUARY: ReliquaryMap = {
   ...RELIQUARY_FRAME,
-  healthOrb: { x: 0.055, y: 0.27, width: 0.128, height: 0.42 },
+  healthOrb: { x: 0.055, y: 0.305, width: 0.128, height: 0.385 },
   healthText: { x: 0.025, y: 0.70, width: 0.19, height: 0.16 },
   statusRail: { x: 0.26, y: 0.44, width: 0.52, height: 0.08 },
   diceZone: { x: 0.0, y: 0.18, width: 1.0, height: 0.24 },
   mainWell: { x: 0.0, y: 0.42, width: 1.0, height: 0.46 },
   score: { x: 0.26, y: 0.70, width: 0.24, height: 0.1 },
   action: { x: 0.6, y: 0.68, width: 0.18, height: 0.14 },
+  actsRow: { x: 0.24, y: 0.46, width: 0.54, height: 0.36 },
   menu: { x: 0.9, y: 0.04, width: 0.06, height: 0.1 },
   tabs: [
     { x: 0.13, y: 0.86, width: 0.24, height: 0.12 },
