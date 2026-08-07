@@ -1,87 +1,82 @@
 /**
- * The choosing — which dice come down (arts 60, 124).
+ * The choosing screen — pure selection geometry and selection state.
  *
- * **It is a screen, not a panel**, for the reason the threshold is: there is
- * nowhere else to be until it is answered.
- *
- * The two decisions this screen makes are here rather than in `main.ts`, for
- * the reason `strip.ts` exists — a question the harness cannot ask is a
- * question CI cannot answer. Nothing here paints, and nothing here holds
- * state: both functions are pure questions about a pouch as it stands.
+ * The shell owns DOM and persistence. This file answers only three questions:
+ * where the owned dice stand, what a tap does to the selected identities, and
+ * whether the hand is complete. Keeping those questions pure makes the screen
+ * testable without teaching the shell a second model of a die.
  */
 
-import type { Die, DieId } from '../../lots/index.js'
-import { dieLabel, originOf } from '../../content/index.js'
+import type { DieId } from '../../lots/index.js'
 
-/** One row of the spare list: a die, and how many of it the row stands for. */
-export interface Stack {
-  readonly die: Die
-  readonly count: number
+/** One authored point in the black choosing field, expressed as fractions. */
+export interface OrbitPoint {
+  readonly x: number
+  readonly y: number
+  readonly rotation: number
 }
 
 /**
- * art. 124: **identical spares stack; a thing with an origin never does.**
- *
- * Six bare bones are not six decisions, and a screen that draws them as six
- * rows is the spreadsheet this article exists to prevent. A special die
- * stands alone however many of it there are, because each one *is* somebody:
- * art. 86 makes a die's shape how its owner died and art. 87 gives every
- * good that ships one sentence of origin.
- *
- * **`originOf` is the test rather than a flag**, and that is the load-bearing
- * choice here. It is already what makes a good an individual, so a good given
- * an origin tomorrow stops stacking without anybody remembering to come back
- * and say so — and a plain bone, which came off nobody, has none.
- *
- * Order is the pouch's, and the die kept for each stack is the first of it,
- * so a swap out of a stack takes the one nearest the hand.
+ * Toggle a die by identity. A full hand stays full until the player puts one
+ * down; tapping an unselected die at the limit still performs its free look in
+ * the shell, but selection itself does not silently replace another die.
  */
-export function stacked(dice: readonly Die[]): readonly Stack[] {
-  const out: Stack[] = []
-  const at = new Map<string, number>()
-  for (const die of dice) {
-    const key = originOf(die) === '' ? stackKey(die) : null
-    const seen = key === null ? undefined : at.get(key)
-    if (seen === undefined) {
-      if (key !== null) at.set(key, out.length)
-      out.push({ die, count: 1 })
-    } else {
-      out[seen] = { die: out[seen]!.die, count: out[seen]!.count + 1 }
-    }
-  }
-  return out
-}
-
-/**
- * What makes two anonymous dice the same thing to a player: the name they
- * answer to and the faces they show. Not the id — the ids are `bone.1`
- * through `bone.6` and no two of them are equal, which is exactly the
- * distinction this article says is not a decision.
- */
-function stackKey(die: Die): string {
-  return `${dieLabel(die)}|${die.faces.map((face) => face.value).join(',')}`
-}
-
-/**
- * art. 124: **the hand after a swap, in order.** The marked die is replaced
- * where it stands, so a swap moves one thing and disturbs nothing else —
- * which is what makes the order the interface rather than a side effect of
- * it (art. 60: the pouch is ordered and the hand is its first `handSize`).
- *
- * A swap with either half unmarked is not a swap, and the hand comes back
- * unchanged. The screen never offers the verb in that state (art. 118), so
- * this is the guard behind the guard rather than a second statement of it.
- */
-export function swapped(
-  hand: readonly Die[],
-  leaving: DieId | null,
-  entering: DieId | null,
+export function toggledSelection(
+  selected: readonly DieId[],
+  die: DieId,
+  limit: number,
 ): readonly DieId[] {
-  const ids = hand.map((die) => die.id)
-  if (leaving === null || entering === null) return ids
-  // Taking a die that is already in the hand would drop a slot: `chooseHand`
-  // de-duplicates, so the hand would come back one short and fill itself from
-  // the spares. Nothing can mark a hand die as entering, and this is why.
-  if (ids.includes(entering)) return ids
-  return ids.map((id) => (id === leaving ? entering : id))
+  if (selected.includes(die)) return selected.filter((one) => one !== die)
+  const cap = Math.max(0, Math.floor(limit))
+  if (selected.length >= cap) return selected
+  return [...selected, die]
+}
+
+/** Confirm exists only when the hand is exactly whole. */
+export function selectionComplete(selected: readonly DieId[], required: number): boolean {
+  const need = Math.max(0, Math.floor(required))
+  return need > 0 && selected.length === need
+}
+
+const TAU = Math.PI * 2
+
+/**
+ * Put every owned die on the table at once.
+ *
+ * Up to twelve dice use one broad ellipse. Larger collections use two
+ * concentric ellipses rather than a scroll: every option remains visible and
+ * the empty centre keeps the composition legible. The result is deterministic
+ * for a count, so the screen does not reshuffle under the thumb between taps.
+ */
+export function orbitPositions(count: number): readonly OrbitPoint[] {
+  const n = Math.max(0, Math.floor(count))
+  if (n === 0) return []
+  if (n === 1) return [{ x: 0.5, y: 0.46, rotation: 0 }]
+  if (n <= 12) return ring(n, 0.34, 0.285, -Math.PI / 2, n)
+
+  const outer = Math.ceil(n * 0.58)
+  const inner = n - outer
+  return [
+    ...ring(outer, 0.38, 0.31, -Math.PI / 2, n),
+    ...ring(inner, 0.205, 0.165, -Math.PI / 2 + Math.PI / Math.max(1, inner), n + 17),
+  ]
+}
+
+function ring(
+  count: number,
+  radiusX: number,
+  radiusY: number,
+  phase: number,
+  salt: number,
+): readonly OrbitPoint[] {
+  if (count <= 0) return []
+  return Array.from({ length: count }, (_, at) => {
+    const angle = phase + (TAU * at) / count
+    return {
+      x: 0.5 + Math.cos(angle) * radiusX,
+      y: 0.48 + Math.sin(angle) * radiusY,
+      // Small deterministic irregularity: physical bones, not menu icons.
+      rotation: ((at * 7 + salt * 3) % 9) - 4,
+    }
+  })
 }

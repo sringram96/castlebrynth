@@ -1065,13 +1065,11 @@ export const NOTICES: Readonly<Record<string, string>> = {
   'pouch.whole': 'Everything I own is in my hand.',
   // art. 67: the pouch is a thing you read, not a thing you press.
   'pouch.spares': 'What is past the line is mine, and it is not coming down.',
-  // art. 60: the choosing screen. It states the situation and never
-  // instructs — the verb on the strip is the only thing that says what to do.
-  // art. 86: the screen that asks which bones descend is the screen where
-  // what a bone *is* costs nothing to say. Every one of them came off
-  // somebody, so choosing a hand is choosing who comes down with him.
+  // art. 124: Choosing exists only once there are more bones than the hand
+  // holds. It states the situation; the raised bones and Confirm carry the
+  // interaction without turning the word band into instructions.
   'choose.which':
-    'More bones than my hand holds. Every one of them came off somebody who did not come back up. The rest stay here.',
+    'More bones than my hand holds. Six come down. The rest stay here.',
   // art. 72: claim offers match the exact selection, so a selection that
   // fits nothing says why. The shape must be exactly what is chosen — a
   // full house is the five, never the five and one more.
@@ -1106,12 +1104,6 @@ export const NOTICES: Readonly<Record<string, string>> = {
   'claim.sealed': 'sealed this turn',
   'claim.spent': 'already spent',
   'claim.none': 'Nothing chosen yet.',
-  // art. 124: what a committed swap answers with. It is the only line the
-  // choosing screen needs beyond the one that states the situation — a hand
-  // that cannot be short and a swap that cannot be half-made leave nothing
-  // for a refusal to say (art. 118: an act that cannot change anything is
-  // not offered, so the strip is where "not yet" is said, in pixels).
-  'swap.done': 'The bone goes into my hand. The other one keeps.',
   'pouch.spare': 'Mine, and not in my hand.',
   // The threshold — the front door. The first pixels a new player sees, so
   // it is in register like everything else: it states where you are standing
@@ -1383,8 +1375,9 @@ export const VERBS: Readonly<Record<string, string>> = {
   // is doing the only thing anybody comes to a fight to do.
   recast: 'Reroll',
   attack: 'Attack',
+  // art. 124: this exists only when the whole hand is raised.
+  confirm: 'Confirm',
   // art. 66: two words or fewer, and it never narrates.
-  swap: 'Swap',
   'end-turn': 'End turn',
   run: 'Run',
 }

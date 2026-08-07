@@ -83,7 +83,6 @@ import {
   IRON_RAMP_LIT,
   IRON_RAMP_NULL,
   KIND_INK,
-  dieLabel,
   glyphFor,
   pipsFor,
 } from './content/index.js'
@@ -116,7 +115,7 @@ import { REAL_CLOCK, playBeats } from './shell/beats.js'
 import type { Layer } from './shell/faces.js'
 import { paintFace } from './shell/faces.js'
 import { fightSummoned, wayOn } from './shell/strip.js'
-import { stacked, swapped } from './shell/screens/choosing.js'
+import { orbitPositions, selectionComplete, toggledSelection } from './shell/screens/choosing.js'
 import type { Held } from './shell/band.js'
 import { HUSHED, answered, bandLine, holding, noticed } from './shell/band.js'
 import type { Chain, ChainNode, Door } from './gen/index.js'
@@ -200,7 +199,6 @@ import {
   load,
   meet,
   save,
-  handFrom,
   sparesOf,
   chooseHand,
   mustChoose,
@@ -369,14 +367,8 @@ let sheet: 'card' | 'book' | null = null
  * tapping anything else releases this, and no pick means no door verb.
  */
 let pick: Pick = null
-/**
- * art. 124: the choosing screen's staged swap — the die marked to leave the
- * hand, and the spare marked to take its place. Null everywhere else: the
- * POUCH panel is informative and commits nothing (art. 67), and the order
- * *is* the hand, so there is nothing to pick and only a thing to exchange.
- */
-let leaving: DieId | null = null
-let entering: DieId | null = null
+/** art. 124: the identities currently raised on the choosing table. */
+let chosenForDescent: readonly DieId[] = []
 
 /** A first casting holds nothing back: everything in the hand is in the air. */
 const NOTHING_HELD: ReadonlySet<string> = new Set<string>()
@@ -678,7 +670,10 @@ function plateTheTray(): void {
  * there is nothing for a viewport width to rearrange.
  */
 function poseTray(): void {
-  if (!plated()) return
+  // Choosing is a full-screen black table, not a region of the reliquary.
+  // Projecting it through tray-space is what collapsed the old screen into
+  // the central well and made its controls unreachable.
+  if (!plated() || screen.kind === 'choosing') return
   const size = trayNow()
   place(vitalsRegion, RELIQUARY.healthText, size)
   const bulb = vitalsRegion.querySelector<HTMLElement>('.bulb')
@@ -1517,8 +1512,7 @@ function settleEverything(): void {
   wiping = false
   sheet = null
   pick = null
-  leaving = null
-  entering = null
+  chosenForDescent = []
   spoken.clear()
   unbidden = null
   refused = false
@@ -1724,6 +1718,7 @@ function panels(): void {
   // when POUCH is the active panel so stale dice never survive focus.
   pouchHandRegion.replaceChildren()
   pouchHandRegion.classList.remove('posed')
+  pouchRegion.classList.remove('choosing-field')
   // A screen takes the whole panel area: there is nowhere else to be until
   // it is answered, so ACTS is the only thing under it and the other two are
   // shut (art. 67).
@@ -1747,6 +1742,8 @@ function panels(): void {
     actStrip.replaceChildren()
     fightPanel.classList.remove('on')
     pouchRegion.classList.add('on')
+    pouchRegion.classList.remove('well', 'rack', 'scrolls')
+    pouchRegion.classList.add('choosing-field')
     pouchRegion.replaceChildren()
     return choosingPanel()
   }
@@ -2538,18 +2535,6 @@ function markOn(face: Face): 'cost' | 'boon' | null {
 }
 
 /**
- * What a marked face says under it, in the same words the band uses — the
- * plain verb and the rider's own number, so the mark says *something happens
- * here* and the word says what (art. 111's noun-first rule, one level down).
- */
-function riderSays(face: Face): string {
-  const carried = ALL_RIDERS.find((one) => one.id === face.rider)
-  if (carried === undefined) return ''
-  const said = carried.onUse.kind === 'wound' ? READOUT.costs : READOUT.heals
-  return (said ?? '').replace('{n}', `${carried.onUse.amount}`)
-}
-
-/**
  * art. 72: four states, unmistakably distinct. Idle is a plain face; kept
  * wears a tab along its top and only ever in the keep phase; selected
  * inverts entirely; claimed is sunk and ringed. Unused dims at resolve.
@@ -2727,34 +2712,6 @@ function dieChip(die: Die, key: string): HTMLButtonElement {
     // whole-of-undo a chosen die has in a turn (art. 41).
     heldDie = heldDie === key ? null : key
     band = heldDie === null ? HUSHED : noticed(said)
-    paint()
-  }
-  return el
-}
-
-/**
- * art. 60, art. 68: a die you own. Tapping it answers with its declared truth
- * and commits nothing — which dice descend is settled at the waking, not here.
- * What is new is that it no longer has to be tapped to be told apart.
- */
-function dieReading(die: Die, kind: string, said = saysDie(die)): HTMLButtonElement {
-  const el = readingRow(`die ${kind}`.trim(), said, dieLabel(die))
-  const faces = document.createElement('span')
-  faces.className = 'faces'
-  for (const face of die.faces) {
-    const mark = markOn(face)
-    faces.append(
-      faceWell(
-        boneFace(face.value, { mark, size: FACE_IN_ROW }),
-        riderSays(face),
-        mark === 'boon' ? KIND_INK.block : KIND_INK.cost,
-      ),
-    )
-  }
-  el.append(faces)
-  el.onclick = () => {
-    settle()
-    band = noticed(said)
     paint()
   }
   return el
@@ -2991,123 +2948,63 @@ function doAct(one: Act): void {
 }
 
 /**
- * art. 124: the choosing screen — which dice come down. **The order is the
- * interface.**
+ * art. 124: the choosing screen — the owned dice laid out on black.
  *
- * It opens where a descent opens: after an ending, when the pouch has
- * outgrown the hand. Nothing about it is new vocabulary — the dice are
- * tapped the way every die in the game is tapped, the swap is staged the way
- * a claim is (art. 72), and plain verbs commit (art. 66).
- *
- * The first cut asked the player to pick six dice out of the whole pouch
- * before Descend would light. That was a *form*: it charged six presses for
- * the ordinary case, in which nothing has changed since the last descent and
- * the answer is the hand you already had. Art. 60 has always said the pouch
- * is ordered and the hand is its first `handSize`, so the screen draws that
- * — the hand above a rule, the spares below it — and the only move is a
- * swap. Descend is one press when nothing changed.
- *
- * card 94: and every die is its name and its whole face set, with the cost
- * face wearing its scar where it sits, so art. 54 is satisfied by a drawing
- * rather than by a sentence.
+ * It exists only when the pouch holds more than the hand can carry. Every die
+ * is visible at once, and the only state is which identities are raised. A
+ * tap is reversible; when exactly `handSize` are raised, Confirm appears.
  */
 function choosingPanel(): void {
   const permanent = ledgers.permanent
-  const hand = handFrom(permanent)
-  const spares = sparesOf(permanent)
+  const dice = permanent.pouch.dice
+  const orbit = orbitPositions(dice.length)
 
-  for (const die of hand) {
-    pouchRegion.append(
-      chooseRow(die, 1, leaving === die.id, () => {
-        leaving = leaving === die.id ? null : die.id
-      }),
-    )
+  dice.forEach((die, at) => {
+    const point = orbit[at]
+    if (point !== undefined) pouchRegion.append(choosingDie(die, point.x, point.y, point.rotation))
+  })
+
+  if (selectionComplete(chosenForDescent, permanent.handSize)) {
+    const confirm = verb('confirm', commitChoice)
+    confirm.classList.add('choice-confirm')
+    pouchRegion.append(confirm)
   }
-  // arts 55, 60: a hand grown past the pouch shows the slot it cannot fill.
-  for (let n = hand.length; n < permanent.handSize; n++) pouchRegion.append(emptySlot())
-
-  pouchRegion.append(hairline(''))
-  // art. 124: identical spares stack, individuals never do. Six bare bones
-  // are not six decisions; a die somebody died holding is one apiece.
-  for (const { die, count } of stacked(spares)) {
-    pouchRegion.append(
-      chooseRow(die, count, entering === die.id, () => {
-        entering = entering === die.id ? null : die.id
-      }),
-    )
-  }
-
-  // art. 69: the screen says what is true of the pouch and never instructs —
-  // the verbs are the only thing that says what to press (art. 66). There is
-  // no branch for an empty spare row because the screen only opens when the
-  // pouch has outgrown the hand, which is what makes one (art. 60).
-  const aside = document.createElement('div')
-  aside.className = 'aside'
-  aside.textContent = NOTICES['choose.which'] ?? ''
-  pouchRegion.append(aside)
-  // art. 66: two plain verbs, and neither of them lies about where it takes
-  // you (art. 71). Swap moves one die; Descend leaves.
-  pouchRegion.append(
-    verb('swap', commitSwap, leaving === null || entering === null),
-    verb('descend', commitChoice),
-  )
 }
 
-/**
- * art. 124: one row of the choosing screen, marked or not, with the count if
- * it is standing for more than one of itself.
- *
- * **The word band never restates a standing truth.** A tap on a die whose
- * line is already up leaves the line where it is and answers with the mark
- * moving instead — *draw it, do not name it*. Art. 69 is satisfied by the
- * first tap, and the answer to *I already told you* is a pixel (art. 70) and
- * not the same sentence again.
- */
-function chooseRow(die: Die, count: number, marked: boolean, mark: () => void): HTMLButtonElement {
+/** One physical die on the choosing table: no name row, no six-face receipt. */
+function choosingDie(die: Die, x: number, y: number, rotation: number): HTMLButtonElement {
+  const face = tellingFace(die)
   const said = saysDie(die, undefined, undefined, knownMarks(ledgers.permanent))
-  const el = dieReading(die, marked ? 'sel' : '', said)
-  if (count > 1) {
-    const many = document.createElement('span')
-    many.className = 'count'
-    many.textContent = `×${count}`
-    el.append(many)
-  }
+  const chosen = chosenForDescent.includes(die.id)
+  const el = document.createElement('button')
+  el.className = `choice-die${chosen ? ' chosen' : ''}`
+  el.style.left = `${x * 100}%`
+  el.style.top = `${y * 100}%`
+  el.style.setProperty('--tilt', `${rotation}deg`)
+
+  // Relative to the stage, not a fixed device. 48 is the touch/readability
+  // floor and 64 is enough detail without turning one die into the screen.
+  const room = stage.clientWidth || window.innerWidth
+  const size = Math.round(Math.min(64, Math.max(48, room * 0.145)))
+  el.append(boneFace(face.value, { mark: markOn(face), size }))
+  el.setAttribute('aria-label', said)
+  el.setAttribute('aria-pressed', String(chosen))
   el.onclick = () => {
     settle()
-    if (band.look !== said) band = noticed(said)
-    mark()
+    band = noticed(said)
+    chosenForDescent = toggledSelection(chosenForDescent, die.id, ledgers.permanent.handSize)
     paint()
   }
   return el
 }
 
-/**
- * art. 124: the swap, committed. The hand keeps its order and the marked die
- * is replaced in place, so a swap moves one thing and nothing else — the
- * pouch is reordered around it and nothing is destroyed.
- */
-function commitSwap(): void {
-  if (leaving === null || entering === null) return
-  const permanent = chooseHand(
-    ledgers.permanent,
-    swapped(handFrom(ledgers.permanent), leaving, entering),
-  )
-  ledgers = { permanent, run: tookIntoRun(ledgers.run!, permanent) }
-  leaving = null
-  entering = null
-  band = answered(NOTICES['swap.done'] ?? '')
-  persist()
-  paint()
-}
-
-/**
- * art. 124: leaving the screen. The hand is already whole — the pouch's
- * order *is* the hand and every swap committed as it was made — so this
- * commits nothing and is one press whenever nothing has changed.
- */
+/** Confirm the whole hand at once, then enter the run. */
 function commitChoice(): void {
-  leaving = null
-  entering = null
+  const permanent = ledgers.permanent
+  if (!selectionComplete(chosenForDescent, permanent.handSize)) return
+  const chosen = chooseHand(permanent, chosenForDescent)
+  ledgers = { permanent: chosen, run: tookIntoRun(ledgers.run!, chosen) }
+  chosenForDescent = []
   screen = { kind: 'room' }
   band = HUSHED
   persist()
@@ -3282,18 +3179,13 @@ function beginDescent(): void {
   // later — Continue may only ever be offered for a run this press began.
   ledgers = { ...ledgers, run: descending(ledgers.run!) }
   if (mustChoose(ledgers.permanent)) {
-    // art. 124: **the screen opens on the hand you last took down.** The
-    // pouch's order carries it for free, so there is nothing to seed here
-    // and nothing marked — an empty stage is a screen offering a swap, and
-    // a pre-marked one would be a screen proposing a change nobody asked for.
-    leaving = null
-    entering = null
-    // art. 91: the choosing screen is a screen and not a panel, so it moves
-    // no focus. The first cut focused POUCH to draw itself there and never
-    // moved it back, which left the tray on the pouch when the run opened —
-    // a focus moved by inference, which is exactly what the article bans.
+    // The choice starts empty on purpose: this screen is the act of choosing
+    // the next hand, not a swap editor for the previous one.
+    chosenForDescent = []
     screen = { kind: 'choosing' }
   } else {
+    // Six starting bones against the six-slot hand are not a question.
+    chosenForDescent = []
     screen = { kind: 'room' }
   }
   band = HUSHED
