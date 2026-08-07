@@ -73,8 +73,39 @@ jobs:
       # What that means when Pages is slow: the step polls for ten minutes,
       # gives up, and *cancels* the deployment — and the deployment lands
       # anyway. On 2026-08-06 three runs went red this way while the site
-      # published correctly each time. **A red deploy step is therefore not
-      # proof that the publish failed.** Check the served asset hash before
-      # believing it.
+      # published correctly each time.
+      #
+      # **So this step is no longer the verdict.** It still does the work —
+      # it is what asks Pages to publish the artifact — and its own poller
+      # is allowed to give up without failing the run. What decides whether
+      # the run is green is the step after it (standing rule 1).
       - id: deployment
+        continue-on-error: true
         uses: actions/deploy-pages@v4
+      # **Green means served.** `npm run build` writes the commit into
+      # dist/version.txt, so this asks the live site what it is holding and
+      # believes nothing else. It polls the *known* URL rather than the
+      # deployment step's output, because a step that was cancelled may not
+      # emit one — the whole reason this step exists is that the step above
+      # can fail while the publish succeeds.
+      #
+      # A project site lives at https://<owner>.github.io/<repo>/, which is
+      # derivable and does not need a secret or a hardcoded host. Cache is
+      # busted with a query string so a CDN copy cannot answer for the
+      # origin.
+      - name: verify the site is serving this commit
+        env:
+          SITE: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+        run: |
+          set -u
+          for attempt in $(seq 1 40); do
+            served=$(curl -fsS --max-time 20 "$SITE/version.txt?t=$attempt" 2>/dev/null | tr -d '[:space:]' || true)
+            if [ "$served" = "$GITHUB_SHA" ]; then
+              echo "served $served — this commit is live at $SITE"
+              exit 0
+            fi
+            echo "attempt $attempt/40: serving '${served:-<nothing>}', want '$GITHUB_SHA'"
+            sleep 15
+          done
+          echo "::error::$SITE is not serving $GITHUB_SHA after ten minutes."
+          exit 1

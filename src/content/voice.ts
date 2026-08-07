@@ -15,6 +15,11 @@
  *   first person is the defect, because that is a diary.
  * - a **label** is a name — a combo, an item, a room, a horror's verb — and
  *   is exempt from both registers, because a name is not a sentence.
+ * - **plain** is the settings screen and the vault: the one place the player
+ *   is holding a phone rather than standing in a corridor. It owes the
+ *   universals — no narrator, no feelings, no shouting, one candle — and
+ *   neither mouth, because there is nobody in the room to have one. It is a
+ *   **decision**, not a debt; see the paragraph in rules/voice.md.
  * - a **placeholder** is prose written under the repealed register and not
  *   yet rewritten. It answers to the rules that survive the amendment and to
  *   nothing else. It is a debt with a name (cards 27–29), and nothing new
@@ -27,7 +32,7 @@
  * the thing the old rule was aiming at.
  */
 
-export type VoiceCategory = 'thought' | 'scrawl' | 'label' | 'placeholder'
+export type VoiceCategory = 'thought' | 'scrawl' | 'label' | 'plain' | 'placeholder'
 
 /** One player-facing string, and which rule it answers to. */
 export interface Utterance {
@@ -110,6 +115,13 @@ export function lintVoice(
       // A name is a name: past five words it is a sentence wearing a label.
       if (words(text) > 5) flag('concrete-noun')
       break
+    case 'plain':
+      // Nothing further, and that is the ruling rather than an omission. A
+      // settings screen is the game talking about itself; he has no thought
+      // about reduced motion and inventing one is the flourish the mind wave
+      // repealed. The universals above still bind, because they are about
+      // the writing and not about the mouth.
+      break
     case 'placeholder':
       // Nothing further. The register is exactly what these have not been
       // rewritten into yet, and pretending otherwise would make the debt
@@ -135,6 +147,15 @@ export function asScrawls(texts: readonly string[]): readonly Utterance[] {
 
 export function asLabels(texts: readonly string[]): readonly Utterance[] {
   return texts.map((text) => ({ text, category: 'label' as const }))
+}
+
+/**
+ * art. 116's screens: the settings and the vault. Neither mouth, and it is a
+ * decision rather than a debt — the distinction `placeholder` exists to keep
+ * countable.
+ */
+export function asPlain(texts: readonly string[]): readonly Utterance[] {
+  return texts.map((text) => ({ text, category: 'plain' as const }))
 }
 
 /**

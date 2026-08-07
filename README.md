@@ -15,12 +15,12 @@ Portrait. One thumb.
 - **Tap** a word or a thing to look. Always safe.
 - **Act** when offered. Never safe.
 - **Choose a door.** Each is sensed in one line. There is no back.
-- In a fight: its next attack shows before you touch a die. **Roll** your
-  bones, **keep** what you want, roll the rest once more — then select
-  dice and **claim** combos. A turn may claim several; each die counts in
-  one. Every combo works once per fight, and the list at the bottom
-  crosses off as you spend it. Your armor blocks automatically. **Run**
-  is always offered.
+- **Tap the horror** to fight it. Its next attack shows before you touch
+  a die. Three presses to a turn: **Roll** your bones, hold the ones you
+  want and **Reroll** the rest, then select dice and **Attack** — the
+  selection is the attack, scored sum × tier. Every line works once per
+  fight and crosses off as you spend it. Your armor blocks
+  automatically. **Run** is always offered, from the acts panel.
 
 Close it whenever. It resumes exactly there — the state lives in the
 browser, so it is per-device and clearing site data is a fresh start.
@@ -37,5 +37,5 @@ npm run dev -- --host
 Open the **Network** URL it prints from any device on the same wifi.
 `npm test` runs the suite; `npm run build` type-checks and bundles.
 
-For the fantasy, reference/GAME.md. For what's built and what's next,
-DESIGN.md.
+For the fantasy, reference/GAME.md. For what's built and what's owed,
+DESIGN.md. For how it got here, CHRONICLE.md.

@@ -1,8 +1,9 @@
 /**
  * The travelers, and the dice they left (arts 86–87).
  *
- * Every die past the bare five belonged to someone who came down here before
- * you and did not come back. A die's shape is how its owner died: the
+ * Every die past the bare **six** belonged to someone who came down here
+ * before you and did not come back (art. 55 as amended 2026-08-06: the hand
+ * is full at the waking, and only a special die is ever discovered). A die's shape is how its owner died: the
  * distribution is how they played, and the cost face is the mistake that
  * killed them. Reading the dice is one of the ways the labyrinth is learned —
  * you are looking at what it did to the people ahead of you.

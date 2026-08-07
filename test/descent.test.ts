@@ -15,7 +15,7 @@ import {
 import { hereIn } from '../src/gen/index.js'
 import {
   DEALER,
-  lookAround, alwaysLeft, opened, takeable } from './drift.js'
+  lookAround, opened, takeable } from './drift.js'
 
 /**
  * A room plays — arts 5–9 and 29. Beats one candle at a time, taps free and

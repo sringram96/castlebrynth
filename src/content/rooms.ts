@@ -104,7 +104,6 @@ import {
 } from './plates/features.js'
 import { plainScene } from './plates/plain.js'
 import {
-  alcove,
   ashBanks,
   boneDrifts,
   comingCloser,
@@ -371,7 +370,6 @@ const NARROWEST = 2.2
  * mush and not depth.
  */
 export function doorMarks(kind: ShapeKind, count: number): readonly WorldMark[] {
-  const plan = DOOR_PLAN[kind]
   const n = Math.max(1, count)
   // art. 96: a junction deals directions. One way on is a corner, two are a
   // left and a right, and three put the way straight on between them — so
@@ -1554,7 +1552,11 @@ const AUTHORED: readonly Authored[] = [
       right: layered(stringCourse(19, 1.2), pilasters(13, 2.6, 4)),
       back: stringCourse(19, 1.2),
     },
-    dressing: () => [],
+    // card 95, the mend: the woken keeper stands in the hall, so a player who
+    // ran out of the fight comes back to the thing they ran from. It is drawn
+    // here and tapped through `keeperTappables`, because the keeper stands in
+    // no socket (art. 37) and the hall is what it is in.
+    dressing: (_school, state) => keeperProps(state),
     tappables: [
       // The lock is a small thing on a large one, and both answer (art. 69).
       // Both derive from where the threshold actually stands, so neither can
@@ -1900,6 +1902,28 @@ export const GRAMMAR: Grammar = {
   clumpPenalty: 0.05,
   driftPull: 1.4,
   bandPull: 3,
+  /**
+   * art. 89 as amended (2026-08-07): **how often a fork that could be formed
+   * is.** Asked after the ordinary draw, never before it — a draw aimed at
+   * the goods that can fork would promote exactly those goods and pay for
+   * the fork out of art. 125's rarity bands.
+   *
+   * **One, and that is the chosen number.** The debt this closes was that
+   * nobody had chosen how often a player meets a fork; measured over 2000
+   * coin-flip runs it is **0.17 of runs at 0.17 forks per run**, and it is a
+   * number now rather than a residue because both of its factors are
+   * declared: the chance an initiator is dealt, which art. 125 makes a band,
+   * and this. A fork is what its two goods *are* — sustain against
+   * consistency, build against body — so a pair that is dealt and then not
+   * offered as a fork would be the game declining to ask its own question.
+   *
+   * **The lever for meeting more of them is content, and it is pairs.** Two
+   * `orElse` rows carry every fork in the game; a third would move the rate
+   * by about half again, and each one owes art. 87 its sentence. Turning
+   * *this* number below one only ever makes forks rarer, which is why it is
+   * a chance and not a target.
+   */
+  forkChance: 1,
 }
 
 const byId = new Map<string, RoomContent>(ROOMS.map((held) => [held.id as string, held]))
@@ -1942,17 +1966,24 @@ export function horrorIn(node: { readonly type: RoomType; readonly fills: readon
  * card 95, arts 30, 68: **the thing in this room a fight is summoned by
  * tapping**, or nothing where nothing has teeth.
  *
- * The Warden is deliberately not here. It stands in no socket (art. 37), it is
- * not in the hall until the key turns, and the ceremony that wakes it is
- * already a verb pressed about a thing — the lock. What card 95 is about is
- * the horror that *is* standing in the room while the player walks around it.
+ * **And the keeper is here now** (the mend, wave 2). It still stands in no
+ * socket — art. 37 is untouched, and it is not in the hall at all until the
+ * key turns. What changed is that once it *is* standing there, it is a horror
+ * standing in a room with you, and card 95's rule is about exactly that. The
+ * hall is the only room where this question has a second answer, and it has
+ * one because it is the only room where a horror arrives without a socket.
  */
-export function horrorMarkIn(node: { readonly fills: readonly Fill[] }): string | null {
+export function horrorMarkIn(
+  node: { readonly room?: RoomId; readonly fills: readonly Fill[] },
+  done: readonly string[] = [],
+): string | null {
   for (const fill of node.fills) {
     const mark = horrorTapOf(fill.encounter)
     if (mark !== null) return mark
   }
-  return null
+  return node.room !== undefined && keeperTappables(node.room, done).length > 0
+    ? 'warden.keeper'
+    : null
 }
 
 /**
@@ -1965,10 +1996,13 @@ export function horrorMarkIn(node: { readonly fills: readonly Fill[] }): string 
  * it stands, no door offers a way through; when it falls, all of them do.
  */
 export function horrorStanding(
-  node: { readonly fills: readonly Fill[] },
+  node: { readonly room?: RoomId; readonly fills: readonly Fill[] },
   done: readonly string[],
 ): boolean {
-  return horrorOf(node.fills) !== null && !done.includes(HORROR_DOWN)
+  if (horrorOf(node.fills) !== null) return !done.includes(HORROR_DOWN)
+  // The keeper, once the key has turned and before it goes down. It leaves
+  // its own deed rather than the socket's, because it never stood in one.
+  return node.room !== undefined && keeperAwake(done) && (node.room as string) === 'room.warden'
 }
 
 /**
@@ -2004,6 +2038,56 @@ export function keeperStanding(
   if (door.ends !== true) return false
   if (horrorIn(node) === null) return false
   return turned && !done.includes(WARDEN_DOWN)
+}
+
+/**
+ * **The fled keeper has a body** (the mend, wave 2).
+ *
+ * Card 95 made every fight in the game begin by tapping the horror, and left
+ * one exception standing: run out of the Warden's fight and the hall you come
+ * back to has *nothing in it*, because art. 37 puts the keeper in no socket.
+ * The only way back in was the door's own Fight verb — the last door-fight in
+ * a game that had abolished them.
+ *
+ * The keeper is in no socket and that is unchanged; what it now has is the
+ * one thing card 95 needs of a horror, which is a place to stand in the room
+ * and be looked at. Two consequences, and both are the article rather than
+ * the shell: **while it stands, no door in the hall gives** (art. 118's
+ * `door.guarded`, exactly as for every other horror), and **the verb is
+ * summoned by looking at it** (art. 68), never by bumping into the thing it
+ * is standing in front of.
+ *
+ * It reads off `done` alone rather than off the door, because the deed the
+ * unlock leaves *is* the turn of the key: `sceneStateOf` hands over this
+ * instance's act ids, so `turnedHere` and this ask the same question of the
+ * same bytes (art. 82 — two copies of one hall would each keep their own,
+ * though there is only ever one).
+ */
+export function keeperAwake(done: readonly string[]): boolean {
+  return done.includes(UNLOCK.id) && !done.includes(WARDEN_DOWN)
+}
+
+/**
+ * arts 30, 100: where the woken keeper stands while the hall is not a fight.
+ *
+ * Deep in the hall and drawn at its own size, so a player who fled comes back
+ * to the thing they fled from standing exactly where they left it — the
+ * advance is what happens when the fight opens, and this is the settled state
+ * it advances from (arts 1, 28).
+ */
+const KEEPER_AT: WorldMark = { X: 0, Y: FLOOR, z: 30, width: 13, height: 24 }
+
+/** card 95, art. 68: the keeper's own tappable, while it is standing. */
+export function keeperTappables(id: RoomId, done: readonly string[]): readonly Tappable[] {
+  if ((id as string) !== 'room.warden' || !keeperAwake(done)) return []
+  return [tappable('warden.keeper', KEEPER_AT)]
+}
+
+/** art. 70: prose confirms, pixels prove — and it is standing there. */
+function keeperProps(state: SceneState): readonly Prop[] {
+  if (!keeperAwake(state.done)) return []
+  const one = thing(IRON, WARDEN_KEEPER_BODY, KEEPER_AT, NOUNS['warden.keeper'] ?? 'the keeper', 46)
+  return one === null ? [] : [one]
 }
 
 /**
@@ -2120,7 +2204,11 @@ export function advanceBodyOf(
  */
 export const ROOM_BOOK: RoomBook = {
   beats: (id) => BEATS[id as string] ?? [],
-  tappables: (id) => roomContent(id).tappables,
+  // card 95, the mend: the room's own tappables, plus the keeper while it is
+  // standing in the hall. It is here rather than in the room's `tappables`
+  // array because it is a fact about what has happened, not about what was
+  // authored — art. 70's shape, said about a thumb instead of a pixel.
+  tappables: (id, done = []) => [...roomContent(id).tappables, ...keeperTappables(id, done)],
   // art. 69, card 67: it answers either way, and one thing in the depth
   // answers differently depending on what is on you. Which things care is
   // content's business; the engine hands over the pocket and reads nothing.

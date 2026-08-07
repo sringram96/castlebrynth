@@ -22,7 +22,6 @@ import {
   firstPermanent,
   learn,
   load,
-  memoryVault,
   save,
   snapshot,
   wake,

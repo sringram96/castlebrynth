@@ -7,7 +7,9 @@ ruling of 2026-08-05: every die past the plain ones belonged to somebody
 plain bones and a full hand — only a special die is discovered (art. 55).
 Playable spec: `reference/castlebrynth-lots-demo.html` — where prose
 and code disagree, the demo's behavior wins until the re-authored
-fixture lands (tracked on the board).
+fixture lands (tracked on the board). How a die is *drawn* is
+`reference/castlebrynth-dice-v3.html`, signed off with card 94; it wins
+ties about what a face looks like.
 
 ## The turn
 41. SETTLED (amended) — Yahtzee turns survive at the core: a first
@@ -57,10 +59,27 @@ fixture lands (tracked on the board).
     about a point in either direction, inside the noise: the second
     claim scrapes a pair off a hand whose turn is already decided. It
     was three presses buying nothing.
-46. SETTLED (amended) — Combos only: dice harm only through claimed
-    combos. The whiff clause is repealed — a turn without combos is a
-    turn of armor and patience, not a punishment. The ANY DICE line
-    (art. 48) is the deliberate floor, spendable like any line.
+46. SETTLED (amended; the guarantee stated 2026-08-07) — Combos only: dice
+    harm only through claimed combos. The whiff clause is repealed — a turn
+    without combos is a turn of armor and patience, not a punishment. The
+    ANY DICE line (art. 48) is the deliberate floor, spendable like any
+    line.
+
+    **And here is what that guarantees, said of the hand the game has.** It
+    was unstated law for four waves and was last argued about a hand of five
+    that art. 55 no longer deals. Of **six** dice, every possible hand leaves
+    a **pair or a run of three** — pigeonhole, and it is tight at ×2 — so a
+    turn always has something above the floor to spend, and `lots.floor` is
+    the proof rather than the claim.
+
+    Two consequences the article now says out loud rather than leaving to be
+    rediscovered. **It is the card and not the values that can leave a turn
+    with nothing**: a hand always makes something, and an empty card is what
+    makes ANY DICE the only line left. And **a wound is what takes lines
+    away** — three lines of the ladder (the straight, three pairs, two
+    triples) leave a shortened hand's reach entirely, which is the cost of a
+    wound being on the card and not only on the body. Both are art. 60's hand
+    size doing its job, and neither is a defect.
 47. SETTLED (amended, major) — BRACE is repealed. Defense is a body
     stat: **armor**, granted by items and mercies, automatically blocks
     its value from every attack. Intents may corrode or pierce it, and
@@ -179,10 +198,10 @@ fixture lands (tracked on the board).
     informative and commits nothing (art. 67).
 
 ## The travelers (ratified 2026-08-05)
-86. SETTLED (ruled) — The travelers. Every die beyond the bare five
-    belonged to someone who came down here before you and did not come
-    back. Each rare individual or event leaves exactly one unique die,
-    and a die's shape is how its owner died: the distribution is how
+86. SETTLED (ruled; the number corrected 2026-08-06) — The travelers. Every
+    die beyond the bare **six** belonged to someone who came down here
+    before you and did not come back. Each rare individual or event leaves
+    exactly one unique die, and a die's shape is how its owner died: the distribution is how
     they played, the cost face is the mistake that killed them. You
     learn the labyrinth partly by reading what it did to the people
     ahead of you. With art. 12 repealed this is the whole of where a

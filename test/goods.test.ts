@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest'
 
 import {
   CATALOG,
+  GRAMMAR,
+  IRON_KEY,
+  LEECH_BONE,
+  RARITY,
   LEAVES_A_GOOD,
   PLAIN_POUCH,
   PLATE,
@@ -17,10 +21,12 @@ import {
   takeActId,
 } from '../src/content/index.js'
 import { act, actsIn, beatsIn, sceneStateOf } from '../src/descent/index.js'
+import type { Lot } from '../src/gen/index.js'
+import { pickBanded } from '../src/gen/index.js'
 import type { Chain, ChainNode } from '../src/gen/index.js'
 import { encounterOf } from '../src/gen/index.js'
 import type { Ledgers } from '../src/state/index.js'
-import { coinFlip, playRun } from './drift.js'
+import { coinFlip, playRun, runWith } from './drift.js'
 
 /**
  * Where the goods come from (cards 19, 20) and what a fork is (art. 89).
@@ -329,5 +335,198 @@ describe('art. 89 — the fork', () => {
       (one) => !after.done.includes(one.id),
     )
     expect(left.map((one) => one.id)).not.toContain(takeActId(fill.orElse!))
+  })
+})
+
+/**
+ * **art. 125 — a weight names a band, and a band is a share of finds**
+ * (ruled 2026-08-07, the mend's third wave).
+ *
+ * The debt this closes was arithmetic nobody wrote down. `weight` was a share
+ * of the whole pool, so adding a seventh good at `uncommon` made the six
+ * already there rarer *and* made the whole uncommon band heavier than the
+ * common one: the catalog's effective mix had drifted to 40 / 47 / 13 against
+ * bands declared 6 / 3 / 1, and the two words had swapped places. Fine at
+ * eight goods, wrong at thirty.
+ *
+ * These are asked of `pickBanded` directly rather than of a thousand runs,
+ * because the article is a claim about a draw and a draw is a pure function.
+ * The distributional half — that a run still finds one or two goods and that
+ * the bands land where they are declared — is `playRun` above.
+ */
+describe('art. 125 — rarity is a band', () => {
+  /** A lot that walks the unit interval, so a draw is a measurement. */
+  const sweeping = (steps: number): { lot: Lot; at: () => number } => {
+    let n = 0
+    return { lot: { next: () => (n++ + 0.5) / steps }, at: () => n }
+  }
+
+  const shares = (items: readonly { id: string; weight: number }[], steps = 20_000) => {
+    const { lot } = sweeping(steps)
+    const seen = new Map<string, number>()
+    for (let n = 0; n < steps; n++) {
+      const drawn = pickBanded(items, (one) => one.weight, lot)!
+      seen.set(drawn.id, (seen.get(drawn.id) ?? 0) + 1)
+    }
+    return (id: string): number => (seen.get(id) ?? 0) / steps
+  }
+
+  it('gives a band its declared share however many goods are in it', () => {
+    const three = [
+      { id: 'a', weight: 6 },
+      { id: 'b', weight: 6 },
+      { id: 'c', weight: 6 },
+      { id: 'r', weight: 2 },
+    ]
+    const share = shares(three)
+    // The rare band is one good and takes 2/8 of the draws.
+    expect(share('r')).toBeCloseTo(0.25, 2)
+    // The common band is three goods sharing 6/8, uniformly.
+    for (const id of ['a', 'b', 'c']) expect(share(id)).toBeCloseTo(0.25, 2)
+  })
+
+  /**
+   * The load-bearing one: **adding a good dilutes its own band and nothing
+   * else.** Under the old relative draw the rare good below would have gone
+   * from 2/8 to 2/14 for a reason nobody chose.
+   */
+  it('leaves every other band exactly where it was when a band grows', () => {
+    const before = shares([
+      { id: 'a', weight: 6 },
+      { id: 'b', weight: 6 },
+      { id: 'r', weight: 2 },
+    ])
+    const after = shares([
+      { id: 'a', weight: 6 },
+      { id: 'b', weight: 6 },
+      { id: 'c', weight: 6 },
+      { id: 'd', weight: 6 },
+      { id: 'r', weight: 2 },
+    ])
+    expect(after('r')).toBeCloseTo(before('r'), 2)
+    // And the common band's members each got their fair share of the dilution.
+    expect(after('a')).toBeCloseTo(before('a') / 2, 2)
+  })
+
+  it('gives an empty band away to the bands that still have something', () => {
+    const share = shares([{ id: 'r', weight: 2 }])
+    expect(share('r')).toBeCloseTo(1, 5)
+    expect(pickBanded([], () => 6, { next: () => 0.5 })).toBeNull()
+  })
+
+  /** A weight of zero is a ban, exactly as it is for `pick` (art. 125). */
+  it('treats a weight of nothing as a ban and not as a discouragement', () => {
+    const share = shares([
+      { id: 'banned', weight: 0 },
+      { id: 'kept', weight: 3 },
+    ])
+    expect(share('banned')).toBe(0)
+    expect(share('kept')).toBe(1)
+  })
+
+  /**
+   * One draw, not two. A banded draw consumes exactly what `pick` consumed,
+   * so no seeded sequence changes length under the ruling — which is why the
+   * pre-rolling transcript's *fights* half still matches byte for byte.
+   */
+  it('consumes exactly one draw, like the pick it replaces', () => {
+    const { lot, at } = sweeping(4)
+    pickBanded([{ id: 'a', weight: 6 }, { id: 'r', weight: 1 }], (one) => one.weight, lot)
+    expect(at()).toBe(1)
+  })
+
+  /**
+   * And the catalog is banded rather than scattered: every good on the floor
+   * declares one of the three shares and nothing in between, so the article
+   * has something to be about.
+   */
+  it('bands the whole boon catalog on the declared shares', () => {
+    const bands = new Set<number>(Object.values(RARITY))
+    for (const one of CATALOG.encounters) {
+      if (one.kind !== 'boon' || one.binding !== 'floating') continue
+      // The iron key is placed by art. 80 rather than drawn, so it is the
+      // one row in this socket that answers to no band.
+      if ((one.id as string) === (IRON_KEY as string)) continue
+      expect(bands, `${one.id as string}`).toContain(one.weight)
+    }
+  })
+})
+
+/**
+ * **art. 89 as amended — the fork's frequency is declared** (2026-08-07).
+ *
+ * The debt: *"a lever whose frequency is an accident of three other numbers
+ * is not being pulled on purpose."* It is two declared numbers multiplied
+ * now — the chance an initiator is dealt, which art. 125 makes a band, times
+ * `GRAMMAR.forkChance`. The measured rate is asserted here so that a content
+ * change which moves it moves a test with it, rather than moving it quietly.
+ */
+describe('art. 89 — how often a fork is met, on purpose', () => {
+  const RUNS = 800
+
+  const forksIn = (chance: number): { runs: number; per: number } => {
+    const grammar = { ...GRAMMAR, forkChance: chance }
+    let withFork = 0
+    let forks = 0
+    for (let seed = 1; seed <= RUNS; seed++) {
+      let any = false
+      for (const node of runWith(CATALOG, grammar, seed, coinFlip(seed)).nodes) {
+        for (const fill of node.fills) {
+          if (fill.orElse === undefined) continue
+          forks += 1
+          any = true
+        }
+      }
+      if (any) withFork += 1
+    }
+    return { runs: withFork / RUNS, per: forks / RUNS }
+  }
+
+  it('meets one in about a sixth of runs, which is the chosen rate', () => {
+    const met = forksIn(GRAMMAR.forkChance)
+    expect(met.runs).toBeGreaterThan(0.12)
+    expect(met.runs).toBeLessThan(0.22)
+    // And almost never twice: a fork is a decision, not a room type.
+    expect(met.per).toBeLessThan(met.runs * 1.25)
+  })
+
+  /**
+   * The number is doing work rather than sitting there. Turning it down
+   * turns the rate down; turning it off means no fork is ever formed, and
+   * the goods that would have paired still get dealt on their own.
+   */
+  it('is the knob it says it is', () => {
+    expect(forksIn(0).runs).toBe(0)
+    expect(forksIn(0.5).runs).toBeLessThan(forksIn(1).runs)
+  })
+
+  /**
+   * **And it does not pay for itself out of art. 125.** The chance is asked
+   * *after* the ordinary draw, so it cannot promote the goods that can fork
+   * — if it could, a fork would be financing itself out of the rarity bands
+   * and the two rules would not compose.
+   *
+   * It is *near* rather than *exactly* equal, and the reason is honest: a
+   * fork that forms spends its partner, so the pool the rest of the run
+   * draws from differs downstream. That is the fork costing two goods, which
+   * is what art. 89 says a fork is. What would be a defect is a systematic
+   * lift, and 0.6% of a rate is not one.
+   */
+  it('leaves the initiators as rare as their band says, whatever the chance', () => {
+    const dealtWith = (chance: number): number => {
+      const grammar = { ...GRAMMAR, forkChance: chance }
+      let seen = 0
+      for (let seed = 1; seed <= RUNS; seed++) {
+        for (const node of runWith(CATALOG, grammar, seed, coinFlip(seed)).nodes) {
+          for (const fill of node.fills) {
+            if (fill.encounter === LEECH_BONE || fill.encounter === SISTER_ELDER) seen += 1
+          }
+        }
+      }
+      return seen / RUNS
+    }
+    const off = dealtWith(0)
+    const on = dealtWith(1)
+    expect(Math.abs(on - off) / off).toBeLessThan(0.05)
   })
 })

@@ -69,6 +69,30 @@ A scrawl is short. He is out of time when he writes one.
 - **Spoiler discipline is absolute.** Nothing states, hints, or rhymes with
   the depth-3 truth.
 
+## The screens, and who speaks when the game is off
+**Ruled 2026-08-07 by the mend's fourth wave.**
+
+The settings screen and the vault had no voice because nobody had asked who
+was speaking on them. They were declared placeholders and shipped in the
+repealed register for three waves, which is what an unasked question looks
+like in a content file.
+
+**The answer is that on those two screens there is nobody in the room.** The
+player is holding a phone. He has no thought about reduced motion, and a man
+who narrated one would be the flourish this file repeals — so the settings
+screen and the vault answer to the universals (no narrator, no feelings, no
+shouting, one candle) and to **neither mouth**. That is the **plain**
+category, and it is a decision rather than a debt. `placeholder` stays what
+it is: prose that has not been rewritten yet, counted where it can be seen.
+
+**Everything else on a screen is his**, and the wave found that most of it
+already wanted to be. A fight he ran out of, a pouch he is carrying, a card
+he is spending and a lock that will not give are as much his as a corridor
+is; they were second person only because nobody had looked at them since the
+narrator was repealed. **What a readout says is a label** — *sealed this
+turn*, *already spent*, *on*, *off* — because it names a state and a name is
+not a sentence (art. 90's reasoning, one level down).
+
 ## The lint
 
 `src/content/voice.ts` is this file, executable, and
@@ -80,6 +104,8 @@ A scrawl is short. He is out of time when he writes one.
   yourself is an order, not a diary.
 - **label** — a name. Exempt from both registers, because a name is not a
   sentence.
+- **plain** — the settings screen and the vault, where there is nobody in
+  the room. The universals, and neither mouth. A decision, not a debt.
 - **placeholder** — prose written under the repealed register and not yet
   rewritten. It answers only to the rules above that survive the
   amendment — the feeling ban, one candle, no narrator, no shouting — and
