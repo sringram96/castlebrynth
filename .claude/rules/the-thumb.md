@@ -45,9 +45,10 @@ journey.md.
     are standing at *is* the fight.
 
     **And FIGHT holds only the duel** (amended by ruling of 2026-08-05).
-    What the duel needs is the dice and the verbs that move a turn:
-    Roll, Recast, Keep all, Claim, Take back, End turn. **Run is not one
-    of them** — running is not a move in the duel, it is the one thing
+    What the duel needs is the dice and the verbs that move a turn — under
+    art. 41 as amended the same day, that is **Roll, Reroll, Attack**, with
+    End turn standing in for Attack when the selection claims nothing.
+    **Run is not one of them** — running is not a move in the duel, it is the one thing
     you can still do about the door you are standing at, so it lives in
     ACTS with the room's other verbs. FIGHT's strip is three different
     sets across a turn; a verb that *leaves* the fight has no business

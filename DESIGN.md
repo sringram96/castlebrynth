@@ -97,17 +97,54 @@ One complete loop: wake → descend a generated chain → fight → die
 knowing more → win because you know. The scope is tracked as tasks on
 the board, not here.
 
-## Phases (backlog prose, not promises)
+## Phases, and the order (settled 2026-08-07)
 1. **The living depth** — the economy (knucklebones, the Merchant; the
-   Sanctum and the Savior are built and take no price),
-   QTE windows under arts 2/61/62, rider/bond/talisman content,
-   more horrors, rich Puzzle locks, sanity as the second bar.
+   Sanctum and the Savior are built and take no price), QTE windows under
+   arts 2/61/62, rider/bond/talisman content, more horrors, rich Puzzle
+   locks, sanity as the second bar. **And the walls learning to lie**, which
+   is the fantasy table's oldest undelivered row.
 2. **The look** — hero plates at the reference image's density, CINE
    moments, idle patches everywhere.
 3. **The deep** — depths two and three, the truth, the Tenant, the
    Fraying.
 
-Order of 1 vs 2 is a live argument; nothing in 0 forecloses either.
+**Phase 1 goes first, and the argument is closed.** It was live for six
+waves, and a live argument is where scope leaks in. The reason is the
+repo's own finding: riders, bonds, talismans, levels and wearables are all
+*in play*, and what is absent is anything to spend on them — a collection
+without stakes. The thesis is *die knowing more, win because you know*, and
+it feeds on runs that differ from each other, which is what an economy and
+more horrors buy. Meanwhile arts 93–115 landed enough that rooms read; a
+look pass over a skeleton is phase 2's own named risk.
+
+**The honest counterweight, stated rather than buried:** the look is what a
+stranger judges in the first sixty seconds. If the next ten players are
+strangers rather than returners, this order is wrong and flipping it is a
+ruling, not a drift.
+
+**Depth two waits for the curve, and the curve is measured.** The
+instruments exist — return rate and mean depth against a bare pouch, run
+over run. Depth two unlocks when depth one's numbers say growth is carrying
+players further, not before. *You fail, you start over, you go further* is a
+measurable sentence; the job is to keep measuring it.
+
+## The cadence
+One region, one horror, or one system per wave, each through the gate that
+already exists — and the gate is what makes the skeleton trustworthy, so the
+mend extends it rather than inventing a new one:
+
+1. its **origin sentence**, linted as prose (art. 87);
+2. the **voice lint**, in its declared category;
+3. its **thousand-run model**, if it moves a number (no tuning claim
+   without a table);
+4. an **acceptance walk**, end to end, through the vault;
+5. its **row in `journey.md`** — mode, ledger, articles (art. 122); and
+6. its **phone pass**, the last section of the wave's chronicle entry —
+   performed, or declared not done and why (`.claude/skills/phone-pass/`).
+
+The acceptance test for the whole road is one sentence: **the loop GAME.md's
+first page describes is walkable on a phone, through the deployed URL, by
+someone who has never read the articles.**
 
 ## Non-goals (phase 0)
 No economy, no QTE windows, no hero plates, no sanity bar, no audio, no

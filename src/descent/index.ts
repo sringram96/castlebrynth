@@ -513,10 +513,6 @@ export function doorKey(instance: InstanceId, door: Door): string {
   return `${instance}→${door.at}`
 }
 
-/** art. 70: whether this door has already been opened from this room. */
-export function isOpened(state: SceneState, door: Door): boolean {
-  return state.opened.includes(doorKey(state.instance, door))
-}
 
 export function enterRoom(
   ledgers: Ledgers,

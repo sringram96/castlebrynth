@@ -23,14 +23,27 @@ never from hidden math.
   their carry (art. 52); talisman species stay declared (art. 53).
 - Generated runs are provably winnable — a lock's key upstream on every
   forceable path (art. 33), tested rather than hoped.
-- The start is five plain bones against a hand size of six (arts 55, 60).
-  Five dice cannot reach the straight, three pairs, or two triples: the
-  hand's guaranteed shape is a pair or a run of 3, and nothing better.
-  The sixth die is a traveler's, and it is the first real power curve in
-  the game — measure it rather than assuming it.
+- The start is **six** plain bones against a hand size of six (art. 55 as
+  amended 2026-08-06): the hand is full at the waking, and only a *special*
+  die is ever discovered. Of six dice every hand leaves a pair or a run of
+  three, tight at ×2 (art. 46's guarantee, stated 2026-08-07) — so it is the
+  card and not the values that can empty a turn, and a **wound** is what
+  takes lines away: three lines of the ladder leave a shortened hand's reach
+  entirely.
+- **A weight names a band, and a band is a share of finds** (art. 125).
+  Adding a good dilutes its own band and nothing else; inside a band the
+  draw is uniform; an empty band gives its share away. Moving a band's share
+  is a rebalance and owes a table. Per-good rarity is the share divided
+  among the band's members, which is what the words mean.
 - Every good ships with its origin sentence (art. 87) and every die that
   out-values the plain bone ships with a declared cost (art. 54). A cost
-  face is a rider that fires when the face is spent, like any other.
+  face is a rider that fires when the face is spent, like any other. **And
+  every good ships with its audit row** — the Zealot was the last one
+  without a number beside it, and it now has a table showing it inside the
+  band the Ossuary set.
+- **How often a fork is met is declared** (art. 89 as amended): the chance
+  an initiator is dealt, times `GRAMMAR.forkChance`, asked *after* the
+  ordinary draw so a fork cannot pay for itself out of art. 125's bands.
 
 ## What you refuse
 Automatic damage outside the card — ANY DICE ×1 is the only floor and it

@@ -391,10 +391,3 @@ export function routeFlight(ledgers: Ledgers, save: FightSave): Ledgers {
   return { ...ledgers, run: fighting(wounded(run, save.yourHealth), save) }
 }
 
-/** Which room the fight was fought at the door of (art. 30: it never moves). */
-export function roomOf(ledgers: Ledgers): InstanceId | null {
-  return ledgers.run?.at.instance ?? null
-}
-
-/** The lot a fight is thrown with, so the caller need not invent one. */
-export type FightLot = Lot

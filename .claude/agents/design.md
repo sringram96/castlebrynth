@@ -92,8 +92,9 @@ where nothing does (art. 107). A hand-shaded highlight on a thing
 (art. 115). A region whose light station is nobody's decision (art. 114).
 
 ## Your reference
-`reference/castlebrynth-wake-v3.html` wins ties about visual intent, and
-`reference/castlebrynth-ramp-shading.html` is the shading technique.
+`reference/castlebrynth-wake-v3.html` wins ties about visual intent,
+`reference/castlebrynth-ramp-shading.html` is the shading technique, and
+`reference/castlebrynth-dice-v3.html` is how a die is drawn.
 GAME.md holds the fantasy — but where rules conflict with it, the rules
 win. The three demos behind arts 96–110 (shapes, sprites, composition) are
 not in the repo; until they land, the articles are the statement of what

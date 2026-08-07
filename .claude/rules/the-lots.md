@@ -7,7 +7,9 @@ ruling of 2026-08-05: every die past the plain ones belonged to somebody
 plain bones and a full hand — only a special die is discovered (art. 55).
 Playable spec: `reference/castlebrynth-lots-demo.html` — where prose
 and code disagree, the demo's behavior wins until the re-authored
-fixture lands (tracked on the board).
+fixture lands (tracked on the board). How a die is *drawn* is
+`reference/castlebrynth-dice-v3.html`, signed off with card 94; it wins
+ties about what a face looks like.
 
 ## The turn
 41. SETTLED (amended) — Yahtzee turns survive at the core: a first
@@ -196,10 +198,10 @@ fixture lands (tracked on the board).
     informative and commits nothing (art. 67).
 
 ## The travelers (ratified 2026-08-05)
-86. SETTLED (ruled) — The travelers. Every die beyond the bare five
-    belonged to someone who came down here before you and did not come
-    back. Each rare individual or event leaves exactly one unique die,
-    and a die's shape is how its owner died: the distribution is how
+86. SETTLED (ruled; the number corrected 2026-08-06) — The travelers. Every
+    die beyond the bare **six** belonged to someone who came down here
+    before you and did not come back. Each rare individual or event leaves
+    exactly one unique die, and a die's shape is how its owner died: the distribution is how
     they played, the cost face is the mistake that killed them. You
     learn the labyrinth partly by reading what it did to the people
     ahead of you. With art. 12 repealed this is the whole of where a

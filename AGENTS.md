@@ -88,7 +88,18 @@ art. 47's BRACE is repealed. The rest:
   settled states were honest
 - **voice.md** — every player-facing string, in his voice: the thought
   (first person, live) or the scrawl (second person, written down), never
-  a narrator. Amended by the mind wave, 2026-08-06.
+  a narrator. Amended by the mind wave, 2026-08-06, and by the mend,
+  2026-08-07, which gave the settings screen and the vault the **plain**
+  register — the one place there is nobody in the room, because the player
+  is holding a phone.
+
+The mend's articles, in one place: **121–122** (journey.md) are the five
+modes and the rule that no mechanic ships without its row; **123–124**
+(the-thumb.md) are the front door and the choosing screen; **125**
+(the-world.md) is what a rarity weight means. It also amended **37** (the
+keeper has a body once the key turns), **46** (what the whiff guarantee
+guarantees, of six dice), **89** (the fork's frequency is declared) and
+**67** (FIGHT's verbs are the turn's three).
 
 Statuses: SETTLED binds. STANDING is inherited from GAME.md, unamended.
 DEFAULT binds until deliberately revisited. PARKED is not law — build

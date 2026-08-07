@@ -95,6 +95,65 @@ fixes wave**.
 
 ---
 
+## The mend, wave 5 — road (the phase order settled · the cadence · the cleanup)
+
+**Phase 1 goes before phase 2, and the argument is closed.** It had been
+"a live argument" for six waves, which is not a position — it is an open
+question, and an open question is where scope leaks in.
+
+The reason is the repo's own finding rather than a preference: riders, bonds,
+talismans, levels and wearables are all *in play*, and what is absent is
+anything to spend on them. Goods without an economy is a collection without
+stakes, and the thesis — *die knowing more, win because you know* — feeds on
+runs that differ from each other, which the economy and more horrors buy.
+Meanwhile arts 93–115 landed enough that rooms read, and a look pass over a
+skeleton is phase 2's own named risk. **The honest counterweight is written
+down rather than buried**: the look is what a stranger judges in the first
+sixty seconds, so if the next ten players are strangers rather than
+returners, this order is wrong — and flipping it is then a ruling, not a
+drift.
+
+**Depth two waits for the curve.** The instruments already exist; depth two
+unlocks when depth one's numbers say growth is carrying players further, not
+before.
+
+**The cadence is six gates**, and all six already existed except the last
+two: origin sentence, voice lint, thousand-run model, acceptance walk, the
+`journey.md` row (art. 122), and the phone pass. The mend extended the gate
+rather than inventing one, which is the reason the skeleton is trustworthy.
+
+### The cleanup
+
+Old garbage, named and removed rather than left to be rediscovered.
+
+- **Three dead exports deleted**: `isOpened` (nothing read it —
+  `sceneStateOf` computes `opened` inline), `roomOf` and `FightLot`.
+- **Art. 67 was citing the repealed turn.** It listed FIGHT's verbs as
+  *Roll, Recast, Keep all, Claim, Take back, End turn* — the vocabulary
+  art. 41 replaced on the same day the article was amended. It says Roll,
+  Reroll, Attack now.
+- **Art. 86 still said "the bare five."** Art. 55 has dealt six since
+  2026-08-06.
+- **The arithmetic agent was reading the repealed start.** Its context said
+  five bones against a hand of six, and said nothing about band semantics or
+  the fork's declared frequency. Fixed, and it now carries art. 46's stated
+  guarantee.
+- **`castlebrynth-dice-v3.html` was an orphan.** It is a signed-off
+  reference from card 94 that no law and no agent pointed at; the-lots.md and
+  the design agent point at it now.
+- **README described the repealed duel** — *"a turn may claim several"* —
+  and the four notices the choosing screen can no longer reach are gone
+  rather than left unreachable.
+
+`npm test`: 58 files, 698 tests, green. `npm run build` clean.
+
+### The phone pass
+**Not done.** No device. Five waves, five sections saying so — which is the
+instrument working: it is the only debt in this repo that cannot be paid by
+writing.
+
+---
+
 ## The mend, wave 4 — voice (voice.md amended · the fantasy table)
 
 **The screens had no voice because nobody had asked who was speaking.**
