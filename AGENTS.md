@@ -37,9 +37,15 @@ Test: kill the process anywhere; restart; nothing is lost.
 Never: unresumable state, a hardcoded pixel, content logic in the engine.
 
 ## The law
-`.claude/rules/` holds 120 numbered articles, cited in tasks as "art. N".
+`.claude/rules/` holds 124 numbered articles, cited in tasks as "art. N".
 Two are spent: art. 12 is repealed (there are no classes, ever) and
 art. 47's BRACE is repealed. The rest:
+- **journey.md** — **read this first.** The five modes (Threshold,
+  Choosing, Descent, Fight, Ending), the one question each of them asks,
+  and every transition as a declared event (art. 121); then the table of
+  every mechanic in the game with its mode, its ledger and its articles,
+  which no mechanic may ship without (art. 122). It invents nothing — it
+  is the other five files in one place.
 - **the-world.md** — time, touch, structure, the chain, room grammar, the
   drift (arts 77–85): regions, the forced lock, lazy dealing,
   just-in-time keys, template and instance, binding and scope — and the
@@ -95,6 +101,10 @@ dependencies are complete; one branch per task. A task ends as a PR
 (linked in a comment) or as Blocked (the question written as a comment).
 Don't take work the task didn't ask for — if a task needs context it
 doesn't carry, that's a Blocked question, not a guess.
+
+The five standing rules are in CLAUDE.md and bind every wave: green means
+served; Status is one screen; no mechanic without its row; every wave ends
+in a hand; the fantasy table never goes stale.
 
 Every non-trivial change should be able to survive all four agents. If
 two of them disagree, that's a Blocked question for the human, not a
