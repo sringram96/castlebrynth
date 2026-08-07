@@ -1,5 +1,19 @@
 # The asset brief — what to generate, at what size, and where it lands
 
+> **Delivered so far** (the ossuary art pass): the hall, the reliquary frame,
+> the ritual knife, and a seven-piece ossuary dressing kit — wall, niche,
+> pillar, archway, hanging cluster, skull pile, candle ledge. **Still owed:**
+> the Marrow hero plate, the six bone die faces, the iron trinket die, and the
+> three candle-flame patch frames. Their slots are declared and flagged
+> `awaiting`; until they land the game falls back, and the Marrow is drawn as
+> the authored body in `src/content/plates/bestiary.ts`.
+>
+> Two numbers moved against what is written below, and the code follows the
+> paintings rather than the brief: the reliquary arrived at **1619 × 971**
+> (drawn at 1.5 : 1, a deliberate tenth of a stretch so the live controls fit),
+> and the knife at **1024 × 1536**. A taller reliquary would remove the stretch
+> and is the one art fix this pass would most like.
+
 `canonical-screen.png` is the target. This file is how that target gets built
 out of separately generated images so the game can move them: the horror has
 to come closer, the weapon has to change when you equip one, and the dice have

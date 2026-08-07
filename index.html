@@ -142,39 +142,70 @@
          Above is the carved tray the stylesheet draws, and it stays: art. 126
          says missing art is a plainer room and never a broken one, so a tray
          with no painting behind it is the tray this game already had.
+
          With the painting there, the band takes the painting's own aspect —
-         1536:900, which is what sets the tray's height on every phone — and
-         the frame is the picture rather than three gradients. The live
-         controls sit inside its recesses, whose rectangles are declared in
-         `reference/visual/ASSET_BRIEF.md` and are fractions of this file, so
-         the art and the layout cannot drift apart without one of them saying
-         so. `background-size: 100% 100%` is deliberate: the element is held
-         to the plate's aspect, so filling it exactly is filling it honestly. */
-      #tray.plated { aspect-ratio: 4 / 3; max-height: 36dvh; padding: 0; gap: 0;
-        display: grid; grid-template-rows: 26.5% 1fr;
+         1619:971 — and the live controls stand in its recesses. The fractions
+         below are measured off `ui/reliquary.png` itself, so the art and the
+         layout cannot drift apart: the orb on the left holds the body's
+         numbers, the strip above holds the tabs, the wide middle holds the
+         hand and the verbs beneath it.
+
+         **It is a frame and not a screenshot.** Nothing about the duel is
+         painted into it — every recess is empty and everything in them is
+         live. */
+      /* **1.5 and not the painting's own 1.667.** The frame is stretched about
+         a tenth taller than it was drawn, on purpose and stated here rather
+         than discovered: at its native aspect the band is 234 px on a 390 px
+         phone, and the live controls measure 250. A tenth is not visible on an
+         ornate symmetrical frame and a clipped verb is visible immediately.
+         The honest fix is a taller frame, which is an art task and is on the
+         list; this is what stands until it lands. */
+      #tray.plated { position: relative; display: block; aspect-ratio: 1.5;
+        max-height: 42dvh; padding: 0; gap: 0;
         border-top: none; box-shadow: none;
-        background: var(--reliquary) center / cover no-repeat, #080705; }
-      /* The rail lands on the painted rail: the flask cradle on the left, the
-         name plaques across the rest (arts 67, 90). */
-      /* The rail's row is the painted rail's own recess — 5.5% to 26.5% of
-         the plate — so the flask cradle holds the flask's numbers and the
-         plaques hold the tabs. The fractions are the brief's, and they are the
-         one place the art and the layout have to agree. */
-      #tray.plated #rail { display: grid; grid-template-columns: 21% 1fr;
-        align-items: center; gap: 0; padding: 5.5% 3% 0; }
-      #tray.plated #vitals { background: none; box-shadow: none; padding: 0;
-        min-height: 0; flex-direction: column; align-items: flex-start; gap: 0; }
-      #tray.plated #tabs { border-bottom: none; justify-content: flex-end; }
-      /* And the panel area lands in the well — the one wide recess the dice
-         stand in, which is full width because a hand may be eight (art. 128)
-         and eight thumb-sized dice do not fit the reference's centre column
-         on a 390-pixel phone. */
-      #tray.plated #panels { padding: 1.5% 3% 3%; min-height: 0; overflow: hidden; }
-      /* The well is painted, so the panel stops drawing one — and stops
-         pulling itself out past the tray's gutters, which is what made the die
-         row measure narrow enough to wrap six dice into five and one. */
+        background: var(--reliquary) center / 100% 100% no-repeat, #050404; }
+      /* The rail's two regions do not sit one above the other in this frame —
+         the orb is beside the strip — so the wrapper dissolves and each region
+         takes its own recess. art. 67 is served, not weakened: a region still
+         lives in exactly one place and never moves. */
+      #tray.plated #rail { display: contents; }
+      #tray.plated #vitals { position: absolute; left: 3.5%; top: 30%;
+        width: 16%; height: 36%; margin: 0; padding: 0; background: none;
+        box-shadow: none; border-radius: 0; min-height: 0;
+        display: flex; flex-direction: column; align-items: center;
+        justify-content: center; gap: 1px; font-size: .74em; text-align: center;
+        text-shadow: 0 1px 3px #000; }
+      #tray.plated #vitals .glyph { display: none; }
+      #tray.plated #tabs { position: absolute; left: 28.5%; top: 16.5%;
+        width: 44%; height: 12.5%; border-bottom: none; gap: 0;
+        justify-content: space-evenly; align-items: center; }
+      #tray.plated #tabs button { padding: 0 4px; font-size: .78em;
+        border-bottom-width: 1px; color: var(--bone-dim);
+        text-shadow: 0 1px 3px #000; }
+      #tray.plated #tabs button.on { color: #e8dcc0; }
+      /* The well and the beds under it, as one region: the hand stands in the
+         recess and the verbs on the shelf below, which is how the frame is
+         carved. */
+      #tray.plated #panels { position: absolute; left: 16.5%; top: 23%;
+        width: 69%; height: 68%; padding: 0; min-height: 0; overflow: hidden; }
+      /* The panel keeps the row-and-wrap flow it has everywhere else — a
+         column here turned `flex-wrap` into *column* wrap and threw the dice
+         and the verbs off the side of the tray. What the recess changes is how
+         much room there is, not how the panel is laid out (art. 67). */
+      #tray.plated .panel.on { height: 100%; gap: 3px; align-content: center; }
+      /* The panel stops drawing a well of its own — it is standing in one. */
       #tray.plated #fight { margin: 0; padding: 0; background: none;
         border-top: none; box-shadow: none; }
+      #tray.plated #fight .totals { font-size: .68em; margin: 0; gap: 0 8px;
+        flex-wrap: nowrap; white-space: nowrap; }
+      #tray.plated #fight .totals .glyph { padding: 0 5px; }
+      #tray.plated #fight .score { padding: 0; gap: 6px; }
+      #tray.plated #fight .score .box { font-size: 1rem; min-width: 42px;
+        padding: 0 6px; }
+      #tray.plated #fight .score .cap2 { display: none; }
+      #tray.plated button { min-height: 34px; padding: 5px 9px; }
+      #tray.plated #acts button { min-width: 62px; }
+
       /* art. 67: the rail. Two rows that are always there and always the
          same — what your body is, and where the thumb can go. */
       #rail { display: flex; flex-direction: column; gap: 6px; }

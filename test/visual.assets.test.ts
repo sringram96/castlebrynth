@@ -18,10 +18,18 @@ import { ASSET_ROOT, assetCache, faultsIn, merge } from '../src/visual/index.js'
 /**
  * The width, height and alpha column of a PNG, read for real.
  *
- * Byte-level rather than through an image decoder, because the two facts
- * being checked are byte-level facts and because a decoder is a dependency
- * (see `test/node.d.ts`). Only what `tools/png.mjs` writes has to be
- * readable: 8-bit RGBA, filter 0, one or more IDAT chunks.
+ * Byte-level rather than through an image decoder, because the facts being
+ * checked are byte-level facts and because a decoder is a dependency (see
+ * `test/node.d.ts`).
+ *
+ * It reads **8-bit grey / RGB / RGBA with any filter**, which is what the
+ * repository actually holds: `tools/plates.mjs` writes filter-0 RGBA, and the
+ * paintings that arrive from outside are ordinary PNGs — RGB where they are
+ * opaque, adaptively filtered because every real encoder does that. The first
+ * cut of this reader assumed the encoder's own two habits were properties of
+ * PNG, so a perfectly valid painting failed a test about its *size*. A reader
+ * narrower than the thing it reads is a test that fails for reasons that are
+ * not about the file.
  */
 function readPng(path: string): { width: number; height: number; alphas: Set<number> } {
   const buf = readFileSync(path)
@@ -29,6 +37,7 @@ function readPng(path: string): { width: number; height: number; alphas: Set<num
   let at = 8
   let width = 0
   let height = 0
+  let channels = 4
   const parts: Uint8Array[] = []
   while (at < buf.length) {
     const len = view.getUint32(at)
@@ -37,10 +46,14 @@ function readPng(path: string): { width: number; height: number; alphas: Set<num
       width = view.getUint32(at + 8)
       height = view.getUint32(at + 12)
       expect(buf[at + 16], `${path}: not 8-bit`).toBe(8)
-      expect(buf[at + 17], `${path}: not RGBA`).toBe(6)
+      const colour = buf[at + 17]!
+      channels = colour === 6 ? 4 : colour === 2 ? 3 : colour === 4 ? 2 : colour === 0 ? 1 : 0
+      expect(channels, `${path}: unreadable colour type ${colour}`).toBeGreaterThan(0)
+      expect(buf[at + 20], `${path}: interlaced`).toBe(0)
     }
     if (type === 'IDAT') parts.push(buf.subarray(at + 8, at + 8 + len))
     at += len + 12
+    if (type === 'IEND') break
   }
   const joined = new Uint8Array(parts.reduce((n, part) => n + part.length, 0))
   let wrote = 0
@@ -49,13 +62,32 @@ function readPng(path: string): { width: number; height: number; alphas: Set<num
     wrote += part.length
   }
   const raw = inflateSync(joined)
-  const alphas = new Set<number>()
-  const stride = width * 4 + 1
+  const stride = width * channels
+  const flat = new Uint8Array(width * height * channels)
   for (let y = 0; y < height; y++) {
-    // Filter byte 0 (none) is what the encoder writes, so the bytes are
-    // readable without running a filter chain.
-    expect(raw[y * stride], `${path}: unexpected PNG filter`).toBe(0)
-    for (let x = 0; x < width; x++) alphas.add(raw[y * stride + 1 + x * 4 + 3]!)
+    const filter = raw[y * (stride + 1)]!
+    const line = raw.subarray(y * (stride + 1) + 1, y * (stride + 1) + 1 + stride)
+    for (let i = 0; i < stride; i++) {
+      const a = i >= channels ? flat[y * stride + i - channels]! : 0
+      const b = y > 0 ? flat[(y - 1) * stride + i]! : 0
+      const c = i >= channels && y > 0 ? flat[(y - 1) * stride + i - channels]! : 0
+      let value = line[i]!
+      if (filter === 1) value += a
+      else if (filter === 2) value += b
+      else if (filter === 3) value += (a + b) >> 1
+      else if (filter === 4) {
+        const p = a + b - c
+        const pa = Math.abs(p - a)
+        const pb = Math.abs(p - b)
+        const pc = Math.abs(p - c)
+        value += pa <= pb && pa <= pc ? a : pb <= pc ? b : c
+      }
+      flat[y * stride + i] = value & 0xff
+    }
+  }
+  const alphas = new Set<number>()
+  for (let i = 0; i < width * height; i++) {
+    alphas.add(channels === 4 ? flat[i * 4 + 3]! : channels === 2 ? flat[i * 2 + 1]! : 255)
   }
   return { width, height, alphas }
 }

@@ -121,7 +121,31 @@ const DRESSED: Readonly<Record<string, SceneArt>> = {
     // room's geometry is exactly what the painting was composed to. The cast
     // still runs, the marks still lie where the box puts them, and the day the
     // painting is missing the room is the corridor it always was (art. 126).
-    overlays: [{ asset: 'ossuary.hall', layer: Layer.Material, anchor: { space: 'cover' } }],
+    overlays: [
+      { asset: 'ossuary.hall', layer: Layer.Material, anchor: { space: 'cover' } },
+      /**
+       * art. 105: **two supporting things, and they stand aside from the
+       * hero.** The Marrow takes the middle of the frame when it arrives, so
+       * the cluster hangs high and left of it and the heap lies low and right,
+       * in the two corners the painting left dark. Seven pieces were delivered
+       * and this room takes two: a room that used the whole kit would be a room
+       * where nothing is the one thing (art. 104).
+       *
+       * They are anchored to the frame rather than to the box because the thing
+       * they are dressing is a painting and not a cast — a world coordinate
+       * here would place them against geometry nobody can see.
+       */
+      {
+        asset: 'ossuary.hanging-skulls',
+        layer: Layer.Distant,
+        anchor: { space: 'frame', x: 0.22, y: 0.055, origin: 'top-center', width: 0.27 },
+      },
+      {
+        asset: 'ossuary.skull-pile',
+        layer: Layer.Foreground,
+        anchor: { space: 'frame', x: 0.42, y: 1.0, origin: 'bottom-center', width: 0.74 },
+      },
+    ],
     foreground: WEAPON,
     // art. 107: one loop, and it is the candle on the right-hand sconce. Its
     // place in the painting is a fraction of the frame and not a world
@@ -146,14 +170,40 @@ const DRESSED: Readonly<Record<string, SceneArt>> = {
    * level up.
    */
   'room.passage.bonefield': {
+    /**
+     * **The dressing kit on a room that is still cast.** The choir is a
+     * painting; this is the ordinary case and the one that matters more, because
+     * most rooms will never be painted. So the pieces are anchored in the
+     * **world** (art. 19): they stand at a depth, they diminish by 1/z with
+     * everything else, and the computed box is still what says where the walls
+     * are. Nothing authored moves a surface (art. 126).
+     *
+     * Two pieces, which is what art. 105 allows an ordinary room. The room is
+     * loculi — shelves cut for people — so it takes the niche of skulls on the
+     * left where its own niches are, and the ledge of candles opposite, which
+     * is the only light in it.
+     */
     overlays: [
       {
-        asset: 'ossuary.bone-stack',
+        asset: 'ossuary.niche-skulls',
         layer: Layer.Architecture,
-        anchor: { space: 'world', at: at(-6.5, 17, 9, 4.9) },
+        anchor: { space: 'world', at: at(-8.4, 15, 7.5, 11, FLOOR) },
       },
+      {
+        asset: 'ossuary.candle-ledge',
+        layer: Layer.Architecture,
+        anchor: { space: 'world', at: at(8.4, 16, 9.5, 6.4, FLOOR + 3.6) },
+      },
+      /**
+       * The 48 × 26 stack that proved the pipeline stood here until the
+       * painted pieces above were verified on a phone, and then came out: two
+       * dressing pieces is what art. 105 allows an ordinary room, and a third
+       * at a fiftieth of their density read as debris rather than as bone. It
+       * is still in the manifest and still on disk — the fallback is retired
+       * from *this room*, not deleted from the game.
+       */
     ],
-    foreground: LANTERN,
+    foreground: WEAPON,
     patches: [candle('bonefield.candle', at(7.6, 13, 1.5, 3.4, FLOOR + 5))],
   },
 }

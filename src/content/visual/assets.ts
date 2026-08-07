@@ -129,22 +129,86 @@ export const PLATES: AssetManifest = {
    * the brief rather than guessed, and the brief states it as a rule the
    * composition is built to rather than a surprise it discovers.
    */
-  'ossuary.hall': awaited('ossuary.hall', 'regions/ossuary/hall.png', 1024, 1536, 'ossuary'),
+  'ossuary.hall': plate('ossuary.hall', 'regions/ossuary/hall.png', 1024, 1536, 'ossuary'),
+
+  /**
+   * **The ossuary's dressing kit.** Seven cut-outs the school deals from, so
+   * two rooms of the same region are not the same picture: a broad candlelit
+   * wall, a niche of skulls, a pillar, an archway to frame a way on, a cluster
+   * hung on a chain, a heap on the floor and a ledge of candles.
+   *
+   * They are art. 99's tier two and art. 104's supporting things, painted
+   * rather than cast — so they answer to art. 105 rather than to the article
+   * that put them here: **things keep their distance**, and a room takes one
+   * or two of them and not seven. `rooms.ts` is where that restraint lives.
+   *
+   * All of them are cut out, and the two that came with a pale matte fringe
+   * had it removed on the way in — a halo is neutral and a candle is warm, so
+   * the two are separable and only the halo was cut.
+   */
+  'ossuary.wall-candlelit': plate(
+    'ossuary.wall-candlelit',
+    'regions/ossuary/wall-candlelit.png',
+    1024,
+    1536,
+    'ossuary',
+  ),
+  'ossuary.niche-skulls': plate(
+    'ossuary.niche-skulls',
+    'regions/ossuary/niche-skulls.png',
+    1024,
+    1536,
+    'ossuary',
+  ),
+  'ossuary.pillar-skulls': plate(
+    'ossuary.pillar-skulls',
+    'regions/ossuary/pillar-skulls.png',
+    1024,
+    1536,
+    'ossuary',
+  ),
+  'ossuary.archway-skulls': plate(
+    'ossuary.archway-skulls',
+    'regions/ossuary/archway-skulls.png',
+    1024,
+    1536,
+    'ossuary',
+  ),
+  'ossuary.hanging-skulls': plate(
+    'ossuary.hanging-skulls',
+    'regions/ossuary/hanging-skull-cluster.png',
+    1024,
+    1536,
+    'ossuary',
+  ),
+  'ossuary.skull-pile': plate(
+    'ossuary.skull-pile',
+    'regions/ossuary/skull-pile-candles.png',
+    1536,
+    1024,
+    'ossuary',
+  ),
+  'ossuary.candle-ledge': plate(
+    'ossuary.candle-ledge',
+    'regions/ossuary/candle-ledge.png',
+    1536,
+    1024,
+    'ossuary',
+  ),
 
   /**
    * **The carved reliquary the interface sits in.** Its aspect is what sets
-   * the tray band's height (4:3), so of every number in the brief this is the
-   * one that may not drift: the recesses in it are where the live controls are
+   * the tray band's height, and the painting that arrived is 1619 × 971, so
+   * the band is that: the recesses in it are where the live controls are
    * positioned from, in fractions of this file.
    *
-   * It is 4:3 and not the reference's three-and-a-quarter-to-one because that
-   * proportion gives a 120-pixel band on a 390-pixel phone, and the live tray
-   * has to hold a rail, up to eight dice at a size a thumb can hit, a running
-   * total and three verbs — measured, about 265 pixels. The reference's tray is
-   * an illustration at 1088 across; this is the same object at the size a hand
-   * holds.
+   * It is a **frame**, not a screenshot. Every recess in it is empty and every
+   * control in them is live — the orb on the left is the body's numbers, the
+   * wide middle is the hand (art. 128: however many dice it is given), the
+   * strip below is the verbs. Nothing about the duel was flattened into the
+   * picture, which is the whole difference between a HUD and a mock-up.
    */
-  'tray.reliquary': awaited('tray.reliquary', 'ui/reliquary.png', 1536, 1152, 'carried'),
+  'tray.reliquary': plate('tray.reliquary', 'ui/reliquary.png', 1619, 971, 'carried'),
 
   /**
    * **What you are holding.** art. 126's second frame-anchored thing, and the
@@ -152,7 +216,7 @@ export const PLATES: AssetManifest = {
    * different file in the same pose: the grip is authored once and every
    * weapon after this one registers against it.
    */
-  'weapon.knife': awaited('weapon.knife', 'ui/knife.png', 896, 1152, 'carried'),
+  'weapon.knife': plate('weapon.knife', 'ui/knife.png', 1024, 1536, 'carried'),
 
   /**
    * **The six faces, one die.** art. 128 draws whatever hand it is given, so

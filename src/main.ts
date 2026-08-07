@@ -628,7 +628,13 @@ const plates = assetCache(imageDecoder(import.meta.env.BASE_URL))
 function loadPlates(): void {
   void plates.load(PLATES).then(() => {
     plateTheTray()
-    if (document.body.isConnected) world()
+    // The tray is measured, not declared (art. 128), and plating it changes
+    // what there is to measure — so the row is laid out again now that the
+    // recess it stands in exists. Without this the hand keeps the layout it
+    // worked out against the unplated tray and wraps dice that would fit.
+    if (!document.body.isConnected) return
+    world()
+    tray()
   })
 }
 
@@ -733,8 +739,15 @@ function world(marks = true): void {
   // two tiers, so exactly one of them is ever in the frame: a plated horror
   // leaves the overpaint empty and takes the hero band instead, and one with
   // no plate is massed exactly as it was before this wave.
+  // **A declared plate is not a delivered one.** `horrorPlateFor` answers off
+  // the manifest, and the manifest declares slots before the painting arrives
+  // (art. 126). Asking the manifest alone would leave a horror with a declared
+  // plate drawn *neither* way — the hinge's mass suppressed because the plate
+  // exists on paper, and the plate absent because it does not exist on disk.
+  // So the question is whether the art actually decoded, and until it has, the
+  // fallback body stands exactly as it always did.
   const plated =
-    screen.kind === 'fight' && fight !== null ? horrorPlateFor(fight.horror.id) : null
+    screen.kind === 'fight' && fight !== null ? deliveredPlateFor(fight.horror.id) : null
   const arriving = closeness - knocked * LUNGE + (told ? SWELL : 0)
   const close =
     screen.kind === 'fight' && fight !== null && plated === null
@@ -797,6 +810,19 @@ function castOf(scene: Scene, key: string, dim = false): RenderedRoom {
     painted.set(stamp, held)
   }
   return held
+}
+
+/**
+ * The horror's plate, but only once it is on the screen rather than only in
+ * the manifest. art. 126's fallback is a promise about *pixels*, so the test
+ * has to be about pixels: a slot that has been declared and not yet painted
+ * into would otherwise suppress the hinge's massed body *and* draw nothing in
+ * its place, which is the one outcome the article exists to prevent.
+ */
+function deliveredPlateFor(horror: string): ReturnType<typeof horrorPlateFor> {
+  const plate = horrorPlateFor(horror)
+  if (plate === null) return null
+  return plates.get(plate.asset) === null ? null : plate
 }
 
 /** art. 119 §3: how many ramp steps the light drops for the tell. Tuning. */
@@ -2094,10 +2120,18 @@ let handLayout: TrayLayout = layoutDice(0, 0)
  */
 function measureHand(count: number): TrayLayout {
   const room = fightPanel.clientWidth > 0 ? fightPanel.clientWidth : stage.clientWidth
-  // The panel's own padding is in the element's client width, and the trinket
-  // row shares the flow, so the measurement is the row's rather than the
-  // panel's. 20 is `#fight`'s two 10-pixel gutters.
-  handLayout = layoutDice(count, Math.max(0, room - 20))
+  // `clientWidth` includes the panel's own padding, and the row is laid out
+  // inside it, so the padding comes off. It is **read** rather than assumed:
+  // the number used to be a hardcoded 20 for `#fight`'s two ten-pixel gutters,
+  // and the day the panel stood in a painted recess instead of drawing its own
+  // it had no gutters — so the row measured twenty pixels short and wrapped six
+  // dice that fitted. A layout that assumes a stylesheet is a layout that goes
+  // wrong silently (art. 128).
+  const pad = fightPanel.isConnected
+    ? Number.parseFloat(getComputedStyle(fightPanel).paddingLeft || '0') +
+      Number.parseFloat(getComputedStyle(fightPanel).paddingRight || '0')
+    : 0
+  handLayout = layoutDice(count, Math.max(0, room - (Number.isFinite(pad) ? pad : 0)))
   return handLayout
 }
 
