@@ -2,7 +2,7 @@
 A first-person, forward-only descent in the browser: computed parallax
 rooms, blind chains, poker-dice duels, death as the progression system.
 Users: README.md. The shape and current cut: DESIGN.md. The fantasy:
-`reference/GAME.md`. The law: `.claude/rules/` — 120 numbered articles,
+`reference/GAME.md`. The law: `.claude/rules/` — 123 numbered articles,
 cited as "art. N". Where a rule conflicts with GAME.md, the rule wins.
 
 ## Get it running
@@ -14,6 +14,7 @@ Test:    npm test
 - src/state   — the two ledgers; rituals; persistence; exact resume
 - src/gen     — the seeded chain; grammar rules; winnability proof
 - src/room    — the computed-box renderer (GRID dial)
+- src/visual  — the compositor above it: layers, plates, patches
 - src/descent — candles, taps, acts, doors
 - src/lots    — the dice engine
 - src/hinge   — fight-doors, the advance, death routing
@@ -27,7 +28,12 @@ Test:    npm test
 - Two-ledger discipline: run and permanent state never mix except through
   the named rituals in src/state (art. 11).
 - Nothing may assume a device pixel or the number 240 outside render
-  config (arts 22–23).
+  config (arts 22–23), and nothing outside `src/content` may assume the
+  hand is six (art. 123).
+- Perspective is computed; appearance may be authored (art. 121). `src/room`
+  owns every spatial fact; `src/visual` lays authored plates over the frame
+  it produces, in the order art. 122 declares. Assets are data: only
+  `src/content/visual/assets.ts` knows a filename.
 - Every player-facing string obeys rules/voice.md: it is the protagonist
   thinking or the protagonist writing, never a narrator. Content review is
   voice review, and `test/content.voice.test.ts` is the review.

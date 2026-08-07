@@ -63,6 +63,7 @@ export {
   SISTERS_BOND,
   LEECH_RIDER,
   HAND_SIZE,
+  plainPouchOf,
 } from './dice.js'
 export {
   BLEED_RIDER,
