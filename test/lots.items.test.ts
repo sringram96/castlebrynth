@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  BARE_BODY,
+  HAND_SIZE,
   LADDER,
   LEECH,
+  PLAIN_POUCH,
+  THE_GNAWING,
   PLAIN_BONE,
   RUSTED_PLATE,
   THE_LEECH,
@@ -12,7 +16,8 @@ import {
   THE_ZEALOT,
 } from '../src/content/index.js'
 import type { Goods, Intent } from '../src/lots/index.js'
-import { attack, audit, claim, decide, harm, keep } from '../src/lots/index.js'
+import { assembleHand, attack, audit, claim, decide, harm, keep } from '../src/lots/index.js'
+import { claimGreedily, winRateOf } from './policy.js'
 import { bone, idsOf, turnOf } from './helpers.js'
 
 /**
@@ -119,5 +124,26 @@ describe('lots — art. 51 (riders), art. 52 (bonds), art. 53 (talismans), art. 
     expect(audit(THE_ORPHAN, PLAIN_BONE)).toMatchObject({ values: 26, overBudget: true })
     expect(audit(THE_LEECH, PLAIN_BONE)).toMatchObject({ riders: 1, overBudget: false })
     expect(audit(THE_SISTERS[0], PLAIN_BONE)).toMatchObject({ bonded: true })
+  })
+})
+
+/**
+ * **The Zealot, audited** (the mend, 2026-08-07). It was the one shipped good
+ * with no number beside it. The bar is not "small" — it is a shape talisman
+ * and it is meant to be worth building for — the bar is that it stays inside
+ * the band the Ossuary already set, because the Ossuary is the other bare
+ * talisman in the game and nobody has argued with it.
+ */
+describe('art. 54 — the Zealot is inside the band the Ossuary set', () => {
+  it('is worth about what the other bare talisman is worth', () => {
+    const hand = assembleHand(PLAIN_POUCH, HAND_SIZE)
+    const worth = (goods: Goods): number =>
+      winRateOf(THE_GNAWING, hand, BARE_BODY.armor, 600, claimGreedily, goods)
+    const bare = worth({ talismans: [], riders: [] })
+    const zealous = worth({ talismans: [THE_ZEALOT], riders: [] })
+    const ossuary = worth({ talismans: [THE_OSSUARY], riders: [] })
+    expect(zealous).toBeGreaterThan(bare)
+    // Inside the Ossuary's band, not half again the size of it.
+    expect(zealous - bare).toBeLessThan((ossuary - bare) * 1.5)
   })
 })

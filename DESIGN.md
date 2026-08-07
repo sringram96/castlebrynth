@@ -141,7 +141,7 @@ tier and not its second, much of the prose is still in the repealed
 register (below), and phase 0's non-goals hold.
 
 ### What is green
-`npm test`: 58 files, 687 tests.
+`npm test`: 58 files, 698 tests.
 
 | area | what it enforces |
 | --- | --- |
@@ -181,44 +181,24 @@ history — what was owed and why it closed — is in `CHRONICLE.md`.
 
 **Balance and the catalog**
 
-- **Rarity is one number doing two jobs.** `RARITY` bands the goods against
-  each other and `FLOOR_CHANCE` decides whether the socket fills at all.
-  But `weight` is *relative*, so every good added rarifies every existing
-  one without anyone choosing that; and a placed good leaves the pool for
-  the run, so the last find in a long run is far likelier than the first.
-  Neither is wrong at eight goods. Both will be at thirty, and the fix is a
-  ruling about what rarity *means*, not a number.
-- **The forks are rare and nobody chose how rare.** A fork forms only when
-  both of its goods are still free to be dealt, so how often a player meets
-  one falls out of `FLOOR_CHANCE`, the weights, and where the road went.
-  Art. 89 calls a fork the cheapest lever for making a room a decision; a
-  lever whose frequency is an accident of three other numbers is not being
-  pulled on purpose.
-- **The Zealot is unaudited.** It is the strongest good in the game — a
-  whole turn's attack doubled when every die is claimed, measured at +0.260
-  against a probe — and it carries no cost face, no fork and no table
-  proving its condition prices it. Every other good is audited against the
-  plain bone's budget (art. 54); this one is not.
-- **A cost face can kill you on a turn you won.** A `wound` rider fires with
-  the claims (art. 51) and the resolution returns `won` before your health
-  is checked, so a killing blow is never also a killing blow taken. It is
-  consistent and generous, and no article covers the order.
 - **A whole depth is still hard to survive.** The live table is the levels
   wave's, in `CHRONICLE.md`. The shape of it: a first waking is expected to
   die, a taught run wins about half the time, and about a third of the
   survival gain came from a mercy displacing a room that could have had
   teeth in it. The knobs are `WARDEN_HEALTH`, the uniques' health,
   `SAVIOR_CHANCE` and the Sanctum's band — all content.
+- **A cost face can kill you on a turn you won.** A `wound` rider fires with
+  the claims (art. 51) and the resolution returns `won` before your health is
+  checked, so a killing blow is never also a killing blow taken. It is
+  consistent and generous, and no article covers the order.
+- **The forks are two pairs deep.** Art. 89's frequency is declared now and
+  measures 0.17 of runs, and the article says plainly that the lever for
+  meeting more of them is *pairs* rather than the chance. Two `orElse` rows
+  carry every fork in the game; a third is content, and owes art. 87 its
+  sentence.
 
 **The rules' own gaps**
 
-- **Art. 46's whiff guarantee is unstated law, and it is stated about the
-  wrong hand.** The article says nothing about a hand of any size.
-  `lots.floor.test.ts` proves what is true of the hand the game actually
-  has; the article should say what the test proves.
-- **PAIRISH and the full house.** `PAIRISH` names four lines a SEAL intent
-  shuts, and whether the full house belongs among them has been deferred
-  twice. It is a one-line content ruling.
 - **What may block a door, beyond a required item.** Art. 3 is enforced and
   proved, but it does not say where the line falls once there is more than
   one required thing per depth, or whether `required` can ever be earned
@@ -230,9 +210,6 @@ history — what was owed and why it closed — is in `CHRONICLE.md`.
   the species and says "a tier higher" without saying what a tier is worth.
   The counting cord and the five levels exercise the engine's reading; the
   article still does not say it is right.
-- **Three lines of the ladder cannot be claimed by a wounded hand at all** —
-  the straight, three pairs, two triples. That reads as a promise if it is
-  deliberate and as a bug if it is not, and no article says which.
 
 **The look, the words, and the shell**
 

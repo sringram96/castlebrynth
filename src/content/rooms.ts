@@ -1904,6 +1904,28 @@ export const GRAMMAR: Grammar = {
   clumpPenalty: 0.05,
   driftPull: 1.4,
   bandPull: 3,
+  /**
+   * art. 89 as amended (2026-08-07): **how often a fork that could be formed
+   * is.** Asked after the ordinary draw, never before it — a draw aimed at
+   * the goods that can fork would promote exactly those goods and pay for
+   * the fork out of art. 125's rarity bands.
+   *
+   * **One, and that is the chosen number.** The debt this closes was that
+   * nobody had chosen how often a player meets a fork; measured over 2000
+   * coin-flip runs it is **0.17 of runs at 0.17 forks per run**, and it is a
+   * number now rather than a residue because both of its factors are
+   * declared: the chance an initiator is dealt, which art. 125 makes a band,
+   * and this. A fork is what its two goods *are* — sustain against
+   * consistency, build against body — so a pair that is dealt and then not
+   * offered as a fork would be the game declining to ask its own question.
+   *
+   * **The lever for meeting more of them is content, and it is pairs.** Two
+   * `orElse` rows carry every fork in the game; a third would move the rate
+   * by about half again, and each one owes art. 87 its sentence. Turning
+   * *this* number below one only ever makes forks rarer, which is why it is
+   * a chance and not a target.
+   */
+  forkChance: 1,
 }
 
 const byId = new Map<string, RoomContent>(ROOMS.map((held) => [held.id as string, held]))

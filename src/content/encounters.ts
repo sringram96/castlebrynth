@@ -139,12 +139,27 @@ export const TIN_SAINT = who('enc.tin-saint')
 export const SLIVER = who('enc.sliver')
 
 /**
- * How often the goods are dealt against each other. Rarity is content's, and
- * these are the bands the whole catalog is weighed in: a traveler is the
- * ordinary find, a talisman is the uncommon one, and the Sisters are the
- * thing a run is lucky to hold both halves of.
+ * art. 125: **the bands, and each number is a share of finds.**
+ *
+ * A band's number says how often a filled socket lands *in that band*. It is
+ * not a share of the whole pool and it is not a comparison between two goods:
+ * adding an eighth good at `uncommon` dilutes the uncommon band and leaves
+ * the common one exactly where it was.
+ *
+ * **Per-good rarity is the share divided among the band's members**, which is
+ * what the words still mean. Three goods share `common` and seven share
+ * `uncommon`, so an individual common find is better than twice as likely as
+ * an individual uncommon one.
+ *
+ * **These first shares are chosen to hold the balance the levels wave
+ * measured**, and that is deliberate: a semantics ruling may not smuggle in a
+ * rebalance. Under the old relative draw the catalog's *effective* mix had
+ * drifted to 40 / 47 / 13 — the seven uncommons outweighed the three commons,
+ * which is a rarity nobody chose and the reason art. 125 exists — and 6/6/2
+ * is that mix, now on purpose and stable against the next twenty goods. Any
+ * change to it from here is a rebalance and owes a table (DESIGN.md).
  */
-export const RARITY = { common: 6, uncommon: 3, rare: 1 } as const
+export const RARITY = { common: 6, uncommon: 6, rare: 2 } as const
 
 /**
  * arts 52, 86: the halves of the Sisters are banded apart, so no run can be

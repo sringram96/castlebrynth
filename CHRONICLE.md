@@ -95,6 +95,99 @@ fixes wave**.
 
 ---
 
+## The mend, wave 3 — ledger (arts 46, 89 amended · art. 125)
+
+Four balance debts closed, and one measurement culture kept: no tuning
+claim without its table.
+
+**Art. 125 — a weight names a band, and a band is a share of finds.** The
+debt was arithmetic nobody had written down. `weight` was a share of the
+whole pool, so every good added made every existing good rarer, and the band
+that got the most new rows got the heaviest — the catalog's effective mix had
+drifted to **40 / 47 / 13** against bands declared 6 / 3 / 1. The two words
+had swapped places: an `uncommon` find was more likely than a `common` one.
+Fine at eight goods, wrong at thirty.
+
+A band's share is fixed now. Adding a good to a band dilutes **that band and
+nothing else**; inside a band the draw is uniform; a band with nothing left
+in it deals nothing and its share goes to the bands that still have
+something, which is what bounds the depletion bias to inside one band rather
+than across the catalog. `pickBanded` takes **one** draw, not two — the roll
+picks the band and its remainder picks inside it — so no seeded sequence
+changes length under the ruling.
+
+**The shares are 6 / 6 / 2, and that is deliberate.** A semantics ruling may
+not smuggle in a rebalance, so the first shares are the effective mix the
+levels wave actually tuned against, now on purpose and stable against the
+next twenty goods. Per-good rarity still means what the words say: three
+goods share `common` and seven share `uncommon`, so an individual common
+find is better than twice as likely as an individual uncommon one.
+
+**Art. 89 amended — the fork's frequency is declared.** It used to be a
+residue of three other numbers. It is two declared numbers multiplied now:
+the chance an initiator is dealt, which art. 125 makes a band, times
+`GRAMMAR.forkChance`.
+
+The load-bearing detail is **where** the chance is asked. A first cut aimed
+the *draw* at the goods that can fork, which measured beautifully — 0.50 of
+runs at forkChance 0.4 — and was wrong: it promoted the fork's own
+initiators, so the fork was paying for itself out of art. 125's rarity bands
+and one rule was quietly financing the other. Asked **after** the ordinary
+draw the two compose. The roll is taken whenever a fork could form, whatever
+the chance is set to, so turning the knob decides forks instead of
+reshuffling the deal.
+
+**It ships at one, and 0.17 of runs is the chosen rate.** A fork is what its
+two goods *are* — sustain against consistency, build against body — so a pair
+dealt and then not offered as a fork would be the game declining to ask its
+own question. The lever for meeting more of them is **pairs**, and the
+article says so: two `orElse` rows carry every fork in the game.
+
+**The Zealot is audited**, and the finding is that it is not an outlier. It
+was the one shipped good with no number beside it — 3000 fights a cell, bare
+six-bone hand, greedy thumb:
+
+| | bare | + the Zealot | + the Ossuary |
+| --- | --- | --- | --- |
+| the Gnawing | 0.576 | 0.848 (**+0.272**) | 0.799 (+0.223) |
+| the Warden | 0.138 | 0.421 (**+0.283**) | 0.454 (+0.316) |
+
+It sits inside the band the Ossuary already set — under it against the
+keeper, a little over it against the ordinary teeth. Art. 54 is answered the
+way the comment always claimed: the condition prices it, and the table is
+the proof rather than the claim.
+
+**Art. 46 says what it guarantees**, of the hand the game actually has. Of
+six dice, every possible hand leaves a pair or a run of three, tight at ×2.
+Two consequences the article now states rather than leaving to be
+rediscovered: it is the **card** and not the values that can leave a turn
+with nothing, and a **wound** is what takes lines away — three lines of the
+ladder leave a shortened hand's reach entirely.
+
+**PAIRISH keeps the full house**, deferred twice and ruled now. Art. 65 says
+an intent attacks the plan; a SEAL that leaves the best pair-shaped line
+open is one the player routes around without changing anything, which is not
+attacking a plan at all.
+
+**Two tests were wrong rather than the code.** `dead-press` pressed a
+*snapshot* of the tray instead of re-reading it between presses, which the
+shell does — art. 89's fork is exactly the case that makes it load-bearing,
+since taking one half withdraws the other half's verb. And the pre-rolling
+transcript's **fights** half still matches byte for byte, all 240 of them,
+which is the half the seam owns; its **depths** half is a record of a *deal*,
+and the deal changed on purpose, so it is kept as it stands with a note
+saying why rather than regenerated into agreement with whatever the code
+now does.
+
+`npm test`: 58 files, 698 tests, green.
+
+### The phone pass
+**Not done.** No device. Nothing in this wave is a number a phone settles —
+every claim here is distributional and CI can hold it — but the rule is that
+the section exists and says so.
+
+---
+
 ## The mend, wave 2 — thumb (arts 37 amended, 123, 124)
 
 **Green means served.** `pages.yml` documented its own defect honestly and

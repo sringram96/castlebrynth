@@ -57,10 +57,27 @@ fixture lands (tracked on the board).
     about a point in either direction, inside the noise: the second
     claim scrapes a pair off a hand whose turn is already decided. It
     was three presses buying nothing.
-46. SETTLED (amended) — Combos only: dice harm only through claimed
-    combos. The whiff clause is repealed — a turn without combos is a
-    turn of armor and patience, not a punishment. The ANY DICE line
-    (art. 48) is the deliberate floor, spendable like any line.
+46. SETTLED (amended; the guarantee stated 2026-08-07) — Combos only: dice
+    harm only through claimed combos. The whiff clause is repealed — a turn
+    without combos is a turn of armor and patience, not a punishment. The
+    ANY DICE line (art. 48) is the deliberate floor, spendable like any
+    line.
+
+    **And here is what that guarantees, said of the hand the game has.** It
+    was unstated law for four waves and was last argued about a hand of five
+    that art. 55 no longer deals. Of **six** dice, every possible hand leaves
+    a **pair or a run of three** — pigeonhole, and it is tight at ×2 — so a
+    turn always has something above the floor to spend, and `lots.floor` is
+    the proof rather than the claim.
+
+    Two consequences the article now says out loud rather than leaving to be
+    rediscovered. **It is the card and not the values that can leave a turn
+    with nothing**: a hand always makes something, and an empty card is what
+    makes ANY DICE the only line left. And **a wound is what takes lines
+    away** — three lines of the ladder (the straight, three pairs, two
+    triples) leave a shortened hand's reach entirely, which is the cost of a
+    wound being on the card and not only on the body. Both are art. 60's hand
+    size doing its job, and neither is a defect.
 47. SETTLED (amended, major) — BRACE is repealed. Defense is a body
     stat: **armor**, granted by items and mercies, automatically blocks
     its value from every attack. Intents may corrode or pierce it, and

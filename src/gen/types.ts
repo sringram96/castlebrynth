@@ -208,6 +208,24 @@ export interface Grammar {
   readonly driftPull: number
   /** art. 38: how hard an unmet band pulls the weights back toward itself. */
   readonly bandPull: number
+  /**
+   * art. 89 (amended 2026-08-07): **how often a fork that could be formed
+   * is.** A fork is the cheapest lever the game has for making a room a
+   * decision, and a lever whose frequency was an accident of three other
+   * numbers was not being pulled on purpose — so the frequency is a declared
+   * number, here, beside the other rhythm knobs.
+   *
+   * It is asked **after** the ordinary draw. A draw aimed at the goods that
+   * can fork would promote exactly those goods, so the fork would be paying
+   * for itself out of art. 125's rarity bands; asking afterwards keeps the
+   * two rules composable, and the rate a player feels is the product of two
+   * numbers that are both declared.
+   *
+   * It applies only where a fork can actually be formed — both halves still
+   * free to be dealt, both inside their bands — so a socket that could not
+   * fork consumes exactly what it always did.
+   */
+  readonly forkChance: number
 }
 
 /**
