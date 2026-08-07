@@ -156,19 +156,65 @@
         border-top: none; box-shadow: none;
         background: var(--reliquary) center / 100% 100% no-repeat, #050404; }
       #tray.plated #rail { display: contents; }
+      /* The panel container is the **coordinate space**, not a surface: it
+         spans the apparatus so that what is placed in it can be placed in
+         fractions of it, and it takes no taps of its own. Without this it
+         covered the tab beds along the foot and swallowed every press on
+         them — a region that lives in one place cannot be reached through a
+         container that lives on top of it (art. 67). */
       #tray.plated #panels { position: absolute; inset: 0; padding: 0;
-        min-height: 0; overflow: visible; }
-      #tray.plated .panel.on { display: block; height: 100%; }
-      /* **The verbs are the main content when ACTS is the panel** (art. 67:
-         ACTS is where the room is played from). They fill the central recess
-         as a centred row that wraps. The display is restated here because the
-         rule above sets `block` at a specificity this has to beat — without
-         it the verbs stack in a column down the left edge. */
-      #tray.plated #acts.on { display: flex; flex-direction: row; flex-wrap: wrap;
-        gap: 6px 10px; align-content: center; align-items: center;
-        justify-content: center; }
-      #tray.plated #acts.on button { min-width: 0; font-size: .82rem;
-        padding: 6px 8px; color: #e2d5b6; }
+        min-height: 0; overflow: visible; pointer-events: none; }
+      #tray.plated .panel.on { display: block; height: 100%; pointer-events: auto; }
+      /* **The well** — the panel's one wide recess, and whatever the thumb
+         asked for standing in it (art. 67: ACTS is where the room is played
+         from, POUCH is what you are carrying, and the tabs along the foot are
+         what swap them).
+
+         It is a **list that becomes columns**: rows stack down the recess and
+         wrap into a second column rather than running off its bottom edge.
+         How many columns and how tall a row is arrive from
+         `src/shell/well.ts` as custom properties — the well does not know what
+         it holds, so a new kind of content is rows and nothing here changes. */
+      #tray.plated .panel.on.well { display: flex; flex-flow: column wrap;
+        align-content: flex-start; justify-content: center;
+        gap: var(--well-gap, 4px); padding: 0 8px; }
+      #tray.plated .panel.on.well > * { flex: 0 0 auto; box-sizing: border-box;
+        min-height: var(--well-item, 40px);
+        width: calc((100% - (var(--well-cols, 1) - 1) * var(--well-gap, 4px))
+                    / var(--well-cols, 1)); }
+      /* Past two columns the recess is being asked to hold a screen, which is
+         what the tabs are for — so it scrolls rather than hiding a row, and
+         `wellFlow` reports that it came to this. */
+      #tray.plated .panel.on.well.scrolls { overflow-x: auto; }
+      #tray.plated .panel.on.well button { min-width: 0; font-size: .82rem;
+        padding: 4px 8px; color: #e2d5b6; justify-content: center; }
+      /* A row that is a reading rather than a verb keeps its own shape. */
+      #tray.plated .panel.on.well .reading { min-height: var(--well-item, 40px);
+        padding: 2px 4px; }
+      #tray.plated .panel.on.well .aside { display: none; }
+      /* **The rack** — the recess's other tenant. What you are carrying is
+         drawings and not rows: a die draws its whole face set (card 94), so it
+         is never squeezed to a row's height. It stands in the same authored
+         box and scrolls down it. */
+      #tray.plated .panel.on.rack { display: flex; flex-wrap: wrap;
+        align-content: flex-start; justify-content: center; gap: 4px;
+        padding: 4px; overflow-y: auto; overscroll-behavior: contain; }
+      #tray.plated .panel.on.rack > * { flex: 0 0 auto; }
+      #tray.plated .panel.on.rack .aside { display: none; }
+      /* **A die in the pouch is a die.** No row, no name beside it — the
+         drawing is the thing, and what it is arrives in the word band when you
+         tap it (art. 68). The pick is attention and shows as one: the die
+         lifts out of its recess and takes the gold every chosen thing in the
+         game takes (art. 72's unmistakably-distinct states). */
+      #tray.plated .panel.on.rack .chip { display: grid; place-items: center;
+        width: 40px; height: 40px; padding: 0; background: none;
+        border: 1px solid transparent; border-radius: 3px; }
+      #tray.plated .panel.on.rack .chip canvas { display: block; }
+      #tray.plated .panel.on.rack .chip.on { border-color: var(--gold);
+        background: #2a230f; }
+      #tray.plated .panel.on.rack .chip:active { border-color: var(--gold); }
+      #tray.plated .panel.on.rack .slot { width: 40px; height: 40px; padding: 0;
+        min-width: 0; font-size: 0; }
       #tray.plated #fight { margin: 0; padding: 0; background: none;
         border-top: none; box-shadow: none; }
       #tray.plated #trayDebug { position: absolute; inset: 0; pointer-events: none;

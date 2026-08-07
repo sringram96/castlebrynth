@@ -45,8 +45,6 @@ export interface ReliquaryMap extends TrayFrame {
    * rather than drawn in CSS.
    */
   readonly action: TrayRect
-  /** Where a room's verbs stand: inside the central recess, centred. */
-  readonly actsRow: TrayRect
   /** The small utility glyph the panel carves a place for. */
   readonly menu: TrayRect
   /** The three beds along the foot. */
@@ -65,10 +63,23 @@ export const RELIQUARY: ReliquaryMap = {
   healthText: { x: 0.025, y: 0.70, width: 0.19, height: 0.16 },
   statusRail: { x: 0.26, y: 0.44, width: 0.52, height: 0.08 },
   diceZone: { x: 0.0, y: 0.18, width: 1.0, height: 0.24 },
-  mainWell: { x: 0.0, y: 0.42, width: 1.0, height: 0.46 },
+  /**
+   * **The recess, measured off the painting rather than off the diagram.**
+   *
+   * The diagram declares the well as the panel's full width at 42–88%, which
+   * is neither where the carving is nor a shape anything can stand in: at full
+   * width its rows lay across the health orb on the left and the ornament on
+   * the right, and at 88% its last row sat on top of a tab.
+   *
+   * The grooves that bound the carved recess are the darkest columns and rows
+   * in the panel, so they can be found rather than guessed: they fall at
+   * x 0.241 and 0.744, y 0.308 and 0.836. What is below is those bounds inset
+   * off the groove itself, so what stands in the well stands *inside* the
+   * carving instead of on its lip.
+   */
+  mainWell: { x: 0.252, y: 0.322, width: 0.481, height: 0.5 },
   score: { x: 0.26, y: 0.70, width: 0.24, height: 0.1 },
   action: { x: 0.6, y: 0.68, width: 0.18, height: 0.14 },
-  actsRow: { x: 0.24, y: 0.46, width: 0.54, height: 0.36 },
   menu: { x: 0.9, y: 0.04, width: 0.06, height: 0.1 },
   tabs: [
     { x: 0.13, y: 0.86, width: 0.24, height: 0.12 },
