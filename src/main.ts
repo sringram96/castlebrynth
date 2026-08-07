@@ -244,6 +244,7 @@ import {
 import { PLATES, artFor, horrorPlateAt, horrorPlateFor } from './content/visual/index.js'
 import type { TrayLayout } from './shell/tray.js'
 import { DIE_DIAL, layoutDice } from './shell/tray.js'
+import type { DieDial } from './shell/tray.js'
 import { canonicalChain, canonicalNode, canonicalRequest } from './shell/canonical.js'
 import { CANONICAL } from './content/visual/index.js'
 
@@ -1640,16 +1641,21 @@ function vitals(): void {
   // art. 65 (`corrode`), art. 119 §3: **the armour flakes off the vitals**,
   // on the beat the blow that ate it lands and on no other.
   if (corroded && beatNow?.kind === 'struck') armor.className = 'flaking'
-  vitalsRegion.append(
-    reading(
-      READOUT.health ?? '',
-      // art. 119: while a timeline runs, the body reads what the beat says.
-      now !== null && inAFight()
-        ? `${shown?.yourHealth ?? now.yourHealth}/${now.yourHealthMax}`
-        : `${run.health}/${run.healthMax}`,
-    ),
-    armor,
+  const health_ = reading(
+    READOUT.health ?? '',
+    // art. 119: while a timeline runs, the body reads what the beat says.
+    now !== null && inAFight()
+      ? `${shown?.yourHealth ?? now.yourHealth}/${now.yourHealthMax}`
+      : `${run.health}/${run.healthMax}`,
   )
+  // **The orb is an instrument, not a text box.** The level in the glass is
+  // the reading a glance takes; the numbers are the reading a decision takes,
+  // and in the painted tray they are set small and out of the way rather than
+  // pasted across the artwork. Nothing about what is true has changed — the
+  // same two numbers are on the frame, in the same place, all the time.
+  health_.className = 'hp'
+  armor.classList.add('ar')
+  vitalsRegion.append(health_, armor)
   // art. 74: the card lives behind a small, persistent glyph — and while a
   // fight is on it lives in the fight's own header, where the rest of that
   // fight's numbers are. One glyph, never two.
@@ -2150,9 +2156,32 @@ function measureHand(count: number): TrayLayout {
     ? Number.parseFloat(getComputedStyle(fightPanel).paddingLeft || '0') +
       Number.parseFloat(getComputedStyle(fightPanel).paddingRight || '0')
     : 0
-  handLayout = layoutDice(count, Math.max(0, room - (Number.isFinite(pad) ? pad : 0)))
+  const free = Math.max(0, room - (Number.isFinite(pad) ? pad : 0))
+  handLayout = layoutDice(count, free, trayBand.classList.contains('plated') ? WELL_DIAL : DIE_DIAL)
   return handLayout
 }
+
+/**
+ * **The target and the sprite are two different things**, and confusing them
+ * is what made the painted frame look impossible.
+ *
+ * art. 128's floor is about the region a thumb has to hit, not about how much
+ * bone is drawn inside it: a die drawn at thirty pixels inside a forty-four
+ * pixel button is a die a thumb hits every time. The first reading of this
+ * measured `count × visible width`, found that six of them would not cross the
+ * frame's middle, and concluded the article and the artwork could not both be
+ * obeyed. They can. The padding is the answer and it was there all along.
+ *
+ * So the well's dial keeps the floor and spends the room on **breathing space
+ * rather than on bone**: the hit region is forty-four and never under forty,
+ * and when a hand will not fit one row at that size it wraps, balanced, which
+ * art. 128 already prefers to shrinking. Six dice as three and three look more
+ * like bones thrown into a tray than six squeezed across a phone.
+ */
+const WELL_DIAL: DieDial = { preferred: 44, min: 40, max: 50, gap: 3, minGap: 2 }
+
+/** How much of that button is bone. The rest is the padding that makes it hittable. */
+const BONE_IN_TARGET = 0.68
 
 /**
  * The row the dice stand in. Its size is a custom property rather than a
@@ -2178,6 +2207,11 @@ function handRow(layout: TrayLayout): HTMLDivElement {
  * number that only made sense at one hand size.
  */
 function faceSizeFor(layout: TrayLayout): number {
+  // In the painted tray the die is drawn smaller than the thing you press, so
+  // the hand has room to breathe inside the frame without any target shrinking.
+  if (trayBand.classList.contains('plated')) {
+    return Math.max(20, Math.round(layout.size * BONE_IN_TARGET))
+  }
   return Math.max(24, Math.round(layout.size * (FACE_IN_SLOT / DIE_DIAL.preferred)))
 }
 
