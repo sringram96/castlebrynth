@@ -182,34 +182,47 @@
          The same two facts the rail always carried, set where they do not lie
          across the artwork. */
       #tray.plated #vitals > * { position: relative; }
-      #tray.plated #vitals .hp { font-size: .6rem; line-height: 1.15;
-        color: #cbbfa6; text-shadow: 0 1px 2px #000, 0 0 5px #000; }
+      #tray.plated #vitals .hp { font-size: .82rem; line-height: 1.1;
+        color: #ede2c8; text-shadow: 0 1px 2px #000, 0 0 6px #000; }
       #tray.plated #vitals .hp b { color: #ede2c8; font-weight: normal; }
-      #tray.plated #vitals .ar { font-size: .54rem; line-height: 1.15;
-        color: #8d8571; text-shadow: 0 1px 2px #000; }
+      #tray.plated #vitals .ar { font-size: .58rem; line-height: 1.15;
+        color: #9a8f77; text-shadow: 0 1px 2px #000; }
+      /* The armour is a secondary mark beside its number, not a word. */
+      #tray.plated #vitals .ar::before { content: '\25C7 '; color: #7d7461; }
 
       /* ── the main well: the hand lives here, centred ────────────────── */
-      #tray.plated #panels { position: absolute; left: 21%; top: 17.5%;
-        width: 62%; height: 52%; padding: 0; min-height: 0; overflow: visible; }
+      /* The well proper — the frame's central recess, not the whole interior.
+         The rail hangs above it and the foot of it carries the total and the
+         turn's verb; the hand has the middle. */
+      #tray.plated #panels { position: absolute; left: 21%; top: 28%;
+        width: 62%; height: 42%; padding: 0; min-height: 0; overflow: visible; }
+      /* The hand sits at the well's centre of gravity. The rail above it is
+         anchored to the frame and takes no part in this, so the dice are
+         centred in the well rather than pushed down by a line of text. */
       #tray.plated .panel.on { height: 100%; gap: 0; align-content: initial;
         display: flex; flex-direction: column; flex-wrap: nowrap;
-        justify-content: flex-start; align-items: stretch; }
+        justify-content: center; align-items: stretch; }
       #tray.plated .panel.on > * { flex: 0 0 auto; }
       #tray.plated #fight { margin: 0; padding: 0; background: none;
         border-top: none; box-shadow: none; }
       /* the status rail: a thin typographic line, aligned to nothing smaller
          than the frame's big masses */
-      #tray.plated #fight .totals { font-size: .6rem; margin: 0; gap: 0 10px;
+      /* The rail is an inscription in the apparatus, anchored to it — and it
+         takes no part in the hand's layout, so the dice are centred in the
+         well and not pushed down by a line of text. */
+      #tray.plated #fight .totals { position: absolute; left: 0; right: 0;
+        top: -20%; font-size: .6rem; margin: 0; gap: 0 10px;
         flex-wrap: nowrap; white-space: nowrap; justify-content: flex-start;
-        color: #8d8571; text-shadow: 0 1px 2px #000; align-items: center; }
-      #tray.plated #fight .totals .glyph { margin-left: auto; padding: 0 5px;
-        min-height: 26px; }
+        color: #9a8f77; text-shadow: 0 1px 2px #000; align-items: center;
+        letter-spacing: .02em; }
+      #tray.plated #fight .totals .glyph { margin-left: auto; padding: 0 4px;
+        min-height: 26px; background: none; border: none; color: #9a8f77; }
       /* the hand: centred in what is left, wrapping rather than shrinking */
       /* `max-width` is what makes the wrap *balanced*: the row breaks where
          the layout decided (art. 128) and not wherever the box runs out, so
          six dice are three and three rather than five and one. Taking it away
          is what produced the ragged rows the first pass showed. */
-      #tray.plated .hand { flex: 1 1 auto; margin: 0 auto;
+      #tray.plated .hand { flex: 0 1 auto; margin: 0 auto;
         align-content: center; align-items: center; }
       /* The button is the target and the bone is the picture, so the button
          itself draws nothing: no well, no border, no bevel. What the eye sees
@@ -218,28 +231,38 @@
       #tray.plated .hand .slot,
       #tray.plated .hand .slot.die { background: none; border-color: transparent;
         box-shadow: none; border-radius: 5px; }
-      #tray.plated .hand .slot.sel { background: #2a211355; border-color: var(--gold); }
-      #tray.plated .hand .slot.kept { background: #2a323855; }
-      #tray.plated .hand .slot.claimed { background: #14120f55; }
+      /* art. 72 still needs idle, kept, selected and claimed to be
+         unmistakable — that is a selection state, which code owns. It is a
+         mark *on* the die and never a box *around* it. */
+      #tray.plated .hand .slot.sel { box-shadow: 0 0 0 2px #d9b36acc inset; }
+      #tray.plated .hand .slot.kept { box-shadow: 0 0 0 2px #7fa8b8aa inset; }
+      #tray.plated .hand .slot.claimed { opacity: .72; }
+      #tray.plated .hand .slot.kept::after,
+      #tray.plated .hand .slot.claimed::after { display: none; }
       /* the foot of the well: the running total on one side, the verb that
          ends the turn on the other. Neither ever crosses the hand or the orb. */
-      #tray.plated #fight.on { position: relative; padding-bottom: 40px; }
+      #tray.plated #fight.on { position: relative; padding-bottom: 30px; }
       #tray.plated #fight.on > .score,
       #tray.plated #fight.on > button { position: absolute; bottom: 0; }
-      #tray.plated #fight.on > .score { left: 0; width: auto; padding: 0;
+      #tray.plated #fight.on > .score { left: 6%; width: auto; padding: 0;
         gap: 5px; justify-content: flex-start; }
       #tray.plated #fight.on > button { right: 0; }
-      #tray.plated #fight .score .box { font-size: .82rem; min-width: 30px;
-        padding: 0 5px; border-color: #4a4235; background: #100e0ccc;
-        color: #d9b36a; }
+      #tray.plated #fight .score .box { font-size: .84rem; min-width: 0;
+        padding: 0 3px; border: none; background: none; color: #c8a765;
+        text-shadow: 0 1px 2px #000, 0 0 6px #000; }
       #tray.plated #fight .score .cap2 { display: none; }
-      #tray.plated #fight .score .op { font-size: .68rem; }
-      /* a verb inscribed in the frame rather than a browser button on it */
-      #tray.plated .panel.on button { min-height: 40px; padding: 4px 10px;
-        font-size: .78rem; background: #17130d99; border: 1px solid #6b6047;
-        border-radius: 3px; color: #e0d4b8; text-shadow: 0 1px 2px #000;
-        min-width: 0; }
-      #tray.plated .panel.on button:active { background: #2a2114cc; }
+      #tray.plated #fight .score .op { font-size: .68rem; color: #7d7461; }
+      /* **A verb is text on the apparatus, not a button drawn over it.**
+         The frame carries no plaque for an action — the three beds along the
+         foot are the tabs — so rather than invent one in CSS this is the
+         smallest unobtrusive thing that still gives a thumb its forty pixels.
+         An authored action bed would replace it and is reported as owed. */
+      #tray.plated .panel.on button { min-height: 40px; padding: 4px 8px;
+        font-size: .78rem; background: none; border: none; border-radius: 0;
+        color: #d6c8a8; text-shadow: 0 1px 2px #000, 0 0 6px #000; min-width: 0;
+        letter-spacing: .03em; }
+      #tray.plated .panel.on button:active { color: var(--gold); }
+      #tray.plated .panel.on button:disabled { color: #6a6152; }
       #tray.plated #acts.on { flex-direction: row; flex-wrap: wrap; gap: 5px;
         align-content: center; justify-content: center; }
 

@@ -243,7 +243,7 @@ import {
 } from './visual/index.js'
 import { PLATES, artFor, horrorPlateAt, horrorPlateFor } from './content/visual/index.js'
 import type { TrayLayout } from './shell/tray.js'
-import { DIE_DIAL, layoutDice } from './shell/tray.js'
+import { DIE_DIAL, composedHand, layoutDice } from './shell/tray.js'
 import type { DieDial } from './shell/tray.js'
 import { canonicalChain, canonicalNode, canonicalRequest } from './shell/canonical.js'
 import { CANONICAL } from './content/visual/index.js'
@@ -1634,20 +1634,30 @@ function vitals(): void {
   // running totals belong to the fight, so art. 57 keeps them pinned in the
   // FIGHT panel's header rather than in a rail that is always on screen.
   const corroded = now !== null && inAFight() && now.turn.intent.effect?.kind === 'corrode'
+  const armorValue = corroded
+    ? `0 ${READOUT.corroded}`
+    : `${now !== null && inAFight() ? now.armor : run.armor}`
   const armor = reading(
-    READOUT.armor ?? '',
-    corroded ? `0 ${READOUT.corroded}` : `${now !== null && inAFight() ? now.armor : run.armor}`,
+    trayBand.classList.contains('plated') ? '' : (READOUT.armor ?? ''),
+    armorValue,
   )
+  armor.title = `${READOUT.armor ?? ''} ${armorValue}`.trim()
   // art. 65 (`corrode`), art. 119 §3: **the armour flakes off the vitals**,
   // on the beat the blow that ate it lands and on no other.
   if (corroded && beatNow?.kind === 'struck') armor.className = 'flaking'
-  const health_ = reading(
-    READOUT.health ?? '',
-    // art. 119: while a timeline runs, the body reads what the beat says.
-    now !== null && inAFight()
-      ? `${shown?.yourHealth ?? now.yourHealth}/${now.yourHealthMax}`
-      : `${run.health}/${run.healthMax}`,
-  )
+  const full = now !== null && inAFight()
+    ? `${shown?.yourHealth ?? now.yourHealth}/${now.yourHealthMax}`
+    : `${run.health}/${run.healthMax}`
+  // **The orb reads before the text does.** In the painted tray the glass
+  // carries the proportion and the numerals shrink to the one number a
+  // decision needs; the whole reading stays on the element as its label, so
+  // nothing is lost to a screen reader or to a long press. Out of the painted
+  // tray it is the sentence it has always been.
+  const compact = trayBand.classList.contains('plated')
+  const health_ = compact
+    ? reading('', String(health))
+    : reading(READOUT.health ?? '', full)
+  health_.title = `${READOUT.health ?? ''} ${full}`.trim()
   // **The orb is an instrument, not a text box.** The level in the glass is
   // the reading a glance takes; the numbers are the reading a decision takes,
   // and in the painted tray they are set small and out of the way rather than
@@ -2157,7 +2167,10 @@ function measureHand(count: number): TrayLayout {
       Number.parseFloat(getComputedStyle(fightPanel).paddingRight || '0')
     : 0
   const free = Math.max(0, room - (Number.isFinite(pad) ? pad : 0))
-  handLayout = layoutDice(count, free, trayBand.classList.contains('plated') ? WELL_DIAL : DIE_DIAL)
+  // In the painted tray the hand is a composition, not a fit (`composedHand`).
+  handLayout = trayBand.classList.contains('plated')
+    ? composedHand(count, free, WELL_DIAL)
+    : layoutDice(count, free)
   return handLayout
 }
 
@@ -2178,7 +2191,7 @@ function measureHand(count: number): TrayLayout {
  * art. 128 already prefers to shrinking. Six dice as three and three look more
  * like bones thrown into a tray than six squeezed across a phone.
  */
-const WELL_DIAL: DieDial = { preferred: 44, min: 40, max: 50, gap: 3, minGap: 2 }
+const WELL_DIAL: DieDial = { preferred: 42, min: 40, max: 46, gap: 3, minGap: 2 }
 
 /** How much of that button is bone. The rest is the padding that makes it hittable. */
 const BONE_IN_TARGET = 0.68
