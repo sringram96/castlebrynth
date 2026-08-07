@@ -178,7 +178,6 @@ import {
   sealed,
   tierFor,
   tumblingFace,
-  unused,
   withheld,
   withTurn,
   woundedBy,
