@@ -1666,12 +1666,12 @@ function theFightPanel(): void {
     for (const landed of laid) {
       const die = byId.get(landed.die)
       if (die === undefined) continue
-      row.append(dieSlot(die, landed, spent.has(landed.die)))
+      row.append(dieSlot(die, landed, spent.has(landed.die), layout))
     }
   } else {
     for (const die of ledgers.run!.hand.dice) {
       if (heldFast.has(die.id as string)) continue
-      row.append(dieSlot(die, null, false))
+      row.append(dieSlot(die, null, false, layout))
     }
   }
   for (const id of now.turn.bound) {
@@ -2216,7 +2216,15 @@ function riderSays(face: Face): string {
  * wears a tab along its top and only ever in the keep phase; selected
  * inverts entirely; claimed is sunk and ringed. Unused dims at resolve.
  */
-function dieSlot(die: Die, landed: Landed | null, claimed: boolean): HTMLButtonElement {
+function dieSlot(
+  die: Die,
+  landed: Landed | null,
+  claimed: boolean,
+  // art. 128: the face follows the die, and the die's size is the row's. It
+  // is passed rather than read off `handLayout` so that a slot cannot be
+  // built before the row it belongs to has been measured.
+  layout: TrayLayout = handLayout,
+): HTMLButtonElement {
   // art. 67: in the pouch a die is a thing you read, so `selected` is only
   // ever the duel's selection. The choosing screen marks its own picks.
   const isSelected = landed !== null && selected.includes(landed.die)
@@ -2256,7 +2264,7 @@ function dieSlot(die: Die, landed: Landed | null, claimed: boolean): HTMLButtonE
       boneFace(face?.value ?? landed.face.value, {
         lit: lift,
         mark: face === undefined ? null : markOn(face),
-        size: faceSizeFor(handLayout),
+        size: faceSizeFor(layout),
       }),
     )
   }
