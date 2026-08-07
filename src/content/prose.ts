@@ -913,7 +913,7 @@ export const UNBIDDEN: Readonly<Record<string, string>> = {
 
 /** The lines the shell says at the seams of a run. */
 export const NOTICES: Readonly<Record<string, string>> = {
-  'door.locked': 'The lock holds. Whatever opens it is not on you.',
+  'door.locked': 'The lock holds. Nothing on me opens it.',
   // arts 31, 77 (card 49): a door's sense *is* its region tag leaking, and
   // the senses are unparked — `SENSES` is what a door answers with now. This
   // stays as the answer for a pool with no vocabulary authored, because
@@ -1026,8 +1026,8 @@ export const NOTICES: Readonly<Record<string, string>> = {
   'warden.fell':
     'It comes down all at once, the way a wall does, and the hall keeps the sound for a while. Whatever it was standing between me and, it is not standing there now.',
   // art. 63: a fled fight pauses. Nothing about it refills.
-  'fight.fled': 'You back out of the door. It waits where you leave it.',
-  'fight.resumed': 'It is where you leave it, and it remembers the rest.',
+  'fight.fled': 'I back out of the door. It waits where I leave it.',
+  'fight.resumed': 'It is where I left it, and it remembers the rest.',
   /**
    * There is no `run.dead` any more (the mind wave). **The ending is the
    * scrawling**: what the word band shows when a run ends is the line he
@@ -1058,13 +1058,13 @@ export const NOTICES: Readonly<Record<string, string>> = {
   // the strip is the only thing that says what pressing it does.
   'forget.asked':
     'Every ending written here goes. The dice go with it, and the names, and the marks. Nothing is kept anywhere.',
-  'forget.done': 'The labyrinth does not know you.',
-  'card.title': 'The card. Each line spends once, and refills at the next door.',
-  'pouch.empty': 'Nothing is in this slot yet.',
+  'forget.done': 'The labyrinth does not remember any of it.',
+  'card.title': 'The card. Each line spends once, and it refills at the next door.',
+  'pouch.empty': 'Nothing in this slot yet.',
   // art. 69: the pouch panel says what is true of it rather than going quiet.
-  'pouch.whole': 'Everything you own is in your hand.',
+  'pouch.whole': 'Everything I own is in my hand.',
   // art. 67: the pouch is a thing you read, not a thing you press.
-  'pouch.spares': 'What is past the line is yours, and is not going down with you.',
+  'pouch.spares': 'What is past the line is mine, and it is not coming down.',
   // art. 60: the choosing screen. It states the situation and never
   // instructs — the verb on the strip is the only thing that says what to do.
   // art. 86: the screen that asks which bones descend is the screen where
@@ -1105,14 +1105,14 @@ export const NOTICES: Readonly<Record<string, string>> = {
    */
   'claim.sealed': 'sealed this turn',
   'claim.spent': 'already spent',
-  'claim.none': 'Nothing is chosen yet.',
+  'claim.none': 'Nothing chosen yet.',
   // art. 124: what a committed swap answers with. It is the only line the
   // choosing screen needs beyond the one that states the situation — a hand
   // that cannot be short and a swap that cannot be half-made leave nothing
   // for a refusal to say (art. 118: an act that cannot change anything is
   // not offered, so the strip is where "not yet" is said, in pixels).
-  'swap.done': 'The bone goes into your hand. The other one keeps.',
-  'pouch.spare': 'Yours, and not in your hand.',
+  'swap.done': 'The bone goes into my hand. The other one keeps.',
+  'pouch.spare': 'Mine, and not in my hand.',
   // The threshold — the front door. The first pixels a new player sees, so
   // it is in register like everything else: it states where you are standing
   // and never instructs, and the verbs on the strip are what tell you.
@@ -1131,13 +1131,13 @@ export const NOTICES: Readonly<Record<string, string>> = {
   // art. 116: settings. These change how the game is presented and never
   // what is true, and the screen says so in the only way that matters —
   // there is nothing on it that could change what is true.
-  'settings.here': 'What is here changes how the labyrinth is shown to you. None of it changes what is down there.',
+  'settings.here': 'What is here changes how the labyrinth is shown. None of it changes what is down there.',
   'motion.label': 'Reduced motion',
   'motion.says':
     'With this on, nothing loops and nothing plays out. What a motion would have ended at is what is there.',
   'setting.on': 'on',
   'setting.off': 'off',
-  'vault.says': 'Everything the labyrinth remembers about you, as text. What is in the box is what is kept.',
+  'vault.says': 'Everything the labyrinth remembers, as text. What is in the box is what is kept.',
   'vault.set-aside': 'Something here is unreadable to this build. It stays exactly as it stands.',
   'vault.took': 'What is in the box is what is kept now.',
   'vault.refused': 'Nothing in the box can be read. What is kept is untouched.',

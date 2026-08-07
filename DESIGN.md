@@ -217,10 +217,12 @@ history — what was owed and why it closed — is in `CHRONICLE.md`.
   styled, which is not. Arts 26–30's second tier is unspent: ordinary rooms
   are the computed box plus basic sprites, there are no hero plates, and
   `index.html`'s CSS is anatomy and dice states, not a look.
-- **Placeholder prose.** Thirteen of the fourteen rooms, every `LOOKS` line
-  outside the named exemptions, and most origins are still in the repealed
-  register. `src/content/voice.ts`'s `placeholder` category is where that
-  debt is counted; the count is the task.
+- **Placeholder prose — 155 strings, and none of them a screen.** Thirteen
+  of the fourteen rooms, every `LOOKS` line outside the named exemptions, and
+  most origins are still in the repealed register. The screens are done: all
+  29 placeholder notices were rewritten, so the count is now rooms, looks and
+  origins and nothing else. `src/content/voice.ts`'s `placeholder` category
+  is where the debt is counted, and the count is the task.
 - **`blendAbove` is a guess at a fifth.** Art. 95 says the dither threshold
   must be settled on a phone, at real brightness, in a dark room. It has
   been settled on a desktop panel, which cannot show the thing being
@@ -285,3 +287,32 @@ Everything tunable is in `src/content` and nowhere else.
 
 Turning any of them needs no engine change, and the distributional suite is
 how you find out what you did.
+
+## The fantasy, and what carries it
+`reference/GAME.md`'s opening is the game we said we were making. Each beat
+of it is a row, and each row names the string or the pixel that actually
+delivers it — or says **undelivered**. Refreshed every wave (standing rule
+5), because "did the game we envisioned actually ship" should be a checklist
+and not a feeling.
+
+| the beat, from GAME.md | what carries it | |
+| --- | --- | --- |
+| *You wake at a cold crossing beneath Castlebrynth* | `THE_CROSSING`'s beats; the `GATE` and `WAKE` plates | delivered |
+| *with a pouch of bones* | six plain bones and a full hand at the waking (art. 55); the POUCH panel draws every one | delivered |
+| *and a name you keep saying: your brother's* | `gate.cold` — *"He came down here, so I go down."* The brother is the reason there is a door; he is never named | delivered |
+| *The labyrinth goes down. It does not go back up* | forward-only doors (art. 9); `run.finished` — *"He is not on this floor. So it is the next one."* | delivered |
+| *Doors close behind you like verdicts* | the pick, the plain verb, and no back (arts 9, 71) | delivered |
+| *candles do the only arguing against the dark* | the word band, one beat at a time (art. 29) | delivered |
+| *everything you learn ... you keep, even when the labyrinth kills you* | `known`, `met`, `memories` and the Book on the permanent ledger (arts 10, 11, 34, 84) | delivered |
+| *every lie the walls told* | — the walls do not lie yet; nothing in the depth is false and later corrected | **undelivered** |
+| *every thing you refused to take* | the refusal flags (art. 84), landing in a good's origin sentence and in what a tap answers | delivered |
+| *Especially then* — death as the progression | the reseed, the ratchet measured run over run (`CHRONICLE.md`, the levels wave) | delivered |
+| *tapping is always safe and always answers* | arts 5, 6, 69; `test/answers.test.ts` | delivered |
+| *actions have gates and consequences* | the summons (art. 68) and the priced act (art. 120) | delivered |
+| *each door sensed in one line* | `SENSES`, per region, true and partial (arts 31, 77) | delivered |
+| *enemies never roll: their INTENT is shown before you act* | the crown's chip, from the top of the turn (art. 42) | delivered |
+| *dice are loaded and honest about it* | a die at rest draws its whole face set, cost face marked where it sits (art. 54) | delivered |
+| *jokers add, spells interrupt, skills bend a roll after it lands* | talismans and levels add; **spells and skills do not exist** | **undelivered** (phase 1) |
+| *the Warden at the bottom* | the keeper, woken by the key, with a body in the hall (art. 37) | delivered |
+| *sessions are short pushes ... close it mid-anything; it resumes exactly there* | every mutation persisted; the fight that survives a lock screen (arts 36, 75) | delivered |
+| *a phone game, portrait, one thumb* | the shell is built for it; **nobody has held it** | **undelivered** — the phone pass |

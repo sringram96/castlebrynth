@@ -95,6 +95,64 @@ fixes wave**.
 
 ---
 
+## The mend, wave 4 — voice (voice.md amended · the fantasy table)
+
+**The screens had no voice because nobody had asked who was speaking.**
+Twenty-nine notices — the lock, the fought room, the fled fight, the pouch,
+the card, the settings screen and the vault — were declared placeholders and
+had shipped in the repealed register for three waves. A declared placeholder
+is an honest debt; twenty-nine of them on screens nobody had designed a voice
+for is an unasked question.
+
+**The answer, and it is a ruling in `rules/voice.md`.** On the settings
+screen and the vault there is nobody in the room: the player is holding a
+phone. He has no thought about reduced motion, and a man who narrated one
+would be exactly the flourish the mind wave repealed. So those two screens
+answer to the universals — no narrator, no feelings, no shouting, one
+candle — and to **neither mouth**. That is a new category, `plain`, and it is
+kept separate from `placeholder` on purpose: one is a decision and the other
+is a debt, and collapsing them would make the debt uncountable.
+
+**Everything else on a screen turned out to want to be his already.** A
+fight you ran out of, a pouch you are carrying, a card you are spending and
+a lock that will not give are as much his as a corridor is; they were second
+person only because nobody had looked at them since the narrator was
+repealed. *"You back out of the door"* became *"I back out of the door."*
+And a **readout is a label** — *sealed this turn*, *already spent*, *on*,
+*off* — because it names a state, and art. 90's reasoning about a tab is the
+same reasoning one level down.
+
+**The count, which is the point.** Placeholder notices: **29 → 0**. Total
+placeholders: 184 → 155, and every one of the 155 is a room beat, a look or
+an origin — cards 27–29's debt, untouched and now the only thing in the
+category.
+
+**The fantasy table is standing law now** (standing rule 5). DESIGN.md ends
+with every beat of `reference/GAME.md`'s opening, one row each, naming the
+string or the pixel that carries it. Nineteen rows; **three say
+undelivered**, and naming them is the whole point of the instrument:
+
+- *every lie the walls told* — nothing in the depth is false and later
+  corrected. The premise has a mechanic-shaped hole where it should be.
+- *jokers add, spells interrupt, skills bend a roll after it lands* —
+  talismans and levels add; spells and skills do not exist. Phase 1.
+- *a phone game, portrait, one thumb* — the shell is built for it and
+  nobody has held it.
+
+The frame wave's finding was that "the premise existed and did not ship",
+and that is a *class* of bug with no standing instrument. This is the
+instrument: cheap to keep, and it turns a feeling into a checklist.
+
+`npm test`: 58 files, 698 tests, green.
+
+### The phone pass
+**Not done.** No device. Every string this wave wrote is one a phone would
+read differently from a desktop — line length under a thumb is the whole
+question for a word band — so this is the wave that most wants the walk and
+did not get it.
+
+---
+
 ## The mend, wave 3 — ledger (arts 46, 89 amended · art. 125)
 
 Four balance debts closed, and one measurement culture kept: no tuning

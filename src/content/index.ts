@@ -285,6 +285,7 @@ export type { Utterance, VoiceCategory, VoiceComplaint } from './voice.js'
 export {
   lintVoice,
   asLabels,
+  asPlain,
   asPlaceholders,
   asScrawls,
   asThoughts,
@@ -315,7 +316,8 @@ import {
   UNBIDDEN,
 } from './prose.js'
 import type { Utterance } from './voice.js'
-import { asLabels, asPlaceholders, asScrawls, asThoughts } from './voice.js'
+import type { VoiceCategory } from './voice.js'
+import { asLabels, asPlain, asPlaceholders, asScrawls, asThoughts } from './voice.js'
 
 /**
  * art. 37: the Crossing opens every run, so the Crossing's beats are the
@@ -356,6 +358,65 @@ const AMENDED_NOTICES: readonly string[] = [
   // card 49: what the last door of the depth says, which is the one door in
   // the game with no region tag to leak.
   'door.last',
+  /**
+   * **The mend's fourth wave: the screens got a register.** Every line below
+   * belonged to a screen nobody had designed a voice for, and each was a
+   * declared placeholder rather than a decision. They are his now — first
+   * person, present, plain — which is what they should always have been: a
+   * fight he ran out of and a pouch he is carrying are as much his as a
+   * corridor is.
+   */
+  'door.locked',
+  'door.guarded',
+  'warden.wakes',
+  'warden.fell',
+  'fight.won',
+  'fight.fled',
+  'fight.resumed',
+  'card.title',
+  'pouch.empty',
+  'pouch.whole',
+  'pouch.spare',
+  'pouch.spares',
+  'claim.none',
+  'swap.done',
+]
+
+/**
+ * art. 116's two screens, and the ruling that gave them a mouth (the mend's
+ * fourth wave, rules/voice.md).
+ *
+ * **The settings screen is the one place the player is holding a phone
+ * rather than standing in a corridor.** He has no thought about reduced
+ * motion, and inventing one is exactly the flourish the mind wave repealed —
+ * so these answer to the universals and to neither register. It is a
+ * decision, and it is separated from `placeholder` for that reason: one is
+ * a category and the other is a debt.
+ */
+const PLAIN_NOTICES: readonly string[] = [
+  'settings.here',
+  'motion.says',
+  'vault.says',
+  'vault.set-aside',
+  'vault.took',
+  'vault.refused',
+  'wipe.asked',
+  'wipe.ends',
+  'forget.asked',
+  'forget.done',
+]
+
+/**
+ * And the readouts, which are names of states rather than sentences: what a
+ * line on the card is, and what a switch is set to. art. 90's reasoning for
+ * a tab, one level down.
+ */
+const LABEL_NOTICES: readonly string[] = [
+  'claim.sealed',
+  'claim.spent',
+  'motion.label',
+  'setting.on',
+  'setting.off',
 ]
 
 /**
@@ -368,6 +429,13 @@ const AMENDED_PREFIXES: readonly string[] = ['answer.']
 
 function amendedNotice(key: string): boolean {
   return AMENDED_NOTICES.includes(key) || AMENDED_PREFIXES.some((at) => key.startsWith(at))
+}
+
+/** Which mouth a notice answers to. `null` is the remaining debt, and is none. */
+function noticeVoice(key: string): VoiceCategory | null {
+  if (PLAIN_NOTICES.includes(key)) return 'plain'
+  if (LABEL_NOTICES.includes(key)) return 'label'
+  return amendedNotice(key) ? 'thought' : null
 }
 
 /**
@@ -457,9 +525,9 @@ const AMENDED_ROOMS: readonly string[] = [THE_CROSSING as string, 'room.trove.co
  * by a different rule and not an escape from one.
  */
 export function everyString(): readonly Utterance[] {
-  const noticesIn = (amended: boolean): readonly string[] =>
+  const noticesIn = (voice: VoiceCategory | null): readonly string[] =>
     Object.entries(NOTICES)
-      .filter(([key]) => amendedNotice(key) === amended)
+      .filter(([key]) => noticeVoice(key) === voice)
       .map(([, said]) => said)
   const looksIn = (amended: boolean): readonly string[] =>
     Object.entries(LOOKS)
@@ -486,7 +554,7 @@ export function everyString(): readonly Utterance[] {
       // art. 78: the arrival is one candle like any other, and it is him
       // working out what his own choosing has done.
       ...Object.values(ARRIVALS).flat(),
-      ...noticesIn(true),
+      ...noticesIn('thought'),
       ...looksIn(true),
       // card 90: art. 87's sentence, for the goods this wave wrote. The rest
       // of `ORIGINS` is the declared debt below.
@@ -526,9 +594,11 @@ export function everyString(): readonly Utterance[] {
       // as prose. If a sentence cannot pass the lint the item does not ship,
       // which is the article's acceptance test enforced rather than quoted.
       ...originsIn(false),
-      ...noticesIn(false),
+      ...noticesIn(null),
     ]),
+    ...asPlain(noticesIn('plain')),
     ...asLabels([
+      ...noticesIn('label'),
       ...Object.values(NOUNS),
       ...Object.values(LABELS),
       ...Object.values(READOUT),
