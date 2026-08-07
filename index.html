@@ -151,10 +151,13 @@
          is nothing here for a viewport width to rearrange, which is the whole
          reason three dice and eight dice are the same picture with a different
          hand in it. */
-      #tray.plated { position: relative; display: block; aspect-ratio: 1460 / 727;
-        max-height: 46dvh; padding: 0; gap: 0;
+      #tray.plated { position: absolute; display: block; left: 50%; bottom: 0;
+        width: 108%; transform: translateX(-50%); z-index: 3;
+        aspect-ratio: 1460 / 727; max-height: none; padding: 0; gap: 0;
         border-top: none; box-shadow: none;
-        background: var(--reliquary) center / 100% 100% no-repeat, #050404; }
+        /* The plate has real alpha. Let the room continue behind the carved
+           silhouette instead of matting those pixels to flat black. */
+        background: var(--reliquary) center / 100% 100% no-repeat; }
       #tray.plated #rail { display: contents; }
       /* The panel container is the **coordinate space**, not a surface: it
          spans the apparatus so that what is placed in it can be placed in
@@ -279,14 +282,23 @@
       #tray.plated .hand.posed .slot.unused { opacity: .45; }
       #tray.plated .hand.posed .slot.bound { opacity: .5; }
 
-      /* the running total, and the turn's verb — text on the apparatus */
-      #tray.plated #fight .score { padding: 0; gap: 5px;
-        justify-content: flex-start; align-items: flex-start; }
-      #tray.plated #fight .score .box { font-size: .84rem; min-width: 0;
-        padding: 0 3px; border: none; background: none; color: #c8a765;
-        text-shadow: 0 1px 2px #000, 0 0 6px #000; }
-      #tray.plated #fight .score .cap2 { display: none; }
-      #tray.plated #fight .score .op { font-size: .68rem; color: #7d7461; }
+      /* The central well is the scoring stage. The arithmetic is intentionally
+         the largest changing object in the tray; the line name stays visible
+         beneath it so selecting dice reads as a result, not a debug counter. */
+      #tray.plated #fight .score { display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+        place-items: center; align-content: center; padding: 0; gap: 9px; }
+      #tray.plated #fight .score > div { display: flex; min-width: 0;
+        flex-direction: column; align-items: center; justify-content: center; }
+      #tray.plated #fight .score .box { font-size: 1.65rem; line-height: 1;
+        min-width: 0; padding: 0; border: none; background: none; color: #e0bd72;
+        text-shadow: 0 2px 3px #000, 0 0 9px #000; }
+      #tray.plated #fight .score .cap2 { display: block; max-width: 100%;
+        margin-top: 5px; overflow: hidden; text-overflow: ellipsis;
+        white-space: nowrap; font-size: .62rem; line-height: 1.1;
+        color: #a79a7e; letter-spacing: .025em; text-align: center; }
+      #tray.plated #fight .score .op { align-self: center; font-size: 1rem;
+        line-height: 1; color: #7d7461; }
       /* **ACTION PLAQUE ART REQUIRED.** The frame carries no bed for an
          action — the three along its foot are the tabs — so this is text at an
          authored anchor rather than a plaque invented in CSS. */
@@ -388,7 +400,8 @@
         pointer-events: auto; }
       #stage.choosing #tray,
       #stage.choosing #tray.plated { position: relative; flex: 1 1 auto;
-        width: 100%; min-height: 0; max-height: none; aspect-ratio: auto;
+        left: auto; bottom: auto; width: 100%; transform: none; z-index: auto;
+        min-height: 0; max-height: none; aspect-ratio: auto;
         padding: 0; margin: 0; border: 0; box-shadow: none; background: #000;
         overflow: hidden; }
       #stage.choosing #rail,

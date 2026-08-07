@@ -160,10 +160,15 @@ ties about what a face looks like.
     curated-starting-hand clause dies with art. 12.)
 
 ## Display & the pouch
-57. DEFAULT (amended) — Combat display: everything visible. The
-    horror's health, next attack, and its effect at the top; your
-    health, armor, dice, claims, and the card in the tray; running
-    totals shown — attack so far, incoming after armor, unused dice.
+57. DEFAULT (amended by the fight-tray art pass of 2026-08-07) —
+    Combat display shows **decision-relevant information once, where it is
+    read**. The horror's health and declared next attack remain at the top;
+    your health and armor stay in the orb; the six dice stay in the crown;
+    the live `sum × line` score occupies the tray's main well; the card stays
+    behind its glyph. The dedicated `incoming` and `unused` readouts are
+    repealed — the intent already states the incoming blow and unused dice
+    are visible by their state. Exceptional costs, bleeds, seals or other
+    effects may still surface when they change the decision.
 58. DEFAULT — An intent is a declared verb + number + optional effect;
     the taxonomy of intents is content, authored per horror, not law.
 60. SETTLED (amended) — The pouch and the hand. Your collection is the

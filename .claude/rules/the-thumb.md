@@ -18,17 +18,21 @@ journey.md.
     rules/voice.md and bound by this article instead.
 
 ## The tray
-67. SETTLED (amended by the tray stand-up of 2026-08-05) — The tray is
-    anatomy, not a menu. It is a **persistent rail** and a **panel
-    area** beneath it.
+67. SETTLED (amended by the fight-tray art pass of 2026-08-07) — The
+    tray is anatomy, not a menu, but **anatomy is allowed to be authored
+    composition**.
 
-    The **rail** never changes: vitals (health, armor) and the tabs.
-    The **panels** are ACTS — home, where the room is played from,
-    holding the verbs looking has summoned (art. 68), the door commits,
-    and whatever you carry that is not the duel; POUCH — the pouch as
-    visible slots, empty slots included, because hand size is a stat you
-    can see, and the surface art. 60's swap is made on; and FIGHT.
-    Nothing else ever appears in the tray.
+    On the painted reliquary the stable anatomy is the health orb, the six-die
+    crown, the central well, and the three footer beds. In FIGHT the crown is
+    the hand and the **central well is the scoring stage**. The horror's intent
+    already declares the next blow and unused dice already show their state;
+    dedicated `incoming` and `unused` ledger readouts are repealed.
+
+    The exploration **panels** remain ACTS — home, where the room is played
+    from, holding the verbs looking has summoned (art. 68) and the door
+    commits; POUCH — what is carried; and FIGHT. Nothing else ever appears in
+    the tray. The art director may move presentation inside those authored
+    regions without creating a new interaction rule.
 
     **FIGHT is not a tab** (amended 2026-08-05). It is what the panel
     area *becomes* while a fight is on — the ground the tray sits on
@@ -337,34 +341,27 @@ size is a body stat — grown by mercies, shrunk by wounds and curses — and
 the only thing in the game that believed in six, and it believed in it
 in a stylesheet, where no rule can reach.
 
-128. SETTLED (ruled 2026-08-07) — **The tray renders the hand it is
-     given, and never a number of dice it was told to expect.**
+128. SETTLED (amended by the fight-tray art pass of 2026-08-07) —
+     **Identity is generic; composition does not have to be.**
 
-     No fixed slots, no positional selectors, no tuple of six. The row is
-     **measured**: the count and the room available go in; a die size, a
-     gap and a row count come out. Selection, keeping and claiming are by
-     a die's identity and never by where it sits (art. 72 unchanged) — so
-     a die that moves in the row is the same die.
+     `Hand` remains a collection and every interaction keys on die identity,
+     never on a screen position. That is the engine contract. The former
+     presentation mandates — *no fixed slots*, *always measure and wrap*, and
+     *the painted fight tray must automatically redesign itself for arbitrary
+     counts* — are repealed.
 
-     **The floor is a touch target and it does not bend.** A die is never
-     drawn smaller than a thumb can hit (art. 6: everything ever clickable
-     is always clickable). When a hand will not fit a row at that size it
-     **wraps, balanced**, and it never scrolls: a scroll would hide a die,
-     and a die you cannot see is a die you cannot plan with (art. 42). A
-     hand of nothing is legal and draws nothing — no rule deals one today,
-     and presentation that divides by the count is presentation that has
-     assumed a rule.
+     The shipped combat hand is `HAND_SIZE = 6`, and the painted reliquary may
+     therefore author six crown positions explicitly. A temporary effect may
+     still remove or bind a die and the fallback tray may still measure a
+     collection, but those defensive cases do not get to dictate the canonical
+     composition.
 
-     **Six survives as a rule.** It is `HAND_SIZE`, in content, beside the
-     pouch, where art. 60 puts a body stat — and it is the only place it
-     lives. Nothing in this article changes it, proposes changing it, or
-     prefers another number; what it ends is the second, hidden copy of it
-     in the shape of the tray. Changing the game's hand later is changing
-     that constant and the pouch beside it, and no part of the duel's
-     presentation has to be rebuilt to follow.
+     **Touchability is an outcome, not a magic pixel constant.** Targets should
+     be as generous as the authored geometry allows and must not overlap in a
+     way that makes the wrong die fire. The old absolute 40px floor is repealed
+     as an art constraint: if satisfying a number would force the dice out of
+     their authored apparatus, enlarge the apparatus or use the safe target
+     available rather than turning the fight into a responsive web grid.
 
-     This is art. 67 served rather than weakened. The tray is anatomy: a
-     region still lives in exactly one place and never moves, and the
-     dice still live only in FIGHT. What is computed is how large the
-     dice in that one region are drawn — which was never anatomy, only a
-     number that had been mistaken for one.
+     Six still lives as the gameplay rule in content. The art is allowed to
+     know the rule it was drawn for.
