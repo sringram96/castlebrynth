@@ -334,3 +334,44 @@ them.
      article settles is the **individuation** problem, which is the only
      one that was left — a pouch of thirty that scrolls and groups is a
      screen, and a pouch of thirty that does not is a spreadsheet.
+
+## The hand is a collection (ratified 2026-08-07)
+Drafted from the plate amendment's migration (arts 126–127). It found a
+number where a rule should have been: the tray drew a 48-pixel slot and
+trusted that six of them fitted a phone. Art. 60 has always said hand
+size is a body stat — grown by mercies, shrunk by wounds and curses — and
+`Hand` has always been a collection in the engine. The presentation was
+the only thing in the game that believed in six, and it believed in it
+in a stylesheet, where no rule can reach.
+
+128. SETTLED (ruled 2026-08-07) — **The tray renders the hand it is
+     given, and never a number of dice it was told to expect.**
+
+     No fixed slots, no positional selectors, no tuple of six. The row is
+     **measured**: the count and the room available go in; a die size, a
+     gap and a row count come out. Selection, keeping and claiming are by
+     a die's identity and never by where it sits (art. 72 unchanged) — so
+     a die that moves in the row is the same die.
+
+     **The floor is a touch target and it does not bend.** A die is never
+     drawn smaller than a thumb can hit (art. 6: everything ever clickable
+     is always clickable). When a hand will not fit a row at that size it
+     **wraps, balanced**, and it never scrolls: a scroll would hide a die,
+     and a die you cannot see is a die you cannot plan with (art. 42). A
+     hand of nothing is legal and draws nothing — no rule deals one today,
+     and presentation that divides by the count is presentation that has
+     assumed a rule.
+
+     **Six survives as a rule.** It is `HAND_SIZE`, in content, beside the
+     pouch, where art. 60 puts a body stat — and it is the only place it
+     lives. Nothing in this article changes it, proposes changing it, or
+     prefers another number; what it ends is the second, hidden copy of it
+     in the shape of the tray. Changing the game's hand later is changing
+     that constant and the pouch beside it, and no part of the duel's
+     presentation has to be rebuilt to follow.
+
+     This is art. 67 served rather than weakened. The tray is anatomy: a
+     region still lives in exactly one place and never moves, and the
+     dice still live only in FIGHT. What is computed is how large the
+     dice in that one region are drawn — which was never anatomy, only a
+     number that had been mistaken for one.

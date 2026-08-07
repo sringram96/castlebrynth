@@ -21,6 +21,24 @@
         --gold: #d9b36a;
         --blood: #a8331f;
         --cold: #7fa8b8;
+
+        /* arts 126, 128: **the tray is a made object.**
+           The reference (`reference/visual/canonical-screen.png`) puts the
+           interface *in* the world: a carved reliquary of bone and oxidised
+           iron sitting at the bottom of the lens, with the dice recessed into
+           it. What is below is that material language as variables, so the
+           stylesheet says *bone*, *iron*, *carved* and *sunk* rather than
+           repeating six hex values down the file.
+           It is presentation, so art. 116's first sentence applies: none of
+           it changes what is true, and none of it is a setting. */
+        --bone: #b9b09a;
+        --bone-dim: #8d8571;
+        --bone-deep: #5d5748;
+        --iron: #2a2823;
+        --iron-lit: #423e35;
+        --iron-deep: #171612;
+        --carve: #0a0908;
+        --rust: #6b4326;
       }
       * { box-sizing: border-box; }
       html, body { margin: 0; background: #000; color: var(--ink); height: 100dvh;
@@ -39,7 +57,7 @@
 
       /* art. 29: the world — the frame. art. 68: and it takes taps. */
       #world { position: relative; flex: 1 1 auto; display: flex; align-items: center;
-        justify-content: center; min-height: 0; overflow: hidden; }
+        justify-content: center; min-height: 0; overflow: hidden; background: #000; }
       canvas { image-rendering: pixelated; display: block; }
       /* The marks sit exactly over the canvas, so a thing is tapped where it
          stands rather than by its name in a list (art. 68). */
@@ -95,25 +113,46 @@
 
       /* art. 67: the tray is anatomy. Four regions, always in these places,
          always in this order, whatever the moment holds. */
-      #tray { flex: 0 0 auto; border-top: 1px solid var(--line); padding: 8px 10px 12px;
-        display: flex; flex-direction: column; gap: 8px; }
+      /* art. 126: the tray is carved, not drawn. Three things do the work and
+         nothing else is needed: a lit top edge so it reads as a lip standing
+         proud of the world above it, a dark body with a vertical grain, and
+         an inner shadow under the lip so the panel sits *inside* the frame
+         rather than on top of the page. The room's own darkness runs into it,
+         which is what stops the seam reading as a fold in a web page. */
+      #tray { flex: 0 0 auto; padding: 8px 10px 12px;
+        display: flex; flex-direction: column; gap: 8px;
+        background:
+          linear-gradient(#00000000 0, #000000aa 6px, #00000000 7px),
+          linear-gradient(180deg, var(--iron-lit) 0, var(--iron) 3px, #1e1c18 34%, #141310 100%);
+        border-top: 2px solid var(--bone-deep);
+        box-shadow: inset 0 3px 10px -4px #000, inset 0 -30px 40px -34px #000;
+      }
       /* art. 67: the rail. Two rows that are always there and always the
          same — what your body is, and where the thumb can go. */
       #rail { display: flex; flex-direction: column; gap: 6px; }
       #tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); }
-      #tabs button { font: inherit; color: var(--dim); background: none; border: none;
+      #tabs button { font: inherit; color: var(--bone-deep); background: none; border: none;
         border-bottom: 2px solid transparent; padding: 5px 12px 6px; letter-spacing: .06em;
-        text-transform: lowercase; }
-      #tabs button.on { color: var(--ink); border-bottom-color: var(--gold); }
+        text-transform: lowercase; text-shadow: 0 1px 0 #000; }
+      /* art. 90: a tab is a label and names a place. The one you are standing
+         in is cut brighter and lit along its foot; the rest are cut shallow. */
+      #tabs button.on { color: var(--bone); border-bottom-color: var(--gold);
+        text-shadow: 0 0 6px #d9b36a44, 0 1px 0 #000; }
       /* arts 31, 85: a socket, and it says so. It is not a button that fails
          — it is a place where a thing is not. */
       #tabs button[disabled] { color: #4a453d; border-bottom-color: transparent; opacity: .55; }
       #panels { padding-top: 8px; }
       .panel { display: none; }
       .panel.on { display: block; }
+      /* art. 67: the rail never changes, and art. 126 makes it a carved band
+         across the top of the reliquary — the body on the left, the ways
+         through on the right, cut into the same bone. */
       #vitals { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px;
-        min-height: 24px; font-size: .85em; color: var(--dim); }
-      #vitals b { font-weight: normal; color: var(--ink); }
+        min-height: 26px; font-size: .85em; color: var(--bone-dim);
+        padding: 3px 8px; border-radius: 2px;
+        background: linear-gradient(180deg, #1d1b16 0, #131210 100%);
+        box-shadow: inset 0 1px 0 #494236, inset 0 -1px 0 #000, 0 1px 0 #322c24; }
+      #vitals b { font-weight: normal; color: var(--bone); }
       #vitals .glyph { margin-left: auto; font: inherit; color: var(--ink);
         background: var(--raised); border: 1px solid var(--line); width: 34px; height: 30px;
         cursor: pointer; line-height: 1; }
@@ -123,8 +162,13 @@
       /* art. 30: no battle screen — the world band is still the room. What
          changes mode is the tray, so the fight panel gets its own ground:
          darker, ruled off, and lit along the top edge. */
-      #fight { background: #14120f; margin: -8px -10px -12px; padding: 8px 10px 12px;
-        border-top: 1px solid var(--gold); box-shadow: inset 0 14px 22px -18px #000; }
+      /* art. 126: the duel's ground is a shelf cut into the reliquary — sunk
+         below the rail, lit along its lip, with the room's darkness pooling
+         at the bottom of it. */
+      #fight { margin: -8px -10px -12px; padding: 10px 10px 12px;
+        background: linear-gradient(180deg, #100f0c 0, #17150f 45%, #0d0c09 100%);
+        border-top: 1px solid var(--bone-deep);
+        box-shadow: inset 0 1px 0 #4a4235, inset 0 16px 24px -18px #000; }
       #fight .totals { flex: 1 0 100%; display: flex; flex-wrap: wrap; gap: 4px 12px;
         color: var(--dim); font-size: .82em; align-items: center; margin-bottom: 2px; }
       #fight .totals b { font-weight: normal; color: var(--ink); }
@@ -200,6 +244,18 @@
          phone. 48 with a 40px face is a quarter larger and still fits six on
          one row at 390px — the verbs wrap to their own line beneath, which
          reads better than sharing a row with the hand anyway. */
+      /* art. 128: **the hand is a collection, and its row is computed.**
+         There are no six slots and no `nth-child` — there is one row, whose
+         die size, gap and wrap point arrive from `src/shell/tray.ts` as
+         custom properties. `--per-row` is what makes a two-row hand break
+         where the layout decided rather than wherever the box runs out, so
+         nine dice are five and four instead of eight and one. */
+      .hand { display: flex; flex-wrap: wrap; justify-content: center;
+        gap: var(--gap, 6px); flex: 1 0 100%; margin: 0 auto;
+        max-width: calc(var(--per-row, 6) * var(--die, 48px)
+                      + (var(--per-row, 6) - 1) * var(--gap, 6px)); }
+      .hand .slot { width: var(--die, 48px); height: var(--die, 48px); }
+
       .slot { width: 48px; height: 48px; padding: 0; position: relative; background: var(--sunk);
         border: 1px solid var(--line); display: flex; align-items: center;
         justify-content: center; }
@@ -209,7 +265,13 @@
          not know what a pip is and must not: a colour here would be a colour
          off the ramp, which is the one thing art. 100 forbids. */
       .slot .mark { display: block; image-rendering: pixelated; }
-      .slot.die { background: #262119; }
+      /* art. 126: a die is a thing sitting in a tray, not a browser control.
+         The well it sits in is carved (dark, sunk, hard-edged); the die is
+         warm bone standing proud of it. The reference gets this right and it
+         is most of why its interface reads as part of the image. */
+      .slot.die { background: linear-gradient(180deg, #2f2920 0, #241f18 60%, #1b1712 100%);
+        border-color: #4a4235; border-radius: 3px;
+        box-shadow: inset 0 1px 0 #5c5344, inset 0 -2px 3px -1px #000, 0 1px 2px #0009; }
       /* art. 119, card 75: a die still in the air. It is not a fifth state
          under art. 72 — those four are what a die *is*, and this is a die
          that has not finished arriving — so it says so by being unsettled

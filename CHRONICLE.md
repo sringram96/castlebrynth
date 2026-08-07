@@ -15,6 +15,222 @@ a section that had been nested under another wave is now an entry of its own.
 
 ---
 
+## The plate wave (arts 126–128)
+
+The four reference images set an art direction the renderer had no socket
+for: portrait first-person, the world holding most of the frame, deep
+darkness with light hoarded at one or two places, a thing inhabiting the
+actual room, what you are carrying at the lower edge, and an interface that
+is a carved object in the picture rather than a panel under it.
+`reference/visual/canonical-screen.png` is the composition and density
+target; the three beside it name the territory. **None of them is a runtime
+asset.** They are 1088 pixels wide and the frame is 240; a master ships
+reduced into deliberate pixels at the frame's own scale, and the reference
+says what to aim at, not what to load.
+
+### What was actually wrong
+
+Not the renderer. Arts 93–115 hold unamended, and the split between casting,
+dithering, framebuffer, masses, motion, placement, ramps, scenes and views is
+exactly the shape a compositor wants to stand on. What was wrong was one
+clause: art. 15's *"computed, not painted"* was written to stop a room lying
+about its geometry, and it did — but it also forbade the density arts 26 and
+104 had already promised. Art. 126 separates the two jobs. The renderer owes
+truth about **space**; about **appearance** it owes only determinism and key.
+
+So the migration is additive. A room with no authored art renders the frame
+it always rendered, and the whole thing is reversible by deleting a key from
+one map.
+
+### The frame, in order
+
+    computed box (src/room)
+      + material, architecture, distant things
+      + the hero
+      + foreground things
+      + patches
+      + atmosphere
+      + what you are carrying
+      = the frame  (then the HUD, in DOM)
+
+Art. 127 makes that one declared list rather than three unwritten ones that
+happened to agree. Everything composited names its band; ties break by
+declaration order; a composition is a pure function of art, view and clock,
+so it has tests instead of comments.
+
+### Two species of authored thing
+
+A **drawing** is art. 100 unchanged — a grid of indices into the room's own
+ramp, authored as text, painted inside the cast as a prop, in key in every
+school it appears in. Everything in `src/content/plates` is one and none of
+it moved.
+
+A **plate** is new: a raster master with its own palette, authored for one
+school, painted as drawn. Art. 100's argument was about things that must
+cross schools; a plate is a thing that does not, so it declares its school
+and the validator holds it to that.
+
+**Binary alpha, always.** A plate is a cutout — every pixel opaque or absent,
+nothing between — so a pixel's colour still never depends on what is behind
+it and art. 17 survives the wave *unamended* rather than loosened into a
+tolerance. `tools/png.mjs` refuses to write a master that breaks it, and
+`test/visual.assets.test.ts` reads the shipped PNGs back and checks.
+
+### Registering art
+
+Three files, and nothing else has to be touched:
+
+1. `tools/masters.mjs` — the master, authored as text on a school's palette.
+   `node tools/plates.mjs` writes deterministic PNGs into `public/assets/visual`
+   and prints their sizes.
+2. `src/content/visual/assets.ts` — the manifest entry: id, path, size, school.
+   **This is the only file in the repository that knows a filename.**
+3. `src/content/visual/rooms.ts` (a room's own art) or `horrors.ts` (an
+   encounter's). Placement is an anchor and a band.
+
+**Missing art is a plainer room, never a broken one.** A named plate that has
+not been drawn contributes nothing and its band stays empty. Art. 26's first
+tier is a floor.
+
+### Horrors are the encounter's, not the room's
+
+The first cut put the Marrow on the choir's hero band and drew it twice — once
+as the hinge's massed body and once as the plate. Art. 83 says why that was
+wrong: a horror floats into a socket and a room never speaks for what fills
+it. So a horror's plate lives beside the horror, one drawing serves every room
+it is ever dealt into, and the room's art is only the room's.
+
+Art. 30 does the rest. There is still no battle screen: a plated horror is the
+same plate at two sizes with the hinge's own advance interpolating between
+them, arriving *past* the bottom of the lens — which is why it is anchored in
+fractions of the frame rather than at a z, exactly as the massed `horrorProp`
+always was. A horror with no plate is massed as before; that is art. 26's two
+tiers, and the game does not stop working between them.
+
+### Patches
+
+A patch is art. 110's overlay repaint applied to authored art: the base frame
+is cast once and held, and the candle that gutters repaints sixty-five pixels.
+It answers to art. 107 in full — three loops in a room, three authored frames
+each, one world clock, phase hashed off identity — and is not a way around
+that budget, only a cheaper way of paying it. Under art. 116 a loop settles on
+its first frame and a fired one-shot on its last, because that is what each of
+them settles *in*.
+
+### The tray
+
+Art. 128. The tray drew a 48-pixel slot and trusted six of them fitted a
+phone; six is a rule (`HAND_SIZE`, in content, where art. 60 puts a body
+stat), and a rule living in a stylesheet is a rule nothing can change. The row
+is measured now: count and available width in, die size and gap and row count
+out. Measured on a 390×844 phone:
+
+| dice | die | rows |     | dice | die | rows |
+|-----:|----:|-----:|-----|-----:|----:|-----:|
+| 1–4  |  60 |    1 |     |    7 |  48 |    1 |
+| 5    |  60 |    1 |     |    8 |  40 |    1 |
+| 6    |  56 |    1 |     |   9+ |  40 |    2 |
+
+No horizontal overflow at any count, and **40 is a floor, not a starting
+point** — a die is never drawn smaller than a thumb can hit, so a hand that
+will not fit wraps balanced rather than shrinking or scrolling. Six is
+untouched and still ships; what ended is the second, hidden copy of it.
+
+The look is the reference's material language over art. 67's anatomy, which
+did not move: a carved lip so the tray reads as an object standing in the
+picture, oxidised iron and bone rather than flat web chrome, and dice sitting
+proud of wells cut into it. The reference's exact three-column geometry
+(flask left, dice centre, rack right) is **not** copied — it is an illustration
+at 1088 pixels and the phone is 390, and forcing side columns would take the
+room the dice need to stay hittable. Art. 67's rail already puts the body on
+one side and the ways through on the other.
+
+### The canonical fixture
+
+    npm run dev
+    …/?scene=canonical
+    …/?scene=canonical&dice=3
+    …/?scene=canonical&dice=8
+    …/?scene=canonical&room=room.passage.bonefield
+
+Development only — gated on `import.meta.env.DEV`, so a built game has no
+route to it and none of it is a debug control in the tray. It builds **real
+state**: a real chain node for a real authored room, a real `openFight`, a
+real cast off a fixed seed, a real hand from a real pouch. `?dice=n` moves the
+*hand*, not the tray, so what is on screen is the tray solving a hand rather
+than a mock-up of one. A fixture that renders differently from the game is a
+fixture that lies about the game.
+
+### Two shapes built and rejected
+
+**A flat image per room.** Rejected before it was built. The renderer already
+gives honest occlusion, honest diminution, and a tap region derived from the
+same coordinates as the paint (arts 19, 68); a painted room throws all three
+away and buys density that a plate standing *in* the computed room buys
+anyway.
+
+**A raster laid flat against a wall,** for regional material. Built, and
+wrong: it does not shear with the perspective, so it is the flat crest
+art. 102 refused about masses, one level up. Wall-flush architecture stays the
+cast's (art. 99); authored material stands *in* the room as a billboard at a
+depth.
+
+### What is still owed
+
+The architecture is done and the art is a first slice — five masters, chosen
+to prove one claim each, not to dress the game. Reaching the reference's bar
+needs, roughly in order of what buys most:
+
+- **Hero plates per horror.** Five horrors ship; one is plated, and at a
+  twentieth of the reference's density. This is the largest single gain and it
+  wants a real artist, not more ASCII.
+- **The first-person layer, properly.** One lantern exists. The reference
+  carries a weapon in the other hand and changes what is held; the band and
+  the anchors are there and nothing is drawn for them.
+- **Regional material per school.** The drowned, the burnt and the ossuary
+  each want a handful of standing plates. Only the ossuary has one.
+- **The tray as drawn furniture.** The look is currently CSS doing an
+  impression of carved bone. The reference's tray is *drawn*, and the plate
+  band for it (`ui/`) is empty.
+- **Threshold and CINE plates** for the third density tier, which nothing
+  yet uses.
+- **The blend threshold and the beat durations settled on a phone**, which
+  arts 95 and 119 have both been asking for since before this wave.
+
+### The phone pass — not done (standing rule 4)
+
+**Not performed, and the wave says so rather than implying otherwise.** The
+verification in this entry is a headless Chromium at 390×844, and the skill
+is explicit that this is not a phone pass: it can prove the frame composes,
+the layout holds and nothing overflows — and it has, at every hand from 0 to
+12 — but it cannot answer whether a 40-pixel die is hittable by a real thumb,
+and it cannot show a dark-value dither at real brightness.
+
+**Pre-registered, so the numbers are cuts and not preferences.** In order,
+if the hand says so:
+
+1. **`DIE_DIAL.min` (40).** The floor exists to keep a die hittable. If eight
+   dice at 40 are missable on a real screen, the fix is to **raise the floor
+   and wrap earlier** — never to keep one row by shrinking further. Predicted:
+   40 holds, and 8 on one row is tight but hittable.
+2. **`DIE_DIAL.max` (60).** A hand of one or two at 60 may read as a toy. If
+   so, drop to 54. Predicted: fine, and the growth is the part that reads
+   best.
+3. **The hero plate's `near` (0.66 of the frame).** The Marrow arrived is
+   supposed to be oppressive. If it reads as a sticker rather than as a thing
+   in the room, the cut is **up** — 0.78 — and its foot further past the
+   bottom edge, not a bigger drawing.
+4. **The candle's `every` (3 ticks, ~450ms).** Predicted too fast for a
+   candle at the end of a corridor; the cut is 5.
+
+**What only a hand can settle here**, beyond the standing two (art. 95's
+blend threshold and art. 119's beat durations, both still owed): whether the
+carved tray reads as an object in the picture or as a gradient, and whether
+the lantern at the lower edge reads as *held* or as a decal. Both are the
+whole point of the reference and neither survives a desktop panel.
+
+---
+
 ## The headlines
 
 The running summary DESIGN.md's Status section carried until the split. Each

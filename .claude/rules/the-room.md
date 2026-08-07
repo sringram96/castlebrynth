@@ -430,3 +430,102 @@ when the thumb has not.
      have one are tuning; that most rooms do not is not** — a depth where
      every room does something unasked is a depth where none of it means
      anything, which is art. 107's argument carried one step out.
+
+## The plate amendment (ratified 2026-08-07)
+Drafted from four reference images and a migration built against them.
+The reference is `reference/visual/canonical-screen.png`; the three
+beside it name the territory. The verdict that opened the wave was not
+that the renderer was wrong — arts 93–115 hold, unamended in every
+particular — but that **art. 15 was doing two jobs and only one of them
+was load-bearing**. "The box is computed, not painted" was written to
+stop a room lying about its own geometry, and it did. It also, by
+accident, forbade the density arts 26 and 104 already promised.
+
+The amendment separates the two. What the renderer owes is *truth about
+space*; what it owes about *appearance* is only that appearance be
+deterministic and in key. Arts 126–128 say so.
+
+126. SETTLED (ruled 2026-08-07, amending arts 15, 17 and 100) —
+     **Perspective is computed; appearance may be authored.**
+
+     The renderer remains answerable for every spatial fact in a room:
+     the lens, the width, the ceiling, the walls, the floor, the shape,
+     the thresholds, where a thing stands, how large it is at that depth,
+     what occludes what. **Nothing authored may move a surface**, and no
+     plate may stand where the geometry says it cannot. Art. 15's first
+     clause is therefore untouched: the box is computed, and it cannot
+     lie. What is repealed is only its second clause's reach — the frame
+     that box produces may now carry authored pixels over it.
+
+     **There are two species of authored thing, and the difference is
+     which key they are in.** A **drawing** is art. 100 unchanged: a grid
+     of indices into the *room's* ramp, so one drawing appears in the
+     drowned and the burnt as one object in two keys, and it is painted
+     inside the cast as a prop (art. 19). A **plate** is new: a raster
+     master carrying its own palette, authored for one school, painted as
+     it was drawn. Art. 100's argument was never wrong — it was an
+     argument about things that must cross schools, and a plate is a
+     thing that does not. So a plate **declares its school**, and a plate
+     with no school does not ship.
+
+     **A plate is a cutout, and art. 17 stands unamended.** Every pixel
+     of a master is opaque or absent — binary alpha, nothing between — so
+     a pixel's colour is still a pure function of where it is and never
+     of what happens to be behind it. A room still renders identical
+     every visit. This is not a courtesy: it is the condition on which
+     the amendment was granted, and the encoder refuses a master that
+     breaks it.
+
+     **Missing art is a plainer room, never a broken one.** A named plate
+     that has not been drawn, or has not arrived, contributes nothing and
+     its band stays empty. Art. 26's first tier is a floor: the computed
+     box plus its props is a room that works, and every plate is an
+     improvement on a thing that already stood.
+
+     **Density is bought in the raster, not in the loop.** The reference
+     is dense because information is *stored*, not because it is
+     computed: a plate is decoded once and drawn once, nothing is
+     allocated per frame, and a frame that looks expensive costs what a
+     plain one costs. An authored layer that needed a per-frame budget
+     would be the flat crest art. 102 refused, said about time.
+
+     **Where a plate is not in the box, it is anchored to the frame** —
+     in fractions of it, never in pixels (arts 22, 24), so what is pinned
+     to the bottom of the lens is pinned there on any phone. Two things
+     are anchored this way and there should not be a third: what you are
+     carrying, and a horror that has come close (art. 30 — it arrives
+     *past* where the box has depth left to describe, which is why
+     `horrorProp` always worked in the frame's own fractions).
+
+127. SETTLED (ruled 2026-08-07) — **The order of a frame is one declared
+     list.**
+
+     Before this article, z-order was three unwritten statements that
+     happened to agree: props painted far to near inside the cast
+     (art. 19), overlays painted after the cast (art. 110), and DOM order
+     for the marks and the tray. Nothing said what was in front of what,
+     so nothing could be tested, and a plate one band out of place is not
+     a crash — it is a picture that is quietly wrong forever.
+
+     Every band is named in one list, in order: **the void, the computed
+     room, material, architecture, distant things, the hero, foreground
+     things, patches, atmosphere, what you are carrying, the HUD, and
+     transient feedback.** Anything composited names its band. Ties inside
+     a band break by declaration order and by nothing else, so a
+     composition is a pure function of its art, its view and its clock.
+
+     The last two bands are the DOM's and the rest are the frame's. They
+     are in the same list on purpose: **there is one order, not two**, and
+     a band that happens to be implemented in DOM is still a band. A
+     thirteenth place for things may not be invented under it.
+
+     **A patch is an overlay repaint that covers only what changes.** It
+     is art. 110 applied to authored art: the base frame is cast once and
+     held, and a candle that gutters repaints sixty-five pixels rather
+     than a room. It answers to art. 107 in full — three loops in a room,
+     three authored frames each, on the one world clock (art. 109), phase
+     hashed off identity — and it is not a way around that budget, only a
+     cheaper way of paying it. Under art. 116 a loop shows its first
+     frame and a fired one-shot its last, because for a loop the settled
+     state is what it was authored from and for a one-shot it is what it
+     ends in (art. 1).

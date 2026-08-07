@@ -52,8 +52,29 @@ export const PLAIN_POUCH: Pouch = {
  * `PLAIN_POUCH.dice.length` — the two agree at the waking and are still
  * different questions, because a mercy may grow the hand past the pouch and
  * a wound may shrink it below.
+ *
+ * **art. 128: this is where six lives, and it is the only place it lives.**
+ * The engine has never assumed it — `Hand` is a collection and always has
+ * been — and after the visual migration the tray does not assume it either.
+ * So changing the game to some other number is changing this constant and
+ * the pouch beside it, and nothing in `src/lots`, `src/state` or the shell
+ * has to be touched to follow.
  */
 export const HAND_SIZE = 6
+
+/**
+ * A pouch of `n` plain bones (art. 128).
+ *
+ * It exists so that nothing outside this file has to know how a plain bone
+ * is made in order to ask for a different number of them — the canonical
+ * fixture asks for one to draw a tray of three or eight, and a future rule
+ * that wakes the player with a different hand asks for one too. It is not a
+ * balance knob: `PLAIN_POUCH` is still what the game wakes with, and it is
+ * still six.
+ */
+export function plainPouchOf(n: number): Pouch {
+  return { dice: Array.from({ length: Math.max(0, n) }, (_, i) => plainBone(i + 1)) }
+}
 
 /**
  * The Orphan — faces {6,2,3,4,5,6}, over the plain bone's budget with no

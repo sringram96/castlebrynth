@@ -32,6 +32,7 @@ import {
   MOTION,
   NOTICES,
   PLAIN_POUCH,
+  plainPouchOf,
   READOUT,
   ROLLING_CAP,
   ROOM_BOOK,
@@ -170,6 +171,7 @@ import {
   freshCard,
   keep,
   loadedFaces,
+  openFight,
   recast,
   ridersFired,
   rollBeats,
@@ -216,19 +218,34 @@ import type { AtTheDoor } from './shell/screens/threshold.js'
 import { doorActs, doorWord } from './shell/screens/threshold.js'
 import type { SettingsActs, SettingsView } from './shell/screens/settings.js'
 import { settingsPanel, settingsWord } from './shell/screens/settings.js'
-import type { Framebuffer, Prop, RenderedRoom, Scene, WorldMark } from './room/index.js'
+import type { Framebuffer, Prop, RenderedRoom, Scene, View, WorldMark } from './room/index.js'
 import {
   breathing,
   fillScale,
   markRect,
   overpaint,
   phaseOf,
-  present,
   renderRoom,
   stirring,
   swelling,
   unbidding,
 } from './room/index.js'
+// arts 126–127: the compositor above the renderer. `src/room` computes the
+// box; this lays the authored plates over it, in the article's order.
+import type { Draw, SceneArt } from './visual/index.js'
+import {
+  assetCache,
+  composite,
+  frameHeightFor,
+  imageDecoder,
+  paintFrame,
+  viewportOf,
+} from './visual/index.js'
+import { PLATES, artFor, horrorPlateAt, horrorPlateFor } from './content/visual/index.js'
+import type { TrayLayout } from './shell/tray.js'
+import { DIE_DIAL, layoutDice } from './shell/tray.js'
+import { canonicalChain, canonicalNode, canonicalRequest } from './shell/canonical.js'
+import { CANONICAL } from './content/visual/index.js'
 
 // ── The bands ──────────────────────────────────────────────────────────
 
@@ -402,6 +419,9 @@ function goods(): Goods {
 
 /** art. 82: the room the run is standing in, as dealt. */
 function here(): ChainNode {
+  // art. 126: the canonical harness stands in one authored room, so that is
+  // the room. Development only, and null in every build.
+  if (fixture !== null) return fixture
   const node = nodeAt(chain, ledgers.run!.at.instance)
   if (node === null) throw new Error(`no room dealt at ${ledgers.run!.at.instance}`)
   return node
@@ -473,6 +493,86 @@ function boot(): void {
   paint()
 }
 
+// ── The canonical screen (development only) ────────────────────────────
+
+/**
+ * art. 126: **the still the art is iterated against.**
+ *
+ * Set only by `openCanonical`, and only under `import.meta.env.DEV`. While
+ * it stands, `here()` answers the fixture's room instead of the run's, which
+ * is the whole of the override: everything downstream — the scene, the
+ * plates, the marks, the tray, the crown — is the game's own code working on
+ * a node it was handed, exactly as it would be inside a run.
+ */
+let fixture: ChainNode | null = null
+
+/**
+ * Open the canonical screen if the URL asked for it.
+ *
+ * Deterministic in every particular the reference cares about: the room, the
+ * horror, the body, the seed the dice are cast from, and the turn the intent
+ * comes off. `?dice=n` is the one knob, and it moves the *hand* — a real
+ * pouch of n bones against a hand size of n — rather than the tray, so what
+ * is being looked at is the tray solving a real hand and not a mock-up of
+ * one (art. 128).
+ */
+function openCanonical(): void {
+  const asked = canonicalRequest(location.search)
+  if (asked === null) return
+  const room = asked.room ?? CANONICAL.room
+  const size = asked.dice ?? CANONICAL.dice
+
+  fixture = canonicalNode(room)
+  const seed = reseed(CANONICAL.seed as unknown as Seed)
+  // A real waking, with a real pouch. `plainPouchOf` is content's, so the
+  // fixture asks for a hand the same way a future rule would (art. 128).
+  ledgers = woken(null, firstPermanent(plainPouchOf(size), size, BARE_BODY), seed)
+  ledgers = { ...ledgers, run: tookIntoRun(ledgers.run!, ledgers.permanent) }
+  chain = canonicalChain(fixture, seed)
+  ledgers = {
+    ...ledgers,
+    run: {
+      ...ledgers.run!,
+      at: { room: fixture.room, instance: fixture.instance, step: 0, beat: 0 },
+      health: CANONICAL.health,
+      healthMax: CANONICAL.healthMax,
+      armor: CANONICAL.armor,
+    },
+  }
+  bands = enterRoom(ledgers, chain, ROOM_BOOK, fixture.instance)
+  pick = onArrival(doors(bands))
+
+  // A real fight, opened through the real door. There is no fixture path
+  // through `openFight`, so what the tray draws is what a fight is.
+  const horror = horrorById(CANONICAL.horror)
+  if (horror !== null) {
+    const opened = openFight(
+      horror,
+      ledgers.run!.hand,
+      CANONICAL.health,
+      CANONICAL.armor,
+      goods(),
+      CANONICAL.healthMax,
+    )
+    // The dice are cast, off the fixed seed, so the still shows faces rather
+    // than an empty row. That is the point of the fixture: the tray it draws
+    // is the tray mid-turn, which is the one the reference is a picture of.
+    fight = withTurn(opened, cast(opened.turn, turnLots(seed, 0, CANONICAL.turn)(1)))
+    phase = 'claim'
+    screen = { kind: 'fight', door: null }
+    focus('fight')
+    // The thing has already come close: the still is mid-fight, not at the
+    // moment one opens, so the advance is finished rather than beginning.
+    advanced = true
+    closeness = 1
+  } else {
+    screen = { kind: 'room' }
+  }
+  resumed = screen
+  abandoning = false
+  paint()
+}
+
 /** A seed for a waking that has never happened before. */
 function freshSeed(): Seed {
   return reseed((Date.now() % 0x7fffffff) as unknown as Seed)
@@ -504,7 +604,50 @@ function persist(): void {
 const painted = new Map<string, RenderedRoom>()
 
 function frameHeight(): number {
-  return Math.max(120, Math.round((GRID * worldBand.clientHeight) / worldBand.clientWidth))
+  return frameHeightFor(GRID, worldBand.clientWidth, worldBand.clientHeight)
+}
+
+/**
+ * art. 126: **the authored plates, decoded once.**
+ *
+ * Preloaded at boot and never touched during a paint — a plate is an
+ * `Image` that was decoded before the first frame, so compositing it costs a
+ * `drawImage` and nothing else. Art that has not arrived (or has not been
+ * drawn yet) simply is not in the cache, and the compositor drops its band:
+ * the computed room stands on its own, which is art. 26's first tier doing
+ * the job it was written for.
+ */
+const plates = assetCache(imageDecoder(import.meta.env.BASE_URL))
+
+/**
+ * art. 126: the load is a repaint and never a block. The first frame is the
+ * computed room; the plates land on the next one, which on a phone is the
+ * same frame as far as anybody can tell.
+ */
+function loadPlates(): void {
+  void plates.load(PLATES).then(() => {
+    if (document.body.isConnected) world()
+  })
+}
+
+/**
+ * art. 127: what the compositor needs to know about this moment.
+ *
+ * `still` is art. 116's reduced motion, so a player who asked the world to
+ * hold still gets every patch on its settled frame — which art. 107 says is
+ * the whole truth, so they have missed nothing.
+ */
+function drawsFor(art: SceneArt, view: View, frame: Framebuffer): readonly Draw[] {
+  return composite(art, {
+    view,
+    frame: { width: frame.width, height: frame.height },
+    assets: plates,
+    moment: {
+      tick,
+      still: stillness(),
+      inFight: screen.kind === 'fight',
+    },
+  })
 }
 
 /** Whether the thumb is at the front door rather than inside the labyrinth. */
@@ -563,8 +706,16 @@ function world(marks = true): void {
   // art. 119 §3: **the lunge** — your strike sends it back and returns it,
   // settling where it stood. The knock is a fraction of the advance's own
   // travel, so it is the same motion in reverse rather than a second one.
+  // art. 126: **a horror that has been plated advances as its plate.** The
+  // hinge's massed body and the authored plate are the same event at art. 26's
+  // two tiers, so exactly one of them is ever in the frame: a plated horror
+  // leaves the overpaint empty and takes the hero band instead, and one with
+  // no plate is massed exactly as it was before this wave.
+  const plated =
+    screen.kind === 'fight' && fight !== null ? horrorPlateFor(fight.horror.id) : null
+  const arriving = closeness - knocked * LUNGE + (told ? SWELL : 0)
   const close =
-    screen.kind === 'fight' && fight !== null
+    screen.kind === 'fight' && fight !== null && plated === null
       ? [
           advanceWith(
             fight,
@@ -585,7 +736,16 @@ function world(marks = true): void {
         ...unbidding(scene.motion, base.view, unbidden?.at ?? -1),
       ]
   const over = [...close, ...moving]
-  show(over.length === 0 ? base.frame : overpaint(base, over))
+  const frame = over.length === 0 ? base.frame : overpaint(base, over)
+  // arts 126–127: and the authored layer over the computed one. The room's
+  // own plates are a lookup on the template (art. 34), so a room that has
+  // not been dressed composes an empty list and shows exactly the frame it
+  // always showed. art. 83: the horror's plate is the *horror's*, joined on
+  // here rather than authored into the room it happens to be standing in.
+  const roomArt = artFor(node.room as string)
+  const art: SceneArt =
+    plated === null ? roomArt : { ...roomArt, hero: horrorPlateAt(plated, arriving) }
+  show(frame, drawsFor(art, base.view, frame))
   if (marks) layMarks(base, content)
 }
 
@@ -659,17 +819,27 @@ function telling(): boolean {
 /** How much more of the lens a telegraphing horror fills. Tuning. */
 const SWELL = 0.09
 
-function show(frame: Framebuffer): void {
-  present(frame, canvas)
+/**
+ * arts 25, 127: the frame reaches the device.
+ *
+ * `draws` is the compositor's list — the authored bands, over the cast box.
+ * Empty is the room as it was before this wave, which is what every
+ * undressed room and the gate itself hand in.
+ */
+function show(frame: Framebuffer, draws: readonly Draw[] = []): void {
+  paintFrame(canvas, frame, draws, plates)
   // art. 25 (amended): exact fill via sharp upscale. The frame's height came
   // from this band's aspect, so filling one dimension all but fills both.
-  const scale = fillScale(frame, worldBand.clientWidth, worldBand.clientHeight)
-  canvas.style.width = `${frame.width * scale}px`
-  canvas.style.height = `${frame.height * scale}px`
+  const box = viewportOf(frame.width, frame.height, worldBand.clientWidth, worldBand.clientHeight)
+  canvas.style.width = `${box.cssWidth}px`
+  canvas.style.height = `${box.cssHeight}px`
   // art. 22: nothing is fixed in device pixels. The shake is **two game
   // pixels** (art. 119 §3), so it is stated in the frame's own units and
   // handed to the stylesheet in whatever those come to on this device.
-  document.documentElement.style.setProperty('--shake', `${(SHAKE_PIXELS * scale).toFixed(2)}px`)
+  document.documentElement.style.setProperty(
+    '--shake',
+    `${(SHAKE_PIXELS * box.scale).toFixed(2)}px`,
+  )
 }
 
 /** The smallest a mark may be drawn, in device pixels. A thumb is a thumb. */
@@ -1484,23 +1654,31 @@ function theFightPanel(): void {
   const laid = casting(now.turn)
   const byId = new Map(ledgers.run!.hand.dice.map((die) => [die.id as string, die] as const))
   const heldFast = new Set<string>(now.turn.bound)
+  // art. 128: the row is measured against what is actually going into it —
+  // the dice on the table plus the ones an intent is holding shut, because a
+  // bound die still takes a place in the row (art. 65: the hole is the
+  // visible part of the effect).
+  const standing = laid.length > 0 ? laid.length : ledgers.run!.hand.dice.length - heldFast.size
+  const layout = measureHand(standing + now.turn.bound.length)
+  const row = handRow(layout)
   if (laid.length > 0) {
     const spent = claimedDice(now.turn)
     for (const landed of laid) {
       const die = byId.get(landed.die)
       if (die === undefined) continue
-      fightPanel.append(dieSlot(die, landed, spent.has(landed.die)))
+      row.append(dieSlot(die, landed, spent.has(landed.die)))
     }
   } else {
     for (const die of ledgers.run!.hand.dice) {
       if (heldFast.has(die.id as string)) continue
-      fightPanel.append(dieSlot(die, null, false))
+      row.append(dieSlot(die, null, false))
     }
   }
   for (const id of now.turn.bound) {
     const die = byId.get(id as string)
-    if (die !== undefined) fightPanel.append(boundSlot(die, now.horror.id))
+    if (die !== undefined) row.append(boundSlot(die, now.horror.id))
   }
+  fightPanel.append(row)
   // card 93: **they render only if carried.** No empty row, no placeholder —
   // zero rolling goods is the normal state of the game, so a run carrying none
   // has nothing here and nothing on screen hints that something is missing.
@@ -1864,6 +2042,62 @@ function slot(className: string): HTMLButtonElement {
   return el
 }
 
+// ── The hand, however many it is (art. 128) ────────────────────────────
+//
+// The tray used to draw a 48-pixel slot and trust that six of them fitted a
+// phone. Six is a *rule* — `HAND_SIZE`, in content, where art. 60 puts it —
+// and a rule standing in a stylesheet is a rule nothing can change. So the
+// row is measured instead: the count and the room available go in, and a
+// size, a gap and a row count come out (`src/shell/tray.ts`).
+//
+// It is deliberately not a media query and deliberately not a scroll. A
+// media query would be guessing at the count from the screen, and the count
+// is a fact the tray already has; a scroll would hide a die, and a die you
+// cannot see is a die you cannot plan with (art. 42).
+
+/** What the hand is being drawn at right now. Recomputed every paint. */
+let handLayout: TrayLayout = layoutDice(0, 0)
+
+/**
+ * Measure the row before anything is put in it. The width is the panel's
+ * own, so the answer follows the phone rather than a breakpoint.
+ */
+function measureHand(count: number): TrayLayout {
+  const room = fightPanel.clientWidth > 0 ? fightPanel.clientWidth : stage.clientWidth
+  // The panel's own padding is in the element's client width, and the trinket
+  // row shares the flow, so the measurement is the row's rather than the
+  // panel's. 20 is `#fight`'s two 10-pixel gutters.
+  handLayout = layoutDice(count, Math.max(0, room - 20))
+  return handLayout
+}
+
+/**
+ * The row the dice stand in. Its size is a custom property rather than a
+ * class, because there is no finite set of sizes to name — art. 128's whole
+ * point is that the number is computed.
+ */
+function handRow(layout: TrayLayout): HTMLDivElement {
+  const row = document.createElement('div')
+  row.className = 'hand'
+  row.style.setProperty('--die', `${layout.size}px`)
+  row.style.setProperty('--gap', `${layout.gap}px`)
+  // The row wraps at the count the layout worked out rather than wherever
+  // the box happens to run out, so a hand that needs two rows gets the two
+  // balanced rows the layout chose and not an eight-and-one ragged one.
+  row.style.setProperty('--per-row', `${Math.max(1, layout.perRow)}`)
+  return row
+}
+
+/**
+ * How large a face is drawn inside a die of this size. The face is an
+ * authored drawing (art. 100), so it scales with its slot and keeps the
+ * proportion card 94 settled — 40 in a 48 — rather than being pinned to a
+ * number that only made sense at one hand size.
+ */
+function faceSizeFor(layout: TrayLayout): number {
+  return Math.max(24, Math.round(layout.size * (FACE_IN_SLOT / DIE_DIAL.preferred)))
+}
+
 // ── The two materials (card 94, arts 100, 113) ─────────────────────────
 //
 // The playtest could not tell the six from the carried things, and the reason
@@ -2022,6 +2256,7 @@ function dieSlot(die: Die, landed: Landed | null, claimed: boolean): HTMLButtonE
       boneFace(face?.value ?? landed.face.value, {
         lit: lift,
         mark: face === undefined ? null : markOn(face),
+        size: faceSizeFor(handLayout),
       }),
     )
   }
@@ -3470,3 +3705,11 @@ addEventListener('resize', () => {
 })
 
 boot()
+// art. 126: the plates, after the first frame. The computed room is what the
+// game opens on either way, so a slow decode costs a repaint and never a
+// blank screen.
+loadPlates()
+// The canonical fixture (`?scene=canonical`), and only in development. It is
+// a harness and not a screen: a built game has no route to it, which is the
+// whole of why it is not a debug control wearing a player UI's coat.
+if (import.meta.env.DEV) openCanonical()

@@ -10,7 +10,7 @@ Four documents, and each answers one question:
   green, what is owed. **Nothing chronological lives there.**
 - **CHRONICLE.md** — how did it get here? Every wave journal, newest
   first, append-only. History, and it binds nothing.
-- **`.claude/rules/`** — the law: 124 numbered articles, cited as
+- **`.claude/rules/`** — the law: 128 numbered articles, cited as
   "art. N". Start at `journey.md`: it is the five modes, the one
   question each asks, and the table of every mechanic with its mode, its
   ledger and its articles.
@@ -27,6 +27,7 @@ Test:    npm test
 - src/state   — the two ledgers; rituals; persistence; exact resume
 - src/gen     — the seeded chain; grammar rules; winnability proof
 - src/room    — the computed-box renderer (GRID dial)
+- src/visual  — the compositor above it: layers, plates, patches
 - src/descent — candles, taps, acts, doors
 - src/lots    — the dice engine
 - src/hinge   — fight-doors, the advance, death routing
@@ -40,7 +41,12 @@ Test:    npm test
 - Two-ledger discipline: run and permanent state never mix except through
   the named rituals in src/state (art. 11).
 - Nothing may assume a device pixel or the number 240 outside render
-  config (arts 22–23).
+  config (arts 22–23), and nothing outside `src/content` may assume the
+  hand is six (art. 128).
+- Perspective is computed; appearance may be authored (art. 126). `src/room`
+  owns every spatial fact; `src/visual` lays authored plates over the frame
+  it produces, in the order art. 127 declares. Assets are data: only
+  `src/content/visual/assets.ts` knows a filename.
 - Every player-facing string obeys rules/voice.md: it is the protagonist
   thinking or the protagonist writing, never a narrator. Content review is
   voice review, and `test/content.voice.test.ts` is the review.

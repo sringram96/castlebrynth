@@ -87,7 +87,9 @@ outcome already decided).
 | the mercies — the Sanctum's breath, the Savior's | run (the body) | 40 |
 | the Savior's memory of you | **permanent** (`memories`) | 84 |
 | the doorway stir, and the room's one unbidden beat | — (hashed off identity) | 106–110, 117 |
-| the advance — the thing come close | run (`fight.advanced`) | 28, 30 |
+| authored plates over the computed room | — (content, placed deterministically) | 15, 26, 100, 126–127 |
+| animated patches — the small part that moves, repainted alone | — (hashed off identity, on the world clock) | 107, 109–110, 127 |
+| the advance — the thing come close, massed or plated | run (`fight.advanced`) | 28, 30, 126 |
 | the lock, the key turning, and the keeper it wakes | run (a deed) | 37, 68, 97, 118 |
 
 ### The Fight
@@ -95,6 +97,7 @@ outcome already decided).
 | mechanic | ledger | articles |
 | --- | --- | --- |
 | the turn — Roll, Reroll, Attack | run (`fight`) | 41, 44–46 |
+| the die row, measured from the count it is given | — (derived from the hand and the width) | 60, 128 |
 | the intent, shown before the first casting | run (`fight`) | 42, 57–58, 65 |
 | the ladder — shapes and multipliers | — (content) | 45, 48 |
 | the card — each line once per fight | run (`fight.card`) | 63–64 |

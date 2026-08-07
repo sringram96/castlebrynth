@@ -26,7 +26,12 @@ keeps the knowledge.
   proves winnability. (arts 31–39, 77–85)
 - **src/room** — the computed-box renderer on the GRID dial; one ramp per
   surface and one dither between adjacent steps; the world marks a thumb
-  answers through. (arts 13–25, 68, 93–115)
+  answers through. It owns every spatial fact and no appearance it is not
+  asked for. (arts 13–25, 68, 93–115)
+- **src/visual** — the compositor above the renderer: the layer order, the
+  asset manifests, deterministic placement, animated patches, the viewport.
+  It knows how to composite and does not know that a Marrow exists.
+  (arts 126–127)
 - **src/descent** — plays a room: candles, taps, acts, doors, and what has
   happened in the room. (arts 3, 5–9, 29, 70, 118, 120)
 - **src/hinge** — a door that is a fight; the advance; death routing; the
@@ -45,10 +50,16 @@ No backend. Vite + strict TypeScript, no framework. URL is the install;
 all state client-side.
 
 ## Key decisions
-- **The box is computed, not painted** — rooms are `{lens, width, ceiling}`
-  plus a sprite manifest; perspective cannot lie. (arts 13–15)
+- **Perspective is computed; appearance may be authored** — rooms are
+  `{lens, width, ceiling}` plus a shape, and every spatial fact is the
+  renderer's, so perspective cannot lie. Over that frame the compositor lays
+  authored plates in a declared order. (arts 15, 126–127)
 - **Relative scale everywhere** — one game pixel = 1/GRID of frame width;
   GRID is a dial (240 now, 480 a named option). (arts 22–25)
+- **The tray renders the hand it is given** — the die row is measured from
+  the count and the width available, never a fixed number of slots. Six is a
+  rule (`HAND_SIZE`, in content), and content is the only place it lives.
+  (arts 60, 128)
 - **Blind chains, reseeded every death, provably winnable** — and blind is not
   mute: a door leaks its region's sense, true and partial and never a label,
   so the drift's twenty questions are asked in a language the player can
@@ -340,6 +351,7 @@ and not a feeling.
 | *The labyrinth goes down. It does not go back up* | forward-only doors (art. 9); `run.finished` — *"He is not on this floor. So it is the next one."* | delivered |
 | *Doors close behind you like verdicts* | the pick, the plain verb, and no back (arts 9, 71) | delivered |
 | *candles do the only arguing against the dark* | the word band, one beat at a time (art. 29) | delivered |
+| *still rooms, painted like plates* | the computed box, plus authored plates composited over it in a declared order (arts 15, 126–127). The socket is built and the density is not there yet: one horror is plated, of five | **partly** — the art is owed, not the architecture |
 | *everything you learn ... you keep, even when the labyrinth kills you* | `known`, `met`, `memories` and the Book on the permanent ledger (arts 10, 11, 34, 84) | delivered |
 | *every lie the walls told* | — the walls do not lie yet; nothing in the depth is false and later corrected | **undelivered** |
 | *every thing you refused to take* | the refusal flags (art. 84), landing in a good's origin sentence and in what a tap answers | delivered |
