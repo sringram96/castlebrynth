@@ -130,14 +130,12 @@
          an inner shadow under the lip so the panel sits *inside* the frame
          rather than on top of the page. The room's own darkness runs into it,
          which is what stops the seam reading as a fold in a web page. */
-      #tray { flex: 0 0 auto; padding: 8px 10px 12px;
-        display: flex; flex-direction: column; gap: 8px;
-        background:
-          linear-gradient(#00000000 0, #000000aa 6px, #00000000 7px),
-          linear-gradient(180deg, var(--iron-lit) 0, var(--iron) 3px, #1e1c18 34%, #141310 100%);
-        border-top: 2px solid var(--bone-deep);
-        box-shadow: inset 0 3px 10px -4px #000, inset 0 -30px 40px -34px #000;
-      }
+      /* The authored reliquary is the tray. There is no CSS-drawn backup
+         apparatus underneath it: before the plate arrives, this band is
+         simply not shown. That prevents the old tray flashing through the
+         transparent parts of the new one or during decode. */
+      #tray { flex: 0 0 auto; visibility: hidden; pointer-events: none;
+        padding: 0; margin: 0; border: 0; box-shadow: none; background: none; }
       /* **The reliquary, once it has been painted** (the hero-art wave).
          Above is the carved tray the stylesheet draws, and it stays: art. 126
          says missing art is a plainer room and never a broken one.
@@ -154,9 +152,8 @@
       #tray.plated { position: absolute; display: block; left: 50%; bottom: 0;
         width: 108%; transform: translateX(-50%); z-index: 3;
         aspect-ratio: 1460 / 727; max-height: none; padding: 0; gap: 0;
+        visibility: visible; pointer-events: auto;
         border-top: none; box-shadow: none;
-        /* The plate has real alpha. Let the room continue behind the carved
-           silhouette instead of matting those pixels to flat black. */
         background: var(--reliquary) center / 100% 100% no-repeat; }
       #tray.plated #rail { display: contents; }
       /* The panel container is the **coordinate space**, not a surface: it
@@ -235,22 +232,25 @@
       #tray.plated #trayDebug { position: absolute; inset: 0; pointer-events: none;
         z-index: 9; }
 
-      /* the orb: a level in glass, and two numerals under it */
+      /* Health is a persistent piece of the apparatus. `#healthMeter` is a
+         direct child of the tray, so animation paints never destroy/recreate
+         it and it needs no coordinate compensation through the text box. */
+      #tray.plated #healthMeter { position: absolute; display: block;
+        overflow: hidden; pointer-events: none; border-radius: 46%;
+        contain: paint; box-shadow: inset 0 0 12px #0009; }
+      #tray.plated #healthMeter::after { content: ''; position: absolute;
+        left: 0; right: 0; bottom: 0; height: var(--fill, 100%);
+        background: linear-gradient(180deg, #a83a23 0, #741e10 58%, #430e07 100%);
+        box-shadow: inset 0 3px 6px -3px #ff9b7a88; opacity: .64; }
       #tray.plated #vitals { margin: 0; padding: 0; background: none;
         box-shadow: none; border-radius: 0; min-height: 0;
         display: flex; flex-direction: column; align-items: center;
-        justify-content: flex-start; gap: 0; overflow: visible; }
+        justify-content: center; gap: 0; overflow: visible; }
       #tray.plated #vitals .glyph { display: none; }
-      #tray.plated #vitals .bulb { border-radius: 50%; overflow: hidden;
-        pointer-events: none; }
-      #tray.plated #vitals .bulb::after { content: ''; position: absolute;
-        left: 0; right: 0; bottom: 0; height: var(--fill, 100%);
-        background: linear-gradient(180deg, #8e2a17 0, #611709 60%, #3a0d06 100%);
-        box-shadow: inset 0 3px 7px -3px #ff9070aa; opacity: .9; }
-      #tray.plated #vitals .hp { font-size: .84rem; line-height: 1.05;
+      #tray.plated #vitals .hp { font-size: .78rem; line-height: 1.05;
         color: #ede2c8; text-shadow: 0 1px 2px #000, 0 0 6px #000; }
       #tray.plated #vitals .hp b { color: #ede2c8; font-weight: normal; }
-      #tray.plated #vitals .ar { font-size: .58rem; line-height: 1.2;
+      #tray.plated #vitals .ar { font-size: .56rem; line-height: 1.15;
         color: #9a8f77; text-shadow: 0 1px 2px #000; }
       #tray.plated #vitals .ar::before { content: '\25C7 '; color: #7d7461; }
 
@@ -271,34 +271,56 @@
          the floor is a fact about the target, never about the sprite). */
       #tray.plated .hand.posed .slot,
       #tray.plated .hand.posed .slot.die { background: none; border: none;
-        box-shadow: none; border-radius: 0; padding: 0; }
+        box-shadow: none; border-radius: 0; padding: 0; isolation: isolate;
+        overflow: visible; }
+      /* The visible recess is panel, not die: square, inset, and only a hair
+         larger than the bone. The surrounding button stays generous for taps. */
+      #tray.plated .hand.posed .slot::before { content: ''; position: absolute;
+        left: 50%; top: 50%; width: 94%; aspect-ratio: 1;
+        transform: translate(-50%, -50%); z-index: -1; pointer-events: none;
+        border: 1px solid #4a4133; border-radius: 2px;
+        background: linear-gradient(180deg, #17140f 0, #0d0c09 70%, #090807 100%);
+        box-shadow: inset 0 2px 4px #000, inset 0 0 0 1px #211d17,
+                    0 1px 0 #62574455; }
       #tray.plated .hand.posed .slot::after { display: none; }
-      /* art. 72 still needs the four states unmistakable: a mark on the die
-         and never a box around it. */
-      #tray.plated .hand.posed .slot.sel .mark {
-        filter: drop-shadow(0 0 3px #d9b36a) drop-shadow(0 0 1px #d9b36a); }
+      #tray.plated .hand.posed .slot .mark { position: relative; z-index: 1; }
+      /* Selection lights the fitted SOCKET, not the bone. Cyan is deliberately
+         outside the bone/gold/kept palette so a picked die is obvious at a glance. */
+      #tray.plated .hand.posed .slot.sel::before {
+        border: 2px solid #55e5d5;
+        box-shadow: inset 0 0 0 1px #123f3b, inset 0 2px 4px #000,
+                    0 0 5px #55e5d5, 0 0 10px #55e5d577; }
+      #tray.plated .hand.posed .slot.sel .mark { filter: none; }
       #tray.plated .hand.posed .slot.kept .mark { filter: drop-shadow(0 0 3px #7fa8b8); }
       #tray.plated .hand.posed .slot.claimed { opacity: .7; }
       #tray.plated .hand.posed .slot.unused { opacity: .45; }
       #tray.plated .hand.posed .slot.bound { opacity: .5; }
 
-      /* The central well is the scoring stage. The arithmetic is intentionally
-         the largest changing object in the tray; the line name stays visible
-         beneath it so selecting dice reads as a result, not a debug counter. */
-      #tray.plated #fight .score { display: grid;
-        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-        place-items: center; align-content: center; padding: 0; gap: 9px; }
-      #tray.plated #fight .score > div { display: flex; min-width: 0;
-        flex-direction: column; align-items: center; justify-content: center; }
-      #tray.plated #fight .score .box { font-size: 1.65rem; line-height: 1;
-        min-width: 0; padding: 0; border: none; background: none; color: #e0bd72;
-        text-shadow: 0 2px 3px #000, 0 0 9px #000; }
+      /* Replace the old two-box score widget with one reading in the main
+         well: SUM × MULTIPLIER. It is a calculation, not a dashboard.
+         The combo name and exceptional arithmetic can sit quietly beneath. */
+      #tray.plated #fight .score { display: flex; flex-direction: column;
+        justify-content: center; align-items: center; padding: 4px 10px;
+        gap: 5px; overflow: visible; }
+      #tray.plated #fight .score > .score-equation { display: flex;
+        flex-direction: column; align-items: center; justify-content: center;
+        min-width: 0; max-width: 100%; }
+      #tray.plated #fight .score .box { font-size: clamp(1.2rem, 6vw, 1.65rem);
+        line-height: 1; min-width: 0; padding: 0; border: none; background: none;
+        color: #e0bd72; text-align: center; font-variant-numeric: tabular-nums;
+        text-shadow: 0 2px 3px #000, 0 0 9px #000; white-space: nowrap; }
       #tray.plated #fight .score .cap2 { display: block; max-width: 100%;
-        margin-top: 5px; overflow: hidden; text-overflow: ellipsis;
-        white-space: nowrap; font-size: .62rem; line-height: 1.1;
+        margin-top: 4px; overflow: hidden; text-overflow: ellipsis;
+        white-space: nowrap; font-size: .58rem; line-height: 1.05;
         color: #a79a7e; letter-spacing: .025em; text-align: center; }
-      #tray.plated #fight .score .op { align-self: center; font-size: 1rem;
-        line-height: 1; color: #7d7461; }
+      #tray.plated #fight .score-details { display: flex; flex-wrap: wrap;
+        align-items: center; justify-content: center; gap: 2px 9px;
+        max-width: 100%; color: #a79a7e; font-size: .54rem; line-height: 1.1;
+        text-align: center; white-space: normal; overflow: visible; }
+      #tray.plated #fight .score-details b { color: #d8c69f; font-weight: normal; }
+      #tray.plated #fight > .glyph { margin: 0; padding: 0; min-height: 0;
+        background: none; border: none; color: #9a8f77;
+        display: flex; align-items: center; justify-content: center; }
       /* **ACTION PLAQUE ART REQUIRED.** The frame carries no bed for an
          action — the three along its foot are the tabs — so this is text at an
          authored anchor rather than a plaque invented in CSS. */
@@ -402,8 +424,10 @@
       #stage.choosing #tray.plated { position: relative; flex: 1 1 auto;
         left: auto; bottom: auto; width: 100%; transform: none; z-index: auto;
         min-height: 0; max-height: none; aspect-ratio: auto;
+        visibility: visible; pointer-events: auto;
         padding: 0; margin: 0; border: 0; box-shadow: none; background: #000;
         overflow: hidden; }
+      #stage.choosing #healthMeter { display: none !important; }
       #stage.choosing #rail,
       #stage.choosing #pouchHand { display: none; }
       #stage.choosing #panels { position: absolute; inset: 0; width: auto;
@@ -667,10 +691,11 @@
       </main>
       <!--
         art. 67 (amended): the tray is a persistent rail and a panel area.
-        The rail never changes; the panels swap under it. The map tab is a
-        socket with nothing behind it (arts 31, 85) — there is no #map.
+        The painted reliquary is the only bottom interface. The third
+        footer bed is Read for now; Map is parked until a real map exists.
       -->
       <div id="tray">
+        <i id="healthMeter" aria-hidden="true"></i>
         <div id="rail">
           <div id="vitals"></div>
           <div id="tabs"></div>

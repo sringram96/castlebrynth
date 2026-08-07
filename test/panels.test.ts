@@ -159,15 +159,15 @@ describe('art. 91 — the transitions are a table, not a habit', () => {
   })
 })
 
-describe('arts 90, 92 — the tabs', () => {
+describe('art. 90 — the tabs', () => {
   /**
    * art. 67: FIGHT is not a tab. It is what the panel area *becomes* while a
    * fight is on — the ground the tray sits on rather than a place you go —
    * so it is deliberately absent from the rail, and a fight puts you there
    * without your having to find it.
    */
-  it('names the places you can go, and the socket that has none', () => {
-    expect(Object.keys(TABS).sort()).toEqual(['acts', 'map', 'pouch'])
+  it('names the places you can go', () => {
+    expect(Object.keys(TABS).sort()).toEqual(['acts', 'pouch'])
     expect(Object.keys(TABS)).not.toContain('fight')
   })
 
@@ -193,13 +193,14 @@ describe('arts 90, 92 — the tabs', () => {
   })
 
   /**
-   * art. 92: the map is a socket. There is no panel behind it, and the panel
-   * union is where that is enforced — a `Panel` value for the map cannot be
+   * art. 92 is repealed: the disabled Map socket was placeholder chrome, so
+   * there is no longer a label for it either. The panel union remains where
+   * the absence is enforced — a `Panel` value for the map cannot be
    * constructed, so nothing can focus it by accident.
    */
   it('leaves the map out of the panels entirely', () => {
     const panels: readonly Panel[] = ['acts', 'pouch', 'fight']
     expect(panels).not.toContain('map' as unknown as Panel)
-    expect(Object.keys(TABS)).toContain('map')
+    expect(Object.keys(TABS)).not.toContain('map')
   })
 })

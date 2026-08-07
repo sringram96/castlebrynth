@@ -92,10 +92,12 @@ in it.
     what a moving thing owes the thumb.)
 
 ## The screen
-29. SETTLED — Three bands. The word: borderless at the top, fades after a
-    beat, tap to recall — presentation fades, knowledge doesn't. The world:
-    the frame. The tray: a box beneath, holding what the moment offers —
-    acts, spells, dice.
+29. SETTLED (amended 2026-08-07) — Three presentation layers. The word
+    is borderless at the top and fades after a beat; the world is the frame;
+    the tray is the **authored reliquary anchored over the lower edge of that
+    frame**, holding what the moment offers. There is no second CSS-drawn
+    bottom panel beneath it. Transparent pixels in the reliquary reveal the
+    room behind it.
 30. SETTLED — There is no battle screen. A fight is the room with the thing
     come close: the horror advances to the near depth and fills the lens;
     the tray turns to combat; the word keeps narrating.
@@ -476,11 +478,12 @@ deterministic and in key. Arts 126–128 say so.
      the amendment was granted, and the encoder refuses a master that
      breaks it.
 
-     **Missing art is a plainer room, never a broken one.** A named plate
-     that has not been drawn, or has not arrived, contributes nothing and
-     its band stays empty. Art. 26's first tier is a floor: the computed
-     box plus its props is a room that works, and every plate is an
-     improvement on a thing that already stood.
+     **Missing scene art is a plainer room, never a broken one.** A named
+     room/horror plate that has not arrived contributes nothing and the
+     computed world remains. This fallback does **not** require a second HUD
+     implementation beneath an authored HUD. The reliquary is shipped runtime
+     anatomy: if its asset has not decoded, the tray stays hidden rather than
+     flashing an obsolete CSS tray into its place.
 
      **Density is bought in the raster, not in the loop.** The reference
      is dense because information is *stored*, not because it is

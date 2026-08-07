@@ -21,7 +21,6 @@ import {
   BARE_BODY,
   CASCADE,
   CATALOG,
-  CROSSING,
   END_LINES,
   GATE,
   GRAMMAR,
@@ -262,6 +261,7 @@ const canvas = must<HTMLCanvasElement>('view')
 const markLayer = must<HTMLDivElement>('marks')
 const crownBand = must<HTMLDivElement>('crown')
 const sheetBand = must<HTMLDivElement>('sheet')
+const healthMeter = must<HTMLElement>('healthMeter')
 const vitalsRegion = must<HTMLDivElement>('vitals')
 const tabBar = must<HTMLDivElement>('tabs')
 const pouchRegion = must<HTMLDivElement>('pouch')
@@ -674,15 +674,11 @@ function poseTray(): void {
   // the central well and made its controls unreachable.
   if (!plated() || screen.kind === 'choosing') return
   const size = trayNow()
+  // The meter and its numerals are siblings in tray-space. Neither is
+  // positioned through the other, so the fill cannot inherit a tiny text box
+  // or jump when `vitals()` repaints.
+  place(healthMeter, RELIQUARY.healthOrb, size)
   place(vitalsRegion, RELIQUARY.healthText, size)
-  const bulb = vitalsRegion.querySelector<HTMLElement>('.bulb')
-  if (bulb !== null) {
-    // The glass is placed against the panel and the numerals against the
-    // panel, so the level lives in the orb rather than in the text's box.
-    place(bulb, RELIQUARY.healthOrb, size)
-    bulb.style.left = `${(RELIQUARY.healthOrb.x - RELIQUARY.healthText.x) * size.width}px`
-    bulb.style.top = `${(RELIQUARY.healthOrb.y - RELIQUARY.healthText.y) * size.height}px`
-  }
   // **The well.** Whichever panel the thumb is on stands in the panel's one
   // wide recess, and its rows flow inside it (`src/shell/well.ts`) — one
   // column while they fit, two when they do not. The well does not know what
@@ -696,12 +692,9 @@ function poseTray(): void {
     pouchHandRegion.classList.add('posed')
     poseHand(pouchHandRegion)
   }
-  const totals = fightPanel.querySelector<HTMLElement>('.totals')
-  if (totals !== null) place(totals, RELIQUARY.statusRail, size)
-  // The panel carves a small recess at its top right; the card's glyph is the
-  // one thing in the tray that wants exactly that (art. 74 — one glyph, and it
-  // is never parked mid-screen).
-  const glyph = fightPanel.querySelector<HTMLElement>('.totals .glyph')
+  // The card glyph is independent of scoring and owns the small top-right
+  // recess. There is no permanent bookkeeping rail any more.
+  const glyph = fightPanel.querySelector<HTMLElement>(':scope > .glyph')
   if (glyph !== null) place(glyph, grown(RELIQUARY.menu, RELIQUARY.menu.width, 0.16), size)
   const score = fightPanel.querySelector<HTMLElement>('.score')
   if (score !== null) place(score, RELIQUARY.score, size)
@@ -1667,22 +1660,15 @@ function focus(panel: Panel): void {
 function tabs(): void {
   tabBar.replaceChildren()
   const on = panelNow()
+
   const tab = (panel: Panel, key: string, bed: number): void => {
     const el = document.createElement('button')
     el.textContent = TABS[key] ?? key
-    // art. 67: **a region lives in exactly one place and never moves.** The
-    // bed is a property of *which tab this is* and never of how many happen to
-    // be on screen — the pouch is shut during a fight, and without this the
-    // map slid left into the bed the pouch had vacated.
     el.dataset.bed = String(bed)
     el.className = panel === on ? 'on' : ''
     el.setAttribute('aria-pressed', String(panel === on))
     el.onclick = () => {
       settle()
-      // art. 67: during a fight the duel is the ground the tray sits on, so
-      // a tab is somewhere you *step aside to*. Pressing the one you are
-      // already on steps back — which is how you return to a fight that has
-      // no tab of its own.
       focus(panel === on && inAFight() ? 'fight' : panel)
       band = HUSHED
       persist()
@@ -1690,26 +1676,32 @@ function tabs(): void {
     }
     tabBar.append(el)
   }
-  // art. 60: while the choice is being made there is nowhere else to be —
-  // and the same is true at the front door, which is a screen for the same
-  // reason. Neither of them touches the tray.
-  if (screen.kind === 'choosing' || atTheDoor()) return
-  tab('acts', 'acts', 0)
-  // art. 67: the pouch is shut during a fight. The hand a fight was opened
-  // with is the hand it is replayed with (arts 63, 75), so there is nothing
-  // to do in there — and a tab that only ever tells you "not now" is worse
-  // than a tab that is not offered.
-  if (!inAFight()) tab('pouch', 'pouch', 1)
-  // arts 31, 85: the map is a socket and stays one. A disabled tab is legal;
-  // pixels behind it are not, so there is no panel to focus and no handler to
-  // press. It is here to say that the road ahead is a thing the game has
-  // decided not to show you, rather than a thing nobody thought of.
-  const map = document.createElement('button')
-  map.textContent = TABS.map ?? 'map'
-  map.dataset.bed = '2'
-  map.disabled = true
-  map.setAttribute('aria-disabled', 'true')
-  tabBar.append(map)
+
+  // Choosing owns the whole black stage and settings owns the threshold.
+  if (screen.kind === 'choosing' || screen.kind === 'settings') return
+
+  // At the threshold the main well already contains its door actions; inside
+  // the run these two beds remain the panel navigation.
+  if (!atTheDoor()) {
+    tab('acts', 'acts', 0)
+    if (!inAFight()) tab('pouch', 'pouch', 1)
+  }
+
+  // The third bed is a persistent Book action, not a panel and not a room
+  // verb. It replaces the placeholder Map socket until a real map exists.
+  const read = document.createElement('button')
+  read.textContent = VERBS.read ?? 'Read'
+  read.dataset.bed = '2'
+  read.disabled = ledgers.permanent.bookOfEnds.length === 0
+  read.setAttribute('aria-disabled', String(read.disabled))
+  read.setAttribute('aria-pressed', String(sheet === 'book'))
+  read.className = sheet === 'book' ? 'on' : ''
+  read.onclick = () => {
+    settle()
+    sheet = sheet === 'book' ? null : 'book'
+    paint()
+  }
+  tabBar.append(read)
 }
 
 function panels(): void {
@@ -1789,62 +1781,40 @@ function reading(label: string, value: string): HTMLSpanElement {
  */
 function vitals(): void {
   vitalsRegion.replaceChildren()
-  // The rail is the body's numbers, and at the front door there is no body
-  // in the labyrinth to have any (art. 67: the tray holds what the moment
-  // offers, and this moment offers a door).
-  if (atTheDoor()) return
+
+  // The meter is persistent DOM: fight animation may repaint the tray many
+  // times, but it only changes this one percentage. Recreating the meter on
+  // every beat was the visible flash.
+  const atDoor = atTheDoor()
+  healthMeter.hidden = atDoor
+  if (atDoor) return
+
   const run = ledgers.run!
   const now = fight
-  // **The bulb fills.** The reliquary carries a glass orb where the body's
-  // numbers go, and an orb that never changes is an ornament. It reads the
-  // same health the line beside it reads — one truth, said twice, once as a
-  // number for the player who is counting and once as a level for the player
-  // who is glancing. It is presentation and it changes nothing (art. 116).
   const health = now !== null && inAFight() ? (shown?.yourHealth ?? now.yourHealth) : run.health
   const most = now !== null && inAFight() ? now.yourHealthMax : run.healthMax
-  const bulb = document.createElement('i')
-  bulb.className = 'bulb'
-  bulb.style.setProperty('--fill', `${Math.max(0, Math.min(100, (health / Math.max(1, most)) * 100))}%`)
-  vitalsRegion.append(bulb)
-  // art. 67 (amended): the rail is the body and nothing else. The turn's
-  // running totals belong to the fight, so art. 57 keeps them pinned in the
-  // FIGHT panel's header rather than in a rail that is always on screen.
+  healthMeter.style.setProperty(
+    '--fill',
+    `${Math.max(0, Math.min(100, (health / Math.max(1, most)) * 100))}%`,
+  )
+
   const corroded = now !== null && inAFight() && now.turn.intent.effect?.kind === 'corrode'
   const armorValue = corroded
     ? `0 ${READOUT.corroded}`
     : `${now !== null && inAFight() ? now.armor : run.armor}`
-  const armor = reading(
-    trayBand.classList.contains('plated') ? '' : (READOUT.armor ?? ''),
-    armorValue,
-  )
+  const armor = reading('', armorValue)
   armor.title = `${READOUT.armor ?? ''} ${armorValue}`.trim()
-  // art. 65 (`corrode`), art. 119 §3: **the armour flakes off the vitals**,
-  // on the beat the blow that ate it lands and on no other.
   if (corroded && beatNow?.kind === 'struck') armor.className = 'flaking'
+
   const full = now !== null && inAFight()
     ? `${shown?.yourHealth ?? now.yourHealth}/${now.yourHealthMax}`
     : `${run.health}/${run.healthMax}`
-  // **The orb reads before the text does.** In the painted tray the glass
-  // carries the proportion and the numerals shrink to the one number a
-  // decision needs; the whole reading stays on the element as its label, so
-  // nothing is lost to a screen reader or to a long press. Out of the painted
-  // tray it is the sentence it has always been.
-  const compact = trayBand.classList.contains('plated')
-  const health_ = compact
-    ? reading('', String(health))
-    : reading(READOUT.health ?? '', full)
+  const health_ = reading('', String(health))
   health_.title = `${READOUT.health ?? ''} ${full}`.trim()
-  // **The orb is an instrument, not a text box.** The level in the glass is
-  // the reading a glance takes; the numbers are the reading a decision takes,
-  // and in the painted tray they are set small and out of the way rather than
-  // pasted across the artwork. Nothing about what is true has changed — the
-  // same two numbers are on the frame, in the same place, all the time.
   health_.className = 'hp'
   armor.classList.add('ar')
   vitalsRegion.append(health_, armor)
-  // art. 74: the card lives behind a small, persistent glyph — and while a
-  // fight is on it lives in the fight's own header, where the rest of that
-  // fight's numbers are. One glyph, never two.
+
   if (!inAFight()) vitalsRegion.append(cardGlyph())
 }
 
@@ -1873,60 +1843,23 @@ function theFightPanel(): void {
   const now = fight
   if (now === null) return
 
-  const totals = document.createElement('div')
-  totals.className = 'totals'
-  // 2026-08-07 art-direction ruling: the horror's intent already declares
-  // what is coming, and an unused die is visible on the table. Repeating both
-  // as tiny ledger numbers made the tray read like debug UI. This header is
-  // now reserved for exceptional, actionable state (cost, bleed, withheld
-  // line) while the live score owns the main well.
-  const priced = pricedNow()
-  if (priced > 0) totals.append(reading(READOUT.cost ?? '', `${priced}`))
-  // art. 57: everything visible, and art. 65: a bleed is a number the plan
-  // has to be made against. What it will take at the top of the next turn,
-  // after armor — the fight's own armor, because corrosion is something an
-  // *intent* does and a bleed is not this turn's intent.
-  if (now.bleed !== null) {
-    const mark = reading(READOUT.bleeding ?? '', `${Math.max(0, now.bleed.amount - now.armor)}`)
-    // art. 65 (`bleed`), art. 119 §3: **a mark that ticks each turn**, and
-    // this is the tick. It is on the readout the plan was made against, so
-    // the thing that moves is the thing the player was counting on.
-    if (beatNow?.kind === 'bled') mark.className = 'ticking'
-    totals.append(mark)
-  }
-  const offer = claimOffer()
-  if (offer !== null) totals.append(reading('', offer))
+  // The glyph owns its authored recess directly. The old `.totals` header is
+  // gone: permanent incoming/unused bookkeeping was duplicate information,
+  // and exceptional arithmetic now belongs under the score in the main well.
   const glyph = cardGlyph()
-  // art. 65 (`seal`), art. 119 §3: **it shuts the pair-shaped lines**, and
-  // the lines live behind the glyph (art. 74) — so the glyph is where a seal
-  // landing can be seen. One tap from the mark to the card it is about.
   if (sealed(now.turn.intent).length > 0 && beatNow?.kind === 'struck') {
     glyph.classList.add('sealed')
   }
-  totals.append(glyph)
-  fightPanel.append(totals)
-  fightPanel.append(theScore(now))
+  fightPanel.append(glyph, theScore(now))
 
-  // The hand, as it lies. art. 72's four states are the die slot's business
-  // and have not moved.
-  //
-  // art. 65 (`bind`): a bound die is not on the table — it never landed —
-  // so it is drawn from the hand instead, shut, at the end of the row. The
-  // hole in the hand is the whole of what the effect does, and a hole you
-  // cannot see is a number in a log.
   const laid = casting(now.turn)
   const byId = new Map(ledgers.run!.hand.dice.map((die) => [die.id as string, die] as const))
   const heldFast = new Set<string>(now.turn.bound)
-  // art. 128: the row is measured against what is actually going into it —
-  // the dice on the table plus the ones an intent is holding shut, because a
-  // bound die still takes a place in the row (art. 65: the hole is the
-  // visible part of the effect).
   const standing = laid.length > 0 ? laid.length : ledgers.run!.hand.dice.length - heldFast.size
   const layout = measureHand(standing + now.turn.bound.length)
   const row = handRow(layout)
-  // arts 22, 128: in the painted tray the hand is an authored composition and
-  // the row is the field it stands in, not a box that arranges it.
   if (plated()) row.classList.add('posed')
+
   if (laid.length > 0) {
     const spent = claimedDice(now.turn)
     for (const landed of laid) {
@@ -1940,15 +1873,15 @@ function theFightPanel(): void {
       row.append(dieSlot(die, null, false))
     }
   }
+
   for (const id of now.turn.bound) {
     const die = byId.get(id as string)
     if (die !== undefined) row.append(boundSlot(die, now.horror.id))
   }
+
   if (plated()) poseHand(row)
   fightPanel.append(row)
-  // card 93: **they render only if carried.** No empty row, no placeholder —
-  // zero rolling goods is the normal state of the game, so a run carrying none
-  // has nothing here and nothing on screen hints that something is missing.
+
   for (const held of carriedTrinkets(goods())) fightPanel.append(trinketSlot(held))
   fightActs()
 }
@@ -2144,34 +2077,65 @@ function claimOffer(): string | null {
 function theScore(now: Fight): HTMLDivElement {
   const row = document.createElement('div')
   row.className = 'score'
-  const running = shown !== null
-  const made = running ? lineNow : offered(now)
-  const sum = running ? (shown?.attack ?? 0) : (made?.sum ?? loose(now))
-  // The collapse: the two boxes become one number, and the one number is the
-  // blow. Past it the multiplier has been spent and says so by going dark.
-  const spent = running && collapsed
-  const times = spent ? null : (made?.times ?? null)
 
-  const op = document.createElement('div')
-  op.className = `op${times === null ? ' dead' : ''}`
-  op.textContent = '×'
-  row.append(
-    capped(
-      box(`${sum}`, sum === 0 && !running, pulsing()),
-      spent ? (READOUT.blow ?? '') : (READOUT.sum ?? ''),
+  const running = shown !== null
+  // `lineNow` arrives during the resolution cascade; before that the current
+  // selection already tells us the same line. The visual itself stays simple:
+  // raw selected sum × the line multiplier. No result box and no duplicate
+  // total are added to the panel.
+  const made = running ? (lineNow ?? offered(now)) : offered(now)
+  const sum = running ? (shown?.attack ?? made?.sum ?? loose(now)) : (made?.sum ?? loose(now))
+  const times = made?.times ?? null
+
+  const equation = capped(
+    box(
+      `${sum} × ${times === null ? '—' : times}`,
+      times === null,
+      pulsing() || beatNow?.kind === 'line',
     ),
-    op,
-    capped(
-      box(times === null ? '—' : `${times}`, times === null, beatNow?.kind === 'line'),
-      spent || made === null ? '' : LADDER[made.line].name,
-    ),
+    made === null ? (READOUT.line ?? 'line') : LADDER[made.line].name,
   )
-  // art. 69, one level down: the readout says the same thing in words to
-  // anyone reading the tray rather than looking at it, and it says it in the
-  // words the line's own beat uses (`saysLine`) rather than in a second set.
+  equation.className = 'score-equation'
+  row.append(equation)
+
+  // Exceptional arithmetic still belongs in the main well, but it is
+  // supporting text rather than more score boxes.
+  const details = document.createElement('div')
+  details.className = 'score-details'
+
+  const offer = claimOffer()
+  if (offer !== null) {
+    const note = document.createElement('span')
+    note.textContent = offer
+    details.append(note)
+  }
+
+  const priced = pricedNow()
+  if (priced > 0) details.append(reading(READOUT.cost ?? 'cost', `${priced}`))
+
+  if (now.bleed !== null) {
+    details.append(
+      reading(READOUT.bleeding ?? 'bleeding', `${Math.max(0, now.bleed.amount - now.armor)}`),
+    )
+  }
+
+  if (resolving !== null) {
+    for (const rolled of resolving.amends) {
+      if (rolled.face.kind === 'null') continue
+      const item = document.createElement('span')
+      const name = (LABELS[rolled.trinket as string] ?? (rolled.trinket as string)).replace(/^the /, '')
+      item.textContent = `${name}: ${faceSays(rolled.face)}`
+      details.append(item)
+    }
+  }
+
+  if (details.childElementCount > 0) row.append(details)
+
   row.setAttribute(
     'aria-label',
-    made === null ? `${sum}` : `${sum} · ${saysLine(made.line, made.times)}`,
+    made === null
+      ? `${sum}`
+      : `${sum} × ${made.times} · ${saysLine(made.line, made.times)}`,
   )
   return row
 }
@@ -2770,14 +2734,12 @@ function acts(): void {
       // which was most of why dying read as arriving.
       return actStrip.append(
         verb(mustChoose(ledgers.permanent) ? 'choose' : 'wake', beginDescent),
-        verb('read', () => { sheet = 'book'; paint() }),
       )
     case 'finished':
       // And the other way round: the Warden's door is walked through, not
       // died at. He is going down a floor, so the word is Descend.
       return actStrip.append(
         verb(mustChoose(ledgers.permanent) ? 'choose' : 'descend', beginDescent),
-        verb('read', () => { sheet = 'book'; paint() }),
       )
     case 'choosing':
       return
@@ -2839,9 +2801,6 @@ function roomActs(): void {
     actStrip.append(verb('end', () => died('end.kept')))
   }
 
-  if (bands.room === CROSSING) {
-    actStrip.append(verb('read', () => { sheet = 'book'; paint() }))
-  }
 }
 
 /**
@@ -3012,7 +2971,6 @@ function commitChoice(): void {
 function atTheDoorNow(): AtTheDoor {
   return {
     inFlight: inFlight(ledgers),
-    hasBook: ledgers.permanent.bookOfEnds.length > 0,
     abandoning,
   }
 }
@@ -3046,10 +3004,6 @@ const DOOR_ACTS = {
   keep(): void {
     abandoning = false
     band = HUSHED
-    paint()
-  },
-  read(): void {
-    sheet = 'book'
     paint()
   },
   settings(): void {
@@ -3434,16 +3388,6 @@ let beatNow: Beat | null = null
  */
 let lineNow: Scored | null = null
 /**
- * card 94: **whether the two boxes have collapsed into the blow.**
- *
- * The multiplier is spent the moment the total starts climbing to what the
- * line made of it, so it goes dark and the sum's caption becomes *the blow*.
- * It is set by the beat rather than by a timer, and the beats it is set by are
- * every beat that can follow the riders — a line at ×1 has nothing to climb,
- * and its collapse still has to happen.
- */
-let collapsed = false
-/**
  * art. 119 §3: **the blow.** Which body the beat now is flashing, how far
  * the lunge has knocked the horror back, and whether the frame is offset.
  *
@@ -3460,22 +3404,6 @@ let moved = false
 const LUNGE = 0.14
 /** art. 22: the shake, in **game** pixels. `show` turns it into device ones. */
 const SHAKE_PIXELS = 2
-
-/**
- * card 94: the beats past which the multiplier has been spent. `rider` and
- * `bond` are deliberately absent — they fire between the line and the climb,
- * and the line is still the thing being paid out while they do.
- */
-const COLLAPSES: ReadonlySet<Beat['kind']> = new Set<Beat['kind']>([
-  'climb',
-  'amend',
-  'strike',
-  'fed',
-  'struck',
-  'bled',
-  'bound',
-  'ended',
-])
 
 function begin(frames: readonly Frame[], lands: () => void = paint): void {
   stopBeats()
@@ -3515,10 +3443,6 @@ function showFrame(frame: Frame, first: boolean): void {
   // and spending that gesture anywhere else spends it for nothing — so it is
   // the intent landing on you, and nothing else in the game, ever.
   jolted = frame.beat.kind === 'struck' && frame.beat.amount > 0
-  // card 94: the sum and the multiplier collapse into the blow, and they do
-  // it on the first beat that could follow the riders — the climb where there
-  // is one, and the thing that would have come after it where there is not.
-  if (COLLAPSES.has(frame.beat.kind)) collapsed = true
   speak(frame.beat)
   // The first frame gets the whole screen, because it is the answer to a
   // press: the strip has to lose the verb that started this in the same
@@ -3604,7 +3528,6 @@ function settleMarks(): void {
   spun = 0
   beatNow = null
   lineNow = null
-  collapsed = false
   flare = 'none'
   knocked = 0
   jolted = false
