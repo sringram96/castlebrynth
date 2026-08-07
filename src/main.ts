@@ -687,6 +687,10 @@ function poseTray(): void {
     bulb.style.left = `${(RELIQUARY.healthOrb.x - RELIQUARY.healthText.x) * size.width}px`
     bulb.style.top = `${(RELIQUARY.healthOrb.y - RELIQUARY.healthText.y) * size.height}px`
   }
+  // A room's verbs stand inside the central recess, centred in it. Without a
+  // place of their own they fell back to the panel's origin, which under an
+  // inset-zero panel is the top-left corner of the whole apparatus.
+  place(actStrip, RELIQUARY.actsRow, size)
   const totals = fightPanel.querySelector<HTMLElement>('.totals')
   if (totals !== null) place(totals, RELIQUARY.statusRail, size)
   // The panel carves a small recess at its top right; the card's glyph is the
@@ -696,17 +700,25 @@ function poseTray(): void {
   if (glyph !== null) place(glyph, grown(RELIQUARY.menu, RELIQUARY.menu.width, 0.16), size)
   const score = fightPanel.querySelector<HTMLElement>('.score')
   if (score !== null) place(score, RELIQUARY.score, size)
+  // art. 67: the pouch is shut while a fight is on, so its bed is free — and
+  // the thing that wants it is the verb that ends the turn. The middle bed is
+  // one region in two states, which is what the article already says the panel
+  // area is; it is not a second place for things.
   for (const el of fightPanel.querySelectorAll<HTMLElement>(':scope > button')) {
-    place(el, RELIQUARY.action, size)
+    place(el, grown(RELIQUARY.tabs[1] ?? RELIQUARY.action, 0, 0.2), size)
   }
   // The beds are 12% of a short panel — twenty-odd pixels — so the *target*
   // is grown about each one exactly as a die's is, and the word still sits on
   // the carving (art. 128: the floor is a fact about what a thumb presses).
   const beds = RELIQUARY.tabs
-  ;[...tabBar.children].forEach((el, at) => {
-    const bed = beds[at]
-    if (bed !== undefined && el instanceof HTMLElement) place(el, grown(bed, bed.width, 0.2), size)
-  })
+  for (const el of tabBar.children) {
+    if (!(el instanceof HTMLElement)) continue
+    const bed = beds[Number(el.dataset.bed ?? '0')]
+    // The beds are 12% of a short panel — twenty-odd pixels — so the *target*
+    // is grown about each one exactly as a die's is, and the word still sits
+    // on the carving (art. 128: the floor is about what a thumb presses).
+    if (bed !== undefined) place(el, grown(bed, bed.width, 0.2), size)
+  }
   debugTray(size)
 }
 
@@ -1607,9 +1619,14 @@ function focus(panel: Panel): void {
 function tabs(): void {
   tabBar.replaceChildren()
   const on = panelNow()
-  const tab = (panel: Panel, key: string): void => {
+  const tab = (panel: Panel, key: string, bed: number): void => {
     const el = document.createElement('button')
     el.textContent = TABS[key] ?? key
+    // art. 67: **a region lives in exactly one place and never moves.** The
+    // bed is a property of *which tab this is* and never of how many happen to
+    // be on screen — the pouch is shut during a fight, and without this the
+    // map slid left into the bed the pouch had vacated.
+    el.dataset.bed = String(bed)
     el.className = panel === on ? 'on' : ''
     el.setAttribute('aria-pressed', String(panel === on))
     el.onclick = () => {
@@ -1629,18 +1646,19 @@ function tabs(): void {
   // and the same is true at the front door, which is a screen for the same
   // reason. Neither of them touches the tray.
   if (screen.kind === 'choosing' || atTheDoor()) return
-  tab('acts', 'acts')
+  tab('acts', 'acts', 0)
   // art. 67: the pouch is shut during a fight. The hand a fight was opened
   // with is the hand it is replayed with (arts 63, 75), so there is nothing
   // to do in there — and a tab that only ever tells you "not now" is worse
   // than a tab that is not offered.
-  if (!inAFight()) tab('pouch', 'pouch')
+  if (!inAFight()) tab('pouch', 'pouch', 1)
   // arts 31, 85: the map is a socket and stays one. A disabled tab is legal;
   // pixels behind it are not, so there is no panel to focus and no handler to
   // press. It is here to say that the road ahead is a thing the game has
   // decided not to show you, rather than a thing nobody thought of.
   const map = document.createElement('button')
   map.textContent = TABS.map ?? 'map'
+  map.dataset.bed = '2'
   map.disabled = true
   map.setAttribute('aria-disabled', 'true')
   tabBar.append(map)
