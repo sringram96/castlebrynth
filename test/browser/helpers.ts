@@ -16,16 +16,25 @@ export const dice = (page: Page): Locator => page.locator('#crown .die')
  * `fixture` is a query string from src/game/fixture.ts, used to stand
  * somewhere the walk would take forty presses to reach.
  */
-export async function boot(page: Page, fixture = ''): Promise<void> {
-  await page.goto(`/${fixture}`)
+export async function boot(page: Page, fixture = '', { motion = false } = {}): Promise<void> {
+  // Motion is off unless a test asks for it. These specs are about what the
+  // game does, and waiting out a 950 ms score sequence on every turn of every
+  // journey buys nothing — `test/browser/motion.spec.ts` is where the beats
+  // themselves are asserted, and it opts in.
+  const query = motion ? fixture : `${fixture ? `${fixture}&` : '?'}motion=0`
+  await page.goto(`/${query}`)
   await expect(page.locator('body')).toHaveAttribute('data-assets', 'ready')
 }
 
-/** Start a run and walk to the first fight, taking the gift on the way. */
-export async function toFirstFight(page: Page, gift = 'careful'): Promise<void> {
+/** Wait for any transition to finish, the way an impatient thumb would. */
+export async function settled(page: Page): Promise<void> {
+  await page.evaluate(() => window.castlebrynth?.settle())
+}
+
+/** Start a run and walk to the first fight. Nothing is handed out on the way. */
+export async function toFirstFight(page: Page): Promise<void> {
   await act(page, 'start').click()
   await act(page, 'go').click()
-  await page.locator(`[data-take-id="${gift}"]`).click()
   await act(page, 'go').click()
   await expect(act(page, 'fight')).toBeVisible()
 }
@@ -45,6 +54,25 @@ export async function state(page: Page): Promise<{
 }
 
 /**
+ * How wide a control's target may be, by kind.
+ *
+ * Everything is at least 44px tall. Width is the honest exception: the six
+ * crown bays are painted 66⅔ of 730 apart and the three relic bays 55 apart,
+ * so on a phone the pitch is 39px and 32px. Targets grown to 44px wide would
+ * have to overlap each other, and a tap landing on the neighbouring die is a
+ * worse failure than a slightly narrow one. The floor is the painted pitch,
+ * they are the full 44px in the other axis, and they never overlap.
+ *
+ * See POLISH_PROGRESS.md § P2 — this is the sweep's one accepted deviation
+ * from the 44 × 44 rule, and it is a property of the plate, not of the code.
+ */
+const MIN_WIDTH: Readonly<Record<string, number>> = {
+  die: 34,
+  'inspect-die': 34,
+  'inspect-relic': 28,
+}
+
+/**
  * Every visible control must answer a real tap at its own centre.
  *
  * `elementFromPoint` is the assertion that matters: a button can be visible,
@@ -57,7 +85,9 @@ export async function tappable(page: Page, locator: Locator): Promise<void> {
   const { x, y, width, height } = box!
   const want = (await locator.getAttribute('data-act')) ?? 'button'
 
-  expect(Math.min(width, height), `[${want}] touch target is under 44px`).toBeGreaterThanOrEqual(43.5)
+  expect(height, `[${want}] touch target is under 44px tall`).toBeGreaterThanOrEqual(43.5)
+  const floor = MIN_WIDTH[want] ?? 44
+  expect(width, `[${want}] touch target is under ${floor}px wide`).toBeGreaterThanOrEqual(floor - 0.5)
 
   const viewport = page.viewportSize()!
   expect(x, `[${want}] runs off the left edge`).toBeGreaterThanOrEqual(-0.5)

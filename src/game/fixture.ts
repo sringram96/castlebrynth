@@ -98,10 +98,5 @@ export function applyFixture(base: GameState, search: string): GameState {
   }
   if (mode === 'title') return { ...state, mode: 'title', resume: 'explore' }
 
-  const here = room(state.run!.roomId)
-  if (here.gift && mode !== 'explore') {
-    return { ...state, mode: 'reward', run: { ...state.run!, offer: here.gift } }
-  }
-
   return state
 }

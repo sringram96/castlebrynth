@@ -216,19 +216,62 @@ function complete(state: GameState, on: ScreenHandlers): HTMLElement {
   return box
 }
 
-/** The loadout overlay, behind INSPECT. Every die and relic, in full. */
-export function renderInspect(host: HTMLElement, state: GameState, onClose: () => void): void {
+/**
+ * What the overlay is showing.
+ *
+ * `menu` is the whole loadout and the scoring reference — the global thing the
+ * bottom-left bed opens. The other two are an **inspection**: one die, or one
+ * relic, because that is the only thing the word inspect is allowed to mean.
+ */
+export type Overlay =
+  | { readonly kind: 'menu' }
+  | { readonly kind: 'die'; readonly id: string }
+  | { readonly kind: 'relic'; readonly id: string }
+
+export function renderOverlay(
+  host: HTMLElement,
+  view: Overlay,
+  state: GameState,
+  onClose: () => void,
+): void {
   host.replaceChildren()
+  host.dataset['overlay'] = view.kind
+  const panel = view.kind === 'menu' ? menuPanel(state) : focusPanel(view)
+  if (!panel) return
+  panel.append(
+    button({ act: 'close', label: VERBS.close, onPress: onClose, className: 'act act-big act-primary' }),
+  )
+  host.append(panel)
+}
+
+/**
+ * A close look at one thing.
+ *
+ * It is the same card the reward screen and the menu show, on its own, so a
+ * player never has to reconcile two descriptions of one object.
+ */
+function focusPanel(view: Overlay & { id: string }): HTMLElement {
+  const panel = el('div', 'screen-panel screen-focus')
+  panel.dataset['focus'] = view.id
+  panel.append(
+    view.kind === 'die' ? dieCard(dieById(view.id)) : relicCard(relicById(view.id)),
+  )
+  return panel
+}
+
+/** The loadout overlay, behind MENU. Every die and relic, and the ladder. */
+function menuPanel(state: GameState): HTMLElement | null {
   const run = state.run
-  if (!run) return
+  if (!run) return null
   const panel = el('div', 'screen-panel screen-scroll')
-  panel.append(el('h2', 'screen-head', 'WHAT I AM CARRYING'))
+  panel.append(el('h2', 'screen-head', 'MENU'))
 
   // Grouped, because six cards for five identical bones pushes everything
   // worth reading — the special die, the ladder — below the fold.
   const counted = new Map<string, number>()
   for (const id of run.dice) counted.set(id, (counted.get(id) ?? 0) + 1)
 
+  panel.append(el('h2', 'screen-head', 'DICE'))
   const dice = el('div', 'offers')
   for (const [id, n] of counted) {
     const card = dieCard(dieById(id))
@@ -237,17 +280,19 @@ export function renderInspect(host: HTMLElement, state: GameState, onClose: () =
   }
   panel.append(dice)
 
+  panel.append(el('h2', 'screen-head', 'RELICS'))
   if (run.relics.length > 0) {
-    panel.append(el('h2', 'screen-head', 'RELICS'))
     const relics = el('div', 'offers')
     for (const id of run.relics) relics.append(relicCard(relicById(id)))
     panel.append(relics)
+  } else {
+    panel.append(el('p', 'screen-line', 'None yet. Relics sit in the three bays on the right of the tray.'))
   }
 
   // The ladder, in the order it is worth learning. A player who cannot name
   // the hand they just scored cannot plan the next one, and the ladder is the
   // one piece of the game that is not visible on the combat screen.
-  panel.append(el('h2', 'screen-head', 'HANDS'))
+  panel.append(el('h2', 'screen-head', 'SCORING'))
   const ladder = el('table', 'ladder')
   for (const name of LADDER) {
     const hand = HANDS[name]
@@ -259,10 +304,13 @@ export function renderInspect(host: HTMLElement, state: GameState, onClose: () =
     ladder.append(row)
   }
   panel.append(ladder)
-  panel.append(el('p', 'card-good', 'DAMAGE · the dice you chose, added up, times the hand'))
-
+  panel.append(el('p', 'card-rule', 'DAMAGE = selected dice total × hand multiplier + relic bonuses'))
   panel.append(
-    button({ act: 'close', label: VERBS.close, onPress: onClose, className: 'act act-big act-primary' }),
+    el(
+      'p',
+      'card-good',
+      'Red and green face effects are separate from damage. They resolve when that face is included in the hand you SCORE.',
+    ),
   )
-  host.append(panel)
+  return panel
 }

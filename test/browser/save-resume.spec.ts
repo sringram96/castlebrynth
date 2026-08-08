@@ -15,7 +15,6 @@ test.describe('saving and resuming', () => {
     await boot(page)
     await act(page, 'start').click()
     await act(page, 'go').click()
-    await page.locator('[data-take-id="careful"]').click()
     await act(page, 'go').click()
     const before = await state(page)
 
@@ -38,7 +37,6 @@ test.describe('saving and resuming', () => {
     await boot(page)
     await act(page, 'start').click()
     await act(page, 'go').click()
-    await page.locator('[data-take-id="knuckle"]').click()
     await act(page, 'go').click()
     await act(page, 'fight').click()
     await act(page, 'roll').click()

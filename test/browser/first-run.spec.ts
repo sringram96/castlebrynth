@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-import { act, boot, dice, state, toFirstFight } from './helpers.js'
+import { act, boot, dice, screenName, state, toFirstFight } from './helpers.js'
 import { fightItOut } from './play.js'
 
 test.describe('the first run', () => {
@@ -20,7 +20,7 @@ test.describe('the first run', () => {
     await expect(page.locator('#screen')).toBeHidden()
     await expect(page.locator('#backdrop')).toBeVisible()
     await expect(page.locator('#tray')).toBeVisible()
-    await expect(page.locator('#say')).toContainText('The stair ended')
+    await expect(page.locator('#say')).toContainText('The stair ends in a long hall')
     await expect(dice(page)).toHaveCount(6)
   })
 
@@ -44,27 +44,20 @@ test.describe('the first run', () => {
     expect(after.run!.roomId).toBe(before.run!.roomId)
   })
 
-  test('the gift room states both options, and INSPECT explains everything', async ({ page }) => {
-    await boot(page)
-    await act(page, 'start').click()
-    await act(page, 'go').click()
+  test('MENU states the whole loadout, in full, and the ladder', async ({ page }) => {
+    await boot(page, '?room=fork&dice=careful&relics=knuckle')
 
-    await expect(page.locator('#screen')).toHaveAttribute('data-screen', 'reward')
-    await expect(page.locator('#offers .offer')).toHaveCount(2)
-    // Both are stated in full — faces, rule, and what they are good with —
-    // before either is taken.
-    await expect(page.locator('#offers')).toContainText('Only ever shows 3 or 4')
-    await expect(page.locator('#offers')).toContainText('Pairs score at ×3')
-    await page.locator('[data-take-id="careful"]').click()
-    await expect(page.locator('#screen')).toBeHidden()
-
-    await act(page, 'inspect').click()
+    await act(page, 'menu').click()
     const overlay = page.locator('#overlay')
     await expect(overlay).toContainText('Careful Bone')
-    await expect(overlay).toContainText('Only ever shows 3 or 4')
+    await expect(overlay).toContainText('This die can only roll 3 or 4')
+    await expect(overlay).toContainText("Saint's Knuckle")
+    await expect(overlay).toContainText('use ×3 instead of ×2')
     // The ladder, so a player can name the hand they just scored.
     await expect(overlay.locator('.ladder-row')).toHaveCount(7)
     await expect(overlay).toContainText('FULL HOUSE')
+    // And the arithmetic, literally rather than in prose.
+    await expect(overlay).toContainText('DAMAGE = selected dice total × hand multiplier + relic bonuses')
     await act(page, 'close').click()
     await expect(overlay).toBeHidden()
   })
@@ -151,25 +144,28 @@ test.describe('the first run', () => {
 
     await act(page, 'start').click()
     await act(page, 'go').click()
-    await page.locator('[data-take-id="careful"]').click()
     await act(page, 'go').click()
 
-    const takeReward = async () => {
-      await expect(page.locator('#screen')).toHaveAttribute('data-screen', 'reward')
-      await expect(page.locator('#offers .offer')).toHaveCount(3)
+    // A win may or may not have dropped anything, and the route has to
+    // continue either way — an unconditional take here is what would hide a
+    // no-drop win from every journey in the suite.
+    const takeAnyReward = async () => {
+      if ((await screenName(page)) !== 'reward') return
+      const offers = await page.locator('#offers .offer').count()
+      expect(offers, 'a win offered more than two').toBeLessThanOrEqual(2)
       await page.locator('[data-act="take"]').first().click()
       await expect(page.locator('#screen')).toBeHidden()
     }
 
     expect(await fightItOut(page), 'lost to the Gnawing').toBe('won')
-    await takeReward()
+    await takeAnyReward()
 
     await act(page, 'go').click()
-    await expect(page.locator('#say')).toContainText('Two ways')
+    await expect(page.locator('#say')).toContainText('The passage splits')
     await page.locator('[data-to="deep"]').click() // the long way round, on purpose
 
     expect(await fightItOut(page), 'lost to the Marrow').toBe('won')
-    await takeReward()
+    await takeAnyReward()
 
     await act(page, 'go').click()
     expect(await fightItOut(page), 'lost to the Warden').toBe('won')

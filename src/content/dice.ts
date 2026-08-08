@@ -6,10 +6,27 @@
  * face is part of the hand you score, `heal` gives you some. A keyword on a
  * held or unused die does nothing.
  *
- * Every die states its faces, one rule sentence in plain language, and what it
- * is good with. If a die's rule cannot be read off the combat screen it does
- * not ship — which is why the Sister Bone, whose rule needs two dice and a
- * bonus to explain, is not here.
+ * ## The copy law
+ *
+ * A die's card has to answer five questions, in this order, without the player
+ * inferring anything:
+ *
+ *   1. what values can this die roll?
+ *   2. does one face have a special effect?
+ *   3. exactly when does that effect happen?
+ *   4. what does the effect do?
+ *   5. what kind of hand does this die make easier?
+ *
+ * `rule` answers 1-4 and `helpsWith` answers 5. The player-facing words for a
+ * keyword face are **red face** and **green face**, because that is what is
+ * painted on it; "marked" is a word only this file uses. And every rule that
+ * has a condition names it in full — *included in the hand you SCORE* — because
+ * a die whose cost you can dodge by not choosing it is a different die from one
+ * whose cost you cannot, and the player cannot see which this is by guessing.
+ *
+ * If a die's rule cannot be read off the combat screen it does not ship — which
+ * is why the Sister Bone, whose rule needs two dice and a bonus to explain, is
+ * not here.
  */
 
 export type Value = 1 | 2 | 3 | 4 | 5 | 6
@@ -31,10 +48,10 @@ export interface Die {
   readonly id: string
   readonly name: string
   readonly faces: Faces
-  /** The one sentence. Plain mechanical language; no flavour mixed in. */
+  /** What it rolls, and what its special face does and when. No flavour. */
   readonly rule: string
-  /** "GOOD WITH" — one or two scoring hands or build ideas. */
-  readonly goodWith: string
+  /** "HELPS WITH" — which hands this die makes easier, and why. */
+  readonly helpsWith: string
   /** Optional flavour, shown below a divider and never mixed into the rule. */
   readonly flavour?: string
   /** So the three kinds of die are told apart at a glance. */
@@ -55,8 +72,8 @@ const PLAIN: Die = {
   id: 'plain',
   name: 'Plain Bone',
   faces: [f(1), f(2), f(3), f(4), f(5), f(6)],
-  rule: 'An ordinary die. One through six, nothing else.',
-  goodWith: 'Everything. It is the floor the others are measured against.',
+  rule: 'Faces: 1, 2, 3, 4, 5, 6. No special effect.',
+  helpsWith: 'Any hand.',
   material: 'bone',
 }
 
@@ -64,8 +81,8 @@ const CAREFUL: Die = {
   id: 'careful',
   name: 'Careful Bone',
   faces: [f(3), f(3), f(3), f(4), f(4), f(4)],
-  rule: 'Only ever shows 3 or 4.',
-  goodWith: 'Triples and Full Houses.',
+  rule: 'This die can only roll 3 or 4: three faces of each.',
+  helpsWith: 'Triples and Full Houses, because repeated numbers are easier to make.',
   flavour: 'Filed flat on two sides by somebody who did not like surprises.',
   material: 'pale',
 }
@@ -74,8 +91,8 @@ const PUSHER: Die = {
   id: 'pusher',
   name: 'Pusher Bone',
   faces: [hurt(1, 7), f(5), f(5), f(6), f(6), f(6)],
-  rule: 'Rolls high. Scoring its marked 1 costs you 7 health.',
-  goodWith: 'Triples of 6 — and any hand you can leave the 1 out of.',
+  rule: 'This die usually rolls 5 or 6. If its red 1 is included in the hand you SCORE, you lose 7 HP.',
+  helpsWith: 'High totals and Triples of 6. Leave the red 1 out when you can.',
   flavour: 'He kept pushing. It kept paying, until it did not.',
   material: 'blood',
 }
@@ -83,9 +100,11 @@ const PUSHER: Die = {
 const RUNNER: Die = {
   id: 'runner',
   name: 'Runner Bone',
+  // Two sixes, and only one of them is red. The card shows both, and the rule
+  // says so, because "its marked 6" would describe a die that has one.
   faces: [f(3), f(4), f(5), f(5), f(6), hurt(6, 5)],
-  rule: 'Spread from 3 to 6. Scoring its marked 6 costs you 5 health.',
-  goodWith: 'Straights.',
+  rule: 'This die rolls 3–6. One of its 6 faces is red; if that red 6 is included in the hand you SCORE, you lose 5 HP.',
+  helpsWith: 'Straights and high totals.',
   flavour: 'She was always three rooms ahead of the rest of them.',
   material: 'iron',
 }
@@ -94,8 +113,8 @@ const LEECH: Die = {
   id: 'leech',
   name: 'Leech Bone',
   faces: [f(1), f(2), f(3), f(4), f(5), heal(6, 4)],
-  rule: 'Ordinary faces. Scoring its marked 6 heals you 4 health.',
-  goodWith: 'Any hand with a 6 in it. It is the only healing in the run.',
+  rule: 'This die rolls 1–6, and its 6 is green. If that green 6 is included in the hand you SCORE, heal 4 HP.',
+  helpsWith: 'Any hand that can include the green 6.',
   flavour: 'It drinks first and gives some back. Some.',
   material: 'ash',
 }

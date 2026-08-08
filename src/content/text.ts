@@ -13,8 +13,7 @@ export const TITLE_STALE = 'Whatever I was doing before, I have lost the thread 
 export const DEATH_LINE = 'Dark. Then nothing. Then the stair again.'
 export const COMPLETE_LINE = 'Out. Carrying more than I came in with, and I am going back down.'
 
-export const REWARD_PROMPT = 'One of them. Only one.'
-export const GIFT_PROMPT = 'One of them. The other stays.'
+export const REWARD_PROMPT = 'Take one.'
 
 /** Controls. Plain verbs, two words or fewer. */
 export const VERBS = {
@@ -22,7 +21,15 @@ export const VERBS = {
   again: 'AGAIN',
   title: 'TITLE',
   continue: 'CONTINUE',
-  inspect: 'INSPECT',
+  /**
+   * The persistent bottom-left control.
+   *
+   * It opens the whole loadout and the scoring reference, which is a menu.
+   * It was called INSPECT, and that taught the wrong verb: **inspect** is
+   * reserved for a close look at one concrete thing — this die, this relic,
+   * that door — and never for a global overlay.
+   */
+  menu: 'MENU',
   fight: 'FIGHT',
   roll: 'ROLL',
   reroll: 'REROLL',

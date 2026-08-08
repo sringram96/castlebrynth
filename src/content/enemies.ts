@@ -25,7 +25,14 @@ export interface Intent {
    * boss does.
    */
   readonly telegraph?: boolean
-  /** Shown when the intent is tapped. Plain language. */
+  /**
+   * Shown when the intent is tapped.
+   *
+   * It names the verb, the number, and the order — *after you score, unless you
+   * kill it first* — because the order is the whole of the first fight's
+   * lesson and nothing else on the screen teaches it. A telegraph says what its
+   * next attack is and for how much. No status vocabulary, ever.
+   */
   readonly explain: string
 }
 
@@ -44,7 +51,21 @@ export interface Enemy {
   readonly foot: number
   /** What it can drop: ids drawn from dice and relics. */
   readonly rewards: readonly string[]
+  /**
+   * The chance a win drops anything at all, and how many to offer when it
+   * does.
+   *
+   * Not every fight pays. A run that is handed something after every beat
+   * teaches the player that finds are routine, and a routine find is not a
+   * reward — it is a step. These are content, not a hidden table, so the
+   * cadence of the whole slice can be read in one place.
+   */
+  readonly rewardChance: number
+  readonly rewardChoices: number
 }
+
+const RAKE = 'RAKE will deal 6 damage after you score, unless you kill it first.'
+const STRIKE = 'STRIKE will deal 8 damage after you score, unless you kill it first.'
 
 const GNAWING: Enemy = {
   id: 'gnawing',
@@ -52,13 +73,19 @@ const GNAWING: Enemy = {
   hp: 170,
   // No special rule. Every blow is the same size and it never surprises you.
   script: [
-    { verb: 'BITE', damage: 6, explain: 'It bites. 6 damage. It does nothing else, ever.' },
+    {
+      verb: 'BITE',
+      damage: 6,
+      explain: 'BITE deals 6 damage after you score, unless you kill it first.',
+    },
   ],
-  tell: 'It has too many eyes and all of them found me.',
+  tell: 'Too many eyes. All of them found me.',
   art: 'gnawing',
   width: 0.72,
   foot: 0.82,
   rewards: ['knuckle', 'wax', 'careful', 'plate', 'leech'],
+  rewardChance: 0.6,
+  rewardChoices: 2,
 }
 
 const MARROW: Enemy = {
@@ -67,21 +94,28 @@ const MARROW: Enemy = {
   hp: 210,
   // Teaches one thing: when a blow is announced a turn early, it is worse.
   script: [
-    { verb: 'RAKE', damage: 6, explain: 'It rakes. 6 damage.' },
-    { verb: 'RAKE', damage: 6, explain: 'It rakes. 6 damage.' },
+    { verb: 'RAKE', damage: 6, explain: RAKE },
+    { verb: 'RAKE', damage: 6, explain: RAKE },
     {
       verb: 'WIND UP',
       damage: 0,
       telegraph: true,
-      explain: 'It is drawing back. No damage this turn. The next one is 15.',
+      explain: 'WIND UP deals no damage this turn. Its next attack is CRUSH for 15.',
     },
-    { verb: 'CRUSH', damage: 15, explain: 'The blow it wound up for. 15 damage.' },
+    {
+      verb: 'CRUSH',
+      damage: 15,
+      explain: 'CRUSH deals 15 damage after you score, unless you kill it first.',
+    },
   ],
   tell: 'The bones of it are somebody. Several somebodies.',
   art: 'marrow',
   width: 0.62,
   foot: 0.94,
+  // The optional route, so it pays better than the mandatory first fight.
   rewards: ['rosary', 'nail', 'thimble', 'pusher', 'runner'],
+  rewardChance: 0.7,
+  rewardChoices: 2,
 }
 
 const WARDEN: Enemy = {
@@ -90,21 +124,28 @@ const WARDEN: Enemy = {
   hp: 300,
   // Both taught ideas, and no third. A heavier floor and the same telegraph.
   script: [
-    { verb: 'STRIKE', damage: 8, explain: 'It strikes. 8 damage.' },
-    { verb: 'STRIKE', damage: 8, explain: 'It strikes. 8 damage.' },
+    { verb: 'STRIKE', damage: 8, explain: STRIKE },
+    { verb: 'STRIKE', damage: 8, explain: STRIKE },
     {
       verb: 'RAISE',
       damage: 0,
       telegraph: true,
-      explain: 'It is raising its arms. No damage this turn. The next one is 20.',
+      explain: 'RAISE deals no damage this turn. Its next attack is JUDGE for 20.',
     },
-    { verb: 'JUDGE', damage: 20, explain: 'The blow it raised for. 20 damage.' },
+    {
+      verb: 'JUDGE',
+      damage: 20,
+      explain: 'JUDGE deals 20 damage after you score, unless you kill it first.',
+    },
   ],
   tell: 'It was waiting at this door. It has been waiting a long time.',
   art: 'warden',
   width: 0.86,
   foot: 0.99,
+  // The boss stands at the way out. Escape is the reward.
   rewards: [],
+  rewardChance: 0,
+  rewardChoices: 0,
 }
 
 export const ENEMIES: Readonly<Record<string, Enemy>> = {

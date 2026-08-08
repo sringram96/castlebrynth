@@ -107,12 +107,22 @@ export interface Preview {
   readonly hand: Hand
   readonly sum: number
   readonly multiplier: number
-  /** Flat additions after the multiply. */
+  /** Flat additions after the multiply, each labelled with what produced it. */
   readonly bonuses: readonly DamageTerm[]
   readonly damage: number
-  /** Health this selection costs (marked hurt faces). */
+  /**
+   * Where the health went, and where it came from, itemised.
+   *
+   * `cost` and `heal` are the sums. The terms exist because a player who is
+   * about to lose 7 and gain 2 is owed both reasons by name — "the marked face
+   * takes 7" names nothing, and a bare `+2 HP` next to a red die reads as the
+   * red die healing them.
+   */
+  readonly costs: readonly DamageTerm[]
+  readonly heals: readonly DamageTerm[]
+  /** Health this selection costs (red faces). */
   readonly cost: number
-  /** Health this selection gives back (marked heal faces, Grave Wax). */
+  /** Health this selection gives back (green faces, and Grave Wax). */
   readonly heal: number
   /** Relics that contributed, so the UI can pulse exactly those. */
   readonly firedRelics: readonly string[]
@@ -152,12 +162,19 @@ export function preview(
   let cost = 0
   let heal = 0
 
+  const costs: DamageTerm[] = []
+  const heals: DamageTerm[] = []
   for (const s of selection) {
     if (!s.effect) continue
-    if (s.effect.kind === 'hurt') cost += s.effect.amount
-    else heal += s.effect.amount
+    if (s.effect.kind === 'hurt') {
+      cost += s.effect.amount
+      costs.push({ label: 'Red face', amount: s.effect.amount })
+    } else {
+      heal += s.effect.amount
+      heals.push({ label: 'Green face', amount: s.effect.amount })
+    }
   }
-  const markedHurts = selection.filter((s) => s.effect?.kind === 'hurt').length
+  const redFaces = costs.length
 
   for (const r of relics) {
     const e = r.effect
@@ -171,9 +188,9 @@ export function preview(
       case 'armor':
         // Read when the enemy swings, not here.
         break
-      case 'perMarkedFace':
-        if (markedHurts > 0) {
-          bonuses.push({ label: r.name, amount: e.plus * markedHurts, relicId: r.id })
+      case 'perRedFace':
+        if (redFaces > 0) {
+          bonuses.push({ label: r.name, amount: e.plus * redFaces, relicId: r.id })
           fired.add(r.id)
         }
         break
@@ -186,6 +203,7 @@ export function preview(
       case 'healOnExactly':
         if (selection.length === e.dice) {
           heal += e.heal
+          heals.push({ label: r.name, amount: e.heal, relicId: r.id })
           fired.add(r.id)
         }
         break
@@ -213,6 +231,8 @@ export function preview(
     multiplier,
     bonuses,
     damage,
+    costs,
+    heals,
     cost,
     heal,
     firedRelics: [...fired],

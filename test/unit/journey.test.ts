@@ -8,13 +8,14 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { MAX_HP, newRun, reduce } from '../../src/game/reducer.js'
+import { MAX_HP, newRun, offerFor, reduce } from '../../src/game/reducer.js'
 import type { Action } from '../../src/game/reducer.js'
 import { SAVE_VERSION, TITLE } from '../../src/game/state.js'
 import type { GameState } from '../../src/game/state.js'
 import { HAND_SIZE } from '../../src/content/dice.js'
-import { ENEMIES, intentAt } from '../../src/content/enemies.js'
+import { ENEMIES, enemy, intentAt } from '../../src/content/enemies.js'
 import { ROOMS, room } from '../../src/content/rooms.js'
+import { Rng } from '../../src/combat/dice.js'
 import { preview } from '../../src/combat/scoring.js'
 import { resolve, selectionOf } from '../../src/combat/resolve.js'
 
@@ -23,12 +24,9 @@ const play = (state: GameState, ...actions: Action[]): GameState =>
 
 const start = (seed = 1): GameState => reduce(TITLE, { type: 'START_RUN', seed })
 
-/** Walk to the first fight and open it, taking the room's gift on the way. */
+/** Walk as far as the first fight's room. Nothing is handed out on the way. */
 function toPassage(seed = 1): GameState {
-  // Walking into the gift room opens the offer screen, exactly as a won fight
-  // does. Taking one of the two is what returns to exploring.
-  const arrived = reduce(start(seed), { type: 'GO', to: 'passage' })
-  return reduce(arrived, { type: 'TAKE', id: arrived.run!.offer![0]! })
+  return reduce(start(seed), { type: 'GO', to: 'passage' })
 }
 
 function intoFirstFight(seed = 1): GameState {
@@ -65,20 +63,17 @@ describe('a new run', () => {
   })
 })
 
-describe('a floor gift', () => {
-  it('is offered on the same screen a won fight uses, and asked once', () => {
+describe('the passage', () => {
+  it('hands out nothing: walking into a room never opens an offer', () => {
+    // The guaranteed gift before the first fight is gone. A run that finds
+    // something has beaten something for it. See POLISH_PROGRESS.md § P5.
+    for (const id of Object.keys(ROOMS)) {
+      const arrived = reduce({ ...start(), run: { ...start().run!, roomId: 'entry' } }, { type: 'GO', to: id })
+      if (arrived.mode === 'complete') continue
+      expect(arrived.run?.offer, `${id} laid something out`).toBeUndefined()
+    }
     const arrived = reduce(start(), { type: 'GO', to: 'passage' })
-    expect(arrived.mode).toBe('reward')
-    expect(arrived.run?.offer).toEqual(room('passage').gift)
-
-    const taken = reduce(arrived, { type: 'TAKE', id: arrived.run!.offer![0]! })
-    expect(taken.mode).toBe('explore')
-    expect(taken.run?.offer).toBeUndefined()
-    expect(taken.run?.cleared).toContain('passage')
-
-    // And the other one stays where it is: the room does not ask again.
-    const again = reduce(taken, { type: 'GO', to: 'hollow' })
-    expect(again.mode).toBe('explore')
+    expect(arrived.mode).toBe('explore')
   })
 })
 
@@ -205,16 +200,26 @@ describe('a turn', () => {
   })
 })
 
-describe('the outcome', () => {
-  const fightAt = (enemyHp: number, hp: number) => {
-    const state = intoFirstFight()
-    const rolled = reduce(state, { type: 'ROLL' })
-    const combat = rolled.run!.combat!
-    return {
-      ...rolled,
-      run: { ...rolled.run!, hp, combat: { ...combat, enemyHp, selected: [0, 1, 2, 3, 4, 5] } },
-    }
+/** A fight one blow from over, on a chosen seed. */
+const fightAt = (enemyHp: number, hp: number, seed = 1): GameState => {
+  const rolled = reduce(intoFirstFight(seed), { type: 'ROLL' })
+  const combat = rolled.run!.combat!
+  return {
+    ...rolled,
+    run: { ...rolled.run!, hp, combat: { ...combat, enemyHp, selected: [0, 1, 2, 3, 4, 5] } },
   }
+}
+
+/** The first seed whose winning blow does, or does not, drop something. */
+const seedWhere = (dropped: boolean): number => {
+  for (let seed = 1; seed < 400; seed++) {
+    const won = reduce(fightAt(1, MAX_HP, seed), { type: 'SCORE' })
+    if ((won.mode === 'reward') === dropped) return seed
+  }
+  throw new Error(`no seed in 400 produces dropped=${dropped}`)
+}
+
+describe('the outcome', () => {
 
   it('never lets a dead enemy act', () => {
     const nearly = fightAt(1, MAX_HP)
@@ -224,12 +229,22 @@ describe('the outcome', () => {
     expect(out.hp).toBe(MAX_HP)
   })
 
-  it('goes to the reward screen on a win, with combat gone', () => {
-    const after = reduce(fightAt(1, MAX_HP), { type: 'SCORE' })
+  it('goes to the reward screen when a win drops something, with combat gone', () => {
+    const after = reduce(fightAt(1, MAX_HP, seedWhere(true)), { type: 'SCORE' })
     expect(after.mode).toBe('reward')
     expect(after.run?.combat).toBeUndefined()
-    expect(after.run?.offer?.length).toBe(3)
-    expect(new Set(after.run!.offer).size).toBe(3)
+    expect(after.run?.offer?.length).toBe(2)
+    expect(new Set(after.run!.offer).size).toBe(2)
+  })
+
+  it('goes straight back to the room when a win drops nothing, and says so', () => {
+    const after = reduce(fightAt(1, MAX_HP, seedWhere(false)), { type: 'SCORE' })
+    expect(after.mode).toBe('explore')
+    expect(after.run?.offer).toBeUndefined()
+    expect(after.run?.combat).toBeUndefined()
+    expect(after.run?.cleared).toContain('hollow')
+    // Not a vague sentence that could mean the reward screen failed to open.
+    expect(after.run?.say).toContain('Nothing useful on it')
   })
 
   it('always sets mode dead when health reaches zero, and says why', () => {
@@ -240,7 +255,7 @@ describe('the outcome', () => {
   })
 
   it('offers nothing already carried', () => {
-    const won = reduce(fightAt(1, MAX_HP), { type: 'SCORE' })
+    const won = reduce(fightAt(1, MAX_HP, seedWhere(true)), { type: 'SCORE' })
     const withRelic = {
       ...won,
       run: { ...won.run!, relics: ['knuckle'], offer: won.run!.offer! },
@@ -251,7 +266,7 @@ describe('the outcome', () => {
   })
 
   it('equips a taken die into the six and keeps the hand at six', () => {
-    const won = reduce(fightAt(1, MAX_HP), { type: 'SCORE' })
+    const won = reduce(fightAt(1, MAX_HP, seedWhere(true)), { type: 'SCORE' })
     const dieOffer = won.run!.offer!.find((id) => id === 'careful' || id === 'leech' || id === 'pusher' || id === 'runner')
     const id = dieOffer ?? won.run!.offer![0]!
     const taken = reduce(won, { type: 'TAKE', id })
@@ -347,5 +362,51 @@ describe('the enemies', () => {
         expect(intent.explain).toContain(String(next.damage))
       })
     }
+  })
+})
+
+describe('how often a fight pays', () => {
+  /** Whether the winning blow on this seed dropped anything. */
+  const dropped = (seed: number): boolean =>
+    reduce(fightAt(1, MAX_HP, seed), { type: 'SCORE' }).mode === 'reward'
+
+  const SEEDS = Array.from({ length: 300 }, (_, i) => i + 1)
+
+  it('is a pure function of the run: the same seed drops the same thing', () => {
+    for (const seed of SEEDS.slice(0, 40)) {
+      const a = reduce(fightAt(1, MAX_HP, seed), { type: 'SCORE' })
+      const b = reduce(fightAt(1, MAX_HP, seed), { type: 'SCORE' })
+      expect(a.mode).toBe(b.mode)
+      expect(a.run?.offer).toEqual(b.run?.offer)
+    }
+  })
+
+  it('sometimes pays and sometimes does not', () => {
+    const paid = SEEDS.filter(dropped).length
+    expect(paid, 'the Gnawing never drops').toBeGreaterThan(0)
+    expect(paid, 'the Gnawing always drops').toBeLessThan(SEEDS.length)
+    // The declared chance, within sampling noise on 300 seeds.
+    const rate = paid / SEEDS.length
+    expect(rate).toBeGreaterThan(enemy('gnawing').rewardChance - 0.12)
+    expect(rate).toBeLessThan(enemy('gnawing').rewardChance + 0.12)
+  })
+
+  it('never offers more than the enemy declares', () => {
+    for (const seed of SEEDS) {
+      const won = reduce(fightAt(1, MAX_HP, seed), { type: 'SCORE' })
+      if (won.mode !== 'reward') continue
+      expect(won.run!.offer!.length).toBeLessThanOrEqual(enemy('gnawing').rewardChoices)
+      expect(won.run!.offer!.length).toBeGreaterThan(0)
+    }
+  })
+
+  it('gives the boss nothing to drop, on any seed', () => {
+    for (const seed of SEEDS.slice(0, 60)) {
+      expect(offerFor(newRun(seed), 'warden', new Rng(seed))).toEqual([])
+    }
+  })
+
+  it('makes the optional fight the better-paying one', () => {
+    expect(enemy('marrow').rewardChance).toBeGreaterThan(enemy('gnawing').rewardChance)
   })
 })

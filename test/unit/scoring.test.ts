@@ -112,7 +112,7 @@ describe('the damage formula', () => {
       'multiplier',
       'firstOfFight',
       'armor',
-      'perMarkedFace',
+      'perRedFace',
       'healOnExactly',
       'doubleIfUniform',
     ])

@@ -106,24 +106,35 @@ function beginCombat(run: RunState): CombatState {
 }
 
 /**
- * The three things a win offers.
+ * What a win offers, if it offers anything.
  *
- * Drawn without replacement from the enemy's table, skipping anything already
- * carried, and padded from the general pools if the table runs short. Two
- * relics and a die, or two dice and a relic — the point is that the three
- * point at different builds, not that the catalogue is large.
+ * Two decisions, in this order, both off the run's own generator so a reload
+ * cannot change either:
+ *
+ *   1. **did it drop?** — `rewardChance`, and the number is always drawn, so
+ *      whether a fight paid can never depend on what was left in the pool;
+ *   2. **what?** — `rewardChoices` drawn without replacement from the enemy's
+ *      table, skipping anything already carried and padded from the general
+ *      pools if the table runs short.
+ *
+ * Nothing is padded *up*: if one eligible thing remains, one is offered. An
+ * empty return is a real answer — the fight gave nothing — and the room says
+ * so plainly rather than leaving it looking like the offer screen failed.
  */
 export function offerFor(run: RunState, enemyId: string, rng: Rng): readonly string[] {
-  // An enemy that declares no rewards gives none. That is content saying so,
+  // An enemy that declares no reward gives none. That is content saying so,
   // not a table that happened to run dry — the boss stands at the way out, and
   // a die you cannot spend is not a reward.
-  if (enemy(enemyId).rewards.length === 0) return []
+  const e = enemy(enemyId)
+  if (e.rewards.length === 0 || e.rewardChoices === 0) return []
+  if (rng.next() >= e.rewardChance) return []
+
   const owned = new Set([...run.relics, ...run.dice])
-  const table = enemy(enemyId).rewards.filter((id) => !owned.has(id))
+  const table = e.rewards.filter((id) => !owned.has(id))
   const spare = [...LOOT_RELICS, ...LOOT_DICE].filter((id) => !owned.has(id) && !table.includes(id))
   const pool = [...table, ...spare]
   const out: string[] = []
-  while (out.length < 3 && pool.length > 0) {
+  while (out.length < e.rewardChoices && pool.length > 0) {
     out.push(pool.splice(rng.int(pool.length), 1)[0]!)
   }
   return out
@@ -143,8 +154,6 @@ function equip(dice: readonly string[], id: string): readonly string[] {
   next[plain >= 0 ? plain : next.length - 1] = id
   return next.slice(0, HAND_SIZE)
 }
-
-const relicName = (id: string): string => relic(id).name
 
 // ── the reducer ────────────────────────────────────────────────────────
 
@@ -205,12 +214,6 @@ export function reduce(state: GameState, action: Action): GameState {
         path: [...run.path, action.to],
         looked: [],
         say: next.arrival,
-      }
-      // A room that lays two things out asks the same question a won fight
-      // does, so it asks it on the same screen — with the cards, the faces and
-      // the rule sentence, rather than two names on two buttons.
-      if (next.gift && !run.cleared.includes(action.to)) {
-        return { ...state, mode: 'reward', run: { ...moved, offer: next.gift } }
       }
       if (next.ending) {
         return {
@@ -291,7 +294,13 @@ export function reduce(state: GameState, action: Action): GameState {
         // A fight with nothing left to give goes straight back to the room.
         if (offer.length === 0) {
           const { combat: _gone, ...rest } = cleared
-          return { ...state, mode: 'explore', run: { ...rest, say: 'It stops. Nothing left of it worth taking.' } }
+          return {
+            ...state,
+            mode: 'explore',
+            // Said plainly, so an empty-handed win never reads as the reward
+            // screen having failed to open.
+            run: { ...rest, say: `${enemy(combat.enemyId).name} is dead. Nothing useful on it.` },
+          }
         }
         const { combat: _done, ...rest } = cleared
         return { ...state, mode: 'reward', run: { ...rest, offer } }
@@ -324,9 +333,6 @@ export function reduce(state: GameState, action: Action): GameState {
       if (!run || state.mode !== 'reward' || !run.offer || !run.offer.includes(action.id)) return state
       const { offer: _taken, ...rest } = run
       const found = isDieId(action.id)
-      // A room's gift is spent by taking one of it: the other stays where it
-      // is, and the room does not ask again.
-      const fromRoom = room(run.roomId).gift?.includes(action.id) ?? false
       return {
         ...state,
         mode: 'explore',
@@ -335,8 +341,12 @@ export function reduce(state: GameState, action: Action): GameState {
           ...rest,
           dice: found ? equip(run.dice, action.id) : run.dice,
           relics: found ? run.relics : [...run.relics, action.id],
-          cleared: fromRoom && !run.cleared.includes(run.roomId) ? [...run.cleared, run.roomId] : run.cleared,
-          say: found ? `${die(action.id).name}. ${die(action.id).rule}` : `${relicName(action.id)}. Taken.`,
+          // A pickup repeats the thing's actual rule. "Blood Thimble. Taken."
+          // confirms a press and explains nothing, and sending the player to
+          // MENU to find out what they just chose is the same failure again.
+          say: found
+            ? `${die(action.id).name} taken. ${die(action.id).rule}`
+            : `${relic(action.id).name} taken. ${relic(action.id).rule}`,
         },
       }
     }

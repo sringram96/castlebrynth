@@ -4,16 +4,26 @@
  * The frame is one authored picture and is `pointer-events: none`. Every
  * control on top of it is a real button placed in the tray's own fractions.
  *
- * Three regions never change meaning, in any mode:
+ * Four regions never change meaning, in any mode:
  *   the orb        your health
  *   the crown      the six dice, and nothing else
- *   the three beds INSPECT · primary · secondary
+ *   the right bays the relics you are carrying
+ *   the three beds MENU · primary · secondary
  *
  * The well is the stage: the score formula in a fight, the room's line out of
  * one. A secondary action that does not exist is **absent**, never disabled.
  */
 
-import { ACTION_BEDS, DIE_BEDS, ORB, ORB_TEXT, RELIC_BEDS, WELL } from '../content/tray.js'
+import {
+  ACTION_BEDS,
+  DIE_CENTRES,
+  DIE_PITCH,
+  ORB,
+  ORB_TEXT,
+  RELIC_CENTRES,
+  RELIC_PITCH,
+  WELL,
+} from '../content/tray.js'
 import { VERBS, WELL_IDLE } from '../content/text.js'
 import { die as dieById } from '../content/dice.js'
 import { faceOf } from '../combat/dice.js'
@@ -23,11 +33,15 @@ import { relic as relicById } from '../content/relics.js'
 import { enemy as enemyById } from '../content/enemies.js'
 import { room as roomById } from '../content/rooms.js'
 import type { GameState } from '../game/state.js'
-import { button, dieButton, el, place } from './components.js'
+import { button, dieButton, el, faceGlyph, place, relicButton, seat, seatBed } from './components.js'
 
 export interface TrayHandlers {
   readonly onDie: (slot: number) => void
-  readonly onInspect: () => void
+  /** A close look at one die. What a crown tap means when nothing is in play. */
+  readonly onInspectDie: (dieId: string) => void
+  /** A close look at one carried relic. */
+  readonly onInspectRelic: (relicId: string) => void
+  readonly onMenu: () => void
   readonly onFight: () => void
   readonly onRoll: () => void
   readonly onReroll: () => void
@@ -88,7 +102,7 @@ export function renderTray(tray: Tray, state: GameState, on: TrayHandlers): void
 
   renderHealth(tray, run.hp, run.maxHp)
   renderCrown(tray, state, on)
-  renderRelics(tray, run.relics)
+  renderRelics(tray, run.relics, on)
   renderWell(tray, state, on)
   renderBeds(tray, state, on)
 }
@@ -133,27 +147,68 @@ function renderCrown(tray: Tray, state: GameState, on: TrayHandlers): void {
         }))
 
   tray.crown.dataset['count'] = String(showing.length)
+  // Dice are choosable only when there is a throw on the table. Exploring, and
+  // in a fight before its roll, a tap has nothing to choose — so it inspects
+  // that die instead of dispatching a SELECT the reducer would discard.
   const inPlay = state.mode === 'combat' && (combat?.roll.length ?? 0) > 0
 
   showing.forEach((d, index) => {
-    const bed = DIE_BEDS[index] ?? DIE_BEDS[DIE_BEDS.length - 1]!
-    const b = dieButton(d, on.onDie)
-    place(b, bed)
+    const centre = DIE_CENTRES[index] ?? DIE_CENTRES[DIE_CENTRES.length - 1]!
+    const view = { ...d, inPlay }
+    const b = dieButton(view, () => (inPlay ? on.onDie(d.slot) : on.onInspectDie(d.dieId)))
+    seat(b, centre, DIE_PITCH)
     if (!inPlay) b.dataset['idle'] = 'yes'
     tray.crown.append(b)
   })
 }
 
-function renderRelics(tray: Tray, ids: readonly string[]): void {
+/**
+ * The face a die shows while it is in the air.
+ *
+ * Cosmetic only, and deterministic by construction: the slot and the step
+ * choose which face flickers past, so a die in flight cannot show a value the
+ * run did not produce and a replay cannot differ. `step === undefined` puts
+ * back the exact face node the reducer chose — the node, not a lookup by
+ * value, because the Runner has two 6s and only one of them costs health.
+ */
+const settledFace = new WeakMap<HTMLElement, HTMLElement>()
+
+export function paintTumble(die: HTMLElement, step: number | undefined): void {
+  const dieId = die.dataset['dieId']
+  const current = die.querySelector<HTMLElement>('.die-face')
+  if (!dieId || !current) return
+
+  if (step === undefined) {
+    const settled = settledFace.get(die)
+    if (settled && settled !== current) current.replaceWith(settled)
+    settledFace.delete(die)
+    return
+  }
+
+  if (!settledFace.has(die)) settledFace.set(die, current)
+  const d = dieById(dieId)
+  const slot = Number(die.dataset['slot']) || 0
+  current.replaceWith(faceGlyph(d.faces[(slot * 2 + step * 3 + 1) % d.faces.length]!, d.material))
+}
+
+/**
+ * The three bays on the right.
+ *
+ * A carried relic is visible here, in acquisition order, without opening
+ * anything — which is the whole point of the bays. Pressing one inspects it
+ * and moves no state. There are three bays and no scrolling: a fourth relic
+ * lives in MENU, and the third bay says how many are behind it.
+ */
+function renderRelics(tray: Tray, ids: readonly string[], on: TrayHandlers): void {
   tray.relics.replaceChildren()
-  ids.slice(0, RELIC_BEDS.length).forEach((id, index) => {
-    const r = relicById(id)
-    const cell = el('div', 'relic')
-    cell.dataset['relicId'] = id
-    cell.title = `${r.name}: ${r.rule}`
-    cell.append(el('span', 'relic-icon', r.icon))
-    place(cell, RELIC_BEDS[index]!)
-    tray.relics.append(cell)
+  tray.relics.dataset['count'] = String(ids.length)
+  const shown = ids.slice(0, RELIC_CENTRES.length)
+  shown.forEach((id, index) => {
+    const b = relicButton(relicById(id), () => on.onInspectRelic(id))
+    seat(b, RELIC_CENTRES[index]!, RELIC_PITCH)
+    const hidden = index === shown.length - 1 ? ids.length - shown.length : 0
+    if (hidden > 0) b.append(el('span', 'relic-more', `+${hidden}`))
+    tray.relics.append(b)
   })
 }
 
@@ -191,11 +246,23 @@ function renderWell(tray: Tray, state: GameState, on: TrayHandlers): void {
     sum.append(el('i', 'op', '='), el('b', 'term term-damage', String(p.damage)))
     box.append(sum)
 
-    if (p.cost > 0 || p.heal > 0) {
-      const toll = el('span', 'score-toll')
-      if (p.cost > 0) toll.append(el('b', 'toll toll-hurt', `−${p.cost} HP`))
-      if (p.heal > 0) toll.append(el('b', 'toll toll-heal', `+${p.heal} HP`))
-      box.append(toll)
+    // Every extra number in the formula is then named. A row of unexplained
+    // `+8 +12` is not a preview, it is a puzzle — and the player is being
+    // asked to commit to it.
+    for (const bonus of p.bonuses) {
+      const line = el('p', 'score-credit', `${bonus.label} +${bonus.amount}`)
+      if (bonus.relicId) line.dataset['relicId'] = bonus.relicId
+      box.append(line)
+    }
+
+    // What SCORE will do to *you*, with the verb. `−7 HP` next to a red die is
+    // a number; "Lose 7 HP" is the consequence.
+    if (p.cost > 0) box.append(el('p', 'score-toll toll-hurt', `Lose ${p.cost} HP`))
+    for (const gain of p.heals) {
+      const literal = gain.label === 'Green face' ? `Heal ${gain.amount} HP` : `${gain.label} heals ${gain.amount} HP`
+      const line = el('p', 'score-toll toll-heal', literal)
+      if (gain.relicId) line.dataset['relicId'] = gain.relicId
+      box.append(line)
     }
     tray.well.append(box)
     return
@@ -230,7 +297,7 @@ function renderWell(tray: Tray, state: GameState, on: TrayHandlers): void {
 /**
  * The three beds.
  *
- * Left is INSPECT, always, in both modes. Centre is the primary action.
+ * Left is MENU, always, in both modes. Centre is the primary action.
  * Right is the secondary, and is simply not rendered when there is not one —
  * a greyed button that explains nothing is the defect this replaces.
  */
@@ -239,17 +306,17 @@ function renderBeds(tray: Tray, state: GameState, on: TrayHandlers): void {
   tray.beds.replaceChildren()
 
   const bed = (index: number, node: HTMLElement): void => {
-    place(node, ACTION_BEDS[index]!)
+    seatBed(node, ACTION_BEDS[index]!)
     tray.beds.append(node)
   }
 
   bed(
     0,
     button({
-      act: 'inspect',
-      label: VERBS.inspect,
-      describe: 'Inspect your dice and relics',
-      onPress: on.onInspect,
+      act: 'menu',
+      label: VERBS.menu,
+      describe: 'Open dice, relics, and scoring reference',
+      onPress: on.onMenu,
       className: 'act act-side',
     }),
   )
