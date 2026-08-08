@@ -251,7 +251,7 @@ export function renderOverlay(
  * player never has to reconcile two descriptions of one object.
  */
 function focusPanel(view: Overlay & { id: string }): HTMLElement {
-  const panel = el('div', 'screen-panel screen-scroll')
+  const panel = el('div', 'screen-panel screen-focus')
   panel.dataset['focus'] = view.id
   panel.append(
     view.kind === 'die' ? dieCard(dieById(view.id)) : relicCard(relicById(view.id)),

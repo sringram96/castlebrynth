@@ -906,6 +906,14 @@ button {
   -webkit-overflow-scrolling: touch;
 }
 
+/* One card and its CLOSE, held in the middle of the screen. A focused
+   inspection is a small thing and reads as one when it is not pinned to the
+   top of a phone with 600px of nothing under it. */
+.screen-focus {
+  align-content: center;
+  overflow-y: auto;
+}
+
 .game-title {
   margin: 0;
   font-size: 30px;
