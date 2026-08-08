@@ -256,7 +256,11 @@ export type { RoomContent } from './rooms.js'
 export {
   CATALOG,
   CROSSING,
-  DEPTH_ONE,
+  FIRST_DEPTH,
+  opensAt,
+  // The generated depth (was `DEPTH_ONE`; the proof slice took depth one).
+  FULL_DEPTH,
+  JUNGLE_SLICE,
   FAR_SOCKET,
   FLOOR_SOCKET,
   GRAMMAR,
@@ -469,6 +473,12 @@ const AMENDED_LOOKS: readonly string[] = [
   // card 95, the mend: the fled keeper's own line, written after the
   // register changed and judged by it.
   'warden.keeper',
+  // The jungle-hell slice: one look per room, and each is his.
+  'jungle.mortar',
+  'jungle.growth',
+  'jungle.shrine',
+  'jungle.roots',
+  'jungle.gate',
 ]
 
 function amendedLook(key: string): boolean {
@@ -500,7 +510,18 @@ function amendedOrigin(key: string): boolean {
  * the mind wave's; the covered font is this wave's, and it is the exemplar,
  * so it is not allowed to be part of the debt cards 27–28 are clearing.
  */
-const AMENDED_ROOMS: readonly string[] = [THE_CROSSING as string, 'room.trove.covered-font']
+const AMENDED_ROOMS: readonly string[] = [
+  THE_CROSSING as string,
+  'room.trove.covered-font',
+  // The jungle-hell slice. Its five rooms were written after the register
+  // changed, so they are judged by it — the placeholder category is a debt
+  // with a name (cards 27–29) and not a category anything new goes into.
+  'room.jungle.entry',
+  'room.jungle.passage',
+  'room.jungle.shrine',
+  'room.jungle.fight',
+  'room.jungle.reward',
+]
 
 /**
  * Every player-facing string in the game, for the voice lint. If a string

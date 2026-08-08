@@ -21,6 +21,8 @@ import {
   BARE_BODY,
   CASCADE,
   CATALOG,
+  FIRST_DEPTH,
+  opensAt,
   END_LINES,
   GATE,
   GRAMMAR,
@@ -452,7 +454,17 @@ function boot(): void {
   // is no ritual left at the Crossing — the signature is the first traveler's
   // die, and the labyrinth is where that is found (art. 86). Waking *is* the
   // room.
-  ledgers = woken(load(vault), firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY), freshSeed())
+  // art. 37, and `opensAt`: a fresh waking stands in the room its depth opens
+  // with. That is the Crossing for every depth the generator deals, and the
+  // jungle-hell slice declares its own first step — content answers which,
+  // because `src/state` may not read a plan.
+  ledgers = woken(
+    load(vault),
+    firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY),
+    freshSeed(),
+    FIRST_DEPTH,
+    opensAt(FIRST_DEPTH),
+  )
   screen = { kind: 'room' }
   // art. 60: the hand is the first `handSize` of the pouch, and that has to
   // be true on the way *in* as well as after every act — a boot is the one
@@ -3199,7 +3211,7 @@ function walk(door: Door, said: string | null = null): void {
 function finishTheDepth(): void {
   // The Warden's door: a terse ending, its own Book line, a fresh waking.
   const permanent = finish(ledgers, 'end.warden')
-  ledgers = wake(permanent, reseed(ledgers.run!.seed))
+  ledgers = wake(permanent, reseed(ledgers.run!.seed), FIRST_DEPTH, opensAt(FIRST_DEPTH))
   chain = deal(ledgers.run!.seed, ledgers.run!.depth, CATALOG, GRAMMAR, ledgers.run!.history)
   bands = enterRoom(ledgers, chain, ROOM_BOOK, ledgers.run!.at.instance)
   pick = onArrival(doors(bands))

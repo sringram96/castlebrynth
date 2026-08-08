@@ -28,7 +28,7 @@ import {
 } from '../src/state/index.js'
 import {
   DEALER,
-  lookAround, seedOf } from './drift.js'
+  lookAround, seedOf, GENERATED } from './drift.js'
 
 /**
  * Death is the progression system (arts 11, 32). The run burns, one line
@@ -53,8 +53,8 @@ const CLUE: Clue = {
 describe('death — art. 32 (every death reseeds), art. 11 (the permanent survives)', () => {
   it('burns the run, writes one line, and wakes you at the Crossing', () => {
     const permanent = firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY)
-    const ledgers = wake(permanent, seedOf(31))
-    const chain = deal(seedOf(31), 1, CATALOG, GRAMMAR)
+    const ledgers = wake(permanent, seedOf(31), GENERATED)
+    const chain = deal(seedOf(31), GENERATED, CATALOG, GRAMMAR)
 
     // Get somewhere, take something, learn something. art. 80 puts the one
     // required thing somewhere in the path, so walk until it is underfoot.
@@ -111,16 +111,16 @@ describe('death — art. 32 (every death reseeds), art. 11 (the permanent surviv
     // yours written under it. The Book you are adding to was open before you.
     expect(woken.permanent.bookOfEnds).toEqual([
       THE_SCRAWL,
-      { seed: knowing.run!.seed, depth: 1, cause: 'end.gnawing' },
+      { seed: knowing.run!.seed, depth: GENERATED, cause: 'end.gnawing' },
     ])
   })
 
   it('reseeds the run, so the arrangement is not the one that killed you (art. 32)', () => {
     const permanent = firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY)
-    const first = wake(permanent, seedOf(31))
+    const first = wake(permanent, seedOf(31), GENERATED)
     const woken = routeDeath(first, 'end.gnawing')
-    const before = deal(first.run!.seed, 1, CATALOG, GRAMMAR, { taken: [0, 0, 0, 0] })
-    const after = deal(woken.run!.seed, 1, CATALOG, GRAMMAR, { taken: [0, 0, 0, 0] })
+    const before = deal(first.run!.seed, GENERATED, CATALOG, GRAMMAR, { taken: [0, 0, 0, 0] })
+    const after = deal(woken.run!.seed, GENERATED, CATALOG, GRAMMAR, { taken: [0, 0, 0, 0] })
     expect(after.seed).not.toBe(before.seed)
     // The same choices off a new seed are a different road entirely.
     expect(after.nodes.map((node) => node.room)).not.toEqual(
@@ -130,7 +130,7 @@ describe('death — art. 32 (every death reseeds), art. 11 (the permanent surviv
     expect(after.start).toBe(before.start)
     expect(after.nodes[0]!.room).toBe(CROSSING)
     // And the Warden still ends it, wherever the drift takes the run.
-    const finished = deal(woken.run!.seed, 1, CATALOG, GRAMMAR, {
+    const finished = deal(woken.run!.seed, GENERATED, CATALOG, GRAMMAR, {
       taken: [0, 0, 0, 0, 0, 0, 0, 0],
     })
     expect(finished.nodes.at(-1)!.room).toBe(WARDEN)
@@ -139,7 +139,7 @@ describe('death — art. 32 (every death reseeds), art. 11 (the permanent surviv
   it('leaves the permanent intact and the run virgin across a reload (arts 11, 36)', () => {
     const { vault, kill } = killable()
     const permanent = firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY)
-    const ledgers = { ...wake(permanent, seedOf(32)) }
+    const ledgers = { ...wake(permanent, seedOf(32), GENERATED) }
     const grown = {
       ...ledgers,
       permanent: collect(learn(ledgers.permanent, CLUE), THE_OSSUARY),
@@ -160,7 +160,7 @@ describe('death — art. 32 (every death reseeds), art. 11 (the permanent surviv
 
   it("writes a different line for the Warden's door, and keeps the Book (art. 11)", () => {
     const permanent = firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY)
-    const ledgers = wake(permanent, seedOf(33))
+    const ledgers = wake(permanent, seedOf(33), GENERATED)
     const died = routeDeath(ledgers, 'end.gnawing')
     const finished = finish(died, 'end.warden')
     expect(finished.bookOfEnds.map((line) => line.cause)).toEqual([

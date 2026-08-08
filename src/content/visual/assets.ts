@@ -287,4 +287,62 @@ export const PLATES: AssetManifest = {
   'patch.hall.candle.a': awaited('patch.hall.candle.a', 'patches/hall-candle-a.png', 128, 192, 'ossuary'),
   'patch.hall.candle.b': awaited('patch.hall.candle.b', 'patches/hall-candle-b.png', 128, 192, 'ossuary'),
   'patch.hall.candle.c': awaited('patch.hall.candle.c', 'patches/hall-candle-c.png', 128, 192, 'ossuary'),
+
+  // ── The jungle-hell kit: a stage, not a room ─────────────────────────
+  //
+  // Seven masters that are **composed against each other** rather than
+  // scattered: a depth plate that covers the frame, two frames that crop the
+  // sides into it, a bank that closes the bottom, and three things a room may
+  // be about. `visual/rooms.ts` is where the compositions live, and they are
+  // three arrangements of these seven and not seven independent decisions.
+  //
+  // `jungle-hell` is a **school** in the manifest's sense and nothing more
+  // (art. 126: a plate declares its school, and a plate with no school does
+  // not ship). It groups the masters that were painted in one key so that one
+  // of them can never be composited into a room lit for another. It is not a
+  // gameplay palette and it adds no tuning: the five rooms below take their
+  // `School` from the existing constants like every other room.
+  //
+  // The sizes are the files' own, measured rather than declared round: six of
+  // the seven are cut-outs trimmed to their alpha bounding box on the way in,
+  // exactly as `ossuary.skull-pile` was and for exactly its reason — a frame
+  // anchor pins the canvas, so transparent margin would put `bottom-center`
+  // somewhere that is not the bottom of the thing.
+  'jungle.depth': plate('jungle.depth', 'regions/jungle-hell/depth.png', 1086, 1448, 'jungle-hell'),
+  'jungle.left-frame': plate(
+    'jungle.left-frame',
+    'regions/jungle-hell/left-frame.png',
+    1023,
+    1488,
+    'jungle-hell',
+  ),
+  'jungle.right-frame': plate(
+    'jungle.right-frame',
+    'regions/jungle-hell/right-frame.png',
+    1023,
+    1501,
+    'jungle-hell',
+  ),
+  'jungle.floor-bank': plate(
+    'jungle.floor-bank',
+    'regions/jungle-hell/floor-bank.png',
+    1500,
+    1023,
+    'jungle-hell',
+  ),
+  'jungle.shrine': plate(
+    'jungle.shrine',
+    'regions/jungle-hell/shrine.png',
+    1023,
+    1478,
+    'jungle-hell',
+  ),
+  'jungle.brazier': plate(
+    'jungle.brazier',
+    'regions/jungle-hell/brazier.png',
+    1021,
+    1522,
+    'jungle-hell',
+  ),
+  'jungle.gate': plate('jungle.gate', 'regions/jungle-hell/gate.png', 1023, 1501, 'jungle-hell'),
 }

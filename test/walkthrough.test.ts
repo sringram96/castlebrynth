@@ -23,6 +23,7 @@ import {
   lostId,
   saysDie,
   takeActId,
+  FULL_DEPTH,
 } from '../src/content/index.js'
 import type { Act, Bands } from '../src/descent/index.js'
 import {
@@ -67,6 +68,7 @@ import { DEALER, lookAround } from './drift.js'
  */
 
 const seedOf = (n: number): Seed => n as unknown as Seed
+const GENERATED = FULL_DEPTH.depth
 
 /** Standing in a room, as the shell stands in one. */
 function standing(ledgers: Ledgers, node: ChainNode): Ledgers {
@@ -115,8 +117,8 @@ function walkUntil(
   stop: (node: ChainNode, ledgers: Ledgers) => boolean,
   options: { readonly takeGoods?: boolean } = {},
 ): { ledgers: Ledgers; chain: Chain; node: ChainNode } | null {
-  let ledgers = wake(firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY), seedOf(seed))
-  let chain = deal(seedOf(seed), 1, CATALOG, GRAMMAR, ledgers.run!.history)
+  let ledgers = wake(firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY), seedOf(seed), GENERATED)
+  let chain = deal(seedOf(seed), GENERATED, CATALOG, GRAMMAR, ledgers.run!.history)
   ledgers = greet(ledgers, hereIn(chain))
   for (;;) {
     const node = hereIn(chain)
@@ -178,7 +180,7 @@ const verbsIn = (bands: Bands): readonly string[] =>
 
 describe('the walk — six bones, a traveler, a fork, and a death', () => {
   it('wakes with a full hand of six (arts 55, 60)', () => {
-    const ledgers = wake(firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY), seedOf(1))
+    const ledgers = wake(firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY), seedOf(1), GENERATED)
     expect(ledgers.run!.hand.dice).toHaveLength(HAND_SIZE)
     expect(ledgers.permanent.handSize).toBe(6)
     // What the tray draws: a slot per die, and no empties behind them.

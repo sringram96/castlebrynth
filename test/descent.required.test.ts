@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   CATALOG,
-  DEPTH_ONE,
+  FULL_DEPTH,
   IRON_KEY,
   NOTICES,
   ROOMS,
@@ -25,6 +25,7 @@ import {
   runOf,
   takeable, lookAround } from './drift.js'
 import { BURNT, DROWNED, OSSUARY } from '../src/content/index.js'
+import { DEALT_BY_FULL_DEPTH } from './helpers.js'
 
 /**
  * arts 3 and 80 — winnability by construction.
@@ -40,7 +41,7 @@ import { BURNT, DROWNED, OSSUARY } from '../src/content/index.js'
  * thing lying unclaimed still refuses the room's doors, so a player cannot
  * walk past what the dealer put there for them.
  */
-const LOCK = DEPTH_ONE.locks[0]!
+const LOCK = FULL_DEPTH.locks[0]!
 
 /** The policies a run can be played with, including two that fight the drift. */
 const POLICIES: readonly (readonly [string, (seed: number) => Policy])[] = [
@@ -94,7 +95,18 @@ describe('art. 80 — the key is unbound, and arrives before its lock', () => {
   })
 
   it('declares every room able to hold it, so the last chance is never a dead one', () => {
-    for (const template of CATALOG.rooms) {
+    // art. 80's guarantee is about a depth that has a lock to place a key
+    // ahead of, and the depth that has one is `FULL_DEPTH`. Its every room
+    // must be able to hold the key, or the last room before the Warden's
+    // door could be one with nowhere to put it.
+    //
+    // The jungle-hell slice has no lock and demands nothing (its gate is
+    // scenery), so it is outside what this article promises — and its rooms
+    // deliberately have no floor socket, which is what keeps its one reward
+    // in the one room that does.
+    const dealt = CATALOG.rooms.filter((held) => DEALT_BY_FULL_DEPTH.has(held.id as string))
+    expect(dealt.length).toBeGreaterThan(0)
+    for (const template of dealt) {
       expect(
         template.sockets.some((socket) => socket.accepts === 'boon'),
         template.id as string,

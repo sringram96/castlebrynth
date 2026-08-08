@@ -407,9 +407,17 @@ export function deal(
 
   const dealAt = (step: number, announces: RegionId | null): ChainNode => {
     const last = step >= plan.length - 1
-    const fixed = step === 0 ? anchor('crossing') : last ? anchor('warden') : null
-    // The anchors first (art. 37), then what the depth owes (art. 40), then
+    // A routed depth says which room stands here and the draw never runs
+    // (`DepthPlan.route`). It is read before the anchors because a route that
+    // could not name its own first room would not be one — and it is a lookup
+    // in the same `templates` map as everything else, so a route naming a room
+    // the catalog does not hold falls through to the ordinary machinery rather
+    // than dealing a hole.
+    const routed = plan.route?.[step]
+    const onRoute = routed === undefined ? null : (templates.get(routed as string) ?? null)
+    // The anchors next (art. 37), then what the depth owes (art. 40), then
     // the ordinary weighted draw.
+    const fixed = onRoute ?? (step === 0 ? anchor('crossing') : last ? anchor('warden') : null)
     const drawn =
       fixed !== null
         ? { template: fixed, region: null }

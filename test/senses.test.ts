@@ -16,7 +16,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { DEPTH_ONE, LABELS, NOTICES, SENSES, saysDoor } from '../src/content/index.js'
+import { FULL_DEPTH, LABELS, NOTICES, SENSES, saysDoor } from '../src/content/index.js'
 import type { Door, InstanceId } from '../src/gen/index.js'
 import { hereIn } from '../src/gen/index.js'
 import { coinFlip, runOf } from './drift.js'
@@ -24,7 +24,7 @@ import { coinFlip, runOf } from './drift.js'
 const instance = (id: string): InstanceId => id as InstanceId
 
 /** Every pool a depth can tag a door with, the neutral one included. */
-const POOLS: readonly string[] = ['', ...DEPTH_ONE.regions.map((one) => one.id as string)]
+const POOLS: readonly string[] = ['', ...FULL_DEPTH.regions.map((one) => one.id as string)]
 
 /**
  * art. 31: **a sense is not a label.** It never ranks the doors against each
@@ -136,7 +136,7 @@ describe('art. 17, art. 36 — a sense is a fact about the door', () => {
    * tag.
    */
   it('gives three doors of one region three different sentences', () => {
-    const region = DEPTH_ONE.regions[0]!.id
+    const region = FULL_DEPTH.regions[0]!.id
     const at = instance('room.crossing|0')
     const said = new Set(
       [0, 1, 2].map((n) => saysDoor({ at: n, region, demands: [] } as Door, at)),

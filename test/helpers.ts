@@ -15,9 +15,44 @@ import type {
   Value,
 } from '../src/lots/index.js'
 import { freshCard } from '../src/lots/index.js'
+import { CROSSING, FULL_DEPTH, WARDEN } from '../src/content/index.js'
 import type { Seed } from '../src/state/index.js'
 
 export const seedOf = (n: number): Seed => n as unknown as Seed
+
+/**
+ * **The depth the generator actually generates.**
+ *
+ * The jungle-hell proof slice took depth one, because a proof nobody plays is
+ * not one — a fresh run walks the five authored rooms. The drift, the forced
+ * lock, the Warden and the key it needs all still live on `FULL_DEPTH`, and
+ * every test below that is about *the dealer* rather than about the slice
+ * asks for this depth by name rather than by the literal it used to be.
+ *
+ * It is a named constant and not a `2` for the obvious reason: the next time
+ * a depth is added or renumbered, the tests that mean "the generated one"
+ * should not have to be found by grep.
+ */
+export const GENERATED = FULL_DEPTH.depth
+
+/**
+ * Every room the generated depth can deal: its regions, its neutral pool, and
+ * the two anchors art. 37 fixes at either end.
+ *
+ * It exists so that an invariant about *the dealer* can be asked of the rooms
+ * the dealer actually deals. The proof slice's five rooms are in the same
+ * catalog — they must be, or the route could not name them — but they are a
+ * fixed route with declared sockets, no lock, no drift and no mercies, so a
+ * promise the generated depth makes is not automatically a promise about
+ * them. Scoping the question is not weakening it: it is asking it where the
+ * article it comes from applies.
+ */
+export const DEALT_BY_FULL_DEPTH: ReadonlySet<string> = new Set<string>([
+  ...FULL_DEPTH.regions.flatMap((one) => one.rooms as readonly string[]),
+  ...(FULL_DEPTH.neutral as readonly string[]),
+  CROSSING as string,
+  WARDEN as string,
+])
 
 export const PLAIN_FACES = [1, 2, 3, 4, 5, 6].map((v) => ({ value: v as Value }))
 

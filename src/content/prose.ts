@@ -152,6 +152,19 @@ export const BEATS: Readonly<Record<string, readonly string[]>> = {
     'The covered font. A stone basin stands waist-high in the middle of the floor.',
     'Cloth over the top of it, tied off under the rim. Somebody pulled it tight.',
   ],
+
+  /**
+   * The jungle-hell slice. Five rooms, and the words are deliberately thin —
+   * this is the wave that proves a picture, not the wave that tells a story.
+   * What each room owes is recognition and nothing beyond it: a player has to
+   * be able to say what they are standing in (art. 111), and the third room
+   * has to read as somewhere else than the first two.
+   */
+  'room.jungle.entry': ['The roots have found the mortar.', 'Something built this. Something else is taking it back.'],
+  'room.jungle.passage': ['The way narrows where the growth is thickest.'],
+  'room.jungle.shrine': ['Someone kept this lit.', 'Not lately. But someone did, and for a long while.'],
+  'room.jungle.fight': ['Something is standing in the only way on.'],
+  'room.jungle.reward': ['The gate is bound. Something was left in front of it.'],
 }
 
 /** Tappable nouns are concrete and singular (voice). */
@@ -243,6 +256,12 @@ export const NOUNS: Readonly<Record<string, string>> = {
   'font.cloth': 'the cloth',
   'font.basin': 'the basin',
   'font.dry': 'the dry floor',
+  // The jungle-hell slice. One noun per room, concrete and singular.
+  'jungle.mortar': 'the split mortar',
+  'jungle.growth': 'the growth',
+  'jungle.shrine': 'the shrine',
+  'jungle.roots': 'the roots',
+  'jungle.gate': 'the bound gate',
 }
 
 /** What looking answers. Looking is free and always answers (art. 6). */
@@ -424,6 +443,13 @@ export const LOOKS: Readonly<Record<string, string>> = {
   'leech.thing.again': 'One face stained darker. I left the last one where it lay, and I have bled out slow since.',
   'crawl.legs.again': 'Too many, and the same on every side. Whatever takes a little at a time takes it from me for free.',
   'sump.grate.again': 'Iron bars over a drop. I stood over one of these and did not look. I am doing it again.',
+  // The jungle-hell slice. One answer each, and each names the thing first
+  // (art. 111) before it says anything about it.
+  'jungle.mortar': 'A root has come through the joint and opened it. The stone gave first.',
+  'jungle.growth': 'It gets thicker toward the dark, which is the wrong way round.',
+  'jungle.shrine': 'A shrine, choked with root. Wax has run down the steps and set there.',
+  'jungle.roots': 'Roots across the floor, thick as an arm. Something heavy has been over them.',
+  'jungle.gate': 'A gate, bound in chain. The bars go all the way into the stone.',
   'kiln.mouth.again': 'Brick, and the inside goes back past the wall. I kept my arm out of the last one, so I still do not know.',
   'font.cloth.again': 'Cloth, tight, wet from underneath. I did not put my ear to the last one of these either.',
   'font.basin.again': 'The lip is worn on the inside. There was something in one of these I did not take, and it is still in there.',

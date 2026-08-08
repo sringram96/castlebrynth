@@ -125,7 +125,10 @@ describe('hinge — art. 30 (no battle screen), arts 11 and 32 (death routes on)
     // The line that was already there (art. 11, the reason wave), and yours
     // written under it.
     expect(woken.permanent.bookOfEnds).toHaveLength(2)
-    expect(woken.permanent.bookOfEnds[1]).toMatchObject({ cause: 'end.gnawing', depth: 1 })
+    expect(woken.permanent.bookOfEnds[1]).toMatchObject({
+      cause: 'end.gnawing',
+      depth: ledgers.run!.depth,
+    })
     expect(woken.run!.seed).not.toBe(ledgers.run!.seed)
     expect(woken.run!.health).toBe(BARE_BODY.health)
     expect(woken.run!.carried).toEqual([])
