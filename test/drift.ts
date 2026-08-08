@@ -25,6 +25,9 @@ import type { Ledgers, RunHistory, Seed } from '../src/state/index.js'
 import { collect, firstPermanent, lookedAt, meet, movedTo, tookDoor, wake } from '../src/state/index.js'
 import type { Die, Talisman, Trinket, Wearable } from '../src/lots/index.js'
 
+import { GENERATED } from './helpers.js'
+
+export { GENERATED } from './helpers.js'
 export const DEALER = dealerOf(CATALOG, GRAMMAR)
 export const seedOf = (n: number): Seed => n as unknown as Seed
 
@@ -68,7 +71,7 @@ function spent(node: ChainNode | null): boolean {
  * One run, dealt to its end under a policy. Nothing about the road not taken
  * is ever asked for — the walk only ever opens a door that is in front of it.
  */
-export function runOf(seed: number, policy: Policy, depth = 1): Chain {
+export function runOf(seed: number, policy: Policy, depth = GENERATED): Chain {
   return runWith(CATALOG, GRAMMAR, seed, policy, depth)
 }
 
@@ -82,7 +85,7 @@ export function runWith(
   grammar: Grammar,
   seed: number,
   policy: Policy,
-  depth = 1,
+  depth = GENERATED,
 ): Chain {
   let history: RunHistory = NO_HISTORY
   let chain = deal(seedOf(seed), depth, catalog, grammar, history)
@@ -158,8 +161,8 @@ export function opened(
   // card 93: a rolling good is permanent like any other good, so a returning
   // run brings it down. Nothing is carried here by default.
   for (const held of carrying.trinkets ?? []) permanent = collect(permanent, held)
-  const ledgers = wake(permanent, seedOf(seed))
-  return { ledgers, chain: deal(seedOf(seed), 1, catalog, GRAMMAR, ledgers.run!.history) }
+  const ledgers = wake(permanent, seedOf(seed), GENERATED)
+  return { ledgers, chain: deal(seedOf(seed), GENERATED, catalog, GRAMMAR, ledgers.run!.history) }
 }
 
 /**

@@ -170,6 +170,23 @@ export interface DepthPlan {
   readonly depth: number
   /** art. 81: fixed rooms per depth, counting the Crossing and the Warden. */
   readonly length: number
+  /**
+   * **A fixed route: which room stands at each step.** Absent is the ordinary
+   * weighted draw (art. 38), which is what every depth the game deals for real
+   * uses and is unchanged by this field's existence.
+   *
+   * It is here rather than in the shell because art. 9 says runs are
+   * *arranged* from hand-authored rooms, and an arrangement somebody wrote
+   * down by hand is still an arrangement. A proof slice that lived as
+   * `if (step === 3)` in the renderer would be a picture pretending to be a
+   * depth; as a plan it is data the dealer reads, so the same replay, the same
+   * sockets, the same doors and the same winnability check run over it.
+   *
+   * A step past the end of the list, or one naming a room the catalog does not
+   * hold, falls back to the ordinary draw rather than throwing — a route is a
+   * statement about the steps it covers and says nothing about the others.
+   */
+  readonly route?: readonly RoomId[]
   /** art. 78: the door count at which one region locks. */
   readonly lockAt: number
   readonly regions: readonly Region[]

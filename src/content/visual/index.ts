@@ -8,7 +8,7 @@
  */
 
 export { PLATES } from './assets.js'
-export { DRESSED_ROOMS, LANTERN, artFor, assetsWanted } from './rooms.js'
+export { DRESSED_ROOMS, LANTERN, STAGES, artFor, assetsWanted } from './rooms.js'
 export { CANONICAL, canonicalArt } from './canonical.js'
 export type { HorrorPlate } from './horrors.js'
 export { horrorPlateAt, horrorPlateFor } from './horrors.js'

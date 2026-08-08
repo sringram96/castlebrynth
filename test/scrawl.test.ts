@@ -9,6 +9,7 @@ import {
   PLAIN_POUCH,
   ROOM_BOOK,
   lintVoice,
+  FULL_DEPTH,
 } from '../src/content/index.js'
 import { enterRoom } from '../src/descent/index.js'
 import { deal } from '../src/gen/index.js'
@@ -31,15 +32,16 @@ import { THE_SCRAWL, firstPermanent, wake } from '../src/state/index.js'
  */
 
 const seedOf = (n: number): Seed => n as unknown as Seed
+const GENERATED = FULL_DEPTH.depth
 
 function woken(seed = 3): { ledgers: Ledgers; first: string } {
-  const ledgers = wake(firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY), seedOf(seed))
+  const ledgers = wake(firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY), seedOf(seed), GENERATED)
   return { ledgers, first: firstCandle(ledgers, seed) }
 }
 
 /** The first thing the game says, standing where the player stands. */
 function firstCandle(ledgers: Ledgers, seed: number): string {
-  const chain = deal(seedOf(seed), 1, CATALOG, GRAMMAR, ledgers.run!.history)
+  const chain = deal(seedOf(seed), GENERATED, CATALOG, GRAMMAR, ledgers.run!.history)
   return enterRoom(ledgers, chain, ROOM_BOOK, chain.start).beats[0] ?? ''
 }
 
@@ -62,7 +64,7 @@ describe('the scrawl loop — the waking opens on the last thing he wrote', () =
 
   it('keeps the Crossing’s own words after it, in order', () => {
     const { ledgers, first } = woken(5)
-    const chain = deal(seedOf(5), 1, CATALOG, GRAMMAR, ledgers.run!.history)
+    const chain = deal(seedOf(5), GENERATED, CATALOG, GRAMMAR, ledgers.run!.history)
     const beats = enterRoom(ledgers, chain, ROOM_BOOK, chain.start).beats
     // The scrawl, and then the room — a room's own candles are untouched by
     // being read second.
@@ -73,7 +75,7 @@ describe('the scrawl loop — the waking opens on the last thing he wrote', () =
 
   it('says it only at the waking — no other room opens on his handwriting', () => {
     const { ledgers } = woken(7)
-    const chain = deal(seedOf(7), 1, CATALOG, GRAMMAR, { taken: [0, 0, 0] })
+    const chain = deal(seedOf(7), GENERATED, CATALOG, GRAMMAR, { taken: [0, 0, 0] })
     for (const node of chain.nodes.slice(1)) {
       const beats = enterRoom(ledgers, chain, ROOM_BOOK, node.instance).beats
       for (const said of Object.values(END_LINES)) expect(beats).not.toContain(said)

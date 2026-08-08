@@ -65,6 +65,8 @@ import {
   OSSUARY,
   FLOOR_CHANCE,
   SAVIOR_CHANCE,
+  // The slice's reward, placed by its plan rather than drawn into its floor.
+  SLIVER,
   WARDEN_KEY,
   WARDEN_KEY_ITEM,
   fillProps,
@@ -815,6 +817,19 @@ interface Authored {
    * Warden's door.
    */
   readonly floor?: number
+  /**
+   * art. 83: **rooms declare sockets.** Almost every room in the depth
+   * declares the same three and tunes them by chance, which is what the three
+   * numbers above are for — a place the player learns to look is worth more
+   * than a place they have to find.
+   *
+   * A room may instead say exactly which places it has. That is not a new
+   * rule, it is the article's own words: a room with no floor socket is a
+   * room the dealer cannot leave anything on, which is a stronger and clearer
+   * statement than a floor socket whose chance is zero — the just-in-time key
+   * ignores a chance (art. 80) and does not ignore an absence.
+   */
+  readonly sockets?: readonly Socket[]
 }
 
 const AUTHORED: readonly Authored[] = [
@@ -1572,6 +1587,161 @@ const AUTHORED: readonly Authored[] = [
     mercy: NEVER,
     floor: NEVER,
   },
+
+  // ── The jungle-hell slice (arts 9, 83, 126–127) ─────────────────────
+  //
+  // Five rooms proving one claim: **the view may be almost entirely authored
+  // and the room underneath it still an ordinary room.** Every one of them is
+  // a box with a school, a shape, doors, things to look at and sockets to
+  // deal into — the stage in `visual/rooms.ts` is laid over that and takes
+  // nothing away from it. Delete the seven plates and these are five plain
+  // corridors, which is art. 126's fallback and is why this is additive.
+  //
+  // They are new templates rather than a redress of existing ones because
+  // art. 34 keys knowledge on identity: repainting `room.passage.drip` green
+  // would silently turn every mark a player has ever earned about the drowned
+  // into a mark about somewhere else.
+  //
+  // Their sockets are **declared, not inherited**, and that is the whole of
+  // how the route is made deterministic without a special case: the first
+  // three rooms have none, so nothing can be dealt into them; the fight has
+  // exactly one socket and it takes teeth; the reward has exactly one and it
+  // takes a good.
+  {
+    id: 'room.jungle.entry',
+    type: 'passage',
+    school: VERDIGRIS,
+    kind: 'corridor',
+    // art. 99: the root that split the wall, and the course it split. Both
+    // walls answer differently from bare masonry and so does the wall the
+    // room ends in — a grammar on its own is the last room in another colour.
+    built: {
+      left: layered(stringCourse(9.5, 0.8), crack(4.5, 13, 1, 17)),
+      right: layered(stringCourse(9.5, 0.8), pilasters(11, 2.2, 3)),
+      back: stringCourse(9.5, 0.8),
+    },
+    dressing: (school) => [seep(school)],
+    tappables: [['jungle.mortar', { X: -6.4, Y: FLOOR + 2.2, z: 15, width: 3.6, height: 4.2 }]],
+    // art. 83: the room has a far end like any other and nothing ever stands
+    // in it. Declaring the place and never filling it is `room.warden`'s own
+    // pattern — what these three rooms must not have is a *floor* socket,
+    // because that is the one the plan's placement would otherwise reach
+    // (art. 80 ignores a chance and does not ignore an absence).
+    sockets: [{ id: FAR_SOCKET, accepts: 'horror', chance: NEVER }],
+  },
+  {
+    id: 'room.jungle.passage',
+    type: 'passage',
+    school: WET,
+    kind: 'corridor',
+    // **The same stage, and not the same room.** It wears `JUNGLE_QUIET` like
+    // the entry does, because two rooms a player reads as one place is what
+    // makes the third plainly not — but underneath it is its own school, its
+    // own walls and its own things (art. 34: a room is learned by identity).
+    built: {
+      left: layered(stringCourse(8.5, 0.7), blindArcade(6, 3.2, 0.5, 5.8)),
+      right: layered(stringCourse(8.5, 0.7), blindArcade(6, 3.2, 0.5, 5.8, 3)),
+      back: stringCourse(8.5, 0.7),
+    },
+    dressing: (school) => [runnel(school)],
+    tappables: [['jungle.growth', { X: 6.2, Y: FLOOR + 1.8, z: 14, width: 3.8, height: 4 }]],
+    // art. 83: the room has a far end like any other and nothing ever stands
+    // in it. Declaring the place and never filling it is `room.warden`'s own
+    // pattern — what these three rooms must not have is a *floor* socket,
+    // because that is the one the plan's placement would otherwise reach
+    // (art. 80 ignores a chance and does not ignore an absence).
+    sockets: [{ id: FAR_SOCKET, accepts: 'horror', chance: NEVER }],
+  },
+  {
+    id: 'room.jungle.shrine',
+    type: 'trove',
+    school: VERDIGRIS,
+    kind: 'chamber',
+    // art. 99: a niche cut where the shrine stands, and a course carried
+    // round. This is the room that has to read as somewhere else than the two
+    // before it, and the walls are half of how it does that.
+    built: {
+      left: layered(stringCourse(11, 0.9), niche(17, 2.5, 7, 3.4)),
+      right: layered(stringCourse(11, 0.9), pilasters(12, 2.4, 5)),
+      back: stringCourse(11, 0.9),
+    },
+    dressing: (school) => [dust(school)],
+    /**
+     * art. 68: **the shrine is looked at, and looking is the inspection.**
+     * The plate is painted at about 0.27 of the lens and this mark is placed
+     * to land under it, so the thumb presses the thing it can see — the tap
+     * region is the room's, the pixels are the stage's, and neither invents a
+     * mechanism the other needs. There is no shrine minigame and no new act:
+     * it answers, which is what art. 69 asks of anything tappable.
+     */
+    tappables: [['jungle.shrine', { X: -5.6, Y: FLOOR, z: 17, width: 5.2, height: 8.4 }]],
+    // art. 83: the room has a far end like any other and nothing ever stands
+    // in it. Declaring the place and never filling it is `room.warden`'s own
+    // pattern — what these three rooms must not have is a *floor* socket,
+    // because that is the one the plan's placement would otherwise reach
+    // (art. 80 ignores a chance and does not ignore an absence).
+    sockets: [{ id: FAR_SOCKET, accepts: 'horror', chance: NEVER }],
+  },
+  {
+    id: 'room.jungle.fight',
+    type: 'lair',
+    // The darkest school the palette has, so that the room this fight is in
+    // is the right room underneath its painting — a plate that fails to decode
+    // leaves the box, and the box a fight happens in should not be the pale
+    // one (art. 112: a third of the frame stays dark).
+    school: NOIR,
+    kind: 'low',
+    // art. 99: a way on that was bricked up, which says what happened here
+    // without a word of prose — and is why the only way left is through the
+    // thing standing in it.
+    built: {
+      left: layered(stringCourse(6.5, 0.6), pilasters(9, 2, 2)),
+      right: layered(stringCourse(6.5, 0.6), pilasters(9, 2, 2)),
+      back: layered(stringCourse(6.5, 0.6), brickedUp(-3.5, 3.2, 5)),
+    },
+    // Low and close, so the thing at the far end fills more of the lens than
+    // it would in a chamber. The stage narrows the same room again on top of
+    // that (`JUNGLE_CONSTRICTED`), which is the two halves of the wave's
+    // claim doing the same job: the box is tighter and the picture agrees.
+    dressing: (school) => [dust(school)],
+    // Off to the near right, well clear of the far socket the horror stands
+    // in — art. 105, asked of the thumb: two things at one place is one thing
+    // that cannot be pressed.
+    tappables: [['jungle.roots', { X: 5.8, Y: FLOOR + 1.4, z: 12, width: 3.4, height: 3.6 }]],
+    // art. 83: one socket, and it is always filled. The fight is the room.
+    sockets: [{ id: FAR_SOCKET, accepts: 'horror', chance: LAIR_CHANCE }],
+  },
+  {
+    id: 'room.jungle.reward',
+    type: 'trove',
+    school: SILT,
+    kind: 'chamber',
+    // art. 99: pilasters on a wide pitch and a course at the height of the
+    // gate's top band, so the room reads as built for the gate rather than as
+    // a room that happens to have one at the end of it.
+    built: {
+      left: layered(stringCourse(12, 1), pilasters(13, 2.8, 4)),
+      right: layered(stringCourse(12, 1), pilasters(13, 2.8, 4)),
+      back: stringCourse(12, 1),
+    },
+    dressing: (school) => [dust(school)],
+    /**
+     * The gate is scenery and it is honest about it: it is a thing you look
+     * at, not a door you open. The depth's last door is the way out and it
+     * demands nothing (`template`, which gives demands to the Warden's room
+     * and to no other), so nothing here is a lock and nothing here is a
+     * second fight.
+     */
+    tappables: [['jungle.gate', { X: 0, Y: FLOOR, z: 26, width: 7.4, height: 9.5 }]],
+    /**
+     * art. 83: one socket, and its chance is **nothing**. What stands in it is
+     * placed by the plan rather than drawn into it (`JUNGLE_SLICE.locks`), so
+     * the reward is the same good on every seed and the ordinary rarity draw
+     * never gets a say. That is art. 80's just-in-time placement used as
+     * written — the dealer knows what it owes and puts it in the path.
+     */
+    sockets: [{ id: FLOOR_SOCKET, accepts: 'boon', chance: NEVER }],
+  },
 ]
 
 /**
@@ -1757,8 +1927,29 @@ function contentOf(one: Authored): RoomContent {
     acts: one.acts ?? [],
     door,
     doorMarks: (count) => doorMarks(one.kind, count),
-    sockets: SOCKET_AT[one.kind],
+    sockets: socketMarksOf(one),
   }
+}
+
+/**
+ * art. 83: **where a room keeps the sockets it has** — and only those.
+ *
+ * A room that declares its own places (`Authored.sockets`) advertises marks
+ * for exactly them. It used to advertise all three of its shape's marks
+ * whatever it declared, which was harmless while every room declared all
+ * three and became a lie the moment one did not: a mercy socket the dealer
+ * can never fill is a piece of floor the thumb is told to keep clear of for
+ * nothing (art. 105 is asked of these marks, in `room.junction.test.ts`).
+ */
+function socketMarksOf(one: Authored): Readonly<Record<string, WorldMark>> {
+  const every = SOCKET_AT[one.kind]
+  if (one.sockets === undefined) return every
+  const held: Record<string, WorldMark> = {}
+  for (const socket of one.sockets) {
+    const mark = every[socket.id as string]
+    if (mark !== undefined) held[socket.id as string] = mark
+  }
+  return held
 }
 
 export const ROOMS: readonly RoomContent[] = AUTHORED.map(contentOf)
@@ -1766,6 +1957,8 @@ export const ROOMS: readonly RoomContent[] = AUTHORED.map(contentOf)
 // ── The catalog the dealer deals from ──────────────────────────────────
 
 function socketsOf(one: Authored): readonly Socket[] {
+  // A room that named its own places gets exactly those (art. 83).
+  if (one.sockets !== undefined) return one.sockets
   return [
     { id: FAR_SOCKET, accepts: 'horror', chance: one.teeth ?? STRAY_CHANCE },
     // arts 80, 86: the floor is where the dead are. The key still goes in
@@ -1794,8 +1987,92 @@ function template(one: Authored): RoomTemplate {
  * count that forces the lock (art. 78) and how many regions there are
  * (art. 77). All three of them are here, and nowhere else.
  */
-export const DEPTH_ONE: DepthPlan = {
+/**
+ * **The jungle-hell slice — the proof route (arts 9, 80, 83).**
+ *
+ * Five rooms in a fixed order: the wet threshold, the root passage, the
+ * choked shrine, the narrowing, the bound gate. It exists to prove one thing
+ * — that a room can be almost entirely authored stagecraft and still be an
+ * ordinary Castlebrynth room — and it is a `DepthPlan` rather than a branch
+ * in the shell so that it proves it *through the machinery* and not beside
+ * it. The dealer replays it, the sockets fill, the doors are doors, the
+ * winnability check runs, and exact resume works, because none of those know
+ * this depth is special.
+ *
+ * Three declarations do all the work and none of them is a new rule:
+ *
+ * **The route** names the room at each step (`DepthPlan.route`). The ordinary
+ * weighted draw is untouched and still deals `FULL_DEPTH`.
+ *
+ * **No regions**, so `pools` offers only the neutral pool. Two consequences
+ * fall out and both are wanted: every room deals exactly one door, because
+ * `pickSome` draws tags without replacement and there is one tag to draw — so
+ * the route is linear by construction rather than by a rule about doors — and
+ * nothing regional is ever awake (`awake`), which leaves the Gnawing as the
+ * only horror the fight's socket can draw. The one fight is therefore the
+ * same fight on every seed without a single encounter being bound to it.
+ *
+ * **One lock with nothing to unlock.** art. 80's machinery is *placement*:
+ * the dealer knows what it owes and puts it in the path before it is wanted.
+ * Here it owes the Sliver and the only free boon socket in the route is the
+ * last room's, so the reward lands there on every seed, drawn from the
+ * catalog like any other good and taken by the act that takes any other good.
+ * `demands` is empty because nothing in this route is locked: the gate is
+ * scenery, and a depth that ended in a real lock would be a different card.
+ */
+export const JUNGLE_SLICE: DepthPlan = {
   depth: 1,
+  length: 5,
+  route: [
+    room('room.jungle.entry'),
+    room('room.jungle.passage'),
+    room('room.jungle.shrine'),
+    room('room.jungle.fight'),
+    room('room.jungle.reward'),
+  ],
+  // art. 78 never fires: there is no region to lock, so this is the count at
+  // which nothing happens. It is set past the last door rather than to zero
+  // so that it reads as "never" instead of as "immediately".
+  lockAt: 5,
+  regions: [],
+  // The route deals every step, so this pool is only ever reached if a room
+  // went missing from the catalog — and then it deals a jungle room rather
+  // than dropping the player into the ossuary.
+  neutral: [
+    room('room.jungle.entry'),
+    room('room.jungle.passage'),
+    room('room.jungle.shrine'),
+    room('room.jungle.fight'),
+    room('room.jungle.reward'),
+  ],
+  tendencies: {
+    passage: 1,
+    lair: 1,
+    puzzle: 0,
+    trove: 1,
+    omen: 0,
+    sanctum: 0,
+    merchant: 0,
+    savior: 0,
+    crossing: 0,
+    warden: 0,
+  },
+  locks: [{ at: 5, demands: [], key: SLIVER }],
+  mercies: [],
+}
+
+/**
+ * The full authored depth: nine rooms, three regions, the drift, the forced
+ * lock, the Warden's door and the key that opens it.
+ *
+ * **It was depth one until the slice took that number**, and it is unchanged
+ * in every particular — this is the game's real generated depth and the thing
+ * the slice is a proof *about*. Nothing here was simplified to make room for
+ * the proof; the proof was given the next number along, and the generic
+ * machinery is still exercised over this plan by the tests that always did.
+ */
+export const FULL_DEPTH: DepthPlan = {
+  depth: 2,
   length: 9,
   lockAt: 4,
   regions: [
@@ -1883,7 +2160,7 @@ export const DEPTH_ONE: DepthPlan = {
 export const CATALOG: Catalog = {
   rooms: AUTHORED.map(template),
   encounters: ENCOUNTERS,
-  depths: [DEPTH_ONE],
+  depths: [JUNGLE_SLICE, FULL_DEPTH],
 }
 
 /**
@@ -1924,6 +2201,32 @@ export const GRAMMAR: Grammar = {
    * a chance and not a target.
    */
   forkChance: 1,
+}
+
+/**
+ * **The depth a fresh run walks.** `wake` defaults to one and this is what
+ * that one *is*, named rather than assumed, so the shell asks content which
+ * labyrinth it is opening instead of carrying a literal.
+ */
+export const FIRST_DEPTH = JUNGLE_SLICE.depth
+
+/**
+ * art. 37: **which room opens a depth.**
+ *
+ * The Crossing opens every run the generator deals, and that is still the
+ * answer for every plan without a route. A plan that declares one names its
+ * own first step, and this is the single place that question is answered —
+ * `src/state` may not import content, so the shell asks here and hands the
+ * answer to `wake`.
+ *
+ * It is derived from the plan rather than written down twice: a route whose
+ * first room disagreed with the room the run woke in would deal a chain the
+ * ledger cannot find itself in, which is a crash at boot and not a bad
+ * picture.
+ */
+export function opensAt(depth: number): RoomId {
+  const plan = CATALOG.depths.find((one) => one.depth === depth)
+  return plan?.route?.[0] ?? CROSSING
 }
 
 const byId = new Map<string, RoomContent>(ROOMS.map((held) => [held.id as string, held]))

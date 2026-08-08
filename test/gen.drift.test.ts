@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { BURNT, CATALOG, DEPTH_ONE, DROWNED, GRAMMAR, OSSUARY } from '../src/content/index.js'
+import { BURNT, CATALOG, FULL_DEPTH, DROWNED, GRAMMAR, OSSUARY } from '../src/content/index.js'
 import type { Catalog, Chain, Grammar, RegionId } from '../src/gen/index.js'
 import type { Policy } from './drift.js'
 import {
@@ -60,7 +60,7 @@ describe('the drift — art. 78 (every run arrives somewhere)', () => {
     ] as const) {
       for (const chain of sweep(make)) {
         expect(chain.drift.locked, `${name} seed ${chain.seed}`).not.toBeNull()
-        expect(chain.drift.opened).toBeGreaterThanOrEqual(DEPTH_ONE.lockAt)
+        expect(chain.drift.opened).toBeGreaterThanOrEqual(FULL_DEPTH.lockAt)
       }
     }
   })
@@ -70,16 +70,16 @@ describe('the drift — art. 78 (every run arrives somewhere)', () => {
       const announcing = chain.nodes.filter((node) => node.announces !== null)
       expect(announcing).toHaveLength(1)
       expect(announcing[0]!.announces).toBe(chain.drift.locked)
-      expect(announcing[0]!.step).toBe(DEPTH_ONE.lockAt)
+      expect(announcing[0]!.step).toBe(FULL_DEPTH.lockAt)
     }
   })
 
   it('deals only the locked region once it has locked, the Warden aside (art. 78)', () => {
     for (const chain of sweep((seed) => coinFlip(seed), 200)) {
       const locked = chain.drift.locked as RegionId
-      const pool = DEPTH_ONE.regions.find((one) => one.id === locked)!.rooms
+      const pool = FULL_DEPTH.regions.find((one) => one.id === locked)!.rooms
       for (const node of chain.nodes) {
-        if (node.step < DEPTH_ONE.lockAt || node.step === DEPTH_ONE.length - 1) continue
+        if (node.step < FULL_DEPTH.lockAt || node.step === FULL_DEPTH.length - 1) continue
         expect(pool, `seed ${chain.seed} step ${node.step}`).toContain(node.room)
         expect(node.region).toBe(locked)
       }
@@ -112,9 +112,9 @@ describe('the drift — art. 77 (the pattern of doors means everything)', () => 
       expect(locked).not.toBeNull()
       counts.set(locked as string, (counts.get(locked as string) ?? 0) + 1)
     }
-    expect(counts.size).toBe(DEPTH_ONE.regions.length)
+    expect(counts.size).toBe(FULL_DEPTH.regions.length)
     // No single door means much: an unplanned run lands anywhere.
-    for (const region of DEPTH_ONE.regions) {
+    for (const region of FULL_DEPTH.regions) {
       expect(share(counts.get(region.id as string) ?? 0, RUNS), region.id as string).toBeGreaterThan(
         0.15,
       )
@@ -130,7 +130,7 @@ describe('the drift — art. 77 (the pattern of doors means everything)', () => 
           (counts.get(chain.drift.locked as string) ?? 0) + 1,
         )
       }
-      for (const region of DEPTH_ONE.regions) {
+      for (const region of FULL_DEPTH.regions) {
         const got = share(counts.get(region.id as string) ?? 0, RUNS)
         expect(got, region.id as string).toBeGreaterThan(0.2)
         expect(got).toBeLessThan(0.5)
@@ -196,7 +196,7 @@ describe('the drift — art. 38 (the rhythm obligations, distributionally)', () 
     // The Sanctum is the exception that shows the rule: its tendency is zero
     // too, so every one dealt was dealt by art. 40's promise and by nothing
     // else — exactly one per run, out of seven middle rooms.
-    expect(seen.get('sanctum') ?? 0).toBeCloseTo(1 / (DEPTH_ONE.length - 2), 10)
+    expect(seen.get('sanctum') ?? 0).toBeCloseTo(1 / (FULL_DEPTH.length - 2), 10)
   })
 
   it('moves the distribution when the tendencies move, which is what art. 39 claims', () => {
@@ -207,7 +207,7 @@ describe('the drift — art. 38 (the rhythm obligations, distributionally)', () 
       ...GRAMMAR,
       adjacencyBans: [],
       guarantees: [],
-      fightBand: [0, DEPTH_ONE.length],
+      fightBand: [0, FULL_DEPTH.length],
     }
     const sweepOf = (catalog: Catalog): Map<string, number> =>
       typeShares(
@@ -219,7 +219,7 @@ describe('the drift — art. 38 (the rhythm obligations, distributionally)', () 
     // toward teeth. If tendencies weighted nothing, this would not move.
     const deeper = sweepOf({
       ...CATALOG,
-      depths: [{ ...DEPTH_ONE, tendencies: { ...DEPTH_ONE.tendencies, passage: 1, lair: 5 } }],
+      depths: [{ ...FULL_DEPTH, tendencies: { ...FULL_DEPTH.tendencies, passage: 1, lair: 5 } }],
     })
     // Not a clean doubling and it should not be: the neutral pool holds no
     // lair at all, so half the run's rooms are out of reach of the change.

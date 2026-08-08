@@ -169,8 +169,35 @@ still absent is anything to spend on them.
 ## Status
 
 ### What runs
-`npm run dev` is a playable loop in a portrait browser. Boot lands on the
-threshold; Descend deals a labyrinth; each room offers one to three blind
+`npm run dev` is a playable loop in a portrait browser. **Boot lands on the
+threshold and Descend opens the jungle-hell slice** — a five-room proof route
+(`JUNGLE_SLICE`, depth one) whose view is almost entirely authored stagecraft
+laid over an ordinary room. Its five rooms are dealt by the dealer from a
+declared `DepthPlan.route`, not by a branch in the shell, so replay, sockets,
+doors and winnability all run over it unchanged.
+
+**The generated depth is `FULL_DEPTH` (depth two) and is untouched.** It is
+the game's real labyrinth — nine rooms, three regions, the drift, the forced
+lock, the Warden — and every distributional law is still tested against it.
+The slice took depth one because a proof nobody plays is not one.
+
+**What the slice proves, and what it does not.** The four stage compositions
+(`STAGES` in `src/content/visual/rooms.ts`) are seven masters re-dealt: a
+quiet passage, a shrine, the same kit pulled tighter for the fight, and a gate
+that is the one thing in its room. Looking, doors, the six-die duel, the knife
+and the reliquary are all the ones that were already there. Two things it does
+*not* prove, and both are named rather than hidden: an **unplated horror is
+massed into the cast** and a `cover` plate is composited over the cast, so the
+thing in the fight room is behind its own backdrop until a horror plate is
+delivered (`main.ts` already gives a plated horror the hero band, so this is
+one PNG and no code); and the reward room sits behind a real fight, so
+reaching it is a matter of playing the duel rather than of walking. That fight
+is the ordinary Gnawing met at full health with a fresh card, which
+`lots.fairness` pins at a 50–70% win rate over five to seven turns for a bare
+six-die hand — the route guarantees the Sliver on every seed, and the duel
+decides whether you collect it.
+
+Beyond it, the generated depth: each room offers one to three blind
 doors, each of which leaks its region's sense on a tap; the room behind a
 door is dealt when the door is opened; a lean of four doors locks a region
 and the next room announces the arrival; the rest of the depth deals from
@@ -180,8 +207,9 @@ the thing — the keeper included, which has a body in the hall for the player
 who ran out of it — and every fight resolves in beats. Death writes a line in the Book, burns the run
 and keeps the pouch, the meetings and the knowledge.
 
-Fourteen hand-authored rooms, five horrors, one depth of nine rooms, three
-regions and a neutral pool, and a catalog of dice, riders, bonds, talismans,
+Nineteen hand-authored rooms (fourteen the dealer deals, five the slice
+routes), five horrors, one generated depth of nine rooms and one authored
+route of five, three regions and a neutral pool, and a catalog of dice, riders, bonds, talismans,
 levels, wearables and rolling goods — all of it in `src/content`.
 
 What is deliberately unfinished: the ordinary rooms are art. 26's first
@@ -189,7 +217,7 @@ tier and not its second, much of the prose is still in the repealed
 register (below), and phase 0's non-goals hold.
 
 ### What is green
-`npm test`: 58 files, 698 tests.
+`npm test`: 66 files, 878 tests.
 
 | area | what it enforces |
 | --- | --- |

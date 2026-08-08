@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { CATALOG, GRAMMAR } from '../src/content/index.js'
 import type { Catalog, Grammar } from '../src/gen/index.js'
 import { NO_HISTORY, deal, explainWinnability, isWinnable } from '../src/gen/index.js'
-import { alwaysLeft, coinFlip, runOf, seedOf } from './drift.js'
+import { alwaysLeft, coinFlip, runOf, seedOf, GENERATED } from './drift.js'
 
 /**
  * The dealer, run by run (arts 31–39, 77–82). What it does to a thousand
@@ -23,7 +23,7 @@ const BARE_GRAMMAR: Grammar = {
 
 describe('gen — the drift, one run at a time', () => {
   it('deals only the Crossing before a single door is opened (art. 79)', () => {
-    const opening = deal(seedOf(3), 1, CATALOG, GRAMMAR)
+    const opening = deal(seedOf(3), GENERATED, CATALOG, GRAMMAR)
     expect(opening.nodes).toHaveLength(1)
     expect(opening.nodes[0]!.room).toBe('room.crossing')
     expect(opening.nodes[0]!.step).toBe(0)
@@ -72,22 +72,22 @@ describe('gen — the drift, one run at a time', () => {
 
   it('derives the run from seed plus choices, and from nothing else (art. 36)', () => {
     const history = { taken: [0, 1, 0, 0, 1, 0] }
-    const once = deal(seedOf(7), 1, CATALOG, GRAMMAR, history)
-    const twice = deal(seedOf(7), 1, CATALOG, GRAMMAR, history)
+    const once = deal(seedOf(7), GENERATED, CATALOG, GRAMMAR, history)
+    const twice = deal(seedOf(7), GENERATED, CATALOG, GRAMMAR, history)
     expect(JSON.stringify(twice)).toBe(JSON.stringify(once))
   })
 
   it('deals a different run for different choices off the same seed (art. 36)', () => {
-    const left = deal(seedOf(7), 1, CATALOG, GRAMMAR, { taken: [0, 0, 0, 0, 0, 0] })
-    const right = deal(seedOf(7), 1, CATALOG, GRAMMAR, { taken: [1, 1, 1, 1, 1, 1] })
+    const left = deal(seedOf(7), GENERATED, CATALOG, GRAMMAR, { taken: [0, 0, 0, 0, 0, 0] })
+    const right = deal(seedOf(7), GENERATED, CATALOG, GRAMMAR, { taken: [1, 1, 1, 1, 1, 1] })
     expect(left.nodes.map((node) => node.room)).not.toEqual(
       right.nodes.map((node) => node.room),
     )
   })
 
   it('keeps the road behind you: a prefix of a run is that run (arts 36, 79)', () => {
-    const whole = deal(seedOf(21), 1, CATALOG, GRAMMAR, { taken: [1, 0, 1, 0, 0] })
-    const half = deal(seedOf(21), 1, CATALOG, GRAMMAR, { taken: [1, 0, 1] })
+    const whole = deal(seedOf(21), GENERATED, CATALOG, GRAMMAR, { taken: [1, 0, 1, 0, 0] })
+    const half = deal(seedOf(21), GENERATED, CATALOG, GRAMMAR, { taken: [1, 0, 1] })
     expect(JSON.stringify(whole.nodes.slice(0, half.nodes.length))).toBe(
       JSON.stringify(half.nodes),
     )
@@ -111,7 +111,7 @@ describe('gen — the drift, one run at a time', () => {
   it('ends the replay on a choice that was never on the table', () => {
     // A history from another seed, or a corrupted one: the run stops where
     // the choices stop making sense rather than inventing a door.
-    const chain = deal(seedOf(5), 1, CATALOG, GRAMMAR, { taken: [0, 9, 0, 0] })
+    const chain = deal(seedOf(5), GENERATED, CATALOG, GRAMMAR, { taken: [0, 9, 0, 0] })
     expect(chain.nodes).toHaveLength(2)
   })
 })

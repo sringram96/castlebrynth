@@ -95,12 +95,174 @@ export function carriedPlate(weapon: string | null = 'weapon.knife'): PlacedPlat
   return weapon === null ? null : { ...WEAPON, asset: weapon }
 }
 
+// ── The jungle-hell stage (arts 104–105, 126–127) ──────────────────────
+//
+// **A stage composition is a named arrangement, not a pile of coordinates.**
+// The five rooms below are four looks built from one kit of seven masters,
+// and the whole point of the slice is that they read as different *places*
+// while sharing a vocabulary — so the arrangements are constants with names
+// and the rooms spend them, rather than each room authoring its own numbers
+// and drifting apart from the others one edit at a time.
+//
+// Nothing here is a new anchor space and nothing here is a new band. It is
+// arts 126–127 used as written: `cover` for the plate that is the view,
+// `frame` for the pieces standing in front of it, and the bands in the order
+// the article declares.
+
+/**
+ * **The shared ground.** It covers the frame, so the computed box is behind
+ * it and unseen — legal for exactly `ossuary.hall`'s reason: art. 15's first
+ * clause is about a room never *lying* about its geometry, and the cast still
+ * runs underneath, the marks still lie where the box puts them, and a missing
+ * file leaves the corridor that was always there (art. 126).
+ */
+const JUNGLE_DEPTH: PlacedPlate = {
+  asset: 'jungle.depth',
+  layer: Layer.Material,
+  anchor: { space: 'cover' },
+}
+
+/**
+ * **The bank that closes the bottom.** It stands on the tray's own top edge
+ * rather than on the frame's, which is where the visible picture actually
+ * ends: art. 29 anchors the reliquary over the lower edge of the frame, so a
+ * thing standing at `y: 1.0` is drawn every frame and seen in none of them.
+ * That defect was found once already, on the ossuary's heap, and the number
+ * here is the same number for the same reason.
+ *
+ * It is on `Distant` rather than `Foreground` for the heap's reason too: the
+ * horror arrives filling the middle of the lens (art. 30), and a thing lying
+ * on the room's floor cannot be in front of something that has come closer
+ * than the room.
+ */
+const jungleBank = (width: number): PlacedPlate => ({
+  asset: 'jungle.floor-bank',
+  layer: Layer.Distant,
+  anchor: { space: 'frame', x: 0.5, y: 0.765, origin: 'bottom-center', width },
+})
+
+/**
+ * **The two frames, which are the enclosure.** They crop the sides and leave
+ * the middle alone — art. 104 resolves a room as shape, then exits, then the
+ * one thing, and a pair of jambs that closed over the centre would be taking
+ * the exits' turn as well as their own.
+ *
+ * They sit on `Architecture` (art. 99: standing on or against the walls), so
+ * the bank seats their bases and the hero passes in front of them. The horror
+ * is on `Hero` and therefore reads over them whatever it overlaps, which is
+ * what keeps the constricted room tight rather than obstructed.
+ */
+const jungleFrames = (
+  left: { readonly x: number; readonly width: number },
+  right: { readonly x: number; readonly width: number },
+): readonly PlacedPlate[] => [
+  {
+    asset: 'jungle.left-frame',
+    layer: Layer.Architecture,
+    anchor: { space: 'frame', x: left.x, y: 0.755, origin: 'bottom-center', width: left.width },
+  },
+  {
+    asset: 'jungle.right-frame',
+    layer: Layer.Architecture,
+    anchor: { space: 'frame', x: right.x, y: 0.755, origin: 'bottom-center', width: right.width },
+  },
+]
+
+/**
+ * **A. The quiet passage.** The room that teaches the player that this is
+ * still ordinary Castlebrynth: ground, two jambs, a bank, and a middle with
+ * nothing in it. No shrine, no gate, no second hero — it is the composition
+ * every other one is read against, so what it must be is *unremarkable*.
+ */
+const JUNGLE_QUIET: readonly PlacedPlate[] = [
+  JUNGLE_DEPTH,
+  ...jungleFrames({ x: 0.13, width: 0.33 }, { x: 0.86, width: 0.28 }),
+  jungleBank(0.9),
+]
+
+/**
+ * **B. The overgrown shrine.** The same spatial language and a different
+ * place. The shrine is the one thing (art. 104) and the brazier stands aside
+ * from it rather than across it (art. 105) — both are declared *before* the
+ * bank so the bank seats them, which is what ties them to the floor instead
+ * of leaving them hanging in front of it.
+ */
+const JUNGLE_SHRINE: readonly PlacedPlate[] = [
+  JUNGLE_DEPTH,
+  ...jungleFrames({ x: 0.13, width: 0.33 }, { x: 0.86, width: 0.28 }),
+  {
+    asset: 'jungle.shrine',
+    layer: Layer.Distant,
+    anchor: { space: 'frame', x: 0.27, y: 0.71, origin: 'bottom-center', width: 0.25 },
+  },
+  {
+    asset: 'jungle.brazier',
+    layer: Layer.Distant,
+    anchor: { space: 'frame', x: 0.72, y: 0.69, origin: 'bottom-center', width: 0.11 },
+  },
+  jungleBank(0.9),
+]
+
+/**
+ * **C. The narrowing.** The same seven masters and none added: the jambs come
+ * inward, the bank widens, and the room is tighter without being a different
+ * kit. That is the claim the slice is making — that a stage can be re-dealt
+ * rather than re-drawn — and it is why nothing focal stands here. The middle
+ * is left clear because something is about to be standing in it (art. 30).
+ */
+const JUNGLE_CONSTRICTED: readonly PlacedPlate[] = [
+  JUNGLE_DEPTH,
+  ...jungleFrames({ x: 0.18, width: 0.38 }, { x: 0.82, width: 0.34 }),
+  jungleBank(0.96),
+]
+
+/**
+ * **D. The bound gate.** One focal point and no argument about which
+ * (art. 104). The brazier is the only other thing and it is small and far to
+ * the right, because a second lit thing beside a gate this size is a room
+ * with no hero rather than a room with two.
+ */
+const JUNGLE_GATE: readonly PlacedPlate[] = [
+  JUNGLE_DEPTH,
+  {
+    asset: 'jungle.gate',
+    layer: Layer.Distant,
+    anchor: { space: 'frame', x: 0.5, y: 0.72, origin: 'bottom-center', width: 0.49 },
+  },
+  {
+    asset: 'jungle.brazier',
+    layer: Layer.Distant,
+    anchor: { space: 'frame', x: 0.74, y: 0.69, origin: 'bottom-center', width: 0.09 },
+  },
+  jungleBank(0.9),
+]
+
+/** The four stage compositions, for the tests and the dev harness. */
+export const STAGES: Readonly<Record<string, readonly PlacedPlate[]>> = {
+  quiet: JUNGLE_QUIET,
+  shrine: JUNGLE_SHRINE,
+  constricted: JUNGLE_CONSTRICTED,
+  gate: JUNGLE_GATE,
+}
+
 /**
  * The rooms that have been dressed. Everything absent from this map is a
  * room rendering as it always did (art. 26's first tier, which is a floor
  * and not a failure).
  */
 const DRESSED: Readonly<Record<string, SceneArt>> = {
+  // ── The jungle-hell slice: five rooms, four arrangements ────────────
+  //
+  // The two quiet rooms share one composition on purpose. They are not the
+  // same room — their words, their things and their state are their own — and
+  // the point of their looking alike is expectation: a player who has walked
+  // two rooms of this thinks they know what the depth is.
+  'room.jungle.entry': { overlays: JUNGLE_QUIET },
+  'room.jungle.passage': { overlays: JUNGLE_QUIET },
+  'room.jungle.shrine': { overlays: JUNGLE_SHRINE },
+  'room.jungle.fight': { overlays: JUNGLE_CONSTRICTED },
+  'room.jungle.reward': { overlays: JUNGLE_GATE },
+
   /**
    * The choir — the ossuary's lair.
    *

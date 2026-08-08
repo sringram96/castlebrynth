@@ -473,14 +473,32 @@ export function instanceOf(room: RoomId, step: number): InstanceId {
   return `${room}#${step}` as InstanceId
 }
 
-/** Wake at the Crossing: a fresh run from the permanent, seeded (art. 36). */
-export function wake(permanent: PermanentLedger, seed: Seed, depth = 1): Ledgers {
+/**
+ * Wake at the Crossing: a fresh run from the permanent, seeded (art. 36).
+ *
+ * **Where a run opens is the depth's answer, not this function's.** art. 37
+ * fixes the Crossing as the anchor that opens a run and that is still the
+ * default here — every depth the generator deals begins there. What the
+ * default may not do is *decide*: a plan that declares its own route names
+ * its own first room, and a ledger that woke somewhere the dealer did not
+ * deal is a run that cannot find itself (`enterRoom` throws on exactly that).
+ *
+ * It is a parameter rather than a lookup because `src/state` may not import
+ * `src/content` — the ledgers are the engine and the labyrinth is data. The
+ * caller holds the plan; this holds the ledger.
+ */
+export function wake(
+  permanent: PermanentLedger,
+  seed: Seed,
+  depth = 1,
+  opensAt: RoomId = CROSSING,
+): Ledgers {
   const run: RunLedger = {
     seed,
     depth,
     health: permanent.body.health,
     healthMax: permanent.body.health,
-    at: { room: CROSSING, instance: instanceOf(CROSSING, 0), step: 0, beat: 0 },
+    at: { room: opensAt, instance: instanceOf(opensAt, 0), step: 0, beat: 0 },
     history: { taken: [] },
     // art. 60: the pouch's order is the hand, so a hand chosen by swapping
     // (`swapInPouch`) is the hand you wake with next time, for free.
@@ -1355,9 +1373,18 @@ export function load(vault: Vault): Ledgers | null {
  * at the waking (art. 36) and this is a decision about *which ledger*, not
  * about chance.
  */
-export function woken(found: Ledgers | null, bare: PermanentLedger, seed: Seed): Ledgers {
-  if (found === null) return wake(bare, seed)
-  return found.run === null ? wake(found.permanent, seed) : found
+export function woken(
+  found: Ledgers | null,
+  bare: PermanentLedger,
+  seed: Seed,
+  depth = 1,
+  opensAt: RoomId = CROSSING,
+): Ledgers {
+  if (found === null) return wake(bare, seed, depth, opensAt)
+  // A restored run keeps the position it was saved at, which is the whole
+  // point of the first case — only the two fresh wakings need telling where
+  // the labyrinth begins.
+  return found.run === null ? wake(found.permanent, seed, depth, opensAt) : found
 }
 
 /**

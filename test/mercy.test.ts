@@ -4,7 +4,7 @@ import {
   BARE_BODY,
   BASIN,
   CATALOG,
-  DEPTH_ONE,
+  FULL_DEPTH,
   FONT,
   GRAMMAR,
   GRID,
@@ -46,6 +46,7 @@ import {
   walkTo,
   lookAround } from './drift.js'
 import { BURNT, DROWNED, OSSUARY } from '../src/content/index.js'
+import { DEALT_BY_FULL_DEPTH } from './helpers.js'
 
 /**
  * art. 40 (ruled) — the two mercies.
@@ -59,7 +60,7 @@ import { BURNT, DROWNED, OSSUARY } from '../src/content/index.js'
  * before it consequence-free and leaves the Savior nothing to be — so the
  * arithmetic is asked about directly rather than inferred from a playthrough.
  */
-const BAND = DEPTH_ONE.mercies[0]!.band
+const BAND = FULL_DEPTH.mercies[0]!.band
 
 /** The policies a run can be played with, including two that fight the drift. */
 const POLICIES: readonly (readonly [string, (seed: number) => Policy])[] = [
@@ -236,7 +237,7 @@ describe('art. 82 — once per instance, and only per instance', () => {
     return {
       seed: seedOf(1),
       depth: 1,
-      length: DEPTH_ONE.length,
+      length: FULL_DEPTH.length,
       start: instanceOf(FONT, 2),
       nodes: [node(2), node(5)],
       drift: FRESH_DRIFT,
@@ -354,11 +355,11 @@ describe('art. 40 — the Sanctum is promised, not left to chance', () => {
     // Not the Crossing, not the Warden's room, and — art. 78 — before the
     // region takes the rest of the depth, because the font is neutral.
     expect(BAND[0]).toBeGreaterThan(0)
-    expect(BAND[1]).toBeLessThan(DEPTH_ONE.length - 1)
-    expect(BAND[1]).toBeLessThan(DEPTH_ONE.lockAt)
+    expect(BAND[1]).toBeLessThan(FULL_DEPTH.length - 1)
+    expect(BAND[1]).toBeLessThan(FULL_DEPTH.lockAt)
     // And neutral it is: no region's pool holds it (arts 77–78).
-    expect(DEPTH_ONE.neutral).toContain(FONT)
-    for (const region of DEPTH_ONE.regions) expect(region.rooms).not.toContain(FONT)
+    expect(FULL_DEPTH.neutral).toContain(FONT)
+    for (const region of FULL_DEPTH.regions) expect(region.rooms).not.toContain(FONT)
   })
 
   it('lands at both ends of the band rather than always the same step', () => {
@@ -375,7 +376,7 @@ describe('art. 40 — the Sanctum is promised, not left to chance', () => {
   it('deals none at all the moment the promise is switched off', () => {
     const unpromised: Catalog = {
       ...CATALOG,
-      depths: [{ ...DEPTH_ONE, mercies: [] }],
+      depths: [{ ...FULL_DEPTH, mercies: [] }],
     }
     let held = 0
     for (let seed = 1; seed <= 300; seed++) {
@@ -393,9 +394,22 @@ describe('art. 40 — the Savior is a being, and a rare one', () => {
     expect(mender.at).toBeUndefined()
     expect(CATALOG.rooms.some((held) => held.type === 'savior')).toBe(false)
     // And every ordinary room declares the socket it can stand in (art. 83).
+    //
+    // Asked of the rooms the **generated** depth deals, which is what the
+    // article is about: the Savior floats into the drift's pools, and
+    // `FULL_DEPTH` is the plan that has them. The jungle-hell proof slice
+    // deals no mercies at all (`JUNGLE_SLICE.mercies` is empty) and declares
+    // only the sockets its fixed route uses, so asserting a Savior's landing
+    // place over its five rooms would be asserting art. 40 about a depth that
+    // does not offer art. 40.
     const ordinary = CATALOG.rooms.filter(
-      (held) => held.type !== 'crossing' && held.type !== 'warden' && held.type !== 'sanctum',
+      (held) =>
+        DEALT_BY_FULL_DEPTH.has(held.id as string) &&
+        held.type !== 'crossing' &&
+        held.type !== 'warden' &&
+        held.type !== 'sanctum',
     )
+    expect(ordinary.length).toBeGreaterThan(0)
     for (const held of ordinary) {
       const socket = held.sockets.find((one) => one.accepts === 'mercy')
       expect(socket, held.id as string).toBeDefined()
