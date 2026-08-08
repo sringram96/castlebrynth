@@ -100,16 +100,27 @@ test.describe('what a win leaves behind', () => {
   })
 
   test('a taken relic appears in the tray without opening anything', async ({ page }) => {
+    // Seed 1 offers Grave Wax and Rusted Plate, so there is a relic to take.
     await boot(page, '?room=hollow&enemyHp=1&seed=1')
     await finishFight(page)
 
-    const relicOffer = page.locator('#offers .offer').filter({ hasText: 'EFFECT ·' }).first()
-    test.skip((await relicOffer.count()) === 0, 'this seed offered two dice')
-    const id = await relicOffer.getAttribute('data-offer-id')
+    const relicOffer = page.locator('#offers .offer[data-offer-id="wax"]')
+    await expect(relicOffer).toBeVisible()
     await relicOffer.locator('[data-act="take"]').click()
 
-    const slot = page.locator(`#relics .relic[data-relic-id="${id}"]`)
+    // The right-hand side of the tray changes. Nothing has to be opened for
+    // the player to know they are carrying it.
+    const slot = page.locator('#relics .relic[data-relic-id="wax"]')
     await expect(slot).toBeVisible()
+    await expect(slot).toHaveAttribute('aria-label', 'Inspect Grave Wax')
     await tappable(page, slot)
+
+    // And pressing it inspects that relic, and moves nothing.
+    const before = await state(page)
+    await slot.click()
+    await expect(page.locator('#overlay')).toBeVisible()
+    await expect(page.locator('#overlay')).toContainText('score exactly 3 dice')
+    await act(page, 'close').click()
+    expect(await state(page)).toEqual(before)
   })
 })

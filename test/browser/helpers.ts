@@ -16,9 +16,19 @@ export const dice = (page: Page): Locator => page.locator('#crown .die')
  * `fixture` is a query string from src/game/fixture.ts, used to stand
  * somewhere the walk would take forty presses to reach.
  */
-export async function boot(page: Page, fixture = ''): Promise<void> {
-  await page.goto(`/${fixture}`)
+export async function boot(page: Page, fixture = '', { motion = false } = {}): Promise<void> {
+  // Motion is off unless a test asks for it. These specs are about what the
+  // game does, and waiting out a 950 ms score sequence on every turn of every
+  // journey buys nothing — `test/browser/motion.spec.ts` is where the beats
+  // themselves are asserted, and it opts in.
+  const query = motion ? fixture : `${fixture ? `${fixture}&` : '?'}motion=0`
+  await page.goto(`/${query}`)
   await expect(page.locator('body')).toHaveAttribute('data-assets', 'ready')
+}
+
+/** Wait for any transition to finish, the way an impatient thumb would. */
+export async function settled(page: Page): Promise<void> {
+  await page.evaluate(() => window.castlebrynth?.settle())
 }
 
 /** Start a run and walk to the first fight. Nothing is handed out on the way. */

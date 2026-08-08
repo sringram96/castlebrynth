@@ -33,7 +33,7 @@ import { relic as relicById } from '../content/relics.js'
 import { enemy as enemyById } from '../content/enemies.js'
 import { room as roomById } from '../content/rooms.js'
 import type { GameState } from '../game/state.js'
-import { button, dieButton, el, place, relicButton, seat, seatBed } from './components.js'
+import { button, dieButton, el, faceGlyph, place, relicButton, seat, seatBed } from './components.js'
 
 export interface TrayHandlers {
   readonly onDie: (slot: number) => void
@@ -160,6 +160,35 @@ function renderCrown(tray: Tray, state: GameState, on: TrayHandlers): void {
     if (!inPlay) b.dataset['idle'] = 'yes'
     tray.crown.append(b)
   })
+}
+
+/**
+ * The face a die shows while it is in the air.
+ *
+ * Cosmetic only, and deterministic by construction: the slot and the step
+ * choose which face flickers past, so a die in flight cannot show a value the
+ * run did not produce and a replay cannot differ. `step === undefined` puts
+ * back the exact face node the reducer chose — the node, not a lookup by
+ * value, because the Runner has two 6s and only one of them costs health.
+ */
+const settledFace = new WeakMap<HTMLElement, HTMLElement>()
+
+export function paintTumble(die: HTMLElement, step: number | undefined): void {
+  const dieId = die.dataset['dieId']
+  const current = die.querySelector<HTMLElement>('.die-face')
+  if (!dieId || !current) return
+
+  if (step === undefined) {
+    const settled = settledFace.get(die)
+    if (settled && settled !== current) current.replaceWith(settled)
+    settledFace.delete(die)
+    return
+  }
+
+  if (!settledFace.has(die)) settledFace.set(die, current)
+  const d = dieById(dieId)
+  const slot = Number(die.dataset['slot']) || 0
+  current.replaceWith(faceGlyph(d.faces[(slot * 2 + step * 3 + 1) % d.faces.length]!, d.material))
 }
 
 /**

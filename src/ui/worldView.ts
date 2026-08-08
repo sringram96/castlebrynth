@@ -109,8 +109,17 @@ function renderHud(world: World, state: GameState, handlers: WorldHandlers): voi
     world.hud.append(bar)
   }
 
-  const say = el('p', 'say', run.say || (combat?.log.at(-1) ?? ''))
+  // The whole turn, not its last line.
+  //
+  // The band used to show `log.at(-1)`, which is always the enemy's answer —
+  // so "Green face: heal 4 HP" and "Red face: lose 7 HP" existed in the state,
+  // were animated on the die that caused them, and were then unreadable a
+  // moment later. Anything that is only legible while moving is missing for
+  // anyone who turned motion off.
+  const say = el('p', 'say')
   say.id = 'say'
-  if (!say.textContent) say.hidden = true
+  const beats = run.say ? [run.say] : (combat && state.mode === 'combat' ? combat.log : [])
+  for (const beat of beats) say.append(el('span', 'say-beat', beat))
+  if (beats.length === 0) say.hidden = true
   world.hud.append(say)
 }

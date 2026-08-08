@@ -1,28 +1,68 @@
 /**
  * The root controller.
  *
- * It owns exactly three things: the current state, the dispatcher, and when to
- * repaint. It computes no outcome — `reduce` does that — and it draws no
- * pixel; the views do.
+ * It owns exactly four things: the current state, the dispatcher, when to
+ * repaint, and the presentation of a change that has already happened. It
+ * computes no outcome — `reduce` does that — and it draws no pixel; the views
+ * do.
  *
  * There is one dispatcher and one path from a press to a state change, which
  * is the whole answer to the class of bug this reset exists to fix.
+ *
+ * ## Motion is downstream of the reducer, always
+ *
+ * A press reduces, persists, and *then* plays. The authoritative state is
+ * already saved before the first frame of any sequence, so a reload mid-throw
+ * lands on the settled truth and a replay of the same seed is identical. What
+ * a sequence may do is hold the *previous* state on screen for a few hundred
+ * milliseconds — see `presenting` — because a SCORE whose next turn paints
+ * over it instantly is a score the player never saw.
  */
 
 import { intentAt } from '../content/enemies.js'
+import { preview } from '../combat/scoring.js'
+import { selectionOf } from '../combat/resolve.js'
 import { reduce } from '../game/reducer.js'
 import type { Action } from '../game/reducer.js'
 import { save } from '../game/save.js'
-import type { GameState } from '../game/state.js'
+import type { CombatState, GameState } from '../game/state.js'
 import { mountWorld } from '../render/compositor.js'
 import type { World } from '../render/compositor.js'
 import { TRAY_ART, url } from '../render/assets.js'
-import { mountTray, renderTray } from '../ui/trayView.js'
+import { mountTray, paintTumble, renderTray } from '../ui/trayView.js'
 import type { Tray } from '../ui/trayView.js'
 import { renderWorld } from '../ui/worldView.js'
 import { renderOverlay, renderScreen } from '../ui/screens.js'
 import type { Overlay } from '../ui/screens.js'
-import { flash, shake } from '../render/animation.js'
+import {
+  Sequence,
+  confirm,
+  fireFace,
+  flash,
+  orbChange,
+  pulseRelic,
+  reducedMotion,
+  shake,
+  tumble,
+  tumbleDuration,
+} from '../render/animation.js'
+
+/**
+ * The beats of a score, in milliseconds from the press.
+ *
+ * They are named because the order is the point: you chose these dice, they
+ * made this hand, this relic added to it, this red face cost you that, the
+ * blow landed, and only then did the thing hit back. A player who watches this
+ * once should be able to describe what they did.
+ */
+const SCORE = {
+  chosen: 0,
+  relics: 190,
+  faces: 330,
+  landed: 480,
+  answer: 720,
+  next: 950,
+} as const
 
 export interface AppOptions {
   readonly root: HTMLElement
@@ -30,6 +70,15 @@ export interface AppOptions {
   readonly discarded?: string | undefined
   /** Off in tests, so a journey never waits on a transition. */
   readonly persist?: boolean
+  /**
+   * Whether presentation takes time.
+   *
+   * On by default. A browser journey that cares about flow rather than feel
+   * turns it off and every sequence resolves in the same tick — which is the
+   * same path `prefers-reduced-motion` takes, so the reduced-motion promise is
+   * exercised by most of the suite rather than by one test.
+   */
+  readonly motion?: boolean
 }
 
 export class App {
@@ -40,6 +89,7 @@ export class App {
   private readonly overlay: HTMLElement
   private readonly discarded: string | undefined
   private readonly persist: boolean
+  private readonly motion: boolean
   /**
    * What the overlay is showing, if anything.
    *
@@ -48,11 +98,21 @@ export class App {
    * must never be something a save can be stuck inside.
    */
   private opened: Overlay | undefined
+  /**
+   * A state to paint *instead of* the settled one, while a sequence runs.
+   *
+   * Never saved, never reduced, and never anything but a frame of a transition
+   * between two real states. It is how the crown can still hold the hand you
+   * scored while `this.state` is already the next turn.
+   */
+  private presenting: GameState | undefined
+  private sequence: Sequence | undefined
 
   constructor(options: AppOptions) {
     this.state = options.initial
     this.discarded = options.discarded
     this.persist = options.persist ?? true
+    this.motion = options.motion ?? true
 
     const root = options.root
     root.replaceChildren()
@@ -76,38 +136,174 @@ export class App {
 
   /** The one way a press becomes a state change. */
   dispatch = (action: Action): void => {
+    // A press always arrives at a settled screen. Nothing is ever locked out
+    // waiting for a transition — an impatient thumb finishes it instead.
+    this.settle()
+
     const before = this.state
     const next = reduce(before, action)
     if (next === before) return
     this.state = next
     if (this.persist) save(next)
-    this.reactTo(before, next, action)
-    this.render()
+    this.play(before, next, action)
   }
 
   get current(): GameState {
     return this.state
   }
 
-  /**
-   * Feedback for what already happened.
-   *
-   * Animation is downstream of the reducer by construction: it reads two
-   * settled states and reveals the difference. It cannot change an outcome
-   * because it does not have one to change.
-   */
-  private reactTo(before: GameState, after: GameState, action: Action): void {
-    if (action.type !== 'SCORE') return
-    const enemyBefore = before.run?.combat?.enemyHp ?? 0
-    const enemyAfter = after.run?.combat?.enemyHp ?? 0
-    if (enemyAfter < enemyBefore) flash(this.world, enemyBefore - enemyAfter)
-    const hpBefore = before.run?.hp ?? 0
-    const hpAfter = after.run?.hp ?? 0
-    // The frame is the player's body. It moves only when the blow lands on you.
-    if (hpAfter < hpBefore) shake(this.world, hpBefore - hpAfter)
+  /** Whether a transition is on screen. Tests read it; nothing else does. */
+  get animating(): boolean {
+    return this.presenting !== undefined
   }
 
+  /** End any running sequence at once, and land on the settled state. */
+  settle(): void {
+    if (!this.sequence) return
+    const running = this.sequence
+    this.sequence = undefined
+    running.settle()
+  }
+
+  // ── presentation ─────────────────────────────────────────────────────
+
+  private get animated(): boolean {
+    return this.motion && !reducedMotion()
+  }
+
+  private start(): Sequence {
+    const sequence = new Sequence(this.animated)
+    this.sequence = sequence
+    return sequence
+  }
+
+  private play(before: GameState, after: GameState, action: Action): void {
+    switch (action.type) {
+      case 'ROLL':
+        return this.playThrow(after, after.run!.combat!.roll.map((d) => d.slot))
+      case 'REROLL': {
+        // Only what was thrown. If all six tumble, the player cannot see what
+        // holding accomplished, which is the whole decision of the phase.
+        const held = new Set(before.run!.combat!.selected)
+        return this.playThrow(after, after.run!.combat!.roll.map((d) => d.slot).filter((s) => !held.has(s)))
+      }
+      case 'SCORE':
+        return this.playScore(before, after)
+      default:
+        this.render()
+    }
+  }
+
+  private playThrow(after: GameState, slots: readonly number[]): void {
+    // The dice are already showing the reducer's faces; the tumble is played
+    // over the truth rather than towards it.
+    this.render()
+    if (!this.animated) return
+    const dice = slots
+      .map((slot) => this.tray.crown.querySelector<HTMLElement>(`.die[data-slot="${slot}"]`))
+      .filter((node): node is HTMLElement => node !== null)
+    if (dice.length === 0) return
+
+    const sequence = this.start()
+    tumble(sequence, { dice, paint: paintTumble })
+    sequence.at(tumbleDuration(dice.length), () => {
+      this.sequence = undefined
+    })
+  }
+
+  /**
+   * The score, as a chain of events rather than a change of numbers.
+   *
+   * The reducer has already produced the next turn — `phase: 'intent'`, an
+   * empty table — and rendering it now would erase the hand before anyone saw
+   * it land. So the frames below are built *from the state before the press*,
+   * with one number advanced at a time, and the settled state is painted last.
+   * No frame is ever saved, and none of them is consulted by anything.
+   */
+  private playScore(before: GameState, after: GameState): void {
+    const run = before.run!
+    const combat = run.combat!
+    // The same call the well made for the preview, so what is revealed is
+    // exactly what the player was shown before they committed.
+    const p = preview(selectionOf(combat), run.relics, combat.spentHands)
+
+    const enemyAfter = Math.max(0, combat.enemyHp - p.damage)
+    const dealt = combat.enemyHp - enemyAfter
+    const faceDelta = p.heal - p.cost
+    const afterFaces = Math.max(0, Math.min(run.maxHp, run.hp + faceDelta))
+    const answer = Math.max(0, afterFaces - (after.run?.hp ?? afterFaces))
+
+    const frame = (patch: Partial<CombatState>, hp = run.hp): GameState => ({
+      ...before,
+      run: { ...run, hp, combat: { ...combat, ...patch } },
+    })
+
+    this.presenting = before
+    this.render()
+    if (!this.animated) {
+      this.presenting = undefined
+      this.render()
+      if (dealt > 0) flash(this.world, dealt)
+      if (answer > 0) shake(this.world, answer)
+      return
+    }
+
+    const sequence = this.start()
+
+    sequence.at(SCORE.chosen, () => {
+      confirm(
+        combat.selected
+          .map((slot) => this.tray.crown.querySelector<HTMLElement>(`.die[data-slot="${slot}"]`))
+          .filter((node): node is HTMLElement => node !== null),
+      )
+      this.tray.well.querySelector('.score-hand')?.classList.add('score-confirm')
+    })
+
+    // Only the relics that actually contributed, in their own bays, as their
+    // term is read out.
+    sequence.at(SCORE.relics, () => {
+      for (const id of p.firedRelics) pulseRelic(this.tray.relics, id)
+    })
+
+    // A red or green face fires on the die that carries it, not in a log line
+    // the player has to go looking for afterwards.
+    sequence.at(SCORE.faces, () => {
+      if (faceDelta === 0 && p.cost === 0) return
+      for (const slot of combat.selected) {
+        const die = this.tray.crown.querySelector<HTMLElement>(`.die[data-slot="${slot}"]`)
+        if (die?.querySelector('.mark')) fireFace(die)
+      }
+      orbChange(this.tray.orb, faceDelta)
+    })
+
+    sequence.at(SCORE.landed, () => {
+      this.presenting = frame({ enemyHp: enemyAfter }, afterFaces)
+      this.render()
+      if (dealt > 0) flash(this.world, dealt)
+    })
+
+    sequence.at(SCORE.answer, () => {
+      if (answer <= 0) return
+      this.presenting = frame({ enemyHp: enemyAfter }, after.run?.hp ?? afterFaces)
+      this.render()
+      shake(this.world, answer)
+    })
+
+    // Only now does the next turn — or the reward, or the death screen — take
+    // the screen. A terminal screen that arrives before its own blow lands is
+    // the fight ending without the player seeing how, so the last beat is the
+    // same length whether or not the enemy got to answer.
+    sequence.at(SCORE.next, () => {
+      this.presenting = undefined
+      this.sequence = undefined
+      this.render()
+    })
+  }
+
+  // ── painting ─────────────────────────────────────────────────────────
+
   private render(): void {
+    const state = this.presenting ?? this.state
     const on = {
       onLook: (detailId: string) => this.dispatch({ type: 'LOOK', detailId }),
       onIntent: () => {
@@ -115,9 +311,9 @@ export class App {
         if (combat) this.say(intentAt(combat.enemyId, combat.turn).explain)
       },
     }
-    renderWorld(this.world, this.state, on)
+    renderWorld(this.world, state, on)
 
-    renderTray(this.tray, this.state, {
+    renderTray(this.tray, state, {
       // One mark. Choosing a die keeps it across the reroll and puts it in the
       // hand you score, because that is the one thing a tap on a die means.
       onDie: (slot) => this.dispatch({ type: 'SELECT', slot }),
@@ -133,7 +329,7 @@ export class App {
 
     renderScreen(
       this.screen,
-      this.state,
+      state,
       {
         onStart: () => this.dispatch({ type: 'START_RUN' }),
         onContinue: () => this.dispatch({ type: 'CONTINUE' }),
@@ -143,7 +339,7 @@ export class App {
       this.discarded,
     )
 
-    if (this.opened) renderOverlay(this.overlay, this.opened, this.state, () => this.close())
+    if (this.opened) renderOverlay(this.overlay, this.opened, state, () => this.close())
   }
 
   private open(view: Overlay): void {

@@ -20,7 +20,12 @@ const { state, discarded } = load()
 const search = window.location.search
 const initial = hasFixture(search) ? applyFixture(state, search) : state
 
-const app = new App({ root, initial, discarded, persist: !hasFixture(search) })
+// `?motion=0` is a presentation switch, not a fixture: it changes how long a
+// change takes to appear and nothing about what the change is. Journeys that
+// care about flow rather than feel use it; the motion spec does not.
+const motion = new URLSearchParams(search).get('motion') !== '0'
+
+const app = new App({ root, initial, discarded, persist: !hasFixture(search), motion })
 
 // Art is a content requirement. A missing backdrop or a missing enemy is a
 // build fault, so it is reported loudly here rather than showing an empty room
@@ -42,7 +47,18 @@ declare global {
     castlebrynth?: {
       state: () => unknown
       dispatch: App['dispatch']
+      settle: () => void
+      animating: () => boolean
     }
   }
 }
-window.castlebrynth = { state: () => app.current, dispatch: app.dispatch }
+window.castlebrynth = {
+  state: () => app.current,
+  dispatch: app.dispatch,
+  // Presentation only. `settle` ends a transition early — exactly what an
+  // impatient press does — and `animating` says whether one is on screen.
+  // Neither can reach an outcome: the state was reduced and saved before the
+  // first frame of any sequence.
+  settle: () => app.settle(),
+  animating: () => app.animating,
+}
