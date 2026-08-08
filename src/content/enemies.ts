@@ -51,6 +51,17 @@ export interface Enemy {
   readonly foot: number
   /** What it can drop: ids drawn from dice and relics. */
   readonly rewards: readonly string[]
+  /**
+   * The chance a win drops anything at all, and how many to offer when it
+   * does.
+   *
+   * Not every fight pays. A run that is handed something after every beat
+   * teaches the player that finds are routine, and a routine find is not a
+   * reward — it is a step. These are content, not a hidden table, so the
+   * cadence of the whole slice can be read in one place.
+   */
+  readonly rewardChance: number
+  readonly rewardChoices: number
 }
 
 const RAKE = 'RAKE will deal 6 damage after you score, unless you kill it first.'
@@ -73,6 +84,8 @@ const GNAWING: Enemy = {
   width: 0.72,
   foot: 0.82,
   rewards: ['knuckle', 'wax', 'careful', 'plate', 'leech'],
+  rewardChance: 0.6,
+  rewardChoices: 2,
 }
 
 const MARROW: Enemy = {
@@ -99,7 +112,10 @@ const MARROW: Enemy = {
   art: 'marrow',
   width: 0.62,
   foot: 0.94,
+  // The optional route, so it pays better than the mandatory first fight.
   rewards: ['rosary', 'nail', 'thimble', 'pusher', 'runner'],
+  rewardChance: 0.7,
+  rewardChoices: 2,
 }
 
 const WARDEN: Enemy = {
@@ -126,7 +142,10 @@ const WARDEN: Enemy = {
   art: 'warden',
   width: 0.86,
   foot: 0.99,
+  // The boss stands at the way out. Escape is the reward.
   rewards: [],
+  rewardChance: 0,
+  rewardChoices: 0,
 }
 
 export const ENEMIES: Readonly<Record<string, Enemy>> = {

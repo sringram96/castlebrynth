@@ -131,6 +131,8 @@ export interface RunResult {
   readonly rooms: number
   readonly hp: number
   readonly fights: readonly FightResult[]
+  /** Dice and relics actually acquired before the run ended. */
+  readonly upgrades: number
 }
 
 /**
@@ -144,16 +146,19 @@ export function simulateRun(seed: number, tier: Tier, { deep = true } = {}): Run
   let state = reduce(TITLE, { type: 'START_RUN', seed })
   const fights: FightResult[] = []
 
+  let upgrades = 0
   const takeReward = () => {
     const offer = state.run?.offer
-    if (offer?.[0]) state = reduce(state, { type: 'TAKE', id: offer[0] })
+    if (!offer?.[0]) return
+    state = reduce(state, { type: 'TAKE', id: offer[0] })
+    upgrades++
   }
 
   for (let step = 0; step < 20; step++) {
     const here = room(state.run!.roomId)
 
     if (here.ending || state.mode === 'complete') {
-      return { reachedExit: true, rooms: state.run!.path.length, hp: state.run!.hp, fights }
+      return { reachedExit: true, rooms: state.run!.path.length, hp: state.run!.hp, fights, upgrades }
     }
     if (state.mode === 'dead') {
       return {
@@ -162,6 +167,7 @@ export function simulateRun(seed: number, tier: Tier, { deep = true } = {}): Run
         rooms: state.run!.path.length,
         hp: 0,
         fights,
+        upgrades,
       }
     }
 
@@ -182,6 +188,7 @@ export function simulateRun(seed: number, tier: Tier, { deep = true } = {}): Run
           rooms: state.run!.path.length,
           hp: 0,
           fights,
+          upgrades,
         }
       }
       takeReward()
@@ -199,5 +206,6 @@ export function simulateRun(seed: number, tier: Tier, { deep = true } = {}): Run
     rooms: state.run!.path.length,
     hp: state.run?.hp ?? 0,
     fights,
+    upgrades,
   }
 }

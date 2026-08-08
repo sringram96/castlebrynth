@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-import { act, boot, dice, state, toFirstFight } from './helpers.js'
+import { act, boot, dice, screenName, state, toFirstFight } from './helpers.js'
 import { fightItOut } from './play.js'
 
 test.describe('the first run', () => {
@@ -146,22 +146,26 @@ test.describe('the first run', () => {
     await act(page, 'go').click()
     await act(page, 'go').click()
 
-    const takeReward = async () => {
-      await expect(page.locator('#screen')).toHaveAttribute('data-screen', 'reward')
-      await expect(page.locator('#offers .offer')).toHaveCount(3)
+    // A win may or may not have dropped anything, and the route has to
+    // continue either way — an unconditional take here is what would hide a
+    // no-drop win from every journey in the suite.
+    const takeAnyReward = async () => {
+      if ((await screenName(page)) !== 'reward') return
+      const offers = await page.locator('#offers .offer').count()
+      expect(offers, 'a win offered more than two').toBeLessThanOrEqual(2)
       await page.locator('[data-act="take"]').first().click()
       await expect(page.locator('#screen')).toBeHidden()
     }
 
     expect(await fightItOut(page), 'lost to the Gnawing').toBe('won')
-    await takeReward()
+    await takeAnyReward()
 
     await act(page, 'go').click()
     await expect(page.locator('#say')).toContainText('The passage splits')
     await page.locator('[data-to="deep"]').click() // the long way round, on purpose
 
     expect(await fightItOut(page), 'lost to the Marrow').toBe('won')
-    await takeReward()
+    await takeAnyReward()
 
     await act(page, 'go').click()
     expect(await fightItOut(page), 'lost to the Warden').toBe('won')

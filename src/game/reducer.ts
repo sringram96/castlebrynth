@@ -106,24 +106,35 @@ function beginCombat(run: RunState): CombatState {
 }
 
 /**
- * The three things a win offers.
+ * What a win offers, if it offers anything.
  *
- * Drawn without replacement from the enemy's table, skipping anything already
- * carried, and padded from the general pools if the table runs short. Two
- * relics and a die, or two dice and a relic — the point is that the three
- * point at different builds, not that the catalogue is large.
+ * Two decisions, in this order, both off the run's own generator so a reload
+ * cannot change either:
+ *
+ *   1. **did it drop?** — `rewardChance`, and the number is always drawn, so
+ *      whether a fight paid can never depend on what was left in the pool;
+ *   2. **what?** — `rewardChoices` drawn without replacement from the enemy's
+ *      table, skipping anything already carried and padded from the general
+ *      pools if the table runs short.
+ *
+ * Nothing is padded *up*: if one eligible thing remains, one is offered. An
+ * empty return is a real answer — the fight gave nothing — and the room says
+ * so plainly rather than leaving it looking like the offer screen failed.
  */
 export function offerFor(run: RunState, enemyId: string, rng: Rng): readonly string[] {
-  // An enemy that declares no rewards gives none. That is content saying so,
+  // An enemy that declares no reward gives none. That is content saying so,
   // not a table that happened to run dry — the boss stands at the way out, and
   // a die you cannot spend is not a reward.
-  if (enemy(enemyId).rewards.length === 0) return []
+  const e = enemy(enemyId)
+  if (e.rewards.length === 0 || e.rewardChoices === 0) return []
+  if (rng.next() >= e.rewardChance) return []
+
   const owned = new Set([...run.relics, ...run.dice])
-  const table = enemy(enemyId).rewards.filter((id) => !owned.has(id))
+  const table = e.rewards.filter((id) => !owned.has(id))
   const spare = [...LOOT_RELICS, ...LOOT_DICE].filter((id) => !owned.has(id) && !table.includes(id))
   const pool = [...table, ...spare]
   const out: string[] = []
-  while (out.length < 3 && pool.length > 0) {
+  while (out.length < e.rewardChoices && pool.length > 0) {
     out.push(pool.splice(rng.int(pool.length), 1)[0]!)
   }
   return out

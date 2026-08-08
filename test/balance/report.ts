@@ -115,6 +115,26 @@ for (const tier of Object.keys(runs) as (keyof typeof runs)[]) {
       `   died: ${where || 'never'}`,
   )
 }
+// ── how often the labyrinth actually gives you something ───────────────
+//
+// The pacing target of the polish sweep: a safe run usually finds nothing or
+// one thing, a deep run one or two, and finding nothing at all stays possible.
+// If either average creeps toward "every fight pays", the find has stopped
+// being an event. This is a pacing guide, not a reason to invent loot.
+console.log('\nupgrades before the boss — a find should be an event, not a step')
+console.log('───────────────────────────────────────────────────────────────')
+for (const tier of Object.keys(runs) as (keyof typeof runs)[]) {
+  const all = runs[tier]
+  const share = (n: number) => pct(all.filter((r) => r.upgrades === n).length / all.length)
+  console.log(
+    `${tier.padEnd(16)} average ${mean(all.map((r) => r.upgrades)).toFixed(2)}` +
+      `   none ${share(0).padStart(4)}   one ${share(1).padStart(4)}   two ${share(2).padStart(4)}`,
+  )
+}
+const upgrades = (key: keyof typeof runs) => mean(runs[key].map((r) => r.upgrades))
+gate('upgrades — naive, the stair', upgrades('naive/stair'), 0.4, 0.9, (n) => n.toFixed(2))
+gate('upgrades — naive, the deep way', upgrades('naive/deep'), 0.9, 1.6, (n) => n.toFixed(2))
+
 const outRate = (key: keyof typeof runs) => runs[key].filter((r) => r.reachedExit).length / SEEDS.length
 // This is the real balance target. A first-timer taking the safe way gets out
 // four times in five; taking the deep way is a coin flip for the same player
