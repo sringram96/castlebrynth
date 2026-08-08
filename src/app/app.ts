@@ -20,7 +20,8 @@ import { TRAY_ART, url } from '../render/assets.js'
 import { mountTray, renderTray } from '../ui/trayView.js'
 import type { Tray } from '../ui/trayView.js'
 import { renderWorld } from '../ui/worldView.js'
-import { renderInspect, renderScreen } from '../ui/screens.js'
+import { renderOverlay, renderScreen } from '../ui/screens.js'
+import type { Overlay } from '../ui/screens.js'
 import { flash, shake } from '../render/animation.js'
 
 export interface AppOptions {
@@ -39,7 +40,14 @@ export class App {
   private readonly overlay: HTMLElement
   private readonly discarded: string | undefined
   private readonly persist: boolean
-  private inspecting = false
+  /**
+   * What the overlay is showing, if anything.
+   *
+   * Presentation only, and deliberately not in `GameState`: opening the menu
+   * or looking closely at a die is not a move, does not survive a reload, and
+   * must never be something a save can be stuck inside.
+   */
+  private opened: Overlay | undefined
 
   constructor(options: AppOptions) {
     this.state = options.initial
@@ -113,7 +121,9 @@ export class App {
       // One mark. Choosing a die keeps it across the reroll and puts it in the
       // hand you score, because that is the one thing a tap on a die means.
       onDie: (slot) => this.dispatch({ type: 'SELECT', slot }),
-      onInspect: () => this.openInspect(),
+      onInspectDie: (id) => this.open({ kind: 'die', id }),
+      onInspectRelic: (id) => this.open({ kind: 'relic', id }),
+      onMenu: () => this.open({ kind: 'menu' }),
       onFight: () => this.dispatch({ type: 'FIGHT' }),
       onRoll: () => this.dispatch({ type: 'ROLL' }),
       onReroll: () => this.dispatch({ type: 'REROLL' }),
@@ -133,19 +143,20 @@ export class App {
       this.discarded,
     )
 
-    if (this.inspecting) renderInspect(this.overlay, this.state, () => this.closeInspect())
+    if (this.opened) renderOverlay(this.overlay, this.opened, this.state, () => this.close())
   }
 
-  private openInspect(): void {
-    this.inspecting = true
+  private open(view: Overlay): void {
+    this.opened = view
     this.overlay.hidden = false
-    renderInspect(this.overlay, this.state, () => this.closeInspect())
+    renderOverlay(this.overlay, view, this.state, () => this.close())
   }
 
-  private closeInspect(): void {
-    this.inspecting = false
+  private close(): void {
+    this.opened = undefined
     this.overlay.hidden = true
     this.overlay.replaceChildren()
+    delete this.overlay.dataset['overlay']
   }
 
   private say(line: string): void {

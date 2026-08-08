@@ -51,13 +51,34 @@ export async function state(page: Page): Promise<{
  * enabled, the right size and still sit under a positioning container that
  * eats the press. That is the bug this suite exists for.
  */
+/**
+ * How wide a control's target may be, by kind.
+ *
+ * Everything is at least 44px tall. Width is the honest exception: the six
+ * crown bays are painted 66⅔ of 730 apart and the three relic bays 55 apart,
+ * so on a phone the pitch is 39px and 32px. Targets grown to 44px wide would
+ * have to overlap each other, and a tap landing on the neighbouring die is a
+ * worse failure than a slightly narrow one. The floor is the painted pitch,
+ * they are the full 44px in the other axis, and they never overlap.
+ *
+ * See POLISH_PROGRESS.md § P2 — this is the sweep's one accepted deviation
+ * from the 44 × 44 rule, and it is a property of the plate, not of the code.
+ */
+const MIN_WIDTH: Readonly<Record<string, number>> = {
+  die: 34,
+  'inspect-die': 34,
+  'inspect-relic': 28,
+}
+
 export async function tappable(page: Page, locator: Locator): Promise<void> {
   const box = await locator.boundingBox()
   expect(box, 'control has no box').not.toBeNull()
   const { x, y, width, height } = box!
   const want = (await locator.getAttribute('data-act')) ?? 'button'
 
-  expect(Math.min(width, height), `[${want}] touch target is under 44px`).toBeGreaterThanOrEqual(43.5)
+  expect(height, `[${want}] touch target is under 44px tall`).toBeGreaterThanOrEqual(43.5)
+  const floor = MIN_WIDTH[want] ?? 44
+  expect(width, `[${want}] touch target is under ${floor}px wide`).toBeGreaterThanOrEqual(floor - 0.5)
 
   const viewport = page.viewportSize()!
   expect(x, `[${want}] runs off the left edge`).toBeGreaterThanOrEqual(-0.5)

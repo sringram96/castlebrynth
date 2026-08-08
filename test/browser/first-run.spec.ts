@@ -44,7 +44,7 @@ test.describe('the first run', () => {
     expect(after.run!.roomId).toBe(before.run!.roomId)
   })
 
-  test('the gift room states both options, and INSPECT explains everything', async ({ page }) => {
+  test('the gift room states both options, and MENU explains everything', async ({ page }) => {
     await boot(page)
     await act(page, 'start').click()
     await act(page, 'go').click()
@@ -58,7 +58,7 @@ test.describe('the first run', () => {
     await page.locator('[data-take-id="careful"]').click()
     await expect(page.locator('#screen')).toBeHidden()
 
-    await act(page, 'inspect').click()
+    await act(page, 'menu').click()
     const overlay = page.locator('#overlay')
     await expect(overlay).toContainText('Careful Bone')
     await expect(overlay).toContainText('Only ever shows 3 or 4')

@@ -22,7 +22,15 @@ export const VERBS = {
   again: 'AGAIN',
   title: 'TITLE',
   continue: 'CONTINUE',
-  inspect: 'INSPECT',
+  /**
+   * The persistent bottom-left control.
+   *
+   * It opens the whole loadout and the scoring reference, which is a menu.
+   * It was called INSPECT, and that taught the wrong verb: **inspect** is
+   * reserved for a close look at one concrete thing — this die, this relic,
+   * that door — and never for a global overlay.
+   */
+  menu: 'MENU',
   fight: 'FIGHT',
   roll: 'ROLL',
   reroll: 'REROLL',

@@ -34,17 +34,17 @@ test.describe('the tray and its persistent controls', () => {
   test('every control through a whole combat turn stays reachable', async ({ page }) => {
     await boot(page, '?room=hollow&mode=combat')
 
-    // intent: INSPECT and ROLL
+    // intent: MENU and ROLL
     for (const control of await trayControls(page)) await tappable(page, control)
     await expect(act(page, 'roll')).toBeVisible()
 
     await act(page, 'roll').click()
-    // rolled: INSPECT, SCORE, REROLL, and six dice
+    // rolled: MENU, SCORE, REROLL, and six dice
     await expect(dice(page)).toHaveCount(6)
     for (const control of await trayControls(page)) await tappable(page, control)
 
     await act(page, 'reroll').click()
-    // rerolled: INSPECT, SCORE, six dice — and no reroll
+    // rerolled: MENU, SCORE, six dice — and no reroll
     await expect(act(page, 'reroll')).toHaveCount(0)
     for (const control of await trayControls(page)) await tappable(page, control)
   })
@@ -53,21 +53,21 @@ test.describe('the tray and its persistent controls', () => {
     const boxOf = async (name: string) => (await act(page, name).boundingBox())!
 
     await boot(page, '?room=entry')
-    const inspectExploring = await boxOf('inspect')
+    const menuExploring = await boxOf('menu')
     const primaryExploring = await boxOf('go')
 
     await boot(page, '?room=hollow&mode=combat')
-    const inspectFighting = await boxOf('inspect')
+    const menuFighting = await boxOf('menu')
     const primaryFighting = await boxOf('roll')
 
-    // INSPECT is the left bed in both modes, and the primary verb is the
+    // MENU is the left bed in both modes, and the primary verb is the
     // middle bed in both. A control that moves between modes is a control the
     // thumb has to find again every time.
-    expect(inspectFighting.x).toBeCloseTo(inspectExploring.x, 0)
-    expect(inspectFighting.y).toBeCloseTo(inspectExploring.y, 0)
+    expect(menuFighting.x).toBeCloseTo(menuExploring.x, 0)
+    expect(menuFighting.y).toBeCloseTo(menuExploring.y, 0)
     expect(primaryFighting.x).toBeCloseTo(primaryExploring.x, 0)
     expect(primaryFighting.y).toBeCloseTo(primaryExploring.y, 0)
-    expect(primaryFighting.x).toBeGreaterThan(inspectFighting.x)
+    expect(primaryFighting.x).toBeGreaterThan(menuFighting.x)
   })
 
   test('the six dice are separately tappable, and the right one answers', async ({ page }) => {
@@ -82,8 +82,12 @@ test.describe('the tray and its persistent controls', () => {
     )
     expect(boxes).toHaveLength(6)
 
+    // 44px tall, and the painted pitch wide. The plate cannot give six dice
+    // 44px of width on a phone without them overlapping, and overlapping
+    // targets fire the wrong die. See POLISH_PROGRESS.md § P2.
     for (const box of boxes) {
-      expect(Math.min(box.w, box.h), 'a die is under 44px').toBeGreaterThanOrEqual(43.5)
+      expect(box.h, 'a die is under 44px tall').toBeGreaterThanOrEqual(43.5)
+      expect(box.w, 'a die is narrower than its painted bay').toBeGreaterThanOrEqual(34)
     }
     // No two die targets overlap, so a thumb cannot fire the wrong one.
     for (let i = 1; i < boxes.length; i++) {
@@ -145,10 +149,10 @@ test.describe('the tray and its persistent controls', () => {
     }
   })
 
-  test('INSPECT is reachable from everywhere and always closes again', async ({ page }) => {
+  test('MENU is reachable from every tray mode and closes again', async ({ page }) => {
     for (const fixture of ['?room=entry', '?room=fork', '?room=hollow&mode=combat']) {
       await boot(page, fixture)
-      await act(page, 'inspect').click()
+      await act(page, 'menu').click()
       await expect(page.locator('#overlay')).toBeVisible()
       await tappable(page, act(page, 'close'))
       await act(page, 'close').click()

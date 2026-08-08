@@ -59,7 +59,9 @@ function renderHits(world: World, state: GameState, handlers: WorldHandlers): vo
     const b = button({
       act: 'look',
       label: '',
-      describe: `Look at ${detail.id.replace(/-/g, ' ')}`,
+      // "Inspect", because this is the word's proper subject: one concrete
+      // thing in the room. The global overlay is MENU and is not this.
+      describe: `Inspect the ${detail.id.replace(/-/g, ' ')}`,
       onPress: () => handlers.onLook(detail.id),
       className: `hit${detail.focal ? ' hit-focal' : ''}${run.looked.includes(detail.id) ? ' hit-seen' : ''}`,
     })
