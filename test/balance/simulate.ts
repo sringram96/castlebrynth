@@ -165,7 +165,7 @@ export function simulateRun(seed: number, tier: Tier, { deep = true } = {}): Run
       }
     }
 
-    // A floor gift arrives on the reward screen like any other offer.
+    // A win that dropped something opens the reward screen; take the first.
     if (state.mode === 'reward') {
       takeReward()
       continue

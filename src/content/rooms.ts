@@ -40,8 +40,6 @@ export interface Room {
   readonly exits: readonly Exit[]
   /** An enemy that must be beaten before the exits open. */
   readonly enemy?: string
-  /** A gift: pick one of these and leave the rest. */
-  readonly gift?: readonly string[]
   /** The run ends here, and it ends well. */
   readonly ending?: 'escaped'
 }
@@ -51,7 +49,7 @@ export const ROOMS: Readonly<Record<string, Room>> = {
     id: 'entry',
     name: 'The Long Hall',
     art: 'entry',
-    arrival: 'Down. The stair ended and this began. Candles somebody keeps lit.',
+    arrival: 'The stair ends in a long hall. Fresh candles are burning down here.',
     details: [
       {
         id: 'candles',
@@ -70,14 +68,14 @@ export const ROOMS: Readonly<Record<string, Room>> = {
         says: 'The hall keeps going. There is a door at the end of it and no light behind it.',
       },
     ],
-    exits: [{ label: 'ONWARD', to: 'passage', sense: 'The hall runs on into the dark.' }],
+    exits: [{ label: 'GO ON', to: 'passage', sense: 'The hall continues to a dark archway.' }],
   },
 
   passage: {
     id: 'passage',
     name: 'The Choir',
     art: 'choir',
-    arrival: 'Somebody left two things on the step. Only two. I can carry one.',
+    arrival: 'The hall narrows under an arch of skulls. Something has passed through here recently.',
     details: [
       {
         id: 'arch',
@@ -88,20 +86,17 @@ export const ROOMS: Readonly<Record<string, Room>> = {
       {
         id: 'step',
         at: { x: 0.5, y: 0.78 },
-        says: 'The step. Two things laid out on it, side by side, like a question.',
+        says: 'A step, worn down the middle. Whatever uses this passage uses it often.',
       },
     ],
-    // The blueprint's room 2: show a special die or a relic, in plain
-    // mechanical language, before the first fight makes it matter.
-    gift: ['careful', 'knuckle'],
-    exits: [{ label: 'ONWARD', to: 'hollow', sense: 'Something is breathing in the next room.' }],
+    exits: [{ label: 'GO ON', to: 'hollow', sense: 'Something is breathing in the room ahead.' }],
   },
 
   hollow: {
     id: 'hollow',
     name: 'The Hollow',
     art: 'ossuary',
-    arrival: 'Oh. Oh no. It was waiting in here.',
+    arrival: 'The Gnawing is blocking the passage ahead. Too many eyes. All of them are on me.',
     details: [
       {
         id: 'niches',
@@ -110,14 +105,14 @@ export const ROOMS: Readonly<Record<string, Room>> = {
       },
     ],
     enemy: 'gnawing',
-    exits: [{ label: 'ONWARD', to: 'fork', sense: 'Past it. There is a way past it.' }],
+    exits: [{ label: 'GO ON', to: 'fork', sense: 'The body is down. The corridor continues behind it.' }],
   },
 
   fork: {
     id: 'fork',
     name: 'The Split',
     art: 'shrine',
-    arrival: 'Two ways. One of them is quieter, and I do not trust the quiet one either.',
+    arrival: 'The passage splits. The stair goes straight to the door. The deeper tunnel is warmer, louder, and optional.',
     details: [
       {
         id: 'shrine',
@@ -132,8 +127,12 @@ export const ROOMS: Readonly<Record<string, Room>> = {
       },
     ],
     exits: [
-      { label: 'THE STAIR', to: 'gate', sense: 'Quiet. Straight down to whatever the door is.' },
-      { label: 'THE DEEP', to: 'deep', sense: 'Warm air, and something moving in it. There is more down there.' },
+      { label: 'STAIR', to: 'gate', sense: 'Shorter route to the door.' },
+      {
+        label: 'DEEP',
+        to: 'deep',
+        sense: 'One more fight. More danger, better chance of an upgrade.',
+      },
     ],
   },
 
@@ -141,7 +140,7 @@ export const ROOMS: Readonly<Record<string, Room>> = {
     id: 'deep',
     name: 'The Deep Way',
     art: 'deep',
-    arrival: 'Warmer down here. Wetter. It stood up when it saw the light.',
+    arrival: 'The Marrow rises in the tunnel. It is between me and the way back to the door.',
     details: [
       {
         id: 'roots',
@@ -150,14 +149,14 @@ export const ROOMS: Readonly<Record<string, Room>> = {
       },
     ],
     enemy: 'marrow',
-    exits: [{ label: 'ONWARD', to: 'gate', sense: 'The way out of here goes to the door as well.' }],
+    exits: [{ label: 'GO ON', to: 'gate', sense: 'This tunnel rejoins the path to the door.' }],
   },
 
   gate: {
     id: 'gate',
     name: 'The Door',
     art: 'gate',
-    arrival: 'The door. And the thing that was built to stand in front of it.',
+    arrival: 'The Warden stands in front of the exit door. There is no way through while it is alive.',
     details: [
       {
         id: 'sign',
@@ -166,14 +165,14 @@ export const ROOMS: Readonly<Record<string, Room>> = {
       },
     ],
     enemy: 'warden',
-    exits: [{ label: 'THROUGH', to: 'exit', sense: 'Through. Finally, through.' }],
+    exits: [{ label: 'THROUGH', to: 'exit', sense: 'The door is open.' }],
   },
 
   exit: {
     id: 'exit',
     name: 'Out',
     art: 'brazier',
-    arrival: 'Air. Actual air. I got out, and I got out carrying something.',
+    arrival: 'Cold air. Open space. I made it out with what I was carrying.',
     details: [],
     exits: [],
     ending: 'escaped',

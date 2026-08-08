@@ -8,17 +8,25 @@
  * Relics are *read* at scoring time and never write state another relic reads,
  * so the order they are held in cannot change an outcome. `test/unit/`
  * proves it.
+ *
+ * ## The copy law
+ *
+ * `rule` is the exact mechanic and `helpsWith` is a concrete play pattern.
+ * Neither may be a metaphor. "Wants dice that repeat", "turns the dangerous
+ * dice into a build" and "rare, and enormous" all described these relics
+ * without telling a player what any of them does, and a strategy note that
+ * cannot be checked against the screen is not a strategy note.
  */
 
 import type { HandName } from '../combat/scoring.js'
 
 export interface Relic {
   readonly id: string
+  /** The exact mechanic, in one sentence. */
   readonly name: string
-  /** The one sentence. */
   readonly rule: string
-  /** What kind of build it points at. */
-  readonly buildHint: string
+  /** A concrete play pattern: which dice or hands this actually rewards. */
+  readonly helpsWith: string
   readonly icon: string
   readonly effect: RelicEffect
 }
@@ -30,8 +38,15 @@ export type RelicEffect =
   | { readonly kind: 'firstOfFight'; readonly hands: readonly HandName[]; readonly plus: number }
   /** Subtracts flat from every enemy attack. */
   | { readonly kind: 'armor'; readonly block: number }
-  /** Adds flat damage per marked hurt face in the scored selection. */
-  | { readonly kind: 'perMarkedFace'; readonly plus: number }
+  /**
+   * Adds flat damage per **red** face in the scored selection.
+   *
+   * Red only, never green: the point of the relic is to pay you for the risk
+   * you took, and a green face is not a risk. The implementation always counted
+   * red faces alone; the copy used to say "each marked face", which named a
+   * larger set than the code and left the two disagreeing.
+   */
+  | { readonly kind: 'perRedFace'; readonly plus: number }
   /** Heals when the scored selection is exactly N dice. */
   | { readonly kind: 'healOnExactly'; readonly dice: number; readonly heal: number }
   /** Doubles the final damage when every scored die shows the same value. */
@@ -41,48 +56,49 @@ export const RELICS: Readonly<Record<string, Relic>> = {
   knuckle: {
     id: 'knuckle',
     name: "Saint's Knuckle",
-    rule: 'Pairs score at ×3 instead of ×2.',
-    buildHint: 'Wants dice that repeat.',
+    rule: 'When your scored hand is a Pair, use ×3 instead of ×2.',
+    helpsWith: 'Dice that roll repeated numbers.',
     icon: '✦',
     effect: { kind: 'multiplier', hand: 'pair', plus: 1 },
   },
   rosary: {
     id: 'rosary',
     name: 'Split Rosary',
-    rule: 'The first Straight you score each fight deals +12 damage.',
-    buildHint: 'Wants dice that spread.',
+    rule: 'The first Straight 3 or Straight 5 you score in each fight deals +12 damage.',
+    helpsWith: 'Dice with several different numbers.',
     icon: '⛓',
     effect: { kind: 'firstOfFight', hands: ['straight3', 'straight5'], plus: 12 },
   },
   plate: {
     id: 'plate',
     name: 'Rusted Plate',
-    rule: 'Block 2 damage from every enemy attack.',
-    buildHint: 'Buys turns. Good when a fight is going long.',
+    rule: 'Every enemy hit against you deals 2 less damage, to a minimum of 0.',
+    helpsWith: 'Long fights. It gives you more turns before you die.',
     icon: '▣',
     effect: { kind: 'armor', block: 2 },
   },
   thimble: {
     id: 'thimble',
     name: 'Blood Thimble',
-    rule: 'Each marked face you score deals +8 damage.',
-    buildHint: 'Turns the dangerous dice into a build.',
+    rule: 'Each red damage face included in the hand you SCORE adds +8 damage to your hit.',
+    helpsWith:
+      'Pusher and Runner. Their dangerous red faces become stronger attacks when you risk scoring them.',
     icon: '❥',
-    effect: { kind: 'perMarkedFace', plus: 8 },
+    effect: { kind: 'perRedFace', plus: 8 },
   },
   wax: {
     id: 'wax',
     name: 'Grave Wax',
-    rule: 'Score exactly 3 dice and heal 2.',
-    buildHint: 'A small, steady drip. Wants Triples and Straight 3s.',
+    rule: 'Whenever you score exactly 3 dice, heal 2 HP.',
+    helpsWith: 'Triples and Straight 3s.',
     icon: '✳',
     effect: { kind: 'healOnExactly', dice: 3, heal: 2 },
   },
   nail: {
     id: 'nail',
     name: 'Choir Nail',
-    rule: 'If every die you score shows the same value, double the damage.',
-    buildHint: 'Wants Triples and Quads. Rare, and enormous.',
+    rule: 'If every die in the hand you SCORE shows the same number, double the final damage.',
+    helpsWith: 'Triples and Quads made from the same number.',
     icon: '✚',
     effect: { kind: 'doubleIfUniform' },
   },

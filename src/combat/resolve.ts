@@ -53,14 +53,16 @@ export function resolve(run: RunState, combat: CombatState): Resolution {
   const enemyHp = Math.max(0, combat.enemyHp - p.damage)
   beats.push(`${p.hand.label} · ${p.sum} × ${p.multiplier} = ${p.damage}`)
 
+  // Named, not summarised. "The marked face takes 7" is a sentence a player
+  // has to already understand the game to parse; each term says what did it.
   let hp = run.hp
   if (p.cost > 0) {
     hp -= p.cost
-    beats.push(`The marked face takes ${p.cost}.`)
+    for (const term of p.costs) beats.push(`${term.label}: lose ${term.amount} HP.`)
   }
   if (p.heal > 0) {
     hp = Math.min(run.maxHp, hp + p.heal)
-    beats.push(`Back ${p.heal}.`)
+    for (const term of p.heals) beats.push(`${term.label}: heal ${term.amount} HP.`)
   }
 
   // A face cost can kill. It is the one way the dice themselves end a run, and

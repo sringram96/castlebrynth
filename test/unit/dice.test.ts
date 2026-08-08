@@ -14,10 +14,10 @@ describe('the dice content', () => {
     }
   })
 
-  it('gives every die one rule sentence and a build hint', () => {
+  it('gives every die a rule and a concrete help line', () => {
     for (const d of Object.values(DICE)) {
       expect(d.rule.length).toBeGreaterThan(0)
-      expect(d.goodWith.length).toBeGreaterThan(0)
+      expect(d.helpsWith.length).toBeGreaterThan(0)
       // Flavour lives below a divider and is never mixed into the rule.
       if (d.flavour) expect(d.rule).not.toContain(d.flavour)
     }

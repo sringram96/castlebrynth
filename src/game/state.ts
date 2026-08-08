@@ -71,7 +71,7 @@ export interface RunState {
   readonly relics: readonly string[]
   /** Which details have been looked at, per room instance. */
   readonly looked: readonly string[]
-  /** Rooms whose enemy is already dead and whose gift is already taken. */
+  /** Rooms whose enemy is already dead. */
   readonly cleared: readonly string[]
   /** Rooms visited, in order. */
   readonly path: readonly string[]

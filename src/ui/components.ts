@@ -219,7 +219,7 @@ export function dieCard(d: Die): HTMLElement {
   card.append(faces)
 
   card.append(el('p', 'card-rule', d.rule))
-  card.append(el('p', 'card-good', `GOOD WITH · ${d.goodWith}`))
+  card.append(el('p', 'card-good', `HELPS WITH · ${d.helpsWith}`))
   if (d.flavour) {
     card.append(el('hr', 'card-rule-line'))
     card.append(el('p', 'card-flavour', d.flavour))
@@ -233,7 +233,7 @@ export function relicCard(r: Relic): HTMLElement {
   const head = el('h3', 'card-name')
   head.append(el('span', 'relic-icon', r.icon), document.createTextNode(r.name))
   card.append(head)
-  card.append(el('p', 'card-rule', r.rule))
-  card.append(el('p', 'card-good', `BUILD · ${r.buildHint}`))
+  card.append(el('p', 'card-rule', `EFFECT · ${r.rule}`))
+  card.append(el('p', 'card-good', `HELPS WITH · ${r.helpsWith}`))
   return card
 }

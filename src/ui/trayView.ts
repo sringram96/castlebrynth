@@ -217,11 +217,23 @@ function renderWell(tray: Tray, state: GameState, on: TrayHandlers): void {
     sum.append(el('i', 'op', '='), el('b', 'term term-damage', String(p.damage)))
     box.append(sum)
 
-    if (p.cost > 0 || p.heal > 0) {
-      const toll = el('span', 'score-toll')
-      if (p.cost > 0) toll.append(el('b', 'toll toll-hurt', `−${p.cost} HP`))
-      if (p.heal > 0) toll.append(el('b', 'toll toll-heal', `+${p.heal} HP`))
-      box.append(toll)
+    // Every extra number in the formula is then named. A row of unexplained
+    // `+8 +12` is not a preview, it is a puzzle — and the player is being
+    // asked to commit to it.
+    for (const bonus of p.bonuses) {
+      const line = el('p', 'score-credit', `${bonus.label} +${bonus.amount}`)
+      if (bonus.relicId) line.dataset['relicId'] = bonus.relicId
+      box.append(line)
+    }
+
+    // What SCORE will do to *you*, with the verb. `−7 HP` next to a red die is
+    // a number; "Lose 7 HP" is the consequence.
+    if (p.cost > 0) box.append(el('p', 'score-toll toll-hurt', `Lose ${p.cost} HP`))
+    for (const gain of p.heals) {
+      const literal = gain.label === 'Green face' ? `Heal ${gain.amount} HP` : `${gain.label} heals ${gain.amount} HP`
+      const line = el('p', 'score-toll toll-heal', literal)
+      if (gain.relicId) line.dataset['relicId'] = gain.relicId
+      box.append(line)
     }
     tray.well.append(box)
     return

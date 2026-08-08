@@ -17,7 +17,8 @@ test.describe('the combat controls', () => {
     await expect(intent).toContainText('6')
 
     await intent.click()
-    await expect(page.locator('#say')).toContainText('It bites')
+    // The order is the lesson, so the explanation states it.
+    await expect(page.locator('#say')).toContainText('BITE deals 6 damage after you score')
   })
 
   test('rolls exactly six dice, and holding never changes that', async ({ page }) => {

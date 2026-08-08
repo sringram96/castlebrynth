@@ -23,12 +23,9 @@ const play = (state: GameState, ...actions: Action[]): GameState =>
 
 const start = (seed = 1): GameState => reduce(TITLE, { type: 'START_RUN', seed })
 
-/** Walk to the first fight and open it, taking the room's gift on the way. */
+/** Walk as far as the first fight's room. Nothing is handed out on the way. */
 function toPassage(seed = 1): GameState {
-  // Walking into the gift room opens the offer screen, exactly as a won fight
-  // does. Taking one of the two is what returns to exploring.
-  const arrived = reduce(start(seed), { type: 'GO', to: 'passage' })
-  return reduce(arrived, { type: 'TAKE', id: arrived.run!.offer![0]! })
+  return reduce(start(seed), { type: 'GO', to: 'passage' })
 }
 
 function intoFirstFight(seed = 1): GameState {
@@ -65,20 +62,17 @@ describe('a new run', () => {
   })
 })
 
-describe('a floor gift', () => {
-  it('is offered on the same screen a won fight uses, and asked once', () => {
+describe('the passage', () => {
+  it('hands out nothing: walking into a room never opens an offer', () => {
+    // The guaranteed gift before the first fight is gone. A run that finds
+    // something has beaten something for it. See POLISH_PROGRESS.md § P5.
+    for (const id of Object.keys(ROOMS)) {
+      const arrived = reduce({ ...start(), run: { ...start().run!, roomId: 'entry' } }, { type: 'GO', to: id })
+      if (arrived.mode === 'complete') continue
+      expect(arrived.run?.offer, `${id} laid something out`).toBeUndefined()
+    }
     const arrived = reduce(start(), { type: 'GO', to: 'passage' })
-    expect(arrived.mode).toBe('reward')
-    expect(arrived.run?.offer).toEqual(room('passage').gift)
-
-    const taken = reduce(arrived, { type: 'TAKE', id: arrived.run!.offer![0]! })
-    expect(taken.mode).toBe('explore')
-    expect(taken.run?.offer).toBeUndefined()
-    expect(taken.run?.cleared).toContain('passage')
-
-    // And the other one stays where it is: the room does not ask again.
-    const again = reduce(taken, { type: 'GO', to: 'hollow' })
-    expect(again.mode).toBe('explore')
+    expect(arrived.mode).toBe('explore')
   })
 })
 

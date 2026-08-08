@@ -144,8 +144,6 @@ function equip(dice: readonly string[], id: string): readonly string[] {
   return next.slice(0, HAND_SIZE)
 }
 
-const relicName = (id: string): string => relic(id).name
-
 // ── the reducer ────────────────────────────────────────────────────────
 
 export function reduce(state: GameState, action: Action): GameState {
@@ -205,12 +203,6 @@ export function reduce(state: GameState, action: Action): GameState {
         path: [...run.path, action.to],
         looked: [],
         say: next.arrival,
-      }
-      // A room that lays two things out asks the same question a won fight
-      // does, so it asks it on the same screen — with the cards, the faces and
-      // the rule sentence, rather than two names on two buttons.
-      if (next.gift && !run.cleared.includes(action.to)) {
-        return { ...state, mode: 'reward', run: { ...moved, offer: next.gift } }
       }
       if (next.ending) {
         return {
@@ -291,7 +283,13 @@ export function reduce(state: GameState, action: Action): GameState {
         // A fight with nothing left to give goes straight back to the room.
         if (offer.length === 0) {
           const { combat: _gone, ...rest } = cleared
-          return { ...state, mode: 'explore', run: { ...rest, say: 'It stops. Nothing left of it worth taking.' } }
+          return {
+            ...state,
+            mode: 'explore',
+            // Said plainly, so an empty-handed win never reads as the reward
+            // screen having failed to open.
+            run: { ...rest, say: `${enemy(combat.enemyId).name} is dead. Nothing useful on it.` },
+          }
         }
         const { combat: _done, ...rest } = cleared
         return { ...state, mode: 'reward', run: { ...rest, offer } }
@@ -324,9 +322,6 @@ export function reduce(state: GameState, action: Action): GameState {
       if (!run || state.mode !== 'reward' || !run.offer || !run.offer.includes(action.id)) return state
       const { offer: _taken, ...rest } = run
       const found = isDieId(action.id)
-      // A room's gift is spent by taking one of it: the other stays where it
-      // is, and the room does not ask again.
-      const fromRoom = room(run.roomId).gift?.includes(action.id) ?? false
       return {
         ...state,
         mode: 'explore',
@@ -335,8 +330,12 @@ export function reduce(state: GameState, action: Action): GameState {
           ...rest,
           dice: found ? equip(run.dice, action.id) : run.dice,
           relics: found ? run.relics : [...run.relics, action.id],
-          cleared: fromRoom && !run.cleared.includes(run.roomId) ? [...run.cleared, run.roomId] : run.cleared,
-          say: found ? `${die(action.id).name}. ${die(action.id).rule}` : `${relicName(action.id)}. Taken.`,
+          // A pickup repeats the thing's actual rule. "Blood Thimble. Taken."
+          // confirms a press and explains nothing, and sending the player to
+          // MENU to find out what they just chose is the same failure again.
+          say: found
+            ? `${die(action.id).name} taken. ${die(action.id).rule}`
+            : `${relic(action.id).name} taken. ${relic(action.id).rule}`,
         },
       }
     }

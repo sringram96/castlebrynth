@@ -21,11 +21,10 @@ export async function boot(page: Page, fixture = ''): Promise<void> {
   await expect(page.locator('body')).toHaveAttribute('data-assets', 'ready')
 }
 
-/** Start a run and walk to the first fight, taking the gift on the way. */
-export async function toFirstFight(page: Page, gift = 'careful'): Promise<void> {
+/** Start a run and walk to the first fight. Nothing is handed out on the way. */
+export async function toFirstFight(page: Page): Promise<void> {
   await act(page, 'start').click()
   await act(page, 'go').click()
-  await page.locator(`[data-take-id="${gift}"]`).click()
   await act(page, 'go').click()
   await expect(act(page, 'fight')).toBeVisible()
 }
@@ -45,13 +44,6 @@ export async function state(page: Page): Promise<{
 }
 
 /**
- * Every visible control must answer a real tap at its own centre.
- *
- * `elementFromPoint` is the assertion that matters: a button can be visible,
- * enabled, the right size and still sit under a positioning container that
- * eats the press. That is the bug this suite exists for.
- */
-/**
  * How wide a control's target may be, by kind.
  *
  * Everything is at least 44px tall. Width is the honest exception: the six
@@ -70,6 +62,13 @@ const MIN_WIDTH: Readonly<Record<string, number>> = {
   'inspect-relic': 28,
 }
 
+/**
+ * Every visible control must answer a real tap at its own centre.
+ *
+ * `elementFromPoint` is the assertion that matters: a button can be visible,
+ * enabled, the right size and still sit under a positioning container that
+ * eats the press. That is the bug this suite exists for.
+ */
 export async function tappable(page: Page, locator: Locator): Promise<void> {
   const box = await locator.boundingBox()
   expect(box, 'control has no box').not.toBeNull()

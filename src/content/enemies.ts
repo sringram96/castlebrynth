@@ -25,7 +25,14 @@ export interface Intent {
    * boss does.
    */
   readonly telegraph?: boolean
-  /** Shown when the intent is tapped. Plain language. */
+  /**
+   * Shown when the intent is tapped.
+   *
+   * It names the verb, the number, and the order — *after you score, unless you
+   * kill it first* — because the order is the whole of the first fight's
+   * lesson and nothing else on the screen teaches it. A telegraph says what its
+   * next attack is and for how much. No status vocabulary, ever.
+   */
   readonly explain: string
 }
 
@@ -46,15 +53,22 @@ export interface Enemy {
   readonly rewards: readonly string[]
 }
 
+const RAKE = 'RAKE will deal 6 damage after you score, unless you kill it first.'
+const STRIKE = 'STRIKE will deal 8 damage after you score, unless you kill it first.'
+
 const GNAWING: Enemy = {
   id: 'gnawing',
   name: 'The Gnawing',
   hp: 170,
   // No special rule. Every blow is the same size and it never surprises you.
   script: [
-    { verb: 'BITE', damage: 6, explain: 'It bites. 6 damage. It does nothing else, ever.' },
+    {
+      verb: 'BITE',
+      damage: 6,
+      explain: 'BITE deals 6 damage after you score, unless you kill it first.',
+    },
   ],
-  tell: 'It has too many eyes and all of them found me.',
+  tell: 'Too many eyes. All of them found me.',
   art: 'gnawing',
   width: 0.72,
   foot: 0.82,
@@ -67,15 +81,19 @@ const MARROW: Enemy = {
   hp: 210,
   // Teaches one thing: when a blow is announced a turn early, it is worse.
   script: [
-    { verb: 'RAKE', damage: 6, explain: 'It rakes. 6 damage.' },
-    { verb: 'RAKE', damage: 6, explain: 'It rakes. 6 damage.' },
+    { verb: 'RAKE', damage: 6, explain: RAKE },
+    { verb: 'RAKE', damage: 6, explain: RAKE },
     {
       verb: 'WIND UP',
       damage: 0,
       telegraph: true,
-      explain: 'It is drawing back. No damage this turn. The next one is 15.',
+      explain: 'WIND UP deals no damage this turn. Its next attack is CRUSH for 15.',
     },
-    { verb: 'CRUSH', damage: 15, explain: 'The blow it wound up for. 15 damage.' },
+    {
+      verb: 'CRUSH',
+      damage: 15,
+      explain: 'CRUSH deals 15 damage after you score, unless you kill it first.',
+    },
   ],
   tell: 'The bones of it are somebody. Several somebodies.',
   art: 'marrow',
@@ -90,15 +108,19 @@ const WARDEN: Enemy = {
   hp: 300,
   // Both taught ideas, and no third. A heavier floor and the same telegraph.
   script: [
-    { verb: 'STRIKE', damage: 8, explain: 'It strikes. 8 damage.' },
-    { verb: 'STRIKE', damage: 8, explain: 'It strikes. 8 damage.' },
+    { verb: 'STRIKE', damage: 8, explain: STRIKE },
+    { verb: 'STRIKE', damage: 8, explain: STRIKE },
     {
       verb: 'RAISE',
       damage: 0,
       telegraph: true,
-      explain: 'It is raising its arms. No damage this turn. The next one is 20.',
+      explain: 'RAISE deals no damage this turn. Its next attack is JUDGE for 20.',
     },
-    { verb: 'JUDGE', damage: 20, explain: 'The blow it raised for. 20 damage.' },
+    {
+      verb: 'JUDGE',
+      damage: 20,
+      explain: 'JUDGE deals 20 damage after you score, unless you kill it first.',
+    },
   ],
   tell: 'It was waiting at this door. It has been waiting a long time.',
   art: 'warden',
