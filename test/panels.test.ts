@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
 import { BARE_BODY, HAND_SIZE, PLAIN_POUCH, TABS, lintVoice } from '../src/content/index.js'
-import type { FocusEvent, Panel, Seed, Vault } from '../src/state/index.js'
+import type { FocusEvent, Panel, Seed } from '../src/state/index.js'
 import {
   HOME,
   MIGRATIONS,
-  VAULT_KEY,
   VAULT_VERSION,
   firstPermanent,
   focused,

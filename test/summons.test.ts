@@ -5,7 +5,7 @@ import { actsIn, enterRoom, look, looking, summoned, tappablesIn } from '../src/
 import type { ChainNode } from '../src/gen/index.js'
 import { hereIn } from '../src/gen/index.js'
 import type { Ledgers } from '../src/state/index.js'
-import { MIGRATIONS, VAULT_KEY, VAULT_VERSION, hasLooked, load, memoryVault } from '../src/state/index.js'
+import { MIGRATIONS, VAULT_VERSION, hasLooked } from '../src/state/index.js'
 import { DEALER, opened } from './drift.js'
 
 /**
