@@ -1,18 +1,23 @@
 {
   "name": "castlebrynth",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:browser": "playwright test",
+    "art": "node tools/art.mjs",
+    "balance": "vite-node test/balance/report.ts"
   },
   "devDependencies": {
+    "@playwright/test": "^1.49.1",
     "typescript": "^5.9.3",
     "vite": "^7.1.9",
+    "vite-node": "^3.2.4",
     "vitest": "^3.2.4"
   }
 }

@@ -371,17 +371,93 @@ function darkenEdge(image, rings) {
 
 // ── what the slice ships ───────────────────────────────────────────────
 
-/** Backdrops: opaque room images, portrait, cover-cropped to the scene box. */
+/**
+ * Backdrops: one opaque room image each, composed at build time.
+ *
+ * Only two masters are whole scenes — the ossuary hall and the jungle depth.
+ * Everything else the old build shipped is a *plate*: a cut-out prop it used
+ * to place inside a computed perspective box. The reset has no computed box,
+ * so a room's identity has to be baked instead of assembled per frame.
+ *
+ * So a room is a base scene plus a few plates, composited here and shipped as
+ * one picture. The runtime draws one image and knows nothing about it, and
+ * each room gets a different silhouette, a different focal object and a
+ * different lighting story rather than being one backdrop with new metadata.
+ */
+const REG = 'docs/art-reference/masters/regions/'
+const HALL = `${REG}ossuary/hall.png`
+const DEPTH = `${REG}jungle-hell/depth.png`
+
 const BACKDROPS = [
-  { id: 'room.threshold', from: 'docs/art-reference/masters/regions/ossuary/gate.png', anchorY: 0.5 },
-  { id: 'room.entry', from: 'docs/art-reference/masters/regions/ossuary/hall.png', anchorY: 0.5 },
-  { id: 'room.ossuary', from: 'docs/art-reference/masters/regions/ossuary/niche-skulls.png', anchorY: 0.5 },
-  { id: 'room.shrine', from: 'docs/art-reference/masters/regions/ossuary/shrine.png', anchorY: 0.5 },
-  { id: 'room.choir', from: 'docs/art-reference/masters/regions/ossuary/archway-skulls.png', anchorY: 0.5 },
-  { id: 'room.vault', from: 'docs/art-reference/masters/regions/ossuary/pillar-skulls.png', anchorY: 0.5 },
-  { id: 'room.gate', from: 'docs/art-reference/masters/regions/jungle-hell/gate.png', anchorY: 0.5 },
-  { id: 'room.deep', from: 'docs/art-reference/masters/regions/jungle-hell/depth.png', anchorY: 0.5 },
-  { id: 'room.brazier', from: 'docs/art-reference/masters/regions/jungle-hell/brazier.png', anchorY: 0.5 },
+  {
+    // The front door. The hall, closed off by a gate too big for it.
+    id: 'threshold',
+    base: HALL,
+    over: [{ from: `${REG}ossuary/gate.png`, cx: 0.5, cy: 0.5, w: 1.04 }],
+  },
+  {
+    // The establishing shot: the hall itself, and bones underfoot.
+    id: 'entry',
+    base: HALL,
+    over: [{ from: `${REG}ossuary/skull-pile-candles.png`, cx: 0.5, cy: 0.93, w: 1.0 }],
+  },
+  {
+    // The choir: an arch of skulls set across the corridor, facing out.
+    id: 'choir',
+    base: HALL,
+    over: [
+      { from: `${REG}ossuary/archway-skulls.png`, cx: 0.5, cy: 0.45, w: 1.06 },
+      { from: `${REG}ossuary/bone-stack.png`, cx: 0.24, cy: 0.9, w: 0.16 },
+    ],
+  },
+  {
+    // The hollow: walls packed with niches, and something hanging overhead.
+    id: 'ossuary',
+    base: HALL,
+    over: [
+      { from: `${REG}ossuary/niche-skulls.png`, cx: 0.14, cy: 0.52, w: 0.62 },
+      { from: `${REG}ossuary/niche-skulls.png`, cx: 0.86, cy: 0.52, w: 0.62, flip: true },
+      { from: `${REG}ossuary/hanging-skull-cluster.png`, cx: 0.5, cy: 0.14, w: 0.86 },
+    ],
+  },
+  {
+    // The split: a shrine somebody knelt at, and a ledge of candles beside it.
+    id: 'shrine',
+    base: HALL,
+    over: [
+      { from: `${REG}ossuary/pillar-skulls.png`, cx: 0.09, cy: 0.5, w: 0.46 },
+      { from: `${REG}ossuary/shrine.png`, cx: 0.53, cy: 0.58, w: 0.8 },
+      { from: `${REG}ossuary/candle-ledge.png`, cx: 0.87, cy: 0.66, w: 0.5 },
+    ],
+  },
+  {
+    // The deep way: warm, wet, and lit from its own fires.
+    id: 'deep',
+    base: DEPTH,
+    over: [
+      { from: `${REG}jungle-hell/left-frame.png`, cx: 0.1, cy: 0.5, w: 0.5 },
+      { from: `${REG}jungle-hell/brazier.png`, cx: 0.78, cy: 0.62, w: 0.46 },
+      { from: `${REG}jungle-hell/floor-bank.png`, cx: 0.5, cy: 0.94, w: 1.1 },
+    ],
+  },
+  {
+    // The door, and everything built around it.
+    id: 'gate',
+    base: DEPTH,
+    over: [
+      { from: `${REG}jungle-hell/right-frame.png`, cx: 0.9, cy: 0.5, w: 0.5 },
+      { from: `${REG}jungle-hell/gate.png`, cx: 0.5, cy: 0.53, w: 0.98 },
+    ],
+  },
+  {
+    // Out.
+    id: 'brazier',
+    base: DEPTH,
+    over: [
+      { from: `${REG}jungle-hell/shrine.png`, cx: 0.5, cy: 0.56, w: 0.82 },
+      { from: `${REG}jungle-hell/brazier.png`, cx: 0.15, cy: 0.66, w: 0.4 },
+    ],
+  },
 ]
 
 /**
@@ -450,15 +526,64 @@ const ENEMIES = [
   },
 ]
 
+/** Mirror an image horizontally. Two of a plate is two of a thing. */
+function flipX(src) {
+  const { width, height, rgba } = src
+  const out = new Uint8Array(rgba.length)
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const from = (y * width + (width - 1 - x)) * 4
+      const to = (y * width + x) * 4
+      out[to] = rgba[from]
+      out[to + 1] = rgba[from + 1]
+      out[to + 2] = rgba[from + 2]
+      out[to + 3] = rgba[from + 3]
+    }
+  }
+  return { width, height, rgba: out }
+}
+
+/** Alpha-over, clipped to the canvas. The plates carry real alpha. */
+function over(canvas, plate, cx, cy) {
+  const x0 = Math.round(cx * canvas.width - plate.width / 2)
+  const y0 = Math.round(cy * canvas.height - plate.height / 2)
+  for (let y = 0; y < plate.height; y++) {
+    const ty = y0 + y
+    if (ty < 0 || ty >= canvas.height) continue
+    for (let x = 0; x < plate.width; x++) {
+      const tx = x0 + x
+      if (tx < 0 || tx >= canvas.width) continue
+      const s = (y * plate.width + x) * 4
+      const a = plate.rgba[s + 3] / 255
+      if (a === 0) continue
+      const d = (ty * canvas.width + tx) * 4
+      canvas.rgba[d] = Math.round(plate.rgba[s] * a + canvas.rgba[d] * (1 - a))
+      canvas.rgba[d + 1] = Math.round(plate.rgba[s + 1] * a + canvas.rgba[d + 1] * (1 - a))
+      canvas.rgba[d + 2] = Math.round(plate.rgba[s + 2] * a + canvas.rgba[d + 2] * (1 - a))
+      canvas.rgba[d + 3] = 255
+    }
+  }
+}
+
 function buildBackdrops() {
   const report = []
   for (const b of BACKDROPS) {
-    const src = read(b.from)
-    const cut = coverCrop(src, SCENE_WIDTH / SCENE_HEIGHT, b.anchorY)
-    const small = posterise(resample(cut, SCENE_WIDTH, SCENE_HEIGHT), 32)
-    for (let i = 3; i < small.rgba.length; i += 4) small.rgba[i] = 255
-    const path = write(`rooms/${b.id.replace(/^room\./, '')}.png`, small)
-    report.push({ id: b.id, path, width: SCENE_WIDTH, height: SCENE_HEIGHT })
+    const base = read(b.base)
+    const canvas = resample(coverCrop(base, SCENE_WIDTH / SCENE_HEIGHT, 0.5), SCENE_WIDTH, SCENE_HEIGHT)
+    for (let i = 3; i < canvas.rgba.length; i += 4) canvas.rgba[i] = 255
+
+    for (const layer of b.over ?? []) {
+      const master = read(layer.from)
+      const width = Math.max(1, Math.round(layer.w * SCENE_WIDTH))
+      const height = Math.max(1, Math.round((width * master.height) / master.width))
+      const plate = resample(layer.flip ? flipX(master) : master, width, height)
+      over(canvas, plate, layer.cx, layer.cy)
+    }
+
+    const finished = posterise(canvas, 32)
+    for (let i = 3; i < finished.rgba.length; i += 4) finished.rgba[i] = 255
+    const path = write(`rooms/${b.id}.png`, finished)
+    report.push({ id: `room.${b.id}`, path, width: SCENE_WIDTH, height: SCENE_HEIGHT })
   }
   return report
 }
