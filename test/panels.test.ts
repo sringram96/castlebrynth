@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
 import { BARE_BODY, HAND_SIZE, PLAIN_POUCH, TABS, lintVoice } from '../src/content/index.js'
-import type { FocusEvent, Panel, Seed, Vault } from '../src/state/index.js'
+import type { FocusEvent, Panel, Seed } from '../src/state/index.js'
 import {
   HOME,
   MIGRATIONS,
-  VAULT_KEY,
   VAULT_VERSION,
   firstPermanent,
   focused,
@@ -69,26 +68,28 @@ describe('art. 91 — the vault carries the new field forward', () => {
    * where they were. A tray change may not cost anybody a descent.
    */
   it('fills panel on a v3 snapshot without dropping its run', () => {
-    const vault: Vault & { held: Map<string, string> } = Object.assign(memoryVault(), {
-      held: new Map<string, string>(),
-    })
+    // **Asked of the rung rather than of the whole climb.** This wave's rung
+    // is the good kind and that is what is being tested; a snapshot walking
+    // all the way to today now passes rung 13 → 14, which drops the run
+    // because depth one is a different labyrinth. Reading the whole ladder
+    // here would be testing that rung instead of this one.
+    const rung = MIGRATIONS.find((one) => one.from === 3)!
     const ledgers = opened()
-    // A v3 snapshot: everything this build writes, minus the field it added.
     const run = { ...(ledgers.run as unknown as Record<string, unknown>) }
     delete run.panel
-    vault.write(
-      VAULT_KEY,
-      JSON.stringify({ version: 3, ledgers: { run, permanent: ledgers.permanent } }),
-    )
+    const climbed = rung.up({
+      version: 3,
+      ledgers: { run, permanent: ledgers.permanent },
+    } as never) as unknown as { ledgers: { run: Record<string, unknown> } }
 
-    const restored = load(vault)
-    expect(restored).not.toBeNull()
-    // The run survived — same seed, same road, same room.
-    expect(restored!.run).not.toBeNull()
-    expect(restored!.run!.seed).toBe(ledgers.run!.seed)
-    expect(restored!.run!.at.instance).toBe(ledgers.run!.at.instance)
+    // The run survived this rung — same seed, same road, same room.
+    expect(climbed.ledgers.run).not.toBeNull()
+    expect(climbed.ledgers.run.seed).toBe(ledgers.run!.seed)
+    expect((climbed.ledgers.run.at as { instance: string }).instance).toBe(
+      ledgers.run!.at.instance,
+    )
     // And the new field is filled rather than missing.
-    expect(restored!.run!.panel).toBe(HOME)
+    expect(climbed.ledgers.run.panel).toBe(HOME)
   })
 
   it('keeps the ladder gapless up to the current version', () => {
@@ -104,7 +105,13 @@ describe('art. 91 — the vault carries the new field forward', () => {
     // exception and it is a repair: a legacy five-slot hand against a pouch
     // that can fill six becomes six, because no shipped v12 mechanic writes
     // that value and carrying it forward manufactured a choosing screen.
-    expect(VAULT_VERSION).toBe(13)
+    // 13 is the one repair — a legacy five-slot hand against a pouch that can
+    // fill six becomes six — and **14 is the first rung since the drift to
+    // drop a run.** The jungle-hell slice took depth one, so every saved
+    // position is a position in a labyrinth that is no longer dealt there; the
+    // permanent carries forward whole and only the descent is lost, which is
+    // what art. 11 says a run costs.
+    expect(VAULT_VERSION).toBe(14)
     expect(MIGRATIONS.map((one) => one.from).sort((a, b) => a - b)).toEqual(
       Array.from({ length: VAULT_VERSION - 1 }, (_, at) => at + 1),
     )

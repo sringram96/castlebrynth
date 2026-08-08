@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
 
-import { BARE_BODY, HAND_SIZE, PLAIN_POUCH } from '../src/content/index.js'
+import {
+  BARE_BODY,
+  CATALOG,
+  FIRST_DEPTH,
+  GRAMMAR,
+  HAND_SIZE,
+  PLAIN_POUCH,
+  opensAt,
+} from '../src/content/index.js'
+import { deal, nodeAt } from '../src/gen/index.js'
 import type { Vault } from '../src/state/index.js'
 import {
   THE_SCRAWL,
@@ -174,6 +183,71 @@ describe('the vault ladder — art. 11 (the Book survives everything)', () => {
     )
     // And each one really changes the version it is walking.
     expect(new Set(rungs).size).toBe(rungs.length)
+  })
+
+  /**
+   * **13 → 14: depth one became a different labyrinth.**
+   *
+   * The regression this exists for shipped and was found by a player rather
+   * than by a test: the jungle-hell slice took depth one, and every saved run
+   * in existence was standing in a room that depth no longer deals. `deal`
+   * replayed the slice, `nodeAt` could not find `room.crossing#0` in it, and
+   * the boot threw behind a black screen — the whole game, unreachable, with
+   * the vault intact and unreadable behind it.
+   *
+   * The bug was not the slice. It was shipping a content change that moves an
+   * arrangement without a rung on the ladder, which is the one thing the
+   * ladder exists to catch (art. 11).
+   */
+  it('drops a run standing in a labyrinth that no longer deals it (arts 11, 36)', () => {
+    const { vault } = killable()
+    const ledgers = wake(firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY), 21 as never)
+    save(ledgers, vault)
+    // The save a player from before the slice is actually holding: the real
+    // permanent this version writes, and a run on depth one at the Crossing.
+    const held = JSON.parse(vault.read(VAULT_KEY)!)
+    vault.write(
+      VAULT_KEY,
+      JSON.stringify({
+        version: 13,
+        ledgers: {
+          permanent: held.ledgers.permanent,
+          run: {
+            ...held.ledgers.run,
+            depth: 1,
+            at: { room: 'room.crossing', instance: 'room.crossing#0', step: 0, beat: 0 },
+            history: { taken: [] },
+          },
+        },
+      }),
+    )
+
+    const restored = load(vault)
+    // Not quarantined — the ladder walked it.
+    expect(restored, 'a v13 snapshot must climb, not quarantine').not.toBeNull()
+    expect(quarantined(vault)).toBeNull()
+    // The position is gone, and nothing else is.
+    expect(restored!.run).toBeNull()
+    expect(restored!.permanent).toEqual(ledgers.permanent)
+    expect(restored!.permanent.bookOfEnds).toEqual(ledgers.permanent.bookOfEnds)
+    expect(restored!.permanent.pouch).toEqual(ledgers.permanent.pouch)
+
+    // And the boot stands back up from it, in the room the depth it is
+    // opening actually begins with — which is the whole of the crash.
+    const up = woken(
+      restored,
+      firstPermanent(PLAIN_POUCH, HAND_SIZE, BARE_BODY),
+      22 as never,
+      FIRST_DEPTH,
+      opensAt(FIRST_DEPTH),
+    )
+    expect(up.run).not.toBeNull()
+    expect(up.permanent.bookOfEnds).toEqual(ledgers.permanent.bookOfEnds)
+    const chain = deal(up.run!.seed, up.run!.depth, CATALOG, GRAMMAR, up.run!.history)
+    expect(
+      nodeAt(chain, up.run!.at.instance),
+      'the run must be standing in a room the dealer dealt',
+    ).not.toBeNull()
   })
 
   it('leaves a current snapshot exactly as it found it', () => {

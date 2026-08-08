@@ -5,7 +5,7 @@ import { actsIn, enterRoom, look, looking, summoned, tappablesIn } from '../src/
 import type { ChainNode } from '../src/gen/index.js'
 import { hereIn } from '../src/gen/index.js'
 import type { Ledgers } from '../src/state/index.js'
-import { MIGRATIONS, VAULT_KEY, VAULT_VERSION, hasLooked, load, memoryVault } from '../src/state/index.js'
+import { MIGRATIONS, VAULT_VERSION, hasLooked } from '../src/state/index.js'
 import { DEALER, opened } from './drift.js'
 
 /**
@@ -134,23 +134,28 @@ describe('art. 68 — a verb is what looking leaves behind', () => {
 
 describe('art. 68 — the summons rides the vault', () => {
   it('carries a v4 snapshot forward with an empty set, keeping its run', () => {
-    const vault = memoryVault()
+    // **Asked of the rung rather than of the whole climb**, because a snapshot
+    // walking all the way to today now passes rung 13 → 14, which drops the
+    // run: depth one is a different labyrinth since the jungle-hell slice.
+    // What this wave claimed is that *its* rung costs nobody a descent, and
+    // that is still exactly true and still worth holding.
+    const rung = MIGRATIONS.find((one) => one.from === 4)!
     const { ledgers } = roomWithASummons()
     const run = { ...(ledgers.run as unknown as Record<string, unknown>) }
     delete run.looked
-    vault.write(
-      VAULT_KEY,
-      JSON.stringify({ version: 4, ledgers: { run, permanent: ledgers.permanent } }),
-    )
+    const climbed = rung.up({
+      version: 4,
+      ledgers: { run, permanent: ledgers.permanent },
+    } as never) as unknown as { ledgers: { run: Record<string, unknown> } }
 
-    const restored = load(vault)
-    expect(restored).not.toBeNull()
     // The run is where it was: a summons change costs nobody a descent.
-    expect(restored!.run!.seed).toBe(ledgers.run!.seed)
-    expect(restored!.run!.at.instance).toBe(ledgers.run!.at.instance)
+    expect(climbed.ledgers.run.seed).toBe(ledgers.run!.seed)
+    expect((climbed.ledgers.run.at as { instance: string }).instance).toBe(
+      ledgers.run!.at.instance,
+    )
     // And it has looked at nothing, which is the honest answer — it never
     // recorded looking. The cost is the taps to look again.
-    expect(restored!.run!.looked).toEqual([])
+    expect(climbed.ledgers.run.looked).toEqual([])
   })
 
   it('keeps the ladder gapless to the version this wave writes', () => {
@@ -166,7 +171,13 @@ describe('art. 68 — the summons rides the vault', () => {
     // exception and it is a repair: a legacy five-slot hand against a pouch
     // that can fill six becomes six, because no shipped v12 mechanic writes
     // that value and carrying it forward manufactured a choosing screen.
-    expect(VAULT_VERSION).toBe(13)
+    // 13 is the one repair — a legacy five-slot hand against a pouch that can
+    // fill six becomes six — and **14 is the first rung since the drift to
+    // drop a run.** The jungle-hell slice took depth one, so every saved
+    // position is a position in a labyrinth that is no longer dealt there; the
+    // permanent carries forward whole and only the descent is lost, which is
+    // what art. 11 says a run costs.
+    expect(VAULT_VERSION).toBe(14)
     expect(MIGRATIONS.map((one) => one.from).sort((a, b) => a - b)).toEqual(
       Array.from({ length: VAULT_VERSION - 1 }, (_, at) => at + 1),
     )

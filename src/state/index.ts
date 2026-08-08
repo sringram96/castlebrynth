@@ -986,7 +986,7 @@ export const QUARANTINE_KEY = 'castlebrynth.quarantine'
  * old saves could carry five forward even after the starting pouch became six,
  * which manufactured a choosing screen where the current rules have no choice.
  */
-export const VAULT_VERSION = 13
+export const VAULT_VERSION = 14
 
 // ── The migration ladder ───────────────────────────────────────────────
 
@@ -1275,6 +1275,30 @@ export const MIGRATIONS: readonly Migration[] = [
           handSize: handSize === 5 && dice.length >= 6 ? 6 : handSize,
         }
       }),
+  },
+  /**
+   * 13 → 14. **Depth one is a different labyrinth.** The jungle-hell slice
+   * took that number and the generated depth moved to two, so a v13 run is
+   * standing in a room its own depth no longer deals: `deal` replays the
+   * slice, `nodeAt` cannot find `room.crossing#0` in it, and the shell throws
+   * at boot with a black screen behind it.
+   *
+   * This is precisely what `keepingOnlyThePermanent` is for, and it is the
+   * first rung to need it since the drift. **Nothing about the player is
+   * lost** — the pouch, the signature, the keepsakes, the wearables, the
+   * knowledge, the meetings, the memories, the refusals, the trinkets and the
+   * Book all carry forward untouched. What is dropped is a *position*, which
+   * art. 11 says costs a run and never costs the player.
+   *
+   * It keeps only the permanent rather than rewriting the run's `at`, because
+   * there is no honest place to put a player who was four doors into a
+   * labyrinth that no longer exists. Waking them at the slice's own first room
+   * with four doors of history behind them would be inventing a descent they
+   * never took.
+   */
+  {
+    from: 13,
+    up: (snapshot) => keepingOnlyThePermanent(snapshot, (permanent) => ({ ...permanent })),
   },
 ]
 

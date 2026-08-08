@@ -498,7 +498,7 @@ describe('art. 84 — and some of what you refuse is remembered', () => {
   })
 
   it('fills the field for a vault written before this wave, losing no descent', () => {
-    expect(VAULT_VERSION).toBe(13)
+    expect(VAULT_VERSION).toBe(14)
     const rung = MIGRATIONS.find((one) => one.from === 10)!
     const before = {
       version: 10,
