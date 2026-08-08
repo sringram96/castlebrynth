@@ -1,136 +1,129 @@
-import type { BondId, Die, DieId, Face, Pouch, RiderId, Value } from '../lots/index.js'
-
 /**
- * art. 55 (amended 2026-08-06): the start is bare — **six** plain bones, no
- * riders, no bonds, no talismans. art. 50: shapes are free, values are law —
- * every face shows a value 1–6, whatever the body.
+ * Every die in the game.
  *
- * art. 86: every die past the bare six belonged to someone who came down
- * here and did not come back. Those live in `travelers.ts`, beside the
- * people they came off; nothing in this file has an owner.
+ * A die is six faces. A face is a value 1-6 and at most one keyword. There are
+ * two keywords and there is no effect algebra: `hurt` costs you health when its
+ * face is part of the hand you score, `heal` gives you some. A keyword on a
+ * held or unused die does nothing.
+ *
+ * Every die states its faces, one rule sentence in plain language, and what it
+ * is good with. If a die's rule cannot be read off the combat screen it does
+ * not ship — which is why the Sister Bone, whose rule needs two dice and a
+ * bonus to explain, is not here.
  */
 
-const id = (s: string): DieId => s as DieId
-const rider = (s: string): RiderId => s as RiderId
-const bond = (s: string): BondId => s as BondId
+export type Value = 1 | 2 | 3 | 4 | 5 | 6
 
-const plainFaces: readonly Face[] = [1, 2, 3, 4, 5, 6].map((v) => ({ value: v as Value }))
-
-function plainBone(n: number): Die {
-  return { id: id(`bone.${n}`), body: 6, faces: plainFaces }
+export interface FaceEffect {
+  readonly kind: 'hurt' | 'heal'
+  readonly amount: number
 }
 
-/** art. 54: the bone every other die is audited against. */
-export const PLAIN_BONE: Die = plainBone(0)
-
-/**
- * arts 55, 60 (amended by the ruling of 2026-08-06): v1 ships a pouch of
- * **six** plain bones against a hand size of six. The hand is full at the
- * waking and there is nothing to pick up to make it so — a plain bone is
- * equipment, not a find, and only a *special* die is ever discovered
- * (art. 86 unchanged: every die past the bare six belonged to somebody).
- *
- * (Superseded: five bones against a hand of six, with the empty slot as the
- * invitation. The hole read as a bug rather than an invitation — the room
- * you wake in has a body lying in it, and a player who taps it and gets
- * nothing concludes the game is broken, not that it is asking them
- * something.)
- */
-export const PLAIN_POUCH: Pouch = {
-  dice: [
-    plainBone(1),
-    plainBone(2),
-    plainBone(3),
-    plainBone(4),
-    plainBone(5),
-    plainBone(6),
-  ],
+export interface Face {
+  readonly value: Value
+  /** At most one keyword, and only these two exist. */
+  readonly effect?: FaceEffect
 }
 
-/**
- * art. 60: hand size is a body stat, and it is six. It is deliberately not
- * `PLAIN_POUCH.dice.length` — the two agree at the waking and are still
- * different questions, because a mercy may grow the hand past the pouch and
- * a wound may shrink it below.
- *
- * **art. 128: this is where six lives, and it is the only place it lives.**
- * The engine has never assumed it — `Hand` is a collection and always has
- * been — and after the visual migration the tray does not assume it either.
- * So changing the game to some other number is changing this constant and
- * the pouch beside it, and nothing in `src/lots`, `src/state` or the shell
- * has to be touched to follow.
- */
+export type Faces = readonly [Face, Face, Face, Face, Face, Face]
+
+export interface Die {
+  readonly id: string
+  readonly name: string
+  readonly faces: Faces
+  /** The one sentence. Plain mechanical language; no flavour mixed in. */
+  readonly rule: string
+  /** "GOOD WITH" — one or two scoring hands or build ideas. */
+  readonly goodWith: string
+  /** Optional flavour, shown below a divider and never mixed into the rule. */
+  readonly flavour?: string
+  /** So the three kinds of die are told apart at a glance. */
+  readonly material: 'bone' | 'pale' | 'iron' | 'ash' | 'blood'
+}
+
+const f = (value: Value): Face => ({ value })
+const hurt = (value: Value, amount: number): Face => ({
+  value,
+  effect: { kind: 'hurt', amount },
+})
+const heal = (value: Value, amount: number): Face => ({
+  value,
+  effect: { kind: 'heal', amount },
+})
+
+const PLAIN: Die = {
+  id: 'plain',
+  name: 'Plain Bone',
+  faces: [f(1), f(2), f(3), f(4), f(5), f(6)],
+  rule: 'An ordinary die. One through six, nothing else.',
+  goodWith: 'Everything. It is the floor the others are measured against.',
+  material: 'bone',
+}
+
+const CAREFUL: Die = {
+  id: 'careful',
+  name: 'Careful Bone',
+  faces: [f(3), f(3), f(3), f(4), f(4), f(4)],
+  rule: 'Only ever shows 3 or 4.',
+  goodWith: 'Triples and Full Houses.',
+  flavour: 'Filed flat on two sides by somebody who did not like surprises.',
+  material: 'pale',
+}
+
+const PUSHER: Die = {
+  id: 'pusher',
+  name: 'Pusher Bone',
+  faces: [hurt(1, 7), f(5), f(5), f(6), f(6), f(6)],
+  rule: 'Rolls high. Scoring its marked 1 costs you 7 health.',
+  goodWith: 'Triples of 6 — and any hand you can leave the 1 out of.',
+  flavour: 'He kept pushing. It kept paying, until it did not.',
+  material: 'blood',
+}
+
+const RUNNER: Die = {
+  id: 'runner',
+  name: 'Runner Bone',
+  faces: [f(3), f(4), f(5), f(5), f(6), hurt(6, 5)],
+  rule: 'Spread from 3 to 6. Scoring its marked 6 costs you 5 health.',
+  goodWith: 'Straights.',
+  flavour: 'She was always three rooms ahead of the rest of them.',
+  material: 'iron',
+}
+
+const LEECH: Die = {
+  id: 'leech',
+  name: 'Leech Bone',
+  faces: [f(1), f(2), f(3), f(4), f(5), heal(6, 4)],
+  rule: 'Ordinary faces. Scoring its marked 6 heals you 4 health.',
+  goodWith: 'Any hand with a 6 in it. It is the only healing in the run.',
+  flavour: 'It drinks first and gives some back. Some.',
+  material: 'ash',
+}
+
+export const DICE: Readonly<Record<string, Die>> = {
+  plain: PLAIN,
+  careful: CAREFUL,
+  pusher: PUSHER,
+  runner: RUNNER,
+  leech: LEECH,
+}
+
+/** Six dice means six dice. Everywhere. */
 export const HAND_SIZE = 6
 
-/**
- * A pouch of `n` plain bones (art. 128).
- *
- * It exists so that nothing outside this file has to know how a plain bone
- * is made in order to ask for a different number of them — the canonical
- * fixture asks for one to draw a tray of three or eight, and a future rule
- * that wakes the player with a different hand asks for one too. It is not a
- * balance knob: `PLAIN_POUCH` is still what the game wakes with, and it is
- * still six.
- */
-export function plainPouchOf(n: number): Pouch {
-  return { dice: Array.from({ length: Math.max(0, n) }, (_, i) => plainBone(i + 1)) }
+/** The waking loadout. A plain bone is the body you start in, not a find. */
+export const STARTING_DICE: readonly string[] = Array.from({ length: HAND_SIZE }, () => 'plain')
+
+/** What the labyrinth can hand you. Only a special die is ever a find. */
+export const LOOT_DICE: readonly string[] = ['careful', 'pusher', 'runner', 'leech']
+
+export function die(id: string): Die {
+  const found = DICE[id]
+  if (!found) throw new Error(`no such die: ${id}`)
+  return found
 }
 
-/**
- * The Orphan — faces {6,2,3,4,5,6}, over the plain bone's budget with no
- * cost face on it and nobody it came off.
- *
- * art. 87 refuses it: no origin sentence can be written for a die that has
- * no owner, so it ships nowhere. It stays here as the fixture the audit is
- * pointed at — a die that fails `paid` — because an audit no die ever fails
- * is an audit nobody can trust (`test/lots.items.test.ts`).
- */
-export const THE_ORPHAN: Die = {
-  id: id('bone.orphan'),
-  body: 6,
-  faces: [{ value: 6 }, { value: 2 }, { value: 3 }, { value: 4 }, { value: 5 }, { value: 6 }],
-}
-
-/**
- * The Sisters — the demo's bond (`reference/castlebrynth-lots-demo.html`),
- * and since the travelers ruling a findable good rather than a fixture.
- *
- * art. 52: the bond triggers when both are spent in the same claim at equal
- * value; a ghost sister joins, and the pair scores at triple tier on the PAIR
- * line. Carrying both halves in a finite hand is the cost.
- *
- * art. 87, canon: two who went down together. Neither half is over budget —
- * a plain bone's faces, and the power is entirely in the other one being
- * somewhere below you. The halves are banded apart when they are dealt
- * (`encounters.ts`), so finding one always means walking for the other.
- */
-export const SISTERS_BOND = bond('bond.sisters')
-
-export const THE_SISTERS: readonly [Die, Die] = [
-  { id: id('bone.sister.elder'), body: 6, faces: plainFaces, bond: SISTERS_BOND },
-  { id: id('bone.sister.younger'), body: 6, faces: plainFaces, bond: SISTERS_BOND },
-]
-
-/**
- * The Leech — the demo's rider, and now a findable good. art. 51: it fires
- * only when its face is spent in a claim; kept or unused, the 6 does nothing.
- *
- * art. 87: a rider is a habit somebody carried into a fight, and this one is
- * the habit of taking something back off whatever it hit. Its faces are the
- * plain bone's, so the habit is the whole of the power and there is nothing
- * else to pay for.
- */
-export const LEECH_RIDER = rider('rider.leech')
-
-export const THE_LEECH: Die = {
-  id: id('bone.leech'),
-  body: 6,
-  faces: [
-    { value: 1 },
-    { value: 2 },
-    { value: 3 },
-    { value: 4 },
-    { value: 5 },
-    { value: 6, rider: LEECH_RIDER },
-  ],
+/** Whether a loot id names a die or a relic. The two nouns, told apart. */
+export function isDieId(id: string): boolean {
+  return id in DICE
 }

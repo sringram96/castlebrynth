@@ -1,94 +1,80 @@
-# Contributing to Castlebrynth
-A first-person, forward-only descent in the browser: computed parallax
-rooms, blind chains, poker-dice duels, death as the progression system.
+# Castlebrynth
 
-Four documents, and each answers one question:
+A portrait pixel-horror roguelike: descend through hand-authored rooms, fight
+grotesque things by rolling six dice, collect strange dice and relics, and
+decide how far to push before the dungeon kills you.
 
-- **README.md** — how do I play it and run it? (users)
-- **DESIGN.md** — what is the game right now? The spec: components, key
-  decisions, the cut, and a Status of one screen — what runs, what is
-  green, what is owed. **Nothing chronological lives there.**
-- **CHRONICLE.md** — how did it get here? Every wave journal, newest
-  first, append-only. History, and it binds nothing.
-- **`.claude/rules/`** — the law: 128 numbered articles, cited as
-  "art. N". Start at `journey.md`: it is the five modes, the one
-  question each asks, and the table of every mechanic with its mode, its
-  ledger and its articles.
+## Read these first
 
-The fantasy is `reference/GAME.md`. Where a rule conflicts with GAME.md,
-the rule wins.
+Four documents, about twenty minutes in total, and they are the whole contract.
 
-## Get it running
-Install: npm install
-Run:     npm run dev
-Test:    npm test
+- **`docs/PRODUCT.md`** — what the game is, what the slice contains, what is
+  deliberately parked.
+- **`docs/COMBAT.md`** — the turn, the ladder, the damage formula, the
+  invariants.
+- **`docs/ART_DIRECTION.md`** — the layers, the sizes, the pipeline, the
+  content validation.
+- **`docs/CONTRIBUTING.md`** — how to work here, and the input contract.
+
+`archive/` holds the pre-reset design stack — 128 numbered articles, a 234 KB
+chronicle, four specialist agent roles. It is **history and binds nothing.** No
+active code may import from it, and no change needs to cite it.
+
+## Commands
+
+```
+npm install
+npm run dev            # vite, http://127.0.0.1:5173
+npm run build          # typecheck + bundle
+npm test               # unit tests
+npm run test:browser   # Playwright, Chromium at 390x844
+npm run art            # rebuild public/assets from the masters
+npm run balance        # deterministic fight simulation
+```
+
+`npm run test:browser` needs a Chromium. `npx playwright install chromium`, or
+set `CHROMIUM_PATH` to one already on the machine.
 
 ## Layout
-- src/state   — the two ledgers; rituals; persistence; exact resume
-- src/gen     — the seeded chain; grammar rules; winnability proof
-- src/room    — the computed-box renderer (GRID dial)
-- src/visual  — the compositor above it: layers, plates, patches
-- src/descent — candles, taps, acts, doors
-- src/lots    — the dice engine
-- src/hinge   — fight-doors, the advance, death routing
-- src/content — all rooms, horrors, dice, prose, as typed data
 
-## Conventions
-- TypeScript strict. No framework. No new dependency without a Blocked
-  question first.
-- Engine is generic, content is data: tuning numbers and player-facing
-  prose live in src/content only.
-- Two-ledger discipline: run and permanent state never mix except through
-  the named rituals in src/state (art. 11).
-- Nothing may assume a device pixel or the number 240 outside render
-  config (arts 22–23), and nothing outside `src/content` may assume the
-  hand is six (art. 128).
-- Perspective is computed; appearance may be authored (art. 126). `src/room`
-  owns every spatial fact; `src/visual` lays authored plates over the frame
-  it produces, in the order art. 127 declares. Assets are data: only
-  `src/content/visual/assets.ts` knows a filename.
-- Every player-facing string obeys rules/voice.md: it is the protagonist
-  thinking or the protagonist writing, never a narrator. Content review is
-  voice review, and `test/content.voice.test.ts` is the review.
+```
+src/
+  main.ts        boot and mount, and nothing else
+  app/           the root controller and the one dispatcher
+  game/          GameState, the reducer, saves, dev fixtures
+  combat/        dice, scoring, resolution
+  exploration/   (folded into game/reducer while the slice is this small)
+  content/       dice, relics, enemies, rooms, copy, tray geometry
+  render/        the fixed-order compositor, the asset manifest, animation
+  ui/            views and components
+test/
+  unit/          pure functions and invariants
+  browser/       Playwright journeys — these decide completion
+  balance/       policies, simulation, the report
+tools/           the art pipeline and a screenshot helper
+```
 
-## Agents
-See AGENTS.md. Four agents, by concern: **arithmetic** (is it fair?),
-**engagement** (is it fun?), **design** (is it ours?), **mechanics**
-(does it hold?). Their files are in `.claude/agents/`. Any non-trivial
-change should survive all four; if two disagree, that's a Blocked
-question for the human, not a compromise to invent.
+Game logic never imports from `ui/` or `render/`. The reducer is the only thing
+that produces a `GameState`.
 
-A skill is hired, not scaffolded — when the same procedure has been
-re-explained enough times that its absence is the recurring bug, propose
-it. One is hired: `.claude/skills/phone-pass/`, because three waves in a
-row closed with "the hand pass is still owed."
+## The rules that matter
 
-## The standing rules
-Adopted by the mend, 2026-08-07. Five, and they are kept forever.
+- **A green unit suite is not completion.** The journey passes in a browser, or
+  it is not done.
+- **Every verb is a real `<button>`. All art is `pointer-events: none`.** Touch
+  targets are at least 44 px.
+- **An unavailable action is hidden, never shown disabled** as the only
+  explanation of what to do.
+- **Game state is pure data.** Rendering decides nothing; animation reveals an
+  outcome the reducer already computed.
+- **Enemy art is a build requirement.** A missing enemy asset fails the tests,
+  not the player.
+- **Prefer deleting an obsolete abstraction to adapting it.** Git remembers.
+- **No new gameplay noun** — collectible species, status family, screen mode,
+  UI panel — without a product decision.
 
-1. **Green means served.** The deploy verdict is the served commit hash
-   and nothing else. A step that cries wolf is a step nobody reads.
-2. **Status is one screen.** History goes to `CHRONICLE.md` the day it
-   becomes history.
-3. **No mechanic without its row** (art. 122). Mode + ledger + articles
-   in `journey.md`, or it does not ship.
-4. **Every wave ends in a hand.** The phone pass is the last section of
-   every wave's chronicle entry — performed, or declared not done and
-   why.
-5. **The fantasy table never goes stale.** A wave that ships a beat of
-   `reference/GAME.md`'s opening marks its carrier in DESIGN.md; a wave
-   that cannot, says undelivered.
+## Dev fixtures
 
-## How work happens
-Tasks live on the Asana board "castlebrynth". Pick up only tasks in
-To Do (our Ready) whose dependencies are all complete. Move it to
-In Progress. One branch per task.
-
-A task ends exactly one of two ways:
-- A pull request — link it in a task comment, move the task to Review.
-- Blocked — write the question as a task comment, move the task to
-  Blocked.
-
-Don't take work the task didn't ask for. Tasks are written to need no
-context beyond themselves plus this repo; if one turns out to need some,
-that's a Blocked question, not a guess.
+Any mode is reachable from a URL, which is what keeps the ends of the game
+testable: `?room=gate&hp=1&mode=combat`, `?mode=dead`, `?dice=pusher,leech`.
+See `src/game/fixture.ts`.
