@@ -73,6 +73,17 @@ that produces a `GameState`.
 - **No new gameplay noun** — collectible species, status family, screen mode,
   UI panel — without a product decision.
 
+## No art in the polish sweep
+
+While `POLISH_PROGRESS.md` is open, **no coding agent may author, generate,
+redraw, repaint, trace, recolour, crop, upscale or otherwise modify any visual
+asset** — no PNG, SVG, sprite sheet, icon, particle texture or CSS-drawn
+pixel-art stand-in, and no "temporary" or "placeholder" graphic. Existing art
+may be measured, positioned, clipped, transformed and animated; its pixels may
+not be touched. A change that genuinely needs a new asset stops and records a
+`## HUMAN ART REQUIRED` entry in `POLISH_PROGRESS.md` instead, and every task
+that does not need it continues.
+
 ## Dev fixtures
 
 Any mode is reachable from a URL, which is what keeps the ends of the game
