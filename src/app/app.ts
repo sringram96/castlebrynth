@@ -119,7 +119,6 @@ export class App {
       onReroll: () => this.dispatch({ type: 'REROLL' }),
       onScore: () => this.dispatch({ type: 'SCORE' }),
       onGo: (to) => this.dispatch({ type: 'GO', to }),
-      onTakeGift: (id) => this.dispatch({ type: 'TAKE_GIFT', id }),
     })
 
     renderScreen(

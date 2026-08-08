@@ -12,7 +12,7 @@
  */
 
 import { HAND_SIZE, LOOT_DICE, STARTING_DICE, die, isDieId } from '../content/dice.js'
-import { LOOT_RELICS } from '../content/relics.js'
+import { LOOT_RELICS, relic } from '../content/relics.js'
 import { enemy, intentAt } from '../content/enemies.js'
 import { FIRST_ROOM, room } from '../content/rooms.js'
 import { Rng, reroll, roll, toggle } from '../combat/dice.js'
@@ -20,7 +20,14 @@ import { resolve } from '../combat/resolve.js'
 import { SAVE_VERSION } from './state.js'
 import type { CombatState, GameState, MetaState, RunState } from './state.js'
 
-export const MAX_HP = 60
+/**
+ * The body.
+ *
+ * Health carries between fights and there is no free healing, so this number
+ * is really "how many fights before the boss". A hundred buys three, with
+ * enough margin that a bad round of dice is a setback rather than the run.
+ */
+export const MAX_HP = 100
 
 export type Action =
   | { readonly type: 'START_RUN'; readonly seed?: number }
@@ -28,7 +35,6 @@ export type Action =
   | { readonly type: 'CONTINUE' }
   | { readonly type: 'LOOK'; readonly detailId: string }
   | { readonly type: 'GO'; readonly to: string }
-  | { readonly type: 'TAKE_GIFT'; readonly id: string }
   | { readonly type: 'FIGHT' }
   | { readonly type: 'ROLL' }
   | { readonly type: 'SELECT'; readonly slot: number }
@@ -108,6 +114,10 @@ function beginCombat(run: RunState): CombatState {
  * point at different builds, not that the catalogue is large.
  */
 export function offerFor(run: RunState, enemyId: string, rng: Rng): readonly string[] {
+  // An enemy that declares no rewards gives none. That is content saying so,
+  // not a table that happened to run dry — the boss stands at the way out, and
+  // a die you cannot spend is not a reward.
+  if (enemy(enemyId).rewards.length === 0) return []
   const owned = new Set([...run.relics, ...run.dice])
   const table = enemy(enemyId).rewards.filter((id) => !owned.has(id))
   const spare = [...LOOT_RELICS, ...LOOT_DICE].filter((id) => !owned.has(id) && !table.includes(id))
@@ -134,6 +144,8 @@ function equip(dice: readonly string[], id: string): readonly string[] {
   return next.slice(0, HAND_SIZE)
 }
 
+const relicName = (id: string): string => relic(id).name
+
 // ── the reducer ────────────────────────────────────────────────────────
 
 export function reduce(state: GameState, action: Action): GameState {
@@ -141,8 +153,11 @@ export function reduce(state: GameState, action: Action): GameState {
     case 'TITLE': {
       // Stepping back to the door remembers where you were, so CONTINUE means
       // the same thing whether you got here by pressing TITLE or by reloading.
+      // Only a *live* mode is remembered: a run that has ended is not
+      // somewhere the door may offer to send you back to.
+      const live: readonly string[] = ['explore', 'combat', 'reward']
       const resume = state.mode === 'title' ? state.resume : state.mode
-      return { ...state, mode: 'title', ...(resume ? { resume } : {}) }
+      return { ...state, mode: 'title', ...(resume && live.includes(resume) ? { resume } : {}) }
     }
 
     case 'START_RUN': {
@@ -191,6 +206,12 @@ export function reduce(state: GameState, action: Action): GameState {
         looked: [],
         say: next.arrival,
       }
+      // A room that lays two things out asks the same question a won fight
+      // does, so it asks it on the same screen — with the cards, the faces and
+      // the rule sentence, rather than two names on two buttons.
+      if (next.gift && !run.cleared.includes(action.to)) {
+        return { ...state, mode: 'reward', run: { ...moved, offer: next.gift } }
+      }
       if (next.ending) {
         return {
           ...state,
@@ -200,26 +221,6 @@ export function reduce(state: GameState, action: Action): GameState {
         }
       }
       return { ...state, mode: 'explore', run: moved }
-    }
-
-    case 'TAKE_GIFT': {
-      const run = state.run
-      if (!run || state.mode !== 'explore') return state
-      const gift = room(run.roomId).gift
-      if (!gift || !gift.includes(action.id) || run.cleared.includes(run.roomId)) return state
-      return {
-        ...state,
-        meta: remember(state.meta, isDieId(action.id) ? [action.id] : [], isDieId(action.id) ? [] : [action.id]),
-        run: {
-          ...run,
-          dice: isDieId(action.id) ? equip(run.dice, action.id) : run.dice,
-          relics: isDieId(action.id) ? run.relics : [...run.relics, action.id],
-          cleared: [...run.cleared, run.roomId],
-          say: isDieId(action.id)
-            ? `${die(action.id).name}. ${die(action.id).rule}`
-            : `Taken. The other one stays where it is.`,
-        },
-      }
     }
 
     case 'FIGHT': {
@@ -323,6 +324,9 @@ export function reduce(state: GameState, action: Action): GameState {
       if (!run || state.mode !== 'reward' || !run.offer || !run.offer.includes(action.id)) return state
       const { offer: _taken, ...rest } = run
       const found = isDieId(action.id)
+      // A room's gift is spent by taking one of it: the other stays where it
+      // is, and the room does not ask again.
+      const fromRoom = room(run.roomId).gift?.includes(action.id) ?? false
       return {
         ...state,
         mode: 'explore',
@@ -331,7 +335,8 @@ export function reduce(state: GameState, action: Action): GameState {
           ...rest,
           dice: found ? equip(run.dice, action.id) : run.dice,
           relics: found ? run.relics : [...run.relics, action.id],
-          say: found ? `${die(action.id).name}. ${die(action.id).rule}` : 'Taken.',
+          cleared: fromRoom && !run.cleared.includes(run.roomId) ? [...run.cleared, run.roomId] : run.cleared,
+          say: found ? `${die(action.id).name}. ${die(action.id).rule}` : `${relicName(action.id)}. Taken.`,
         },
       }
     }

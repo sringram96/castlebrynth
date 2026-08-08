@@ -34,10 +34,16 @@ export function renderScreen(
   on: ScreenHandlers,
   discarded?: string,
 ): void {
-  const showing = state.mode === 'title' || state.mode === 'reward' || state.mode === 'dead' || state.mode === 'complete'
+  const showing =
+    state.mode === 'title' || state.mode === 'reward' || state.mode === 'dead' || state.mode === 'complete'
   host.hidden = !showing
   host.replaceChildren()
-  if (!showing) return
+  if (!showing) {
+    // Clear the name too. A hidden screen that still says it is the reward
+    // screen is a lie anything reading the DOM will believe.
+    delete host.dataset['screen']
+    return
+  }
   host.dataset['screen'] = state.mode
 
   switch (state.mode) {

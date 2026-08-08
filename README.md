@@ -1,41 +1,54 @@
 # Castlebrynth
 
-A dark descent for one thumb. You wake beneath the castle with a pouch
-of bones and your brother's name. The labyrinth goes down. It does not
-go back up.
+A portrait pixel-horror roguelike for the phone.
 
-Look at anything — looking is free and always answers. Acting costs.
-Doors close behind you like verdicts, and every run the labyrinth deals
-itself anew. When it kills you, you keep your dice, your Book of Ends,
-and everything you learned. Especially then.
+You go down. The rooms are hand-authored and hostile. When something is
+standing in one of them, you fight it by throwing six dice, keeping the ones
+you want, throwing the rest once more, and spending the best combination you
+can make. What you take off the things you kill changes what you hope to roll
+next time.
+
+Then you die, and go down again.
 
 ## Play
-Portrait. One thumb.
 
-- **Tap** a word or a thing to look. Always safe.
-- **Act** when offered. Never safe.
-- **Choose a door.** Each is sensed in one line. There is no back.
-- **Tap the horror** to fight it. Its next attack shows before you touch
-  a die. Three presses to a turn: **Roll** your bones, hold the ones you
-  want and **Reroll** the rest, then select dice and **Attack** — the
-  selection is the attack, scored sum × tier. Every line works once per
-  fight and crosses off as you spend it. Your armor blocks
-  automatically. **Run** is always offered, from the acts panel.
-
-Close it whenever. It resumes exactly there — the state lives in the
-browser, so it is per-device and clearing site data is a fresh start.
-
-### On a phone
-Every push to `main` builds and publishes to GitHub Pages, so the newest
-`main` is a URL you can open on a phone and add to the home screen.
-
-### On your machine
 ```
 npm install
-npm run dev -- --host
+npm run dev
 ```
-Open the **Network** URL it prints from any device on the same wifi.
-`npm test` runs the suite; `npm run build` type-checks and bundles.
 
-For the fantasy, reference/GAME.md. For what's built and what's owed,
-DESIGN.md. For how it got here, CHRONICLE.md.
+Open the URL it prints. It is best on a phone, or in a browser window the shape
+of one — 390×844 is what everything is laid out against.
+
+## How a turn goes
+
+1. The thing in front of you says what it will do next, before you touch
+   anything.
+2. **ROLL** — six dice.
+3. Tap the dice you want. They rise.
+4. **REROLL** — everything you did not choose is thrown again, once. Skippable.
+5. Tap more dice, or fewer.
+6. **SCORE** — the tray shows `sum × hand = damage` before you press it, and
+   pressing it deals exactly that.
+
+Seven hands: **Any** ×1, **Pair** ×2, **Triple** ×3, **Straight 3** ×3, **Full
+House** ×5, **Quad** ×6, **Straight 5** ×6. INSPECT has the table, and every
+die you carry, and what each one does.
+
+## Build and test
+
+```
+npm run build          # typecheck and bundle
+npm test               # unit tests
+npm run test:browser   # the real journey, in a real browser
+npm run balance        # simulate the fights and print the numbers
+npm run art            # rebuild the runtime art from the masters
+```
+
+## For contributors
+
+Start at `docs/PRODUCT.md`, then `docs/COMBAT.md`, `docs/ART_DIRECTION.md` and
+`docs/CONTRIBUTING.md`. Twenty minutes, and they are the whole contract.
+
+`archive/` holds the pre-reset design stack. It is history and binds nothing.
+`RESET_PROGRESS.md` records what was cut, what was kept, and why.

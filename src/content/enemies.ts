@@ -52,7 +52,7 @@ const GNAWING: Enemy = {
   hp: 170,
   // No special rule. Every blow is the same size and it never surprises you.
   script: [
-    { verb: 'BITE', damage: 7, explain: 'It bites. 7 damage. It does nothing else, ever.' },
+    { verb: 'BITE', damage: 6, explain: 'It bites. 6 damage. It does nothing else, ever.' },
   ],
   tell: 'It has too many eyes and all of them found me.',
   art: 'gnawing',
@@ -64,18 +64,18 @@ const GNAWING: Enemy = {
 const MARROW: Enemy = {
   id: 'marrow',
   name: 'The Marrow',
-  hp: 240,
+  hp: 210,
   // Teaches one thing: when a blow is announced a turn early, it is worse.
   script: [
-    { verb: 'RAKE', damage: 8, explain: 'It rakes. 8 damage.' },
-    { verb: 'RAKE', damage: 8, explain: 'It rakes. 8 damage.' },
+    { verb: 'RAKE', damage: 6, explain: 'It rakes. 6 damage.' },
+    { verb: 'RAKE', damage: 6, explain: 'It rakes. 6 damage.' },
     {
       verb: 'WIND UP',
       damage: 0,
       telegraph: true,
-      explain: 'It is drawing back. No damage this turn. The next one is 20.',
+      explain: 'It is drawing back. No damage this turn. The next one is 15.',
     },
-    { verb: 'CRUSH', damage: 20, explain: 'The blow it wound up for. 20 damage.' },
+    { verb: 'CRUSH', damage: 15, explain: 'The blow it wound up for. 15 damage.' },
   ],
   tell: 'The bones of it are somebody. Several somebodies.',
   art: 'marrow',
@@ -87,18 +87,18 @@ const MARROW: Enemy = {
 const WARDEN: Enemy = {
   id: 'warden',
   name: 'The Warden',
-  hp: 330,
+  hp: 300,
   // Both taught ideas, and no third. A heavier floor and the same telegraph.
   script: [
-    { verb: 'STRIKE', damage: 11, explain: 'It strikes. 11 damage.' },
-    { verb: 'STRIKE', damage: 11, explain: 'It strikes. 11 damage.' },
+    { verb: 'STRIKE', damage: 8, explain: 'It strikes. 8 damage.' },
+    { verb: 'STRIKE', damage: 8, explain: 'It strikes. 8 damage.' },
     {
       verb: 'RAISE',
       damage: 0,
       telegraph: true,
-      explain: 'It is raising its arms. No damage this turn. The next one is 26.',
+      explain: 'It is raising its arms. No damage this turn. The next one is 20.',
     },
-    { verb: 'JUDGE', damage: 26, explain: 'The blow it raised for. 26 damage.' },
+    { verb: 'JUDGE', damage: 20, explain: 'The blow it raised for. 20 damage.' },
   ],
   tell: 'It was waiting at this door. It has been waiting a long time.',
   art: 'warden',

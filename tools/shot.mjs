@@ -15,7 +15,9 @@ import { chromium } from '@playwright/test'
 const [, , out, ...steps] = process.argv
 if (!out) throw new Error('usage: node tools/shot.mjs <out.png> [selector...]')
 
-const browser = await chromium.launch()
+const browser = await chromium.launch(
+  process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {},
+)
 const page = await browser.newPage({
   viewport: { width: 390, height: 844 },
   deviceScaleFactor: 2,

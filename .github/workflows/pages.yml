@@ -1,6 +1,6 @@
-# The URL is the whole install (DESIGN.md), so shipping is publishing a
-# directory. Tests gate every push and every pull request; main also
-# deploys to GitHub Pages.
+# The URL is the whole install, so shipping is publishing a directory.
+# Build, unit tests and the browser journeys gate every push and every pull
+# request; main also deploys to GitHub Pages.
 name: build
 
 on:
@@ -33,6 +33,19 @@ jobs:
       # failed build here, not a surprise at deploy time.
       - run: npm run build
       - run: npm test
+      # The tests that decide whether the game works. A green unit suite can
+      # sit on top of an overlay that eats every tap, which is how the
+      # pre-reset build shipped a bottom row nobody could press.
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7
 
   deploy:
     name: github pages

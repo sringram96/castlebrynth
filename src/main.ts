@@ -6,6 +6,7 @@
  */
 
 import { App } from './app/app.js'
+import { applyFixture, hasFixture } from './game/fixture.js'
 import { load } from './game/save.js'
 import { preload } from './render/assets.js'
 
@@ -14,7 +15,12 @@ if (!root) throw new Error('#app is missing from the document')
 
 const { state, discarded } = load()
 
-const app = new App({ root, initial: state, discarded })
+// A URL fixture replaces the save rather than merging with it, so a test run
+// never inherits a half-finished session. See src/game/fixture.ts.
+const search = window.location.search
+const initial = hasFixture(search) ? applyFixture(state, search) : state
+
+const app = new App({ root, initial, discarded, persist: !hasFixture(search) })
 
 // Art is a content requirement. A missing backdrop or a missing enemy is a
 // build fault, so it is reported loudly here rather than showing an empty room

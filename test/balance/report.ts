@@ -1,0 +1,144 @@
+/**
+ * The balance report.
+ *
+ * `npm run balance`. Deterministic: same seeds in, same table out, so a tuning
+ * change is a diff rather than an impression.
+ *
+ * The blueprint's gates are printed with the numbers, and each row says pass or
+ * fail against them. Two things matter about how this is read:
+ *
+ *   1. The **naive** column is the one to balance against. A fight tuned for
+ *      a solver is miserable for somebody who has not internalised the ladder,
+ *      which is exactly the gap between a modelled 50-70% win band and a
+ *      hands-on report of never winning once.
+ *   2. **A green table is not a verdict.** Human completion of the deployed
+ *      slice outranks simulation until onboarding is stable.
+ */
+
+import { fightIn, simulateFight, simulateRun } from './simulate.js'
+import type { FightResult } from './simulate.js'
+import type { Tier } from './policies.js'
+
+const SEEDS = Array.from({ length: 400 }, (_, i) => (i + 1) * 2654435761)
+
+const pct = (n: number): string => `${(n * 100).toFixed(0)}%`
+const median = (xs: readonly number[]): number =>
+  [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)] ?? 0
+const mean = (xs: readonly number[]): number => xs.reduce((a, b) => a + b, 0) / (xs.length || 1)
+
+interface Gate {
+  readonly label: string
+  readonly value: number
+  readonly low: number
+  readonly high: number
+  readonly show?: (n: number) => string
+}
+
+const gates: Gate[] = []
+function gate(label: string, value: number, low: number, high: number, show = pct): number {
+  gates.push({ label, value, low, high, show })
+  return value
+}
+
+function fightStats(room: string, tier: Tier, loadout: Parameters<typeof fightIn>[2] = {}) {
+  const results: FightResult[] = SEEDS.map((seed) => simulateFight(fightIn(room, seed, loadout), tier).result)
+  return {
+    win: results.filter((r) => r.won).length / results.length,
+    turns: median(results.map((r) => r.turns)),
+    dpt: mean(results.map((r) => r.damagePerTurn)),
+    hpLeft: mean(results.filter((r) => r.won).map((r) => r.hp)),
+    empty: results.reduce((n, r) => n + r.emptyTurns, 0),
+  }
+}
+
+console.log(`\nCASTLEBRYNTH — balance, ${SEEDS.length} seeds per cell\n`)
+
+// ── the fights, one at a time, at the loadout you reach them with ──────
+const first = { naive: fightStats('hollow', 'naive'), heuristic: fightStats('hollow', 'heuristic') }
+const second = {
+  naive: fightStats('deep', 'naive', { dice: ['careful', 'plain', 'plain', 'plain', 'plain', 'plain'], relics: ['knuckle'] }),
+  heuristic: fightStats('deep', 'heuristic', { dice: ['careful', 'plain', 'plain', 'plain', 'plain', 'plain'], relics: ['knuckle'] }),
+}
+const boss = {
+  naive: fightStats('gate', 'naive', { dice: ['careful', 'leech', 'plain', 'plain', 'plain', 'plain'], relics: ['knuckle', 'plate'] }),
+  heuristic: fightStats('gate', 'heuristic', { dice: ['careful', 'leech', 'plain', 'plain', 'plain', 'plain'], relics: ['knuckle', 'plate'] }),
+}
+
+console.log('fight            naive   heuristic   turns   dmg/turn (n/h)   hp left')
+console.log('───────────────────────────────────────────────────────────────')
+for (const [name, cell] of [
+  ['the Gnawing', first],
+  ['the Marrow', second],
+  ['the Warden', boss],
+] as const) {
+  console.log(
+    `${name.padEnd(16)} ${pct(cell.naive.win).padStart(6)}   ${pct(cell.heuristic.win).padStart(9)}` +
+      `   ${String(cell.heuristic.turns).padStart(5)}   ${cell.naive.dpt.toFixed(0).padStart(6)}/${cell.heuristic.dpt.toFixed(0).padEnd(7)}` +
+      `   ${cell.heuristic.hpLeft.toFixed(0).padStart(7)}`,
+  )
+}
+
+// The blueprint's bands are per fight; these are the bands actually aimed at,
+// and the difference is recorded in RESET_PROGRESS.md. In short: a single
+// fight entered at full health cannot be made losable without an enemy that
+// out-damages six dice, and a tutorial fight that kills one player in five
+// contradicts the blueprint's own human target. So the *fights* are gated on
+// being winnable and quick, and the *run* carries the risk — which is where
+// "how far do I push" lives anyway.
+gate('first fight — naive', first.naive.win, 0.9, 1)
+gate('first fight — heuristic', first.heuristic.win, 0.95, 1)
+gate('second fight — naive', second.naive.win, 0.85, 1)
+gate('boss — naive, two rewards', boss.naive.win, 0.85, 1)
+gate('median first fight turns', first.heuristic.turns, 3, 5, String)
+gate('median normal fight turns', second.heuristic.turns, 4, 7, String)
+gate('median boss turns', boss.heuristic.turns, 4, 8, String)
+gate('turns with no productive action', first.heuristic.empty + second.heuristic.empty + boss.heuristic.empty, 0, 0, String)
+
+// ── whole runs, taking the harder branch ───────────────────────────────
+const runs = {
+  'naive/stair': SEEDS.map((s) => simulateRun(s, 'naive', { deep: false })),
+  'naive/deep': SEEDS.map((s) => simulateRun(s, 'naive')),
+  'heuristic/stair': SEEDS.map((s) => simulateRun(s, 'heuristic', { deep: false })),
+  'heuristic/deep': SEEDS.map((s) => simulateRun(s, 'heuristic')),
+}
+console.log('\nwhole run — the stair is the safe way, the deep way is a fight more')
+console.log('───────────────────────────────────────────────────────────────')
+for (const tier of Object.keys(runs) as (keyof typeof runs)[]) {
+  const all = runs[tier]
+  const out = all.filter((r) => r.reachedExit)
+  const died = new Map<string, number>()
+  for (const r of all) if (r.diedIn) died.set(r.diedIn, (died.get(r.diedIn) ?? 0) + 1)
+  const where = [...died.entries()].map(([room, n]) => `${room} ${pct(n / all.length)}`).join(', ')
+  console.log(
+    `${tier.padEnd(16)} out ${pct(out.length / all.length).padStart(4)}` +
+      `   hp left ${mean(out.map((r) => r.hp)).toFixed(0).padStart(2)}` +
+      `   died: ${where || 'never'}`,
+  )
+}
+const outRate = (key: keyof typeof runs) => runs[key].filter((r) => r.reachedExit).length / SEEDS.length
+// This is the real balance target. A first-timer taking the safe way gets out
+// four times in five; taking the deep way is a coin flip for the same player
+// and a good bet for one who has learned the ladder. That gap is the reward
+// for learning, and the coin flip is the push-your-luck.
+gate('whole run — naive, the stair', outRate('naive/stair'), 0.75, 0.92)
+gate('whole run — naive, the deep way', outRate('naive/deep'), 0.4, 0.65)
+gate('whole run — heuristic, the stair', outRate('heuristic/stair'), 0.9, 1)
+gate('whole run — heuristic, the deep way', outRate('heuristic/deep'), 0.8, 1)
+
+// ── the verdict ────────────────────────────────────────────────────────
+console.log('\ngate                              value   want          ')
+console.log('───────────────────────────────────────────────────────────────')
+let failed = 0
+for (const g of gates) {
+  const show = g.show ?? pct
+  const ok = g.value >= g.low && g.value <= g.high
+  if (!ok) failed++
+  console.log(
+    `${ok ? 'ok  ' : 'FAIL'} ${g.label.padEnd(30)} ${show(g.value).padStart(5)}   ${show(g.low)}–${show(g.high)}`,
+  )
+}
+console.log(
+  failed === 0
+    ? '\nall gates green. This is not completion: humans on the deployed slice are.\n'
+    : `\n${failed} gate(s) outside their band.\n`,
+)

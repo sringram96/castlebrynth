@@ -32,6 +32,11 @@ export default defineConfig({
         viewport: { width: 390, height: 844 },
         isMobile: true,
         hasTouch: true,
+        // Some environments ship a Chromium that Playwright did not download
+        // itself. Point at it when it is there; otherwise use the managed one.
+        ...(process.env['CHROMIUM_PATH']
+          ? { launchOptions: { executablePath: process.env['CHROMIUM_PATH'] } }
+          : {}),
       },
     },
   ],

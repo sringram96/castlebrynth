@@ -14,8 +14,8 @@
  */
 
 import { ACTION_BEDS, DIE_BEDS, ORB, ORB_TEXT, RELIC_BEDS, WELL } from '../content/tray.js'
-import { GIFT_PROMPT, VERBS, WELL_IDLE } from '../content/text.js'
-import { die as dieById, isDieId } from '../content/dice.js'
+import { VERBS, WELL_IDLE } from '../content/text.js'
+import { die as dieById } from '../content/dice.js'
 import { faceOf } from '../combat/dice.js'
 import { preview } from '../combat/scoring.js'
 import { selectionOf } from '../combat/resolve.js'
@@ -33,7 +33,6 @@ export interface TrayHandlers {
   readonly onReroll: () => void
   readonly onScore: () => void
   readonly onGo: (to: string) => void
-  readonly onTakeGift: (id: string) => void
 }
 
 export interface Tray {
@@ -206,25 +205,6 @@ function renderWell(tray: Tray, state: GameState, on: TrayHandlers): void {
   // looked at is already in the word band over the world; repeating it here
   // would spend the one region that can make a fork legible.
   const here = roomById(run.roomId)
-  const gift = here.gift && !run.cleared.includes(run.roomId) ? here.gift : undefined
-  if (gift) {
-    const row = el('div', 'gift-row')
-    row.append(el('p', 'gift-prompt', GIFT_PROMPT))
-    for (const id of gift) {
-      const name = isDieId(id) ? dieById(id).name : relicById(id).name
-      const b = button({
-        act: 'take-gift',
-        label: name,
-        describe: `Take the ${name}`,
-        onPress: () => on.onTakeGift(id),
-        className: 'gift',
-      })
-      b.dataset['giftId'] = id
-      row.append(b)
-    }
-    tray.well.append(row)
-    return
-  }
 
   if (here.enemy && !run.cleared.includes(run.roomId)) {
     const e = enemyById(here.enemy)
