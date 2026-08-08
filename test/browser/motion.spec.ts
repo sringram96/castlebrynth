@@ -6,28 +6,118 @@
  * its result, which is where a dice game lives — and about the promise that
  * none of it is load-bearing: the last block turns motion off at the media
  * level and asserts the same run reaches the same numbers immediately.
+ *
+ * ## Why there is a recorder
+ *
+ * The obvious way to test a beat is to poll for it from Node. That tests the
+ * poller: `.die-rolling` lives for 300 ms and a hit number is on screen for
+ * 470 ms before the next turn takes over, so on a loaded runner a poll can
+ * arrive after the thing it was looking for has gone and fail a build that is
+ * perfectly correct. `watch()` installs a MutationObserver *before* the press
+ * and reports what actually happened, with timings — so these assertions are
+ * about the sequence rather than about how fast the test could look.
  */
 
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 
-import { act, boot, dice, screenName, state } from './helpers.js'
+import { act, boot, dice, state } from './helpers.js'
 
 const withMotion = (page: Page, fixture: string) => boot(page, fixture, { motion: true })
 
-/** The slots currently mid-throw. */
-const rolling = (page: Page) => page.locator('#crown .die-rolling')
+/** Nothing is in the air any more. */
+const thrown = (page: Page) => expect(page.locator('#crown .die-rolling')).toHaveCount(0, { timeout: 4000 })
+
+interface Seen {
+  /** Slots that were in the air at any point, and slots that confirmed. */
+  readonly rolled: string[]
+  readonly scored: string[]
+  /** Relics whose bay pulsed, by id. */
+  readonly relics: string[]
+  readonly markFired: boolean
+  readonly orbDelta: string | null
+  /** Milliseconds from the press, or null if it never happened. */
+  readonly hitAt: number | null
+  readonly struckAt: number | null
+  readonly screenAt: number | null
+}
+
+/** Start watching. Everything asserted below happens after this call. */
+async function watch(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const started = performance.now()
+    const since = () => Math.round(performance.now() - started)
+    const rolled = new Set<string>()
+    const scored = new Set<string>()
+    const relics = new Set<string>()
+    const seen = {
+      rolled,
+      scored,
+      relics,
+      markFired: false,
+      orbDelta: null as string | null,
+      hitAt: null as number | null,
+      struckAt: null as number | null,
+      screenAt: null as number | null,
+    }
+    ;(window as unknown as { __seen: unknown }).__seen = seen
+
+    const sweep = (): void => {
+      for (const n of document.querySelectorAll('#crown .die-rolling')) {
+        rolled.add((n as HTMLElement).dataset['slot'] ?? '?')
+      }
+      for (const n of document.querySelectorAll('#crown .die-scoring')) {
+        scored.add((n as HTMLElement).dataset['slot'] ?? '?')
+      }
+      for (const n of document.querySelectorAll('#relics .relic-triggered')) {
+        relics.add((n as HTMLElement).dataset['relicId'] ?? '?')
+      }
+      if (document.querySelector('#crown .mark-fired')) seen.markFired = true
+      const delta = document.querySelector('.orb-delta')
+      if (delta && seen.orbDelta === null) seen.orbDelta = delta.textContent
+      if (document.querySelector('#fx .hit-number') && seen.hitAt === null) seen.hitAt = since()
+      if (document.querySelector('#world.struck') && seen.struckAt === null) seen.struckAt = since()
+      const screen = document.getElementById('screen')
+      if (screen && !screen.hidden && seen.screenAt === null) seen.screenAt = since()
+    }
+
+    sweep()
+    new MutationObserver(sweep).observe(document.body, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ['class', 'data-screen', 'hidden'],
+    })
+  })
+}
+
+/** What the observer saw, once the longest sequence has had time to finish. */
+async function seen(page: Page): Promise<Seen> {
+  await page.waitForTimeout(1500)
+  return page.evaluate(() => {
+    const s = (window as unknown as { __seen: Record<string, unknown> }).__seen
+    return {
+      ...s,
+      rolled: [...(s['rolled'] as Set<string>)].sort(),
+      scored: [...(s['scored'] as Set<string>)].sort(),
+      relics: [...(s['relics'] as Set<string>)],
+    } as unknown as Seen
+  })
+}
 
 test.describe('a throw is six objects landing', () => {
   test('ROLL puts every die in the air, and settles all six onto its faces', async ({ page }) => {
     await withMotion(page, '?room=hollow&mode=combat')
+    await watch(page)
     await act(page, 'roll').click()
+    const saw = await seen(page)
 
-    // Staggered, so they are not all in the air at the same instant — but by
-    // the end every one of the six has been.
-    await expect(rolling(page)).not.toHaveCount(0)
-    await expect(rolling(page)).toHaveCount(0, { timeout: 3000 })
+    expect(saw.rolled, 'not every die was thrown').toEqual(['0', '1', '2', '3', '4', '5'])
 
+    // And when it is over, the flicker has settled onto the reducer's face —
+    // every time. A die still showing a cosmetic value would be an animation
+    // that had decided an outcome.
+    await thrown(page)
     const shown = await dice(page).evaluateAll((nodes) =>
       nodes.map((n) => ({
         button: (n as HTMLElement).dataset['value'],
@@ -35,9 +125,8 @@ test.describe('a throw is six objects landing', () => {
       })),
     )
     expect(shown).toHaveLength(6)
-    // The flicker settles onto the reducer's face, every time. A die still
-    // showing a cosmetic value would be an animation deciding an outcome.
     for (const die of shown) expect(die.face).toBe(die.button)
+
     const now = await state(page)
     expect(now.run!.combat!.roll.map((d) => String((d as { value: number }).value))).toEqual(
       shown.map((d) => d.button),
@@ -47,20 +136,18 @@ test.describe('a throw is six objects landing', () => {
   test('REROLL throws only what was not held', async ({ page }) => {
     await withMotion(page, '?room=hollow&mode=combat')
     await act(page, 'roll').click()
-    await expect(rolling(page)).toHaveCount(0, { timeout: 3000 })
+    await thrown(page)
 
     await dice(page).nth(0).click()
     await dice(page).nth(2).click()
+
+    await watch(page)
     await act(page, 'reroll').click()
+    const saw = await seen(page)
 
     // The whole decision of the phase is visible only if the held dice stay
     // still. If all six tumble, holding two of them looked like nothing.
-    const airborne = await page
-      .locator('#crown .die-rolling')
-      .evaluateAll((nodes) => nodes.map((n) => (n as HTMLElement).dataset['slot']))
-    expect(airborne).not.toContain('0')
-    expect(airborne).not.toContain('2')
-    expect(airborne.length).toBeGreaterThan(0)
+    expect(saw.rolled, 'a held die was thrown, or an unheld one was not').toEqual(['1', '3', '4', '5'])
 
     await expect(dice(page).nth(0)).toHaveAttribute('data-selected', 'yes')
     await expect(dice(page).nth(2)).toHaveAttribute('data-selected', 'yes')
@@ -73,40 +160,43 @@ test.describe('a score is a chain of events', () => {
   }) => {
     await withMotion(page, '?room=hollow&mode=combat')
     await act(page, 'roll').click()
-    await expect(rolling(page)).toHaveCount(0, { timeout: 3000 })
+    await thrown(page)
     await dice(page).nth(0).click()
     await dice(page).nth(1).click()
 
     const before = await state(page)
+    await watch(page)
     await act(page, 'score').click()
+    const saw = await seen(page)
 
-    // First: the dice you chose say so.
-    await expect(page.locator('#crown .die-scoring')).toHaveCount(2)
-    // Then the blow lands, on the enemy, with a number.
-    await expect(page.locator('#fx .hit-number')).toBeVisible({ timeout: 3000 })
-    // And the answer is its own beat, after it.
-    await expect(page.locator('#world.struck')).toBeVisible({ timeout: 3000 })
+    // The dice you chose say so, the blow lands with a number, and the answer
+    // is a beat of its own *after* it — which is the order of the sentence a
+    // player should be able to say out loud when it is over.
+    expect(saw.scored, 'the chosen dice did not confirm').toEqual(['0', '1'])
+    expect(saw.hitAt, 'the blow never landed').not.toBeNull()
+    expect(saw.struckAt, 'the enemy never answered').not.toBeNull()
+    expect(saw.struckAt!, 'the answer came before the blow').toBeGreaterThan(saw.hitAt!)
 
-    // The state was settled before any of that: the save cannot disagree.
+    // And the state was settled before any of it: the save cannot disagree.
     const during = await state(page)
     expect(during.run!.hp).toBeLessThan(before.run!.hp)
 
-    await expect(act(page, 'roll')).toBeVisible({ timeout: 3000 })
+    await expect(act(page, 'roll')).toBeVisible()
     await expect(page.locator('#crown .die-scoring')).toHaveCount(0)
   })
 
   test('holds the scored hand on screen instead of erasing it', async ({ page }) => {
     await withMotion(page, '?room=hollow&mode=combat')
     await act(page, 'roll').click()
-    await expect(rolling(page)).toHaveCount(0, { timeout: 3000 })
+    await thrown(page)
     await dice(page).nth(0).click()
     await act(page, 'score').click()
 
     // The reducer has already produced the next turn — empty table, intent
     // phase — but the crown still holds the hand that was scored.
-    const settledState = await state(page)
-    expect(settledState.run!.combat!.phase).toBe('intent')
-    expect(settledState.run!.combat!.roll).toHaveLength(0)
+    const settled = await state(page)
+    expect(settled.run!.combat!.phase).toBe('intent')
+    expect(settled.run!.combat!.roll).toHaveLength(0)
     await expect(page.locator('#score')).toBeVisible()
     await expect(dice(page)).toHaveCount(6)
   })
@@ -114,9 +204,12 @@ test.describe('a score is a chain of events', () => {
   test('pulses the relic that contributed, and fires the red face that cost', async ({ page }) => {
     // Six Pushers and a Blood Thimble on a seed whose throw contains a red 1,
     // so both the relic and the face have something to say about the score.
-    await withMotion(page, '?seed=2&room=hollow&mode=combat&dice=pusher,pusher,pusher,pusher,pusher,pusher&relics=thimble')
+    await withMotion(
+      page,
+      '?seed=2&room=hollow&mode=combat&dice=pusher,pusher,pusher,pusher,pusher,pusher&relics=thimble',
+    )
     await act(page, 'roll').click()
-    await expect(rolling(page)).toHaveCount(0, { timeout: 3000 })
+    await thrown(page)
 
     const red = page.locator('.die:has(.mark-hurt)').first()
     await expect(red).toBeVisible()
@@ -124,23 +217,31 @@ test.describe('a score is a chain of events', () => {
     await expect(page.locator('#well')).toContainText('Lose 7 HP')
     await expect(page.locator('#well')).toContainText('Blood Thimble +8')
 
+    await watch(page)
     await act(page, 'score').click()
-    await expect(page.locator('#relics .relic-triggered')).toHaveCount(1)
-    await expect(page.locator('#crown .mark-fired')).not.toHaveCount(0)
-    await expect(page.locator('.orb-delta-hurt')).toBeVisible()
+    const saw = await seen(page)
+
+    expect(saw.relics, 'the relic that contributed did not pulse').toEqual(['thimble'])
+    expect(saw.markFired, 'the red face never fired on its own die').toBe(true)
+    expect(saw.orbDelta, 'the health it cost never showed on the orb').toBe('−7')
   })
 
   test('lets the killing blow land before the reward screen takes over', async ({ page }) => {
     await withMotion(page, '?room=hollow&enemyHp=1&seed=1')
     await act(page, 'roll').click()
-    await expect(rolling(page)).toHaveCount(0, { timeout: 3000 })
+    await thrown(page)
     await dice(page).nth(0).click()
-    await act(page, 'score').click()
 
-    // The hit is on screen while the screen still is not.
-    await expect(page.locator('#fx .hit-number')).toBeVisible({ timeout: 3000 })
-    expect(await screenName(page), 'the reward screen arrived before the blow').toBeNull()
-    await expect(page.locator('#screen')).toHaveAttribute('data-screen', 'reward', { timeout: 3000 })
+    await watch(page)
+    await act(page, 'score').click()
+    const saw = await seen(page)
+
+    expect(saw.hitAt, 'the killing blow never landed').not.toBeNull()
+    expect(saw.screenAt, 'the reward screen never arrived').not.toBeNull()
+    // A terminal screen that arrives before its own blow is the fight ending
+    // without the player seeing how.
+    expect(saw.screenAt!, 'the reward screen took over before the blow').toBeGreaterThan(saw.hitAt!)
+    await expect(page.locator('#screen')).toHaveAttribute('data-screen', 'reward')
   })
 
   test('never locks input: a press during a transition finishes it', async ({ page }) => {
@@ -166,11 +267,13 @@ test.describe('reduced motion is the same game, immediately', () => {
 
   test('reaches every number without waiting for anything', async ({ page }) => {
     await withMotion(page, '?room=hollow&mode=combat')
-    expect(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches)).toBe(true)
+    expect(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches)).toBe(
+      true,
+    )
     await act(page, 'roll').click()
     // No transition at all: the next state is on screen in the same tick.
     expect(await page.evaluate(() => window.castlebrynth?.animating())).toBe(false)
-    await expect(rolling(page)).toHaveCount(0)
+    await expect(page.locator('#crown .die-rolling')).toHaveCount(0)
 
     await dice(page).nth(0).click()
     await dice(page).nth(1).click()
@@ -187,7 +290,10 @@ test.describe('reduced motion is the same game, immediately', () => {
   })
 
   test('says everything in text, not only in movement', async ({ page }) => {
-    await withMotion(page, '?seed=1&room=hollow&mode=combat&dice=leech,leech,leech,leech,leech,leech')
+    await withMotion(
+      page,
+      '?seed=1&room=hollow&mode=combat&dice=leech,leech,leech,leech,leech,leech',
+    )
     await act(page, 'roll').click()
     const green = page.locator('.die:has(.mark-heal)').first()
     await expect(green).toBeVisible()
