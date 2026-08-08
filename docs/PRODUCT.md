@@ -6,9 +6,10 @@ Read time: five minutes.
 ## The pitch
 
 > Castlebrynth is a portrait pixel-horror roguelike where you descend through
-> hand-authored rooms, fight grotesque enemies by building and rolling a
-> six-die loadout, collect strange dice and relics that create escalating
-> scoring synergies, and decide how far to push before the dungeon kills you.
+> a dealt map of hand-authored rooms, fight grotesque enemies by building and
+> rolling a six-die loadout, collect strange dice and relics that create
+> escalating scoring synergies, and decide how far to push before the dungeon
+> kills you.
 
 ## The player verbs
 
@@ -28,19 +29,13 @@ as support for one of them, it is out of scope.
 
 ## The slice
 
-Seven rooms, three fights, two rewards, one ending each way.
+A dealt map, three fights at most plus the boss, one ending each way. There is
+no fixed route to draw: the shape is a per-run deal, and what is guaranteed
+about it is written as invariants in **`DUNGEON.md`** — the way out exists
+before anything optional does, every route out passes the gate, and nothing
+hidden is ever required to leave.
 
-```
-entry → passage → hollow(FIGHT: the Gnawing) → fork ┬→ stair ────────┐
-                                                    └→ deep(FIGHT:   │
-                                                        the Marrow) ─┤
-                                                                     ↓
-                                                     gate(FIGHT: the Warden)
-                                                                     ↓
-                                                                   exit
-```
-
-The fork is the whole of the expedition pressure: the deep way is another
+The optional depth is the whole of the expedition pressure: a limb is another
 fight and another reward before the boss, and health does not come back on its
 own. That is enough to make *do I keep going?* a real question without a
 second subsystem.
@@ -68,8 +63,11 @@ once-per-fight scoring card · seal · curse · corrode · bind · bleed · hung
 rolling goods and trinkets · the rider taxonomy · the bond framework ·
 talismans and levels as separate species · priced exploration acts ·
 permanent knowledge clues · refusal flags · the Book of Ends as state ·
-procedural region lean and lock · the provable-winnability generator ·
-hand-size wounds and upgrades · classes · QTE windows · merchants and currency
+procedural region lean and lock · hand-size wounds and upgrades · classes ·
+QTE windows · merchants and currency
+
+The provable-winnability generator is no longer on that list: it returns on
+the terms set out in `DUNGEON.md`, and on no others.
 
 Two collectible nouns exist: **dice** and **relics**. Adding a third is a
 product decision, not an engineering one.
@@ -88,5 +86,6 @@ product decision, not an engineering one.
 ## The gate
 
 Until every line above is green, no change may add a new collectible species,
-status-effect family, persistent ledger category, screen mode, procedural
-world rule, or UI panel.
+status-effect family, persistent ledger category, screen mode, or UI panel —
+and no *second* procedural system, meaning regions, lean, lock, keys or
+spawned enemies, without its own ruling.
