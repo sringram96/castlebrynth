@@ -32,6 +32,16 @@ jobs:
       # tsc --noEmit under strict, then vite build. A type error is a
       # failed build here, not a surprise at deploy time.
       - run: npm run build
+      # The deploy job's verdict is whether the live site is serving this
+      # commit, and it reads dist/version.txt to find out. A build that stops
+      # writing it turns that check permanently red — so a pull request fails
+      # here instead of main failing after the merge.
+      - name: the build stamps its commit
+        run: |
+          test -s dist/version.txt || {
+            echo "::error::dist/version.txt is missing — the deploy check reads it"
+            exit 1
+          }
       - run: npm test
       # The tests that decide whether the game works. A green unit suite can
       # sit on top of an overlay that eats every tap, which is how the

@@ -233,6 +233,18 @@ every fight and both tiers.
    rendering fault. A hand-authored matte would fix it. Judgement call for an
    artist, not a threshold.
 
+## After the merge
+
+`main` went red on the first run — not on the game, but on the deploy job's
+last step. The reset rewrote `vite.config.ts` and dropped the plugin that
+stamped the commit into `dist/version.txt`, while leaving the workflow step
+that polls the live site for exactly that file. Build, unit tests and the
+browser suite all passed; the deploy verdict could not.
+
+The plugin is restored, and the check that would have caught it before the
+merge is now in the test job: a build that does not stamp its commit fails the
+pull request instead of failing `main` after it.
+
 ## Test status
 
 ```
