@@ -16,6 +16,12 @@ The blueprint is authoritative over everything that used to be in `DESIGN.md`,
 history was rewritten or deleted; every file removed below is one `git show`
 away.
 
+*The tag is local only.* Pushing it is refused with HTTP 403 — this session's
+credentials are scoped to branch pushes. Nothing is at risk: `eb0159e` is the
+head of `origin/main`, so the snapshot is already on the remote and the tag is
+a label somebody with push rights can add with
+`git tag legacy-v0-pre-reset eb0159e && git push origin legacy-v0-pre-reset`.
+
 **Quarantined** (moved, not deleted):
 
 | From | To |
