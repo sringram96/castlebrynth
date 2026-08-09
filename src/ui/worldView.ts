@@ -114,7 +114,11 @@ export function renderWorld(world: World, state: GameState, handlers: WorldHandl
       ? platesFor(worked)
           .map((p) => ({ plate: p, art: propArt(p.art, p.frame) }))
           .filter((x): x is { plate: typeof x.plate; art: NonNullable<typeof x.art> } => x.art !== undefined)
-          .map(({ plate, art }) => ({ id: plate.id, src: url(art) }))
+          .map(({ plate, art }) => ({
+            id: plate.id,
+            src: url(art),
+            ...(plate.look !== undefined ? { look: plate.look } : {}),
+          }))
       : [],
   )
 

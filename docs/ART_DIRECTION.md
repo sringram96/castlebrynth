@@ -23,7 +23,7 @@ there is no path where a backdrop ends up above an enemy.
 | # | Layer | What it holds |
 | --- | --- | --- |
 | 0 | `backdrop` | the opaque room image |
-| 1 | `midground` | the room's **prop**: the one object that is pressed |
+| 1 | `midground` | the room's **props**: every object that is pressed |
 | 2 | `enemy` | **mandatory in combat** |
 | 3 | `foreground` | the player's own arm, and occluders |
 | 4 | `fx` | hit flash, shake, damage numbers, vignette |
@@ -90,6 +90,22 @@ That is what lets eight frames pass through one element during a throw without
 the object moving by a pixel; a trimmed plate is registered by its own
 silhouette, and a die climbing out of a basin changes that silhouette every
 frame.
+
+A room may hold **several** props, and then each is its own plate on the same
+layer and each can change while the others hold still. They arrive in one of two
+shapes and the pipeline supports both: **registered**, every frame painted where
+the object stands on the background's own canvas, which is what a family that
+moves must be; or a **portrait plus a stance**, the object centred in its own
+frame with its place in the room declared once in `tools/art.mjs`, which is what
+an object painted once may be. The Reliquary's altar, bell, candle stand and
+chest are the second kind. Placement is the pipeline's job in both; the pixels
+are the painter's, and no code may touch them.
+
+When an object has one authored plate and more than one position — a candle
+stand that is lit and also out — the position is carried as `look` on the plate
+and the difference is a **treatment in the stylesheet**, never an invented
+drawing. It is a stand-in, it is recorded under `## HUMAN ART REQUIRED`, and it
+comes out the day the plate lands.
 
 ## Content validation
 

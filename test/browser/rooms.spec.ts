@@ -27,13 +27,35 @@ const thing = (page: Page, id: string) => page.locator(`[data-interact="${id}"]`
 const plates = (page: Page) =>
   page.locator('#world [data-layer="midground"] img[data-prop]:not([data-prop="prop"])')
 
+/** One of the room's objects as it is painted, by the id its plate carries. */
+const plate = (page: Page, id: string) =>
+  page.locator(`#world [data-layer="midground"] img[data-prop="${id}"]`)
+
+/**
+ * How much light is left in a plate, as the browser has computed it.
+ *
+ * The Reliquary's candles go out by treatment rather than by a second drawing,
+ * so "the flame is out" is a number here rather than a filename. `none` is a
+ * plate nothing has been done to.
+ */
+async function brightnessOf(page: Page, id: string): Promise<number> {
+  return page.evaluate((prop) => {
+    const el = document.querySelector(`img[data-prop="${prop}"]`)
+    const filter = el ? getComputedStyle(el).filter : 'none'
+    const found = /brightness\(([\d.]+)\)/.exec(filter)
+    return found ? Number(found[1]) : 1
+  }, id)
+}
+
 test.describe('the Reliquary', () => {
   test('arrives with its objects present and the way on already open', async ({ page }) => {
     await boot(page, '?room=reliquary&seed=3')
 
     await expect(say(page)).toContainText('A dead chapel')
-    // The four things the room is made of, each LOOK-able from the first frame.
-    for (const id of ['bell', 'brazier', 'lever', 'chest']) {
+    // The things the room is made of, each LOOK-able from the first frame. The
+    // altar carries two, because it is two things to the player: a basin to
+    // read, and the handle underneath it that the three marks are cut beside.
+    for (const id of ['bell', 'brazier', 'altar', 'lever', 'chest']) {
       await expect(page.locator(`[data-detail="${id}"]`)).toBeVisible()
     }
     // Two verbs offered, and two withheld. The lever and the chest are not
@@ -76,7 +98,7 @@ test.describe('the Reliquary', () => {
     await expect(thing(page, 'reliquary-lever')).toHaveText('PULL')
 
     await thing(page, 'reliquary-lever').click()
-    await expect(say(page)).toContainText('The jaw drops')
+    await expect(say(page)).toContainText('Something moves inside the altar')
     await expect(thing(page, 'reliquary-lever')).toHaveCount(0)
     await expect(thing(page, 'reliquary-chest')).toHaveText('TAKE')
 
@@ -234,6 +256,18 @@ test.describe('with motion reduced', () => {
     await expect(say(page)).toContainText('Inside:')
     await expect(act(page, 'go')).toBeVisible()
 
+    // Every object is where it was, at the position the save records, with
+    // nothing moving and nothing missing. A swing that never ran costs the
+    // room nothing, because the swing was never carrying anything.
+    await expect(plates(page)).toHaveCount(4)
+    for (const id of ['reliquary-altar', 'reliquary-bell', 'reliquary-brazier', 'reliquary-chest']) {
+      await expect(plate(page, id)).toBeVisible()
+      await expect(plate(page, id)).not.toHaveAttribute('data-move', /.*/)
+    }
+    await expect(plate(page, 'reliquary-bell')).toHaveAttribute('data-look', 'rung')
+    await expect(plate(page, 'reliquary-brazier')).toHaveAttribute('data-look', 'out')
+    await expect(plate(page, 'reliquary-chest')).toHaveAttribute('data-look', 'open')
+
     // The same seed and the same history reach the same relic with motion on.
     await boot(page, '?room=reliquary&seed=3&reliquary=solved')
     expect((await state(page)).run?.relics).toEqual(after.run?.relics)
@@ -271,6 +305,130 @@ test.describe('the room is art, and the art is not the interface', () => {
     await tappable(page, thing(page, 'reliquary-lever'))
   })
 
+  /**
+   * The four objects, on screen.
+   *
+   * The Reliquary's art arrived as a portrait of each object rather than as a
+   * family of positions, so what has to be proved here is not that a frame swap
+   * lands — there are no frame swaps — but that **the room is four things and
+   * stays four things**. A plate that resolved to nothing would vanish quietly:
+   * `propArt` answers `undefined` by contract and the view filters it out.
+   */
+  const OBJECTS = ['reliquary-altar', 'reliquary-bell', 'reliquary-brazier', 'reliquary-chest']
+
+  test('shows the altar, the bell, the candles and the chest, all at once', async ({ page }) => {
+    await boot(page, '?room=reliquary&seed=3')
+    await expect(plates(page)).toHaveCount(4)
+    for (const id of OBJECTS) await expect(plate(page, id)).toBeVisible()
+
+    // Four objects, four drawings. One source used twice would be one object
+    // painted twice, which is the pile the composition exists to avoid.
+    const sources = await plates(page).evaluateAll((els) =>
+      els.map((el) => el.getAttribute('src') ?? ''),
+    )
+    expect(new Set(sources).size).toBe(4)
+
+    // And they are four *places*: every pair of the room's controls is far
+    // enough apart that a thumb cannot mean both.
+    const spots = await page.evaluate(() =>
+      [...document.querySelectorAll<HTMLElement>('#hits button')].map((el) => {
+        const r = el.getBoundingClientRect()
+        return { id: el.dataset['interact'] ?? `look:${el.dataset['detail']}`, x: r.x + r.width / 2, y: r.y + r.height / 2 }
+      }),
+    )
+    expect(spots.length).toBeGreaterThanOrEqual(7)
+    for (const a of spots) {
+      for (const b of spots) {
+        if (a.id >= b.id) continue
+        expect(Math.hypot(a.x - b.x, a.y - b.y), `${a.id} and ${b.id} are the same tap`).toBeGreaterThanOrEqual(44)
+      }
+    }
+  })
+
+  test('answers a real tap at every one of them, at 44px', async ({ page }) => {
+    await boot(page, '?room=reliquary&seed=3&reliquary=solved')
+    // The far side of the puzzle, where the room has the fewest verbs left —
+    // so what is checked is that the LOOKs are still on the objects and still
+    // reachable once the actions have gone.
+    for (const id of ['bell', 'brazier', 'altar', 'lever', 'chest']) {
+      await tappable(page, page.locator(`[data-detail="${id}"]`))
+    }
+    await tappable(page, act(page, 'go'))
+  })
+
+  test('swings the bell when it is rung, and puts it back down', async ({ page }) => {
+    await boot(page, '?room=reliquary&seed=3', { motion: true })
+    const bell = plate(page, 'reliquary-bell')
+    // Still, until it is rung. Nothing in this room moves on arrival.
+    expect(await bell.evaluate((el) => el.getAnimations().map((a) => (a as CSSAnimation).animationName))).toEqual([])
+
+    await thing(page, 'reliquary-bell').click()
+    await expect(bell).toHaveAttribute('data-move', 'swing')
+    // Actually turning, not merely labelled as turning.
+    const turned = await bell.evaluate((el) => getComputedStyle(el).transform)
+    expect(turned).not.toBe('none')
+
+    // And it settles: the bell is still in the room, still the same drawing,
+    // with nothing left running on it and nothing left rotating it.
+    await settled(page)
+    await expect(bell).toBeVisible()
+    await expect(bell).not.toHaveAttribute('data-move', /.*/)
+    await expect(bell).toHaveAttribute('data-look', 'rung')
+    expect(await bell.evaluate((el) => getComputedStyle(el).transform)).toBe('none')
+  })
+
+  test('takes the light out of the candles, and gives it back', async ({ page }) => {
+    await boot(page, '?room=reliquary&seed=3')
+    const candles = plate(page, 'reliquary-brazier')
+    await expect(candles).toHaveAttribute('data-look', 'lit')
+    expect(await brightnessOf(page, 'reliquary-brazier')).toBeGreaterThan(0.9)
+
+    await thing(page, 'reliquary-brazier').click()
+    await settled(page)
+    // Same plate, visibly dead. The object never leaves the room.
+    await expect(candles).toBeVisible()
+    await expect(candles).toHaveAttribute('data-look', 'out')
+    expect(await brightnessOf(page, 'reliquary-brazier')).toBeLessThan(0.6)
+
+    await thing(page, 'reliquary-brazier').click()
+    await settled(page)
+    await expect(candles).toHaveAttribute('data-look', 'lit')
+    expect(await brightnessOf(page, 'reliquary-brazier')).toBeGreaterThan(0.9)
+  })
+
+  test('knocks the chest when the mechanism goes, and leaves it standing', async ({ page }) => {
+    await boot(page, '?room=reliquary&seed=3&reliquary=dark', { motion: true })
+    const chest = plate(page, 'reliquary-chest')
+    await expect(chest).toHaveAttribute('data-look', 'closed')
+
+    await thing(page, 'reliquary-lever').click()
+    await expect(chest).toHaveAttribute('data-move', 'knock')
+
+    await settled(page)
+    // The chest has no painted open state — see `## HUMAN ART REQUIRED` — so
+    // what the player is told is the word band and the verb, and what must not
+    // happen is the chest disappearing because a plate was asked for that
+    // nobody painted.
+    await expect(chest).toBeVisible()
+    await expect(chest).toHaveAttribute('data-look', 'open')
+    await expect(thing(page, 'reliquary-chest')).toHaveText('TAKE')
+  })
+
+  test('is still four objects with the app’s motion switch off', async ({ page }) => {
+    // `motion=0` settles every sequence instantly. The room is a function of
+    // the save either way, so the picture is the finished picture at once.
+    await boot(page, '?room=reliquary&seed=3')
+    await thing(page, 'reliquary-bell').click()
+    await thing(page, 'reliquary-brazier').click()
+    await thing(page, 'reliquary-lever').click()
+    await expect(plates(page)).toHaveCount(4)
+    for (const id of OBJECTS) await expect(plate(page, id)).toBeVisible()
+    // Nothing is left mid-move, because no move was ever started.
+    for (const id of OBJECTS) await expect(plate(page, id)).not.toHaveAttribute('data-move', /.*/)
+    await thing(page, 'reliquary-chest').click()
+    expect((await state(page)).run?.relics).toHaveLength(1)
+    await expect(act(page, 'go')).toBeVisible()
+  })
 })
 
 /**

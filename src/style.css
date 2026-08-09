@@ -112,6 +112,183 @@ button {
 }
 
 /*
+ * ── the Reliquary's four objects ─────────────────────────────────────
+ *
+ * The one room whose art is **a portrait per object** rather than a plate per
+ * position. An altar, a bell, a candle stand and a chest were painted once
+ * each; the pipeline seats each one where it stands and the compositor lays
+ * them into the same box as the backdrop. So everything below is the room's
+ * *other* states drawn out of the plates that exist — the flame going out, the
+ * bell answering, the chest taking the knock — and not one of them touches a
+ * pixel of the delivered art.
+ *
+ * Two attributes carry it, both written by the compositor from state and read
+ * by nothing else:
+ *
+ *   `data-look`   where the object is standing. It survives a reload, because
+ *                 the save says so.
+ *   `data-move`   what it is doing for the next few hundred ms. It survives
+ *                 nothing, which is the point.
+ *
+ * `transform-origin` and every duration here are the object's own properties,
+ * so they live beside the drawing rather than in the sequence that plays them.
+ */
+
+/*
+ * The candles, put out.
+ *
+ * The plate is five lit candles and there is no painted plate of five dead
+ * ones — so this is what the room does instead of pretending: the light is
+ * taken out of it. Brightness down past half and most of the saturation with
+ * it, which turns the flames from the warmest thing on screen into cold wax and
+ * kills the pool of light they were throwing on the floor beside them.
+ *
+ * It is honest but it is not finished: the flame shapes are still flame
+ * shapes, at a squint. `## HUMAN ART REQUIRED` in POLISH_PROGRESS.md carries
+ * the brief for `brazier-out.png`, and the day it lands this rule goes and a
+ * `brazier.out` row replaces it.
+ */
+.prop[data-prop="reliquary-brazier"] {
+  transition: filter 260ms ease-out;
+}
+
+.prop[data-prop="reliquary-brazier"][data-look="out"] {
+  filter: brightness(0.48) saturate(0.4);
+}
+
+/*
+ * The bell, swung.
+ *
+ * Six stops, on the chain's own pivot. The plate is the whole scene, so
+ * rotating it rotates the bell about the point the chain leaves the frame and
+ * moves nothing else — every other pixel in the plate is transparent.
+ *
+ * `transform-origin` is where the bell's chain meets the ceiling. It is a
+ * fraction of the **element**, which is the world box, not of the painting
+ * inside it — the plate is cover-fitted, so the two differ by the width the
+ * crop eats. The stance in `tools/art.mjs` puts the bell's box at 0.235 of the
+ * scene across and its top at 0.016 down; 0.235 of the scene is 0.214 of the
+ * screen, which is the same number `ROOMS.reliquary` seats the bell's button at.
+ * Measured, not guessed, and both move if the stance does.
+ */
+.prop[data-prop="reliquary-bell"] {
+  transform-origin: 21.4% 1.6%;
+}
+
+.prop[data-prop="reliquary-bell"][data-move="swing"] {
+  animation: bell-swing 380ms ease-in-out 1;
+}
+
+@keyframes bell-swing {
+  0% {
+    transform: rotate(0deg);
+  }
+  18% {
+    transform: rotate(7deg);
+  }
+  38% {
+    transform: rotate(-9deg);
+  }
+  58% {
+    transform: rotate(5deg);
+  }
+  79% {
+    transform: rotate(-3deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+/*
+ * The chest, knocked by the mechanism under it.
+ *
+ * There is no painted open chest either, so the chest does not open — it takes
+ * the blow, and the word band says what came out of it. A small lift, a
+ * settle, and one warm pulse from inside on the frame the stone bites.
+ */
+.prop[data-prop="reliquary-chest"][data-move="knock"] {
+  animation: chest-knock 330ms ease-out 1;
+}
+
+@keyframes chest-knock {
+  0% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-3px);
+  }
+  55% {
+    transform: translateY(0);
+    filter: none;
+  }
+  73% {
+    filter: brightness(1.5) saturate(1.15);
+  }
+  100% {
+    transform: translateY(0);
+    filter: none;
+  }
+}
+
+/* And the altar takes the shock of the thing moving inside it. */
+.prop[data-prop="reliquary-altar"][data-move="work"] {
+  animation: altar-work 240ms ease-out 1;
+}
+
+@keyframes altar-work {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(1px);
+  }
+}
+
+/*
+ * The room, still breathing — without a single ambient plate.
+ *
+ * `render/ambience.ts` is the proper machinery for this and it is idle, because
+ * the fifteen overlay frames the Reliquary's brief asks for were not delivered.
+ * These two loops are what can be done honestly without them: the light the
+ * candles are throwing varies by a few percent, and the blood in the basin
+ * moves about as much as still blood does.
+ *
+ * Fixed clocks, no randomness, deliberately unequal periods so they never
+ * resynchronise, and both small enough that the loudest thing in the room is
+ * still the room. With `prefers-reduced-motion` the block at the end of this
+ * file stops both, and nothing is lost: neither was ever information.
+ */
+.prop[data-prop="reliquary-brazier"][data-look="lit"] {
+  animation: candle-vary 1100ms ease-in-out infinite;
+}
+
+@keyframes candle-vary {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.06);
+  }
+}
+
+.prop[data-prop="reliquary-altar"] {
+  animation: altar-breathe 1800ms ease-in-out infinite;
+}
+
+@keyframes altar-breathe {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.03);
+  }
+}
+
+/*
  * A room's ambient overlays.
  *
  * Cover-fitted identically to `.prop` and to the backdrop — the same four
@@ -514,6 +691,43 @@ button {
 }
 
 .hit-ritual::after {
+  inset: 0;
+  border-radius: calc(var(--touch) / 2);
+  border-color: rgb(207 166 82 / 0.8);
+  box-shadow: 0 0 14px rgb(163 48 42 / 0.45);
+}
+
+/*
+ * A worked object's verb, which is the same idea and now has the same body.
+ *
+ * It inherited the bare 44px ring, which was legible while these rooms had an
+ * empty midground and stopped being legible the moment they had objects in it:
+ * PUT OUT is two words in a 44px circle, so it wrapped, and it wrapped on top
+ * of five lit candles — the brightest thing in the room. `ART_DIRECTION.md`
+ * § *Acceptance*: no gameplay text sits on a busy focal region without a scrim.
+ *
+ * So it is the ritual's pill, and `white-space: nowrap` is what says the verb
+ * is one line whatever it says.
+ */
+.hit-interact {
+  width: auto;
+  min-width: 72px;
+  height: var(--touch);
+  margin-left: -36px;
+  display: grid;
+  place-items: center;
+  border-radius: calc(var(--touch) / 2);
+  padding: 0 14px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  white-space: nowrap;
+  color: var(--ink);
+  text-shadow: 0 1px 3px rgb(0 0 0 / 0.95);
+  background: rgb(7 6 5 / 0.52);
+}
+
+.hit-interact::after {
   inset: 0;
   border-radius: calc(var(--touch) / 2);
   border-color: rgb(207 166 82 / 0.8);

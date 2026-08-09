@@ -26,9 +26,62 @@ import {
 } from '../../src/render/assets.js'
 import { ENEMIES, REACHES } from '../../src/content/enemies.js'
 import { ROOMS, room } from '../../src/content/rooms.js'
+import { platesFor } from '../../src/content/interactions.js'
+import type { RoomInteractionState } from '../../src/game/state.js'
 import { decode } from '../../tools/png.mjs'
 
 const PUBLIC = new URL('../../public/assets/', import.meta.url)
+
+/**
+ * Every position the rooms of worked objects can be standing in.
+ *
+ * Enumerated rather than played, because what is being asked here is not *can
+ * the reducer reach this* — `test/unit/rooms.test.ts` owns that — but *is there
+ * a picture for it*. A state the reducer cannot reach still has to paint, or
+ * the first save that finds a way there shows a room with a hole in it.
+ *
+ * The lever and the chest move together in the Reliquary, and the vault's five
+ * are enumerated freely for the same reason: over-covering costs nothing.
+ */
+const EVERY_WORKED_STATE: readonly RoomInteractionState[] = [
+  ...[false, true].flatMap((bellRung) =>
+    (['lit', 'out'] as const).flatMap((brazier) =>
+      ([
+        ['up', 'closed'],
+        ['down', 'open'],
+      ] as const).flatMap(([lever, chest]) =>
+        [false, true].map(
+          (claimed): RoomInteractionState => ({
+            roomId: 'reliquary',
+            bellRung,
+            brazier,
+            lever,
+            chest,
+            claimed,
+          }),
+        ),
+      ),
+    ),
+  ),
+  ...(['off', 'on'] as const).flatMap((chain) =>
+    (['raised', 'lowered'] as const).flatMap((cage) =>
+      (['off', 'on'] as const).flatMap((pressurePlate) =>
+        (['up', 'down'] as const).flatMap((lever) =>
+          (['closed', 'open'] as const).map(
+            (gate): RoomInteractionState => ({
+              roomId: 'chain-vault',
+              chain,
+              cage,
+              pressurePlate,
+              lever,
+              gate,
+            }),
+          ),
+        ),
+      ),
+    ),
+  ),
+]
 
 function png(file: string): { width: number; height: number; bytes: number } {
   const path = new URL(file, PUBLIC)
@@ -55,6 +108,25 @@ function alphas(file: string): Set<number> {
   const seen = new Set<number>()
   for (let i = 3; i < rgba.length; i += 4) seen.add(rgba[i]!)
   return seen
+}
+
+/** Where the drawing actually is inside a whole-scene plate. */
+function opaqueBox(file: string): { x0: number; y0: number; x1: number; y1: number } | null {
+  const { width, height, rgba } = decode(readFileSync(new URL(file, PUBLIC)))
+  let x0 = width
+  let y0 = height
+  let x1 = -1
+  let y1 = -1
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (rgba[(y * width + x) * 4 + 3] === 0) continue
+      if (x < x0) x0 = x
+      if (x > x1) x1 = x
+      if (y < y0) y0 = y
+      if (y > y1) y1 = y
+    }
+  }
+  return x1 < 0 ? null : { x0, y0, x1, y1 }
 }
 
 describe('the manifest', () => {
@@ -121,6 +193,16 @@ describe('the manifest', () => {
    * The headroom left is again deliberately less than one backdrop: another
    * room, or another family, cannot be added without this conversation
    * happening a third time.
+   *
+   * The Reliquary's four objects landed inside it and did not move it:
+   *
+   *   before  5.467 MB
+   *   after   5.530 MB   four 480x720 prop plates, 70 KB between them
+   *
+   * Which is the shape the budget was written for. A prop plate costs almost
+   * exactly its opaque area, these are 2–8% opaque, and four whole objects
+   * therefore cost a quarter of one backdrop. The conversation above is about
+   * *backdrops and families*, and this was neither.
    */
   it('keeps the runtime art payload inside its budget', () => {
     const total = allAssets().reduce((sum, a) => sum + png(a.file).bytes, 0)
@@ -412,11 +494,18 @@ describe('a room prop is whole, registered, and does not move', () => {
   })
 
   it('names no prop art that no room asks for', () => {
-    const asked = new Set(
-      Object.values(ROOMS)
+    // Two kinds of room ask for prop art. A ritual room asks for a face; a room
+    // of worked objects asks for whatever `platesFor` says is up, over every
+    // position its objects can be standing in. A key that neither asks for is a
+    // file the loader downloads on every boot and nothing ever shows.
+    const asked = new Set([
+      ...Object.values(ROOMS)
         .filter((r) => r.ritual)
         .flatMap((r) => wanted(r.ritual!.art)),
-    )
+      ...EVERY_WORKED_STATE.flatMap((state) =>
+        platesFor(state).map((p) => `${p.art}.${p.frame}`),
+      ),
+    ])
     for (const key of Object.keys(PROP_ART)) expect([...asked]).toContain(key)
   })
 
@@ -425,5 +514,134 @@ describe('a room prop is whole, registered, and does not move', () => {
     // degrade, the opponent may not, and a font is scenery you can press.
     expect(() => propArt('chalice', 'idle')).not.toThrow()
     expect(propArt('nothing-at-all', '4')).toBeUndefined()
+  })
+})
+
+/**
+ * The Reliquary's four objects.
+ *
+ * The room the slice's other prop rules were not written for. The Font is one
+ * object painted in eight positions; this is **four objects painted once
+ * each**, seated in the room by `tools/art.mjs`, and its other states are
+ * treatments of the plates that exist rather than plates that do not.
+ *
+ * Which puts one thing at risk that a family cannot get wrong, and it is the
+ * whole of what is asserted here: an object must be on screen **in every
+ * position it can be standing in**. A frame that resolved to nothing would not
+ * fail loudly — `propArt` answers `undefined` by contract and `renderWorld`
+ * filters it out — it would simply take the bell out of the room the moment it
+ * was rung. That is the bug this describe block exists to make impossible.
+ */
+describe('the Reliquary is four objects, and all four stay in the room', () => {
+  const PLATES = ['altar.still', 'bell.idle', 'brazier.lit', 'chest.closed'] as const
+
+  it('ships one plate for each of them, at the scene box', () => {
+    for (const key of PLATES) {
+      const art = PROP_ART[key]
+      expect(art, `${key} is not in the manifest`).toBeDefined()
+      const real = png(art!.file)
+      expect([real.width, real.height], `${key} on disk is not the scene box`).toEqual([
+        SCENE.width,
+        SCENE.height,
+      ])
+      expect(isScenePlate(art!)).toBe(true)
+      expect(real.bytes).toBeGreaterThan(0)
+    }
+  })
+
+  it('keeps the alpha binary: opaque or absent, never in between', () => {
+    for (const key of PLATES) {
+      const seen = [...alphas(PROP_ART[key]!.file)].sort((a, b) => a - b)
+      expect(seen, `${key} has soft alpha`).toEqual([0, 255])
+    }
+  })
+
+  it('paints every object in every position the room can be in', () => {
+    for (const state of EVERY_WORKED_STATE) {
+      if (state.roomId !== 'reliquary') continue
+      const up = platesFor(state)
+      expect(up).toHaveLength(4)
+      for (const plate of up) {
+        expect(
+          propArt(plate.art, plate.frame),
+          `${plate.id} disappears when ${JSON.stringify(state)}`,
+        ).toBeDefined()
+      }
+    }
+  })
+
+  it('says where each object is standing, so a state with no plate of its own still reads', () => {
+    // The other half of the same idea. A brazier that is out and a brazier that
+    // is lit are one drawing, so the *state* has to reach the stylesheet — and
+    // it has to come off the save, or a reload would light the candles again.
+    const lit = platesFor({
+      roomId: 'reliquary',
+      bellRung: false,
+      brazier: 'lit',
+      lever: 'up',
+      chest: 'closed',
+      claimed: false,
+    })
+    const dark = platesFor({
+      roomId: 'reliquary',
+      bellRung: true,
+      brazier: 'out',
+      lever: 'down',
+      chest: 'open',
+      claimed: true,
+    })
+    const look = (plates: readonly { id: string; look?: string }[]): Record<string, string> =>
+      Object.fromEntries(plates.map((p) => [p.id, p.look ?? '']))
+
+    expect(look(lit)).toEqual({
+      'reliquary-altar': 'up',
+      'reliquary-bell': 'still',
+      'reliquary-brazier': 'lit',
+      'reliquary-chest': 'closed',
+    })
+    expect(look(dark)).toEqual({
+      'reliquary-altar': 'down',
+      'reliquary-bell': 'rung',
+      'reliquary-brazier': 'out',
+      'reliquary-chest': 'open',
+    })
+    // And the drawing is the same drawing in both, which is the delivery.
+    expect(lit.map((p) => p.frame)).toEqual(dark.map((p) => p.frame))
+  })
+
+  it('stands the four of them apart, so the room is not a pile', () => {
+    // `ART_DIRECTION.md` wants a room rather than four icons on black, and the
+    // plates are seated by `tools/art.mjs` rather than by anything at runtime —
+    // so this is the assertion that the staging kept them off each other. Boxes,
+    // not silhouettes: two objects whose boxes do not meet cannot be confused
+    // for one, and the browser suite checks what a thumb makes of it.
+    const boxes = PLATES.map((key) => ({ key, box: opaqueBox(PROP_ART[key]!.file) }))
+    for (const a of boxes) {
+      expect(a.box, `${a.key} is entirely transparent`).not.toBeNull()
+    }
+    for (const a of boxes) {
+      for (const b of boxes) {
+        if (a.key >= b.key) continue
+        const overlaps =
+          a.box!.x0 <= b.box!.x1 &&
+          b.box!.x0 <= a.box!.x1 &&
+          a.box!.y0 <= b.box!.y1 &&
+          b.box!.y0 <= a.box!.y1
+        expect(overlaps, `${a.key} and ${b.key} are standing on each other`).toBe(false)
+      }
+    }
+  })
+
+  it('leaves the middle of the room empty and the word band clear', () => {
+    // The composition, as two numbers rather than as an opinion. Nothing may
+    // reach the bottom of the frame, where the word band sits; and no object
+    // may stray outside the middle 90% of the width, which is all a 390px
+    // phone sees of a 480px scene.
+    for (const key of PLATES) {
+      const box = opaqueBox(PROP_ART[key]!.file)!
+      expect(box.y1 / SCENE.height, `${key} runs under the word band`).toBeLessThan(0.88)
+      expect(box.x0 / SCENE.width, `${key} is cropped off the left`).toBeGreaterThan(0.05)
+      expect(box.x1 / SCENE.width, `${key} is cropped off the right`).toBeLessThan(0.95)
+    }
   })
 })

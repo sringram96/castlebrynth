@@ -1061,18 +1061,24 @@ function buildSanctuary() {
  * and these are a room plus *several independent objects*, each of which can be
  * in a different position while the others hold still.
  *
- * That changes nothing about the pipeline and everything about the delivery
- * contract. Every plate of every family must register to the same 1024 × 1536
- * canvas as the room — not to its own silhouette, and not to a shared base the
- * way the chalice's plinth is measured, because these objects do not share a
- * base. A bell hanging in the left aisle and a chest on the floor under it have
- * nothing in common to measure against, so the registration has to arrive
- * already correct and the pipeline only resamples.
+ * A family may arrive in either of two shapes, and `stance` is what says which:
  *
- * Which is why there is no `standOn` here: nothing is staged, nothing is
- * measured, nothing is moved. Master in, cover-crop, resample, key, posterise,
- * out. If two frames are aligned at 1024 × 1536 they are aligned at 480 × 720,
- * and no per-frame CSS offset exists anywhere to paper over it if they are not.
+ *   - **already registered.** Every plate is painted where the object stands,
+ *     on the same 1024 × 1536 canvas as the background, and the pipeline only
+ *     cover-crops, keys and resamples. Nothing is staged, measured or moved. If
+ *     two frames are aligned at 1024 × 1536 they are aligned at 480 × 720. This
+ *     is what each set's `BRIEF.md` asks for and what the Chain Vault will get.
+ *   - **a portrait, with a `stance`.** The object arrives centred in its own
+ *     frame, the way the chalice and every enemy plate do, and where it stands
+ *     in the room is a composition decision this file makes once. The Reliquary
+ *     was delivered that way, so its four objects carry the three fractions
+ *     below and `stageOn` seats each of them.
+ *
+ * The second shape costs one property the first has for free: a family staged
+ * by its own box is registered *by that box*, so every frame of it has to have
+ * the same silhouette or the object walks as it changes frame. That is why the
+ * Reliquary's families are one plate each — a swinging bell delivered as four
+ * portraits would need the registered shape, not this one.
  */
 const ROOMS = [
   {
@@ -1080,10 +1086,31 @@ const ROOMS = [
     master: 'docs/art-reference/masters/reliquary/',
     /** `<family>: [frames]`, and a family is built only if it is whole. */
     props: {
-      bell: ['idle', 'ring-1', 'ring-2', 'settle'],
-      brazier: ['lit', 'dim', 'out', 'igniting'],
-      lever: ['up', 'pulling', 'down'],
-      chest: ['closed', 'opening', 'open'],
+      altar: ['still'],
+      bell: ['idle'],
+      brazier: ['lit'],
+      chest: ['closed'],
+    },
+    /**
+     * Where each object stands, in the scene's own fractions.
+     *
+     * All three are read off the plate's **opaque box**: `width` is how wide
+     * that box is, `at` is its horizontal centre and `foot` is its bottom edge.
+     * The box, not a measured plinth — the bell's lowest pixel is its clapper
+     * and its box runs up to the chain leaving the frame at the ceiling, and
+     * neither is a base you could stand it on.
+     *
+     * Set by eye against the room, which is the only honest way to set them,
+     * and against the reference chapel in `docs/art-reference/visual/reliquary/`:
+     * the altar is the hero on the floor in front of the steps, the bell hangs
+     * upper-left over it, and the candles and the chest sit low on either side
+     * with the middle of the room left empty.
+     */
+    stances: {
+      altar: { width: 0.34, at: 0.5, foot: 0.79 },
+      bell: { width: 0.19, at: 0.235, foot: 0.29 },
+      brazier: { width: 0.18, at: 0.185, foot: 0.8 },
+      chest: { width: 0.235, at: 0.8, foot: 0.83 },
     },
     ambient: { candle: 3, chain: 3, drip: 3, embers: 4, window: 2 },
   },
@@ -1105,8 +1132,39 @@ const ROOMS = [
 /** The same two numbers, and the same reasons, as everything else keyed here. */
 const ROOM_KEY = { black: 2, close: 3 }
 
+/**
+ * Seat a portrait of an object where the object stands in the room.
+ *
+ * `standOn` above does this for the font, against a base every frame of the
+ * family shares. These objects have no such base and no such family — a bell
+ * hanging over an altar and a chest on the floor beside it have nothing in
+ * common to measure — so each one is seated on its own **opaque box**: scaled
+ * until the box is `stance.width` of the scene, then moved until its centre is
+ * at `stance.at` and its bottom edge at `stance.foot`.
+ *
+ * **Nothing is drawn, retouched or repainted.** The plate is measured, scaled
+ * and moved, which is what `CLAUDE.md` § *No art in the polish sweep* reserves
+ * to code: placement is the pipeline's job and the pixels are the painter's.
+ *
+ * The result is the whole 480 × 720 scene with the object in it and the rest
+ * transparent — the same box as the backdrop, so the compositor cover-fits it
+ * with the backdrop's own four lines and there is no coordinate at runtime.
+ */
+function stageOn(image, stance, width, height) {
+  const box = bounds(image)
+  if (!box) throw new Error('cannot stage an entirely transparent plate')
+  const from = { width: box.x1 - box.x0 + 1, cx: (box.x0 + box.x1 + 1) / 2, bottom: box.y1 + 1 }
+  return standOn(
+    image,
+    from,
+    { width: stance.width * width, cx: stance.at * width, bottom: stance.foot * height },
+    width,
+    height,
+  )
+}
+
 /** Master → runtime for one whole-scene plate. The only path either kind takes. */
-function scenePlate(file, { opaque }) {
+function scenePlate(file, { opaque, stance }) {
   const src = read(file)
   if (opaque) {
     const scene = posterise(
@@ -1118,14 +1176,17 @@ function scenePlate(file, { opaque }) {
   }
   // Keyed at the master's own resolution, so the edge that gets averaged by the
   // resample is the real one — and never trimmed, so the object stays where it
-  // was painted.
+  // was painted, or where `stageOn` seats it.
+  const keyed = keyBlack(src, ROOM_KEY.black, ROOM_KEY.close)
   return posterise(
     hardenAlpha(
-      resample(
-        coverCrop(keyBlack(src, ROOM_KEY.black, ROOM_KEY.close), SCENE_WIDTH / SCENE_HEIGHT, 0.5),
-        SCENE_WIDTH,
-        SCENE_HEIGHT,
-      ),
+      stance
+        ? stageOn(keyed, stance, SCENE_WIDTH, SCENE_HEIGHT)
+        : resample(
+            coverCrop(keyed, SCENE_WIDTH / SCENE_HEIGHT, 0.5),
+            SCENE_WIDTH,
+            SCENE_HEIGHT,
+          ),
     ),
     32,
   )
@@ -1166,7 +1227,16 @@ function buildRooms() {
         )
       }
       for (const [i, file] of files.entries()) {
-        const plate = scenePlate(room.master + file, { opaque: false })
+        const plate = scenePlate(room.master + file, {
+          opaque: false,
+          stance: room.stances?.[family],
+        })
+        // Whatever the delivery shape, what comes out is the scene, whole. A
+        // plate that is any other size would be staged by its own silhouette
+        // at runtime, and there is no code anywhere that would do that.
+        if (plate.width !== SCENE_WIDTH || plate.height !== SCENE_HEIGHT) {
+          throw new Error(`${room.id}/${file} built at ${plate.width}x${plate.height}`)
+        }
         let opaque = 0
         for (let j = 3; j < plate.rgba.length; j += 4) if (plate.rgba[j] === 255) opaque++
         report.push({

@@ -66,16 +66,29 @@ export const PROP_ART: Readonly<Record<string, Asset>> = {
   'chalice.4': asset('chalice.4', 'props/chalice-4.png', 480, 720),
   'chalice.5': asset('chalice.5', 'props/chalice-5.png', 480, 720),
   'chalice.6': asset('chalice.6', 'props/chalice-6.png', 480, 720),
-  // The Reliquary's and the Chain Vault's objects go here, keyed the same way:
-  // `bell.idle`, `bell.ring-1`, `brazier.lit`, `cage.lowering-1`, `gate.open`
-  // and the rest. Their masters have not been painted — see `## HUMAN ART
-  // REQUIRED` in POLISH_PROGRESS.md — so there are no rows yet, `propArt`
-  // answers nothing, and both rooms run with an empty midground. Every verb is
-  // still a button on the object and every outcome is still in the word band,
-  // which is the degradation `ART_DIRECTION.md` allows for scenery.
+  // The Reliquary's four objects. **One plate each, and that is the delivery
+  // rather than an oversight**: the set that arrived is a settled altar, a
+  // hanging bell, a lit candle stand and a shut chest, and nothing else. So a
+  // frame here is the object's *portrait*, not its position — where each of
+  // them is standing is carried by `platesFor`'s `look` and drawn by CSS, and
+  // the states with no authored plate (`brazier.out`, `chest.open`, every frame
+  // of a swing) are treatments of the plate that is here rather than rows that
+  // point at files nobody painted. `## HUMAN ART REQUIRED` in
+  // POLISH_PROGRESS.md is what is still owed.
   //
-  // `tools/art.mjs` builds these the moment the masters land; adding the rows
-  // is then the whole of the swap, exactly as it was for the chalice.
+  // There is no `lever` family and no `lever.*` row, because no lever was
+  // painted. The room's PULL sits on the altar, which is where the mechanism
+  // it works has always been.
+  'altar.still': asset('altar.still', 'props/reliquary-altar-still.png', 480, 720),
+  'bell.idle': asset('bell.idle', 'props/reliquary-bell-idle.png', 480, 720),
+  'brazier.lit': asset('brazier.lit', 'props/reliquary-brazier-lit.png', 480, 720),
+  'chest.closed': asset('chest.closed', 'props/reliquary-chest-closed.png', 480, 720),
+  // The Chain Vault's objects go here when they land, keyed the same way:
+  // `cage.lowering-1`, `gate.open` and the rest. None of them has been painted,
+  // so `propArt` answers nothing for that room and it runs with an empty
+  // midground. Every verb is still a button on the object and every outcome is
+  // still in the word band, which is the degradation `ART_DIRECTION.md` allows
+  // for scenery.
 }
 
 /**

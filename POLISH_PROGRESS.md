@@ -477,10 +477,10 @@ stand-in, which is the honest state of it.
 
 ## HUMAN ART REQUIRED — The Reliquary and The Chain Vault
 
-Two rooms of environmental play landed with their **backgrounds delivered and
-their objects not**. Fifty-nine master plates are outstanding. Both rooms are
-complete, playable and tested without them; what is missing is the part that
-makes them look like rooms rather than read like them.
+**Partly resolved.** The Reliquary's four objects were authored by a human and
+delivered — an altar, a bell, a candle stand and a chest — and the room is now
+painted rather than merely played. What is still owed is the *other positions*
+of three of them, and the Chain Vault's whole set.
 
 The full contract for each set is in the brief beside the masters:
 
@@ -488,12 +488,19 @@ The full contract for each set is in the brief beside the masters:
 - `docs/art-reference/masters/chain-vault/BRIEF.md`
 
 Every file below is **1024 × 1536, portrait 2:3, PNG**, subject on flat
-`#000000`, no HUD, no text, no borders — and, the rule that breaks everything if
-it is missed, **registered to the same canvas as `background.png`**. Paint each
-object where it stands in the room. `buildRooms` in `tools/art.mjs` only
-cover-crops, keys and resamples; nothing is staged, measured or moved, so a
-frame that is out of register at 1024 × 1536 is out of register on the phone and
-there is no CSS offset anywhere to correct it.
+`#000000`, no HUD, no text, no borders. Two shapes of delivery are accepted and
+the brief says which each set is on:
+
+- **registered** — every plate painted where the object stands, on the same
+  canvas as `background.png`. `buildRooms` in `tools/art.mjs` then only
+  cover-crops, keys and resamples, and a frame out of register at 1024 × 1536 is
+  out of register on the phone. This is what the Chain Vault is waiting for.
+- **portrait plus a stance** — the object centred in its own frame, and where it
+  stands declared once in `ROOMS[].stances` in `tools/art.mjs`. The Reliquary
+  arrived this way and is built this way. A family delivered like this must have
+  **one silhouette**, because the stance is measured off the plate's own box: a
+  swinging bell in four portraits would walk across the ceiling as it swung, and
+  has to come back registered instead.
 
 A family must be **whole or absent**. `npm run art` throws on a partial family
 rather than shipping an object that freezes mid-swing.
@@ -501,24 +508,61 @@ rather than shipping an object that freezes mid-swing.
 ### Delivered
 
 ```
-docs/art-reference/masters/reliquary/background.png     ✅ 1024x1536
-docs/art-reference/masters/chain-vault/background.png   ✅ 1024x1536
+docs/art-reference/masters/reliquary/background.png      ✅ 1024x1536
+docs/art-reference/masters/reliquary/altar-still.png     ✅ 1024x1536
+docs/art-reference/masters/reliquary/bell-idle.png       ✅ 1024x1536
+docs/art-reference/masters/reliquary/brazier-lit.png     ✅ 1024x1536
+docs/art-reference/masters/reliquary/chest-closed.png    ✅ 1024x1536
+docs/art-reference/masters/chain-vault/background.png    ✅ 1024x1536
 ```
 
-### Missing — `docs/art-reference/masters/reliquary/` (29 files)
+The four Reliquary plates cost **70 KB** between them at 480 × 720, because a
+plate costs almost exactly its opaque area and these are 2–8% opaque.
+
+`docs/art-reference/visual/reliquary/` holds what came with them and is **not**
+runtime art: two paintings of the chapel that were the composition being aimed
+at, a sheet of the objects in states nobody has painted yet, and a four-position
+study of the bell swinging. The study is a *reference for motion*, not four
+frames — the bell swings by rotating its one authored plate about its chain.
+
+### Still missing — the Reliquary (18 files)
+
+The room plays and paints completely without every one of these. What each buys
+is written beside it, because none of them is a blocker and the order is a
+judgement call.
 
 ```
-bell-idle.png          bell-ring-1.png        bell-ring-2.png       bell-settle.png
-brazier-lit.png        brazier-dim.png        brazier-out.png       brazier-igniting.png
-lever-up.png           lever-pulling.png      lever-down.png
-chest-closed.png       chest-opening.png      chest-open.png
+brazier-out.png        five candles, dead, wax cold      ← the biggest win
+chest-open.png         the lid up, something inside      ← the second
+lever-up.png           lever-pulling.png   lever-down.png
 
-ambient-candle-1.png   ambient-candle-2.png   ambient-candle-3.png
-ambient-chain-1.png    ambient-chain-2.png    ambient-chain-3.png
-ambient-drip-1.png     ambient-drip-2.png     ambient-drip-3.png
-ambient-embers-1.png   ambient-embers-2.png   ambient-embers-3.png  ambient-embers-4.png
-ambient-window-1.png   ambient-window-2.png
+bell-ring-1.png        bell-ring-2.png     bell-settle.png
+
+ambient-candle-1..3.png   ambient-chain-1..3.png    ambient-drip-1..3.png
+ambient-embers-1..4.png   ambient-window-1..2.png
 ```
+
+**`brazier-out.png` is the one to paint first.** The candles going out is a
+state the player toggles as often as they like and is half of the room's puzzle,
+and today it is a CSS treatment of the lit plate — brightness 0.48, saturation
+0.4 — which drains the warmth out of it convincingly and still leaves five
+flame-shaped highlights for anyone who looks hard. It is honest, it is not
+finished, and it is the difference between a dark room and a dead one.
+
+**`chest-open.png` is the second.** Today the chest takes a knock from the
+mechanism and stays shut; what came out of it is in the word band, and the verb
+on it turns from nothing to TAKE. A player is told, but not shown.
+
+The lever family is optional in a way the others are not: **there is no lever in
+the room any more.** No lever was delivered, so the PULL sits on the altar, where
+a recessed iron handle under the basin is the mechanism the three cut marks are
+beside. If a lever is ever painted it is a *new object* and a product decision,
+not a missing frame. The interaction id stays `reliquary-lever` regardless — it
+is in every save that ever pulled it.
+
+`bell-ring-1/2` and `bell-settle` would replace the CSS swing with authored
+positions. They must arrive **registered to the background**, not as portraits,
+for the reason in the delivery note above.
 
 ### Missing — `docs/art-reference/masters/chain-vault/` (30 files)
 
@@ -541,40 +585,48 @@ ambient-shaft-1.png    ambient-shaft-2.png
 1. `npm run art` — it already knows about every file above and builds them into
    `public/assets/props/` and `public/assets/ambient/`;
 2. rows in `PROP_ART` and `AMBIENT_ART` in `src/render/assets.ts`, keyed
-   `bell.idle`, `brazier.lit`, `chest.open`, `chain.on`, `cage.lowered`,
-   `plate.on`, `gate.open`, `panel.still`, `reliquary.candle.1`,
-   `chain-vault.smoke.3` and the rest;
-3. nothing else. No state, no reducer, no view, no timing and no test.
+   `brazier.out`, `chest.open`, `chain.on`, `cage.lowered`, `plate.on`,
+   `gate.open`, `panel.still`, `reliquary.candle.1`, `chain-vault.smoke.3` and
+   the rest;
+3. for the Reliquary only, the two things that stand in for its missing states
+   come *out*: the `[data-look="out"]` filter and the `chest-knock` keyframes in
+   `src/style.css`, replaced by `platesFor` naming the authored frame;
+4. nothing else. No state, no reducer, no view and no new test.
 
-The frame each plate is shown on is already decided by `platesFor` and
-`beatsFor` in `src/content/interactions.ts`, and both are already exercised —
 `test/browser/rooms.spec.ts` asserts that whatever the midground holds is a
-function of the save and never takes a press.
+function of the save, never takes a press, and is four distinct objects that
+survive every position the room can be in — all of which stays true either way.
 
 ### What is shipping in the meantime
 
-Both backgrounds, and **no props and no ambience at all**. `propArt` and
-`ambientArt` answer nothing, `showProps` is handed an empty list, and
-`RoomAmbience` builds no loops — a room's mood is the most optional thing in the
-game, and `ART_DIRECTION.md`'s rule is that scenery may degrade.
+The Reliquary, painted: an altar on the floor in front of the steps with a
+basin of old blood in it, a bell hanging over it on a chain, five candles low on
+the left and a locked chest low on the right. The bell swings when it is rung,
+the candles go cold when they are put out, the chest takes the knock of the
+mechanism, and none of that is stored in `GameState` — every one of them is a
+treatment of a settled fact, and `prefers-reduced-motion` removes all of it
+without removing anything the player needed.
 
-What does *not* degrade is the play. Every object is a real 44 px `<button>`
-carrying its own verb, sited where the object will be painted; every unavailable
-action is absent rather than greyed; every outcome is in the word band and the
-health orb. The Reliquary can be solved and its relic taken, and the Chain Vault
-can be opened, lost six health to, and died in, exactly as they will play when
-the plates land. What a player is missing today is the picture of it.
+The Chain Vault ships **no props and no ambience at all**. `propArt` and
+`ambientArt` answer nothing for it, `showProps` is handed an empty list, and
+`RoomAmbience` builds no loops. `ART_DIRECTION.md`'s rule is that scenery may
+degrade, and its play does not: every object is a real 44 px `<button>` carrying
+its own verb, sited where the object will be painted, every unavailable action
+is absent rather than greyed, and every outcome is in the word band and the
+health orb.
 
 ### Budget
 
-The payload was **3.748 MB** against a 4 MB cap. The two backgrounds cost
-**512 KB** and it now sits at **4.248 MB**, so the cap was raised once, to
-**4.5 MB** — see the comment on `test/unit/assets.test.ts`. That leaves roughly
-**250 KB** for all fifty-nine plates above, shared between the two rooms.
+The payload was **3.748 MB** against a 4 MB cap, then **4.248 MB** when the two
+backgrounds landed, then **5.467 MB** when the Warden became an authored family
+— which is where the 5.6 MB cap came from. The Reliquary's four objects add
+**70 KB** and it now sits at **5.53 MB**.
 
-That is tight but real: a plate costs almost exactly its **opaque area**, and
-`hands/rest.png` is a full keyed 480 × 720 scene shipping in 30 KB because 94%
-of it is empty. Keep the objects tight and mostly black. If the set will not
-fit, **drop ambient loops before dropping object frames** — the loops are
-decoration, and the frames are how the room tells the player what state it is
-in. Raising the cap a second time is a product decision, not an art one.
+That leaves roughly **70 KB** for everything above, which is not enough for the
+Chain Vault's thirty and is the point: a plate costs almost exactly its **opaque
+area**, `hands/rest.png` is a full keyed 480 × 720 scene shipping in 30 KB
+because 94% of it is empty, and the Reliquary's four fit in 70 KB by being 2–8%
+opaque. Keep the objects tight and mostly black. If a set will not fit, **drop
+ambient loops before dropping object frames** — the loops are decoration and the
+frames are how a room says what state it is in. Raising the cap a third time is
+a product decision, not an art one.
