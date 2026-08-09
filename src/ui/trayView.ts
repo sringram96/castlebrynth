@@ -147,10 +147,11 @@ function renderCrown(tray: Tray, state: GameState, on: TrayHandlers): void {
         }))
 
   tray.crown.dataset['count'] = String(showing.length)
-  // Dice are choosable only when there is a throw on the table. Exploring, and
-  // in a fight before its roll, a tap has nothing to choose — so it inspects
-  // that die instead of dispatching a SELECT the reducer would discard.
-  const inPlay = state.mode === 'combat' && (combat?.roll.length ?? 0) > 0
+  // Dice are choosable only when there is a throw on the table. Exploring, in
+  // a fight before its roll, and over a thing that is already dying, a tap has
+  // nothing to choose — so it inspects that die instead of dispatching a
+  // SELECT the reducer would discard.
+  const inPlay = state.mode === 'combat' && !combat?.defeated && (combat?.roll.length ?? 0) > 0
 
   showing.forEach((d, index) => {
     const centre = DIE_CENTRES[index] ?? DIE_CENTRES[DIE_CENTRES.length - 1]!
@@ -219,6 +220,13 @@ function renderWell(tray: Tray, state: GameState, on: TrayHandlers): void {
 
   if (state.mode === 'combat' && run.combat) {
     const combat = run.combat
+    // It is dying. The hand that did it has already been read out — chosen,
+    // credited, landed — and what the well carries now is the last beat of the
+    // fight rather than a preview of a press that can no longer happen.
+    if (combat.defeated) {
+      tray.well.append(el('p', 'well-line', combat.log.at(-1) ?? WELL_IDLE))
+      return
+    }
     if (combat.phase === 'intent') {
       tray.well.append(el('p', 'well-line', combat.log.at(-1) ?? WELL_IDLE))
       return
@@ -335,6 +343,10 @@ function renderBeds(tray: Tray, state: GameState, on: TrayHandlers): void {
 
   if (state.mode === 'combat' && run.combat) {
     const combat = run.combat
+    // While the thing is dying there is no move to make, so none is offered —
+    // not greyed out, not shown waiting: absent. The reducer refuses all three
+    // of them anyway; this is the half of that rule the player can see.
+    if (combat.defeated) return
     if (combat.phase === 'intent') {
       bed(1, button({ act: 'roll', label: VERBS.roll, onPress: on.onRoll, className: 'act act-primary' }))
       return

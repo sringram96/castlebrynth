@@ -266,6 +266,35 @@ button {
 }
 
 /*
+ * ── it stops ─────────────────────────────────────────────────────────
+ *
+ * The death. `content/defeat.ts` owns the frames, their timing and where the
+ * body sits; the compositor places it, exactly as it places a reach. So the
+ * whole of the treatment here is the *absence* of motion — a thing that is
+ * giving out does not breathe, and nothing tweens between one authored frame
+ * of it and the next.
+ *
+ * `--dim` is the light left in it, written per frame. Saturation follows it
+ * down but never all the way: a silhouette that goes pure grey reads as a
+ * disabled UI element rather than as meat in the dark.
+ */
+.layer-enemy[data-defeat] {
+  animation: none;
+  transition: none;
+  transform: none;
+  filter: drop-shadow(0 0 14px rgb(0 0 0 / 0.85)) brightness(var(--dim, 1))
+    saturate(calc(var(--dim, 1) * 0.7 + 0.3));
+}
+
+/*
+ * The one frame that is not still: it is struck, and it recoils off the blow
+ * that killed it before it starts to fall. Two pixels, once.
+ */
+.layer-enemy[data-defeat="0"] {
+  transform: translateX(-2px) scale(1.01);
+}
+
+/*
  * ── the strike ───────────────────────────────────────────────────────
  *
  * The arm is a whole scene frame, cover-fitted exactly as the backdrop is, so

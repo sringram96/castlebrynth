@@ -184,7 +184,16 @@ describe('a dead thing does not take a step', () => {
       expect(out.reached).toBe(false)
       expect(out.approach, 'it moved after it died').toBe(reach)
 
-      const after = reduce(before, { type: 'SCORE' })
+      // The killing blow parks the fight on the picture of it dying, and it
+      // dies where it stood: the reach is still the one it was killed at, so
+      // the collapse plays at the end of the hall or on top of you as the
+      // fight earned. `DEFEAT_DONE` is the press that ends the fight.
+      const dying = reduce(before, { type: 'SCORE' })
+      expect(dying.mode).toBe('combat')
+      expect(dying.run!.combat!.defeated).toBe(true)
+      expect(dying.run!.combat!.approach).toBe(reach)
+
+      const after = reduce(dying, { type: 'DEFEAT_DONE' })
       expect(after.mode).not.toBe('dead')
       expect(after.run!.hp).toBe(MAX_HP)
       expect(after.run!.cleared).toContain('hollow')
@@ -192,7 +201,7 @@ describe('a dead thing does not take a step', () => {
   }
 
   it('is survivable at close: killing it there is the whole point of close', () => {
-    const after = reduce(poised('close', DOOMED), { type: 'SCORE' })
+    const after = play(poised('close', DOOMED), { type: 'SCORE' }, { type: 'DEFEAT_DONE' })
     expect(after.mode === 'reward' || after.mode === 'explore').toBe(true)
     expect(after.run!.hp).toBe(MAX_HP)
     expect(after.run!.combat).toBeUndefined()

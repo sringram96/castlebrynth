@@ -14,6 +14,8 @@
  *   ?dice=careful,leech      a chosen loadout (padded to six with plain bones)
  *   ?relics=nail,plate       carrying something
  *   ?mode=combat             open the room's fight, or jump to an ending
+ *   ?dying=1                 the room's enemy killed, mid-death — what a save
+ *                            written a third of a second before the win holds
  *
  * A fixture builds a real run and hands it to the real reducer. It cannot
  * reach a state the game could not; it only skips the walk. Nothing here is a
@@ -26,8 +28,12 @@ import { REACHES, turnAt } from '../content/enemies.js'
 import type { Reach } from '../content/enemies.js'
 import { ROOMS, room } from '../content/rooms.js'
 import { MAX_HP, newRun, reduce } from './reducer.js'
+import type { Action } from './reducer.js'
 import { SAVE_VERSION } from './state.js'
 import type { GameState, Mode } from './state.js'
+
+const play = (state: GameState, ...actions: readonly Action[]): GameState =>
+  actions.reduce((s, a) => reduce(s, a), state)
 
 const MODES: readonly Mode[] = ['title', 'explore', 'combat', 'reward', 'dead', 'complete']
 
@@ -42,7 +48,9 @@ const num = (raw: string | null): number | undefined => {
 
 export function hasFixture(search: string): boolean {
   const p = new URLSearchParams(search)
-  return ['seed', 'room', 'hp', 'enemyHp', 'reach', 'dice', 'relics', 'mode'].some((k) => p.has(k))
+  return ['seed', 'room', 'hp', 'enemyHp', 'reach', 'dice', 'relics', 'mode', 'dying'].some((k) =>
+    p.has(k),
+  )
 }
 
 export function applyFixture(base: GameState, search: string): GameState {
@@ -75,6 +83,20 @@ export function applyFixture(base: GameState, search: string): GameState {
 
   const wanted = p.get('mode')
   const mode = wanted && (MODES as readonly string[]).includes(wanted) ? (wanted as Mode) : undefined
+
+  // Standing inside a death.
+  //
+  // Not assembled: *played*. The fight is opened, a die is chosen, the enemy is
+  // stood on its last point of health and the killing hand is scored through
+  // the real reducer — so this is the state a save holds if the tab is closed
+  // in the two-thirds of a second between the blow and the win, and there is
+  // no way for it to be a state the game could not produce.
+  if (p.has('dying') && room(run.roomId).enemy) {
+    const rolled = play(state, { type: 'FIGHT' }, { type: 'ROLL' }, { type: 'SELECT', slot: 0 })
+    const combat = rolled.run!.combat!
+    const doomed = { ...rolled, run: { ...rolled.run!, combat: { ...combat, enemyHp: 1 } } }
+    return reduce(doomed, { type: 'SCORE' })
+  }
 
   if ((mode === 'combat' || p.has('enemyHp') || p.has('reach')) && room(run.roomId).enemy) {
     state = reduce(state, { type: 'FIGHT' })

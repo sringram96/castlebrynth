@@ -192,6 +192,19 @@ export interface EnemyPose {
    * screen shows the thing on top of you rather than politely down the hall.
    */
   readonly contact?: boolean
+  /**
+   * One frame of its own death.
+   *
+   * `step` selects the stylesheet's treatment for that beat and `dim` is how
+   * much light is left in it, as a custom property. The box itself is already
+   * in `width` and `foot` — a death is staged the same way a reach is, by
+   * placing the sprite, not by transforming it — so this carries only what
+   * placement cannot say.
+   *
+   * Written in both directions on every call, as `contact` is, so no frame of
+   * a death can outlive the sequence that painted it.
+   */
+  readonly defeat?: { readonly step: number; readonly dim: number }
 }
 
 /**
@@ -222,6 +235,13 @@ export function placeEnemy(world: World, src: string, pose: EnemyPose): void {
     delete world.enemy.dataset['contact']
     delete world.root.dataset['contact']
   }
+  if (pose.defeat) {
+    world.enemy.dataset['defeat'] = String(pose.defeat.step)
+    world.enemy.style.setProperty('--dim', String(pose.defeat.dim))
+  } else {
+    delete world.enemy.dataset['defeat']
+    world.enemy.style.removeProperty('--dim')
+  }
 }
 
 export function hideEnemy(world: World): void {
@@ -230,5 +250,7 @@ export function hideEnemy(world: World): void {
   delete world.enemy.dataset['enemy']
   delete world.enemy.dataset['reach']
   delete world.enemy.dataset['contact']
+  delete world.enemy.dataset['defeat']
+  world.enemy.style.removeProperty('--dim')
   delete world.root.dataset['contact']
 }

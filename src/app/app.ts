@@ -19,8 +19,10 @@
  * over it instantly is a score the player never saw.
  */
 
-import { enemy, intentAt } from '../content/enemies.js'
-import type { Reach } from '../content/enemies.js'
+import { enemy, intentAt, stanceAt } from '../content/enemies.js'
+import type { Reach, Stance } from '../content/enemies.js'
+import { defeatOf, defeatStance } from '../content/defeat.js'
+import type { DefeatFrame } from '../content/defeat.js'
 import { preview } from '../combat/scoring.js'
 import { selectionOf } from '../combat/resolve.js'
 import { reduce } from '../game/reducer.js'
@@ -28,7 +30,7 @@ import type { Action } from '../game/reducer.js'
 import { save } from '../game/save.js'
 import type { CombatState, GameState } from '../game/state.js'
 import { room as roomById } from '../content/rooms.js'
-import { mountWorld, showProp } from '../render/compositor.js'
+import { mountWorld, placeEnemy, showProp } from '../render/compositor.js'
 import type { World } from '../render/compositor.js'
 import { TRAY_ART, enemyArt, enemyPose, propArt, url } from '../render/assets.js'
 import { mountTray, paintTumble, renderTray } from '../ui/trayView.js'
@@ -222,6 +224,10 @@ export class App {
     this.world = mountWorld(worldRoot)
     this.tray = mountTray(trayRoot, url(TRAY_ART))
     this.render()
+    // A boot that lands inside a death drives it to its end rather than
+    // sitting in it. Nothing but a fixture can arrive here that way today; the
+    // check costs two lines and removes the whole class of stuck screen.
+    this.resumeDefeat()
   }
 
   /** The one way a press becomes a state change. */
@@ -283,6 +289,10 @@ export class App {
         return this.playRitual(before, after)
       default:
         this.render()
+        // CONTINUE back into a fight that was killed and then reloaded lands
+        // here. The reducer already granted the kill; all that is left is the
+        // last picture of it and the press that finishes the win.
+        this.resumeDefeat()
     }
   }
 
@@ -392,6 +402,10 @@ export class App {
     // did not move it, nothing here can, and if the reducer says it arrived,
     // the player is already dead whether or not a single frame plays.
     const settledCombat = after.run?.combat
+    // It died, and the reducer is holding the fight open on that. Nothing here
+    // decided it and nothing here can undo it: the room is already un-cleared,
+    // the offer is already undrawn, and the only thing left to do is show it.
+    const defeated = settledCombat?.defeated === true
     const advancedTo =
       combat.approach !== undefined &&
       settledCombat?.approach !== undefined &&
@@ -412,6 +426,10 @@ export class App {
       this.render()
       if (dealt > 0) enemyHit(this.world, dealt)
       if (answer > 0) shake(this.world, answer)
+      // A death is a sequence like every other one here: with motion off it
+      // resolves in the same tick, and the win screen arrives exactly where it
+      // arrived before any of this existed.
+      if (defeated) this.dispatch({ type: 'DEFEAT_DONE' })
       return
     }
 
@@ -467,6 +485,10 @@ export class App {
       shake(this.world, answer)
     })
 
+    // A death outranks both of the beats below it, and cannot collide with
+    // either: a dead thing never takes a step, so `resolve` returns the reach
+    // it died at and never `reached`.
+    if (defeated) return this.playDefeat(sequence, frame, combat, afterFaces, settledCombat!.log)
     if (reached) return this.playContact(sequence, frame, enemyAfter, afterFaces)
     if (advancedTo) return this.playAdvance(sequence, frame, enemyAfter, afterFaces, advancedTo)
 
@@ -538,6 +560,115 @@ export class App {
       this.render()
     })
     sequence.at(CONTACT.next, () => this.finish())
+  }
+
+  /**
+   * It stops.
+   *
+   * The one sequence in the file that ends with a dispatch rather than with
+   * `finish`, because the state it is revealing is not the settled one yet:
+   * the reducer parked the fight on `combat.defeated` and is waiting to be
+   * told the picture has been shown. Every frame below is a picture of a kill
+   * that was decided and saved before the first of them was scheduled, and
+   * settling early — an impatient thumb, reduced motion, a test — runs the
+   * whole remainder at once and lands on the same win.
+   *
+   * The frames themselves are pushed at the compositor after each paint, the
+   * same way the font's are: the paint places the enemy from state, and state
+   * during a death says only *it is dead*, not which frame of dying is up.
+   */
+  private playDefeat(
+    sequence: Sequence,
+    frame: (patch: Partial<CombatState>, hp?: number) => GameState,
+    combat: CombatState,
+    hp: number,
+    log: readonly string[],
+  ): void {
+    const death = defeatOf(combat.enemyId)
+    if (!death) return void sequence.at(SCORE.next, () => this.finish())
+
+    // Where it was standing when it died. Every frame is placed relative to
+    // this, so a horror killed at the end of the hall collapses there.
+    const base = stanceAt(combat.enemyId, combat.approach)
+
+    let at = SCORE.landed + death.still
+    death.frames.forEach((f, step) => {
+      sequence.at(at, () => {
+        // The fight, held at the instant of the kill: no health left on it, no
+        // verbs on the tray, and the beats of the hand that did it. One flag
+        // does the first two — see `trayView.ts`. The log has to be carried
+        // across explicitly, because every other frame of a score is built
+        // from the turn *before* the press and this one is not: it is the
+        // only frame of a fight whose last line is already the last line.
+        this.presenting = frame({ enemyHp: 0, defeated: true, log }, hp)
+        this.render()
+        this.paintDefeat(combat, base, f, step)
+        // One kick, on the frame it gives out, and nothing after it. The rest
+        // of the sequence is a thing going still, and a camera that keeps
+        // moving through it is a camera arguing with the picture.
+        if (step === 0) shake(this.world, 1)
+      })
+      at += f.hold
+    })
+
+    // The hold ends and the win is asked for. Exactly once, from here, and
+    // only ever from here.
+    sequence.at(at, () => {
+      this.finish()
+      this.dispatch({ type: 'DEFEAT_DONE' })
+    })
+  }
+
+  /**
+   * A reload that landed in the middle of a death.
+   *
+   * The kill is in the save — it was committed by the SCORE that caused it —
+   * so there is nothing to recompute and nothing to replay. It snaps to the
+   * settled frame, holds it long enough to be seen, and finishes the win. The
+   * player loses the collapse and gets the corpse, which is the right half of
+   * the sequence to keep: the half that is a fact about the run.
+   *
+   * A horror with no authored death cannot be here at all — the reducer never
+   * parks one — but a save written by a build that had one and a build that
+   * does not could be, so it resolves rather than waits.
+   */
+  private resumeDefeat(): void {
+    const combat = this.state.run?.combat
+    if (this.state.mode !== 'combat' || !combat?.defeated) return
+
+    const death = defeatOf(combat.enemyId)
+    const last = death?.frames[death.frames.length - 1]
+    if (!death || !last) return void this.dispatch({ type: 'DEFEAT_DONE' })
+
+    this.paintDefeat(combat, stanceAt(combat.enemyId, combat.approach), last, death.frames.length - 1)
+    const sequence = this.start()
+    sequence.at(last.hold, () => {
+      this.sequence = undefined
+      this.dispatch({ type: 'DEFEAT_DONE' })
+    })
+  }
+
+  /**
+   * One frame of a death, straight at the compositor.
+   *
+   * The plate is the frame's own if it has been authored, the bright impact
+   * plate when the frame asks to be lit and one fits the pose it is standing
+   * in — the same guard and the same reason as `brightPlate` — and otherwise
+   * the plate it died standing in. The box comes from `defeatStance`, so this
+   * is a placement rather than a transform and the sprite lands where the
+   * content said rather than wherever a scale happened to leave it.
+   */
+  private paintDefeat(combat: CombatState, base: Stance, f: DefeatFrame, step: number): void {
+    const art = enemy(combat.enemyId).art
+    const plate = f.pose ? enemyPose(art, f.pose) : undefined
+    const src = plate
+      ? url(plate)
+      : ((f.lit ? brightPlate(combat) : undefined) ?? url(enemyArt(art, combat.approach)))
+    placeEnemy(this.world, src, {
+      ...defeatStance(base, f),
+      ...(combat.approach ? { reach: combat.approach } : {}),
+      defeat: { step, dim: f.dim },
+    })
   }
 
   /** Drop the transition and paint the settled truth. Always the last beat. */

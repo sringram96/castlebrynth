@@ -411,3 +411,64 @@ twice over — a plate costs almost exactly its opaque area, and the set was
 82–89 KB a frame at delivered size against 37–48 KB staged — so the composition
 decision and the budget decision turned out to be the same decision. The brief
 carries the arithmetic.
+
+---
+
+## The Gnawing — the four plates of its death
+
+**Status: OPEN.** The defeat sequence is built, wired, tested and playing. The
+four plates it was specified against were not in the repository when the work
+was done, so nothing was drawn: the frames are staged out of the plates the
+encounter already ships, and the manifest is one line per frame away from the
+authored set.
+
+Raised by the wave that gave The Gnawing a death. The rules, the state, the
+sequence, the input lock and the resume are finished and green — see
+`test/unit/defeat.test.ts` and `test/browser/defeat.spec.ts` — and the fight
+already plays a readable collapse. What is missing is that three of its four
+frames are the same drawing.
+
+**Nothing was drawn, generated, traced, recoloured or repainted.** Per
+`CLAUDE.md` § *No art in the polish sweep*, the existing plates were measured,
+placed, scaled, darkened and animated, and their pixels were not touched.
+
+### What is being asked for
+
+Four plates of the creature dying, at **1024 × 1536** on the flat black field
+the rest of `docs/art-reference/masters/crawling-one/` was delivered on, so
+`tools/art.mjs` can lift them with the same matte as `close.png` and `hit.png`:
+
+| file | the beat |
+| --- | --- |
+| `defeat-1.png` | struck, and still a threat. The pose of `close.png`, hit — jaw wide, tentacles braced, nothing given up yet. |
+| `defeat-2.png` | recoiling. The head driven back and down, the front limbs buckling under it. |
+| `defeat-3.png` | ruined. The jaw slack, the eyes going, the mass settling onto the corridor floor. |
+| `defeat-4.png` | dead. Collapsed, lower than the frame's floor line, the silhouette broken. This one is held longest and is the picture the player is left with. |
+
+They want the same corridor, the same camera and the same footing as
+`close.png` — this is one creature going down in one place, not four paintings
+of a dying creature. Registration between them matters more than detail: the
+sequence hard-cuts, so anything that wanders between frames reads as the whole
+scene jumping.
+
+### What lands when they arrive
+
+1. a `buildCrawlingOne`-style entry in `tools/art.mjs` cutting the four to
+   runtime plates, and `npm run art`;
+2. four rows in `ENEMY_ART` — `gnawing.defeat.1` … `gnawing.defeat.4`;
+3. `pose: 'defeat.1'` … `'defeat.4'` on the four frames in
+   `src/content/defeat.ts`, and `lit` dropped from the first;
+4. the staging in the same file — `scale`, `drop`, `dim` — relaxed towards 1,
+   0 and 1, because the collapse will then be in the drawings rather than in
+   the transform.
+
+Nothing else changes. No timing, no state, no test, and no other file.
+
+### What is shipping in the meantime
+
+Frame 1 is the authored impact plate (`crawling-hit.png`, the creature blown
+out white) held for 110 ms rather than flashed for 130. Frames 2–4 are the
+plate it died standing in, staged down and out: 0.98 → 0.90 → 0.76 of its
+dying width, sunk 2% → 7% → 14% of the world's height, at 78% → 50% → 26%
+brightness. It reads as a thing going down in the dark, and it reads as a
+stand-in, which is the honest state of it.
