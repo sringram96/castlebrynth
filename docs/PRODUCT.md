@@ -28,18 +28,50 @@ as support for one of them, it is out of scope.
 
 ## The slice
 
-Eight rooms, three fights, one font, two rewards, one ending each way.
+Ten rooms, three fights, one font, two worked rooms, two rewards, one ending
+each way.
 
 ```
-entry → passage → hollow(FIGHT: the Gnawing) → sanctuary(THE FONT) → fork ┬→ stair ─┐
-                                                                         └→ deep(   │
-                                                                    FIGHT: the      │
-                                                                        Marrow) ────┤
-                                                                                    ↓
-                                                                    gate(FIGHT: the Warden)
-                                                                                    ↓
-                                                                                  exit
+entry → passage → hollow(FIGHT: the Gnawing) → sanctuary(THE FONT)
+   → reliquary(OPTIONAL: bell, dark, lever → a relic) → fork ┬→ STAIR ────────┐
+                                                             └→ DEEP          │
+                                                    chain-vault(LOCKED:       │
+                                                    cage → plate → lever) ────┤
+                                                                 ↓            │
+                                                    deep(FIGHT: the Marrow) ──┤
+                                                                              ↓
+                                                              gate(FIGHT: the Warden)
+                                                                              ↓
+                                                                            exit
 ```
+
+## Rooms you work
+
+Two rooms answer a complaint that was true of every other one: *enter, look at
+picture, read prose, press exit.* A room is a backdrop, ambient motion, several
+concrete objects, state those objects keep, and actions with consequences.
+
+They are a matched pair, and the pairing is the design:
+
+- **The Reliquary is optional and free.** GO ON is on screen from the first
+  frame and never leaves. Ring the bell, put out the brazier, pull the skull
+  lever, and the chest opens on one existing relic. Ignore all of it and walk
+  out having lost nothing. It is there to be *found*, not to be passed.
+- **The Chain Vault is mandatory and costs blood.** It is the toll on the deep
+  route, paid before the fight rather than during it. Drop the cage onto the
+  pressure plate, then pull the lever, and the gate rises. Pull the lever
+  against an unweighted plate and the mechanism takes 6 HP through your hand —
+  as often as you have blood for it. It is the first place in the slice where a
+  *room* can kill you.
+
+Neither is a guessing game. Every mechanical relationship is readable through
+ordinary LOOK: three cuts beside the skull lever name the bell, the black flame
+and the lowered jaw, in the order they have to happen; a wall panel in the vault
+draws a weight falling and then a gate lifting.
+
+Neither adds a noun. No key, no puzzle currency, no new stat, no new relic, no
+new die, no new screen mode — both rooms are `explore`, and the chest pays out
+of the relic pool that already exists.
 
 The fork is the whole of the expedition pressure: the deep way is another
 fight and another reward before the boss, and health does not come back on its

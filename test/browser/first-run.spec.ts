@@ -141,13 +141,24 @@ test.describe('the first run', () => {
 
   test('each room in the slice is its own place', async ({ page }) => {
     const seen = new Set<string>()
-    for (const room of ['entry', 'passage', 'hollow', 'sanctuary', 'fork', 'deep', 'gate']) {
+    const rooms = [
+      'entry',
+      'passage',
+      'hollow',
+      'sanctuary',
+      'reliquary',
+      'fork',
+      'chain-vault',
+      'deep',
+      'gate',
+    ]
+    for (const room of rooms) {
       await boot(page, `?room=${room}`)
       const src = await page.locator('#backdrop').getAttribute('src')
       expect(src, `${room} has no backdrop`).toBeTruthy()
       seen.add(src!)
     }
-    expect(seen.size, 'two rooms are the same picture').toBe(7)
+    expect(seen.size, 'two rooms are the same picture').toBe(rooms.length)
   })
 
   test('plays the whole route to the way out, in one browser, with real presses', async ({
@@ -185,10 +196,28 @@ test.describe('the first run', () => {
     await act(page, 'ritual').click()
     await expect(act(page, 'ritual')).toHaveCount(0)
 
+    // The dead chapel, which asks for nothing. The journey walks straight
+    // through it without touching one object, because that is the claim the
+    // room makes and this is the run that has to prove it.
+    await act(page, 'go').click()
+    await expect(page.locator('#say')).toContainText('A dead chapel')
+    await expect(act(page, 'go')).toBeVisible()
+
     await act(page, 'go').click()
     await expect(page.locator('#say')).toContainText('The passage splits')
-    await page.locator('[data-to="deep"]').click() // the long way round, on purpose
+    await page.locator('[data-to="chain-vault"]').click() // the long way round, on purpose
 
+    // And the vault, which asks for everything. There is no way on until the
+    // gate is up, so the journey has to work it — cage onto the plate, then
+    // the lever — exactly as a player must.
+    await expect(page.locator('#say')).toContainText('ends at an iron gate')
+    await expect(act(page, 'go')).toHaveCount(0)
+    await page.locator('[data-interact="vault-chain"]').click()
+    await expect(act(page, 'go')).toHaveCount(0)
+    await page.locator('[data-interact="vault-lever"]').click()
+    await expect(act(page, 'go')).toBeVisible()
+
+    await act(page, 'go').click()
     expect(await fightItOut(page), 'lost to the Marrow').toBe('won')
     await takeAnyReward()
 

@@ -16,7 +16,7 @@ import type { Reach } from '../content/enemies.js'
 import type { HandName } from '../combat/scoring.js'
 
 /** Bumped whenever the shape below changes. Old saves are not migrated. */
-export const SAVE_VERSION = 5
+export const SAVE_VERSION = 6
 
 export type Mode = 'title' | 'explore' | 'combat' | 'reward' | 'dead' | 'complete'
 
@@ -115,6 +115,51 @@ export interface RitualState {
   readonly missingBefore: number
 }
 
+/**
+ * What a room's objects have been left doing.
+ *
+ * A ritual is one press and one answer, so `RitualState` records a *result*.
+ * These rooms are the other shape: several objects, each with its own settled
+ * position, and an order between them that is the puzzle. So this records
+ * **where everything is standing**, and nothing else.
+ *
+ * A discriminated union rather than a bag of optional fields, because the two
+ * rooms share no object: a `brazier` on a vault would be a state the game
+ * cannot reach, and `roomId` is what stops it being expressible.
+ *
+ * What is deliberately absent is any clock. No frame index, no elapsed time, no
+ * "is animating" — the settled position is the whole truth, every picture is
+ * derived from it, and a reload paints the room from this and nothing else.
+ * That is the same rule `combat.defeated` is built on.
+ */
+export type RoomInteractionState =
+  | {
+      readonly roomId: 'reliquary'
+      readonly bellRung: boolean
+      readonly brazier: 'lit' | 'out'
+      readonly lever: 'up' | 'down'
+      readonly chest: 'closed' | 'open'
+      readonly claimed: boolean
+      /**
+       * What was inside, once it has been taken.
+       *
+       * Recorded rather than recomputed, for the same reason `RitualState`
+       * records its roll: the draw happened once, in the reducer, and a reload
+       * that re-derived it would be a second draw that is merely *likely* to
+       * agree. Absent when the chest was empty — `claimed` is what says the
+       * press happened, and an empty chest is a real answer.
+       */
+      readonly rewardId?: string
+    }
+  | {
+      readonly roomId: 'chain-vault'
+      readonly chain: 'off' | 'on'
+      readonly cage: 'raised' | 'lowered'
+      readonly pressurePlate: 'off' | 'on'
+      readonly lever: 'up' | 'down'
+      readonly gate: 'closed' | 'open'
+    }
+
 export interface RunState {
   readonly seed: number
   readonly roomId: string
@@ -134,6 +179,15 @@ export interface RunState {
   readonly combat?: CombatState
   /** The ritual this run has resolved, and what it gave. */
   readonly ritual?: RitualState
+  /**
+   * Where each room's objects have been left, keyed by room id.
+   *
+   * Sparse on purpose: a room that has not been touched has no entry, and its
+   * opening position is content rather than something a new run has to write
+   * out. `initialRoomState` in `content/interactions.ts` is that opening
+   * position, and it is the one place it is stated.
+   */
+  readonly rooms?: Readonly<Record<string, RoomInteractionState>>
   /** The three things on offer, when `mode === 'reward'`. */
   readonly offer?: readonly string[]
   /** Why the run ended. */

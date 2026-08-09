@@ -32,6 +32,7 @@ import { selectionOf } from '../combat/resolve.js'
 import { relic as relicById } from '../content/relics.js'
 import { enemy as enemyById } from '../content/enemies.js'
 import { room as roomById } from '../content/rooms.js'
+import { exitsOpen, stateOf } from '../content/interactions.js'
 import type { GameState } from '../game/state.js'
 import { button, dieButton, el, faceGlyph, place, relicButton, seat, seatBed } from './components.js'
 
@@ -302,6 +303,16 @@ function renderWell(tray: Tray, state: GameState, on: TrayHandlers): void {
     return
   }
 
+  // A shut room says what it is waiting for, exactly as an unresolved font
+  // does — the exits are not offered, so the well has to carry the reason.
+  if (!exitsOpen(stateOf(run.rooms, run.roomId))) {
+    const box = el('div', 'brief')
+    box.append(el('span', 'brief-name', here.name))
+    box.append(el('p', 'well-line', run.say))
+    tray.well.append(box)
+    return
+  }
+
   // Each way on, and what it smells like. This is the whole of the fork.
   const routes = el('div', 'routes')
   for (const exit of here.exits) {
@@ -388,6 +399,12 @@ function renderBeds(tray: Tray, state: GameState, on: TrayHandlers): void {
   // reducer will not grant one — so no way on is offered. The one thing to do
   // is the object in the world, which is where the press is.
   if (here.ritual && run.ritual?.roomId !== run.roomId) return
+
+  // And the same again for a room whose machinery is still shut. The gate is
+  // not down as a matter of styling: the reducer rejects `GO` while it is, so
+  // offering the press would be offering a button that does nothing. One
+  // statement — `exitsOpen` — answers for both of them.
+  if (!exitsOpen(stateOf(run.rooms, run.roomId))) return
 
   const exits = here.exits
   if (exits[0]) {

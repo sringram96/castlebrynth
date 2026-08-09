@@ -16,10 +16,11 @@ import { LOOT_RELICS, relic } from '../content/relics.js'
 import { enemy, intentAt, reachAfter } from '../content/enemies.js'
 import { defeatOf } from '../content/defeat.js'
 import { FIRST_ROOM, room } from '../content/rooms.js'
+import { exitsOpen, legal, stateOf } from '../content/interactions.js'
 import { Rng, reroll, roll, toggle } from '../combat/dice.js'
 import { resolve } from '../combat/resolve.js'
 import { SAVE_VERSION } from './state.js'
-import type { CombatState, GameState, MetaState, RitualRoll, RunState } from './state.js'
+import type { CombatState, GameState, MetaState, RitualRoll, RoomInteractionState, RunState } from './state.js'
 
 /**
  * The body.
@@ -43,6 +44,17 @@ export type Action =
   | { readonly type: 'SCORE' }
   | { readonly type: 'TAKE'; readonly id: string }
   | { readonly type: 'RITUAL_ROLL' }
+  /**
+   * Work one of the room's objects.
+   *
+   * **One action for every object in every room**, carrying nothing but which
+   * thing was pressed. Seven action types — RING, EXTINGUISH, PULL_LEVER — is
+   * the same rule written seven times, and it puts the room's logic in whoever
+   * dispatches: a view that has to know *which* action to send has already
+   * decided what the press means. This carries an id, and `content/
+   * interactions.ts` decides the rest.
+   */
+  | { readonly type: 'INTERACT'; readonly interactionId: string }
   /**
    * The death has been shown. Pack the fight away.
    *
@@ -169,6 +181,63 @@ function combatSalt(run: RunState, combat: CombatState, extra: number): number {
 function ritualSalt(run: RunState): number {
   return run.path.length * 1013 + 977
 }
+
+/**
+ * Where the reliquary's one draw sits in the same stream.
+ *
+ * Seed plus history, exactly as a fight and the font are, with a constant of
+ * its own that keeps it clear of both — `ritualSalt`'s 977 and `combatSalt`'s
+ * `turn * 31 + extra`. Derived rather than stored, so the chest cannot be
+ * re-rolled by a reload, and cannot quietly agree with the font because the
+ * two rooms happened to sit the same distance along the path.
+ */
+function reliquarySalt(run: RunState): number {
+  return run.path.length * 1013 + 613
+}
+
+/**
+ * What is in the chest, or nothing because there is nothing left to give.
+ *
+ * The existing relic pool, minus what is already carried. No new relic, no new
+ * species, and no offer screen: this is a single found object, so it is drawn
+ * and granted in the same tick the chest is opened, and `rooms[].rewardId`
+ * records which — a reload reads that rather than drawing again.
+ *
+ * An empty answer is a real one. A run that already carries every relic finds
+ * an empty chest and is told so plainly, which is the same call `offerFor`
+ * makes when a fight has nothing left to pay with.
+ */
+function chestReward(run: RunState, rng: Rng): string | undefined {
+  const owned = new Set([...run.relics, ...run.dice])
+  const pool = LOOT_RELICS.filter((id) => !owned.has(id))
+  return pool.length === 0 ? undefined : pool[rng.int(pool.length)]
+}
+
+/** What the room says about a press that changed something. */
+function interactionSay(after: RoomInteractionState, id: string, reward?: string): string {
+  if (after.roomId === 'reliquary') {
+    if (id === 'reliquary-bell') return 'The bell answers once. Something shifts behind the altar.'
+    if (id === 'reliquary-brazier') {
+      return after.brazier === 'out'
+        ? 'The flame folds into the wick. In the dark, the skull lever catches the red window-light.'
+        : 'The flame returns.'
+    }
+    if (id === 'reliquary-lever') return 'The jaw drops. Stone grinds under the chest.'
+    return reward ? `Inside: ${relic(reward).name}.` : 'The chest is empty.'
+  }
+  if (id === 'vault-chain') {
+    return after.cage === 'lowered'
+      ? 'The cage drops onto the plate. Something heavy unlocks inside the wall.'
+      : 'The chain takes the weight again. The plate comes back up.'
+  }
+  return 'The weight holds. The lever stays down. The gate rises.'
+}
+
+/** What the vault kills you with, when it does. */
+const VAULT_CAUSE = 'The chain mechanism.'
+
+/** What a lever pulled against nothing costs. */
+export const VAULT_BACKLASH = 6
 
 /**
  * A run at its waking.
@@ -348,6 +417,11 @@ export function reduce(state: GameState, action: Action): GameState {
       // in state, rather than hidden by a view — so no dispatch, no fixture and
       // no reload can walk past it.
       if (here.ritual && run.ritual?.roomId !== run.roomId) return state
+      // And a room whose machinery is still shut holds its exits the same way,
+      // for the same reason. The check is here, in state, rather than in the
+      // view that draws the button — so no dispatch, no fixture and no reload
+      // can walk through a gate that is down.
+      if (!exitsOpen(stateOf(run.rooms, run.roomId))) return state
       if (!here.exits.some((e) => e.to === action.to)) return state
 
       const next = room(action.to)
@@ -523,6 +597,94 @@ export function reduce(state: GameState, action: Action): GameState {
           say: ritualSay(roll, healed),
         },
       }
+    }
+
+    case 'INTERACT': {
+      const run = state.run
+      if (!run || state.mode !== 'explore') return state
+      const here = room(run.roomId)
+      // The room has to declare it. An id that belongs to another room — a
+      // stale press, a hand-made dispatch — is not a thing you are standing in
+      // front of.
+      if (!here.interactables?.some((i) => i.id === action.interactionId)) return state
+      const before = stateOf(run.rooms, run.roomId)
+      if (!before) return state
+      // And it has to be offered *now*. This is the same call the view makes to
+      // decide whether to draw a button at all, so a press that reaches here
+      // illegally — a double tap, a repeat of a spent action — changes nothing.
+      if (!legal(before, action.interactionId)) return state
+
+      const id = action.interactionId
+      const put = (next: RoomInteractionState, rest: Partial<RunState> = {}): GameState => ({
+        ...state,
+        run: {
+          ...run,
+          ...rest,
+          rooms: { ...run.rooms, [run.roomId]: next },
+          say: rest.say ?? interactionSay(next, id),
+        },
+      })
+
+      if (before.roomId === 'reliquary') {
+        switch (id) {
+          case 'reliquary-bell':
+            return put({ ...before, bellRung: true })
+          case 'reliquary-brazier':
+            return put({ ...before, brazier: before.brazier === 'lit' ? 'out' : 'lit' })
+          case 'reliquary-lever':
+            // The chest is authoritatively open *here*, in the same tick as the
+            // lever going down, and is in the save before a frame of the stone
+            // moving has been scheduled.
+            return put({ ...before, lever: 'down', chest: 'open' })
+          default: {
+            const reward = chestReward(run, rngFor(run, reliquarySalt(run)))
+            const next: RoomInteractionState = {
+              ...before,
+              claimed: true,
+              ...(reward ? { rewardId: reward } : {}),
+            }
+            // Granted in the same transition it is drawn in. There is no offer
+            // to re-enter and no second press to make, which is the whole of
+            // why this cannot pay twice: `claimed` is already true.
+            return {
+              ...state,
+              meta: reward ? remember(state.meta, [], [reward]) : state.meta,
+              run: {
+                ...run,
+                relics: reward ? [...run.relics, reward] : run.relics,
+                rooms: { ...run.rooms, [run.roomId]: next },
+                say: interactionSay(next, id, reward),
+              },
+            }
+          }
+        }
+      }
+
+      if (id === 'vault-chain') {
+        const lowering = before.cage === 'raised'
+        return put({
+          ...before,
+          chain: lowering ? 'on' : 'off',
+          cage: lowering ? 'lowered' : 'raised',
+          pressurePlate: lowering ? 'on' : 'off',
+        })
+      }
+
+      // The lever. Nothing on the plate means the mechanism has nothing to bear
+      // against, and it comes back through your hand.
+      if (before.pressurePlate === 'off') {
+        const hp = Math.max(0, run.hp - VAULT_BACKLASH)
+        const hurt: RunState = {
+          ...run,
+          hp,
+          say: `The mechanism snaps back. The chain catches my hand. ${VAULT_BACKLASH} HP.`,
+          ...(hp === 0 ? { cause: VAULT_CAUSE } : {}),
+        }
+        // A room may kill you, and it uses the death the game already has. The
+        // player can make this mistake as many times as they have blood for.
+        return { ...state, ...(hp === 0 ? { mode: 'dead' as const } : {}), run: hurt }
+      }
+      return put({ ...before, lever: 'down', gate: 'open' })
     }
 
     case 'TAKE': {

@@ -15,6 +15,7 @@ import type { GameState } from '../../src/game/state.js'
 import { HAND_SIZE } from '../../src/content/dice.js'
 import { ENEMIES, enemy, intentAt } from '../../src/content/enemies.js'
 import { ROOMS, room } from '../../src/content/rooms.js'
+import { initialRoomState } from '../../src/content/interactions.js'
 import { Rng } from '../../src/combat/dice.js'
 import { preview } from '../../src/combat/scoring.js'
 import { resolve, selectionOf } from '../../src/combat/resolve.js'
@@ -121,10 +122,22 @@ describe('the room graph', () => {
     // both hold the exits shut, so both are resolved here — what this test
     // forbids is a way on that depends on having looked at something.
     for (const r of Object.values(ROOMS)) {
+      // A room's machinery is the third thing of this kind, and it is resolved
+      // here for the same reason the other two are: the cage, the plate and
+      // the lever are all plainly in front of you, they are all LOOK-able, and
+      // the wall panel draws the rule. What this test forbids is a way on that
+      // depends on having *found* something, not one that depends on having
+      // worked something you can see.
+      const worked = initialRoomState(r.id)
+      const opened =
+        worked?.roomId === 'chain-vault'
+          ? { ...worked, chain: 'on' as const, cage: 'lowered' as const, pressurePlate: 'on' as const, lever: 'down' as const, gate: 'open' as const }
+          : worked
       const arrived = {
         ...newRun(1),
         roomId: r.id,
         cleared: r.enemy ? [r.id] : [],
+        ...(opened ? { rooms: { [r.id]: opened } } : {}),
         ...(r.ritual
           ? { ritual: { roomId: r.id, roll: 3 as const, healed: 0, missingBefore: 0 } }
           : {}),
@@ -366,6 +379,10 @@ describe('the doors of the machine', () => {
       { type: 'GO', to: 'sanctuary' },
       // The chapel is on the way out, and it is used on the way past.
       { type: 'RITUAL_ROLL' },
+      // The Reliquary is on the way out too — and is walked straight through
+      // without a single one of its objects being touched, which is the whole
+      // claim the room makes about itself.
+      { type: 'GO', to: 'reliquary' },
       { type: 'GO', to: 'fork' },
       { type: 'GO', to: 'gate' },
     )
