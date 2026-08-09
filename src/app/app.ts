@@ -27,9 +27,10 @@ import { reduce } from '../game/reducer.js'
 import type { Action } from '../game/reducer.js'
 import { save } from '../game/save.js'
 import type { CombatState, GameState } from '../game/state.js'
-import { mountWorld } from '../render/compositor.js'
+import { room as roomById } from '../content/rooms.js'
+import { mountWorld, showProp } from '../render/compositor.js'
 import type { World } from '../render/compositor.js'
-import { TRAY_ART, enemyArt, enemyPose, url } from '../render/assets.js'
+import { TRAY_ART, enemyArt, enemyPose, propArt, url } from '../render/assets.js'
 import { mountTray, paintTumble, renderTray } from '../ui/trayView.js'
 import type { Tray } from '../ui/trayView.js'
 import { renderWorld } from '../ui/worldView.js'
@@ -102,6 +103,40 @@ const CONTACT = {
   landed: 1050,
   next: 1500,
 } as const
+
+/**
+ * The beats of the font, in milliseconds from the press.
+ *
+ * The die is already cast. It was cast in the reducer, in the same tick as the
+ * press, and it is in the save before the first frame below runs — so every
+ * one of these is a reveal. Settling early, reloading in the middle, or
+ * turning motion off all land on the same face and the same health.
+ *
+ * The order is the point, as it is in a score: the thing comes out of the
+ * blood, it turns, it stops, *then* the body answers, and only then is there a
+ * way on. Reading the health before the die has stopped would be reading the
+ * answer over the top of the question.
+ */
+const RITUAL = {
+  emerge: 80,
+  /** Cosmetic faces on the way. See `RITUAL_FLICKER`. */
+  faces: [180, 250, 320, 390],
+  /** It stops. This frame, and every frame after it, is the reducer's. */
+  landed: 500,
+  orb: 650,
+  said: 850,
+  next: 1000,
+} as const
+
+/**
+ * The faces that flicker past on the way to the real one.
+ *
+ * A fixed list, exactly as the crown's tumble uses a counter rather than a
+ * generator. Nothing in a sequence may draw a number: if this were random the
+ * animation would be producing values the run did not, and a replay of the
+ * same seed would differ on screen.
+ */
+const RITUAL_FLICKER: readonly number[] = [2, 5, 1, 4]
 
 /**
  * The authored impact plate for a fight, when there is one it can be used in.
@@ -244,9 +279,73 @@ export class App {
       }
       case 'SCORE':
         return this.playScore(before, after)
+      case 'RITUAL_ROLL':
+        return this.playRitual(before, after)
       default:
         this.render()
     }
+  }
+
+  /**
+   * The font, as a thing that happens rather than a number that changes.
+   *
+   * Built the same way a score is: from the state *before* the press, with one
+   * fact put right at a time, and the settled state painted last. The frames
+   * are pushed straight at the compositor after each paint — the paint reads
+   * the frame off state, and during the sequence the state does not yet say
+   * the room has been used, so the two would otherwise disagree. Every one of
+   * them is a picture of an answer that is already saved.
+   */
+  private playRitual(before: GameState, after: GameState): void {
+    const run = before.run!
+    const ritual = after.run!.ritual!
+    const family = roomById(run.roomId).ritual!.art
+    const healed = ritual.healed
+    const settled = after.run!.hp
+
+    // A frame, if it was ever painted. A room whose plates have not landed
+    // plays the same sequence with nothing in the midground, and the outcome
+    // is identical: the health moves and the band says what happened.
+    const show = (frame: string | number): void => {
+      const art = propArt(family, String(frame))
+      if (art) showProp(this.world, url(art))
+    }
+
+    // Hold the room as it was — old health, empty band, and the button still
+    // there for the thumb that presses twice.
+    this.presenting = { ...before, run: { ...run, say: '' } }
+    this.render()
+
+    if (!this.animated) {
+      this.presenting = undefined
+      this.render()
+      return
+    }
+
+    const sequence = this.start()
+    sequence.at(RITUAL.emerge, () => show('emerge'))
+    RITUAL.faces.forEach((at, index) => sequence.at(at, () => show(RITUAL_FLICKER[index]!)))
+    sequence.at(RITUAL.landed, () => show(ritual.roll))
+
+    // The body answers. The orb is driven from the presented state, so the
+    // fill and the number move together and both are the reducer's.
+    sequence.at(RITUAL.orb, () => {
+      this.presenting = { ...before, run: { ...run, hp: settled, say: '' } }
+      this.render()
+      show(ritual.roll)
+      orbChange(this.tray.orb, healed)
+    })
+
+    sequence.at(RITUAL.said, () => {
+      this.presenting = { ...before, run: { ...run, hp: settled, say: after.run!.say } }
+      this.render()
+      show(ritual.roll)
+    })
+
+    // And only now the settled truth, which is the first frame in which the
+    // way on exists. The face stays: it is painted from `run.ritual`, so it is
+    // still there on the next visit and after a reload.
+    sequence.at(RITUAL.next, () => this.finish())
   }
 
   private playThrow(after: GameState, slots: readonly number[]): void {
@@ -459,6 +558,7 @@ export class App {
         const combat = this.state.run?.combat
         if (combat) this.say(intentAt(combat.enemyId, combat.turn).explain)
       },
+      onRitual: () => this.dispatch({ type: 'RITUAL_ROLL' }),
     }
     renderWorld(this.world, state, on)
 

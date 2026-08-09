@@ -89,6 +89,28 @@ button {
   object-position: 50% 45%;
 }
 
+/*
+ * The room's focal object.
+ *
+ * Cover-fitted with exactly the backdrop's numbers, because it is the same
+ * frame: the basin is painted where it stands and lands there at every
+ * viewport, with no coordinate to measure and none to drift. Eight frames pass
+ * through this element during a throw and not one of them may move it.
+ */
+.prop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 45%;
+  pointer-events: none;
+}
+
+.prop[hidden] {
+  display: none;
+}
+
 .layer-enemy {
   inset: auto auto 0 0;
   height: auto;
@@ -364,6 +386,38 @@ button {
 .hit-focal::after {
   inset: 28%;
   border-color: rgb(207 166 82 / 0.7);
+}
+
+/*
+ * The one hotspot that commits something.
+ *
+ * A detail hotspot is a bare ring, because looking costs nothing and needs no
+ * label. This one carries its verb: the press changes the run, and a player
+ * should never have to discover that by trying it. Same breathing ring, same
+ * gold, grown to hold four letters and still 44px tall.
+ */
+.hit-ritual {
+  width: auto;
+  min-width: 72px;
+  height: var(--touch);
+  margin-left: -36px;
+  display: grid;
+  place-items: center;
+  border-radius: calc(var(--touch) / 2);
+  padding: 0 14px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--ink);
+  text-shadow: 0 1px 3px rgb(0 0 0 / 0.95);
+  background: rgb(7 6 5 / 0.42);
+}
+
+.hit-ritual::after {
+  inset: 0;
+  border-radius: calc(var(--touch) / 2);
+  border-color: rgb(207 166 82 / 0.8);
+  box-shadow: 0 0 14px rgb(163 48 42 / 0.45);
 }
 
 .hit-seen::after {

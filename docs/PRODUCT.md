@@ -28,22 +28,35 @@ as support for one of them, it is out of scope.
 
 ## The slice
 
-Seven rooms, three fights, two rewards, one ending each way.
+Eight rooms, three fights, one font, two rewards, one ending each way.
 
 ```
-entry → passage → hollow(FIGHT: the Gnawing) → fork ┬→ stair ────────┐
-                                                    └→ deep(FIGHT:   │
-                                                        the Marrow) ─┤
-                                                                     ↓
-                                                     gate(FIGHT: the Warden)
-                                                                     ↓
-                                                                   exit
+entry → passage → hollow(FIGHT: the Gnawing) → sanctuary(THE FONT) → fork ┬→ stair ─┐
+                                                                         └→ deep(   │
+                                                                    FIGHT: the      │
+                                                                        Marrow) ────┤
+                                                                                    ↓
+                                                                    gate(FIGHT: the Warden)
+                                                                                    ↓
+                                                                                  exit
 ```
 
 The fork is the whole of the expedition pressure: the deep way is another
 fight and another reward before the boss, and health does not come back on its
 own. That is enough to make *do I keep going?* a real question without a
 second subsystem.
+
+**The font is what makes that question answerable.** One press, one die, and a
+share of the health you are *missing* comes back — 19% of it on a one, all of
+it on a six. It sits immediately before the fork on purpose: the deep way is a
+gamble about how much body you have left, and a gamble is only a decision if
+you know the number. A share of the wound rather than a flat gift is what keeps
+it honest at both ends — it is worth most to a player who is nearly dead, and
+worth literally nothing to a player who is whole, so there is no version of it
+that can be farmed.
+
+It is deliberately the smallest room in the game: no shop, no currency, no
+second shrine, no reroll. One object, one press, one number.
 
 ## The modes
 

@@ -116,9 +116,19 @@ describe('the room graph', () => {
   })
 
   it('never requires a hidden thing to leave a room', () => {
-    // Every exit is reachable from arrival: no detail has to be found first.
+    // Every exit is reachable from arrival: no *detail* has to be found first.
+    // A room's enemy and a room's font are both plainly in front of you and
+    // both hold the exits shut, so both are resolved here — what this test
+    // forbids is a way on that depends on having looked at something.
     for (const r of Object.values(ROOMS)) {
-      const arrived = { ...newRun(1), roomId: r.id, cleared: r.enemy ? [r.id] : [] }
+      const arrived = {
+        ...newRun(1),
+        roomId: r.id,
+        cleared: r.enemy ? [r.id] : [],
+        ...(r.ritual
+          ? { ritual: { roomId: r.id, roll: 3 as const, healed: 0, missingBefore: 0 } }
+          : {}),
+      }
       for (const exit of r.exits) {
         const moved = reduce({ ...TITLE, mode: 'explore', run: arrived }, { type: 'GO', to: exit.to })
         expect(moved.run?.roomId).toBe(exit.to)
@@ -128,7 +138,7 @@ describe('the room graph', () => {
 
   it('holds you in a fight room until the enemy is down', () => {
     const held = reduce(toPassage(), { type: 'GO', to: 'hollow' })
-    expect(reduce(held, { type: 'GO', to: 'fork' })).toBe(held)
+    expect(reduce(held, { type: 'GO', to: 'sanctuary' })).toBe(held)
   })
 })
 
@@ -342,6 +352,9 @@ describe('the doors of the machine', () => {
     const cleared = { ...out, run: { ...out.run!, cleared: ['hollow'] } }
     const done = play(
       cleared,
+      { type: 'GO', to: 'sanctuary' },
+      // The chapel is on the way out, and it is used on the way past.
+      { type: 'RITUAL_ROLL' },
       { type: 'GO', to: 'fork' },
       { type: 'GO', to: 'gate' },
     )
