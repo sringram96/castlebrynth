@@ -41,13 +41,25 @@ there is no path where a backdrop ends up above an enemy.
   Whole frames cost bytes and buy registration. `isScenePlate` in
   `src/render/assets.ts` is how the compositor tells the two apart, and it asks
   the art rather than content.
-- Runtime payload budget: **5.6 MB**. It is measured by
-  `test/unit/assets.test.ts` and printed by `npm run art`. It was 4 MB for nine
-  rooms, then 4.5 MB when the Reliquary and the Chain Vault cost 512 KB of
-  backdrop between them, and it is now 5.6 MB because the Warden became an
-  authored family. The comment on the test carries the measured numbers for
-  every raise. **Raising it again is a product decision**, and the headroom is
-  deliberately smaller than one backdrop so that it has to be.
+- **There is no runtime payload ceiling, and one is not to be reintroduced.**
+  There was: 4 MB for nine rooms, 4.5 MB when the Reliquary and the Chain Vault
+  cost 512 KB of backdrop between them, 5.6 MB when the Warden became an
+  authored family. Every raise was preceded by a measured compression trial and
+  every trial reached the same answer — the banding cost more in the picture
+  than the bytes were worth — which is a ceiling that was only ever going to be
+  raised. The numbers are in git.
+
+  What holds instead is what `test/unit/assets.test.ts` already enforces
+  everywhere else: **an asset is validated, not budgeted.** The file exists, the
+  manifest's dimensions are true, whole-scene registration is consistent, an
+  enemy's plates are all present, an authored family is complete. None of that
+  can be satisfied by shipping a worse picture.
+
+  A room or an encounter is never rejected for having more frames than its
+  neighbours, and the generated map may not decline an authored place because of
+  what it weighs. If richer content ever makes loading uncomfortable, the answer
+  is on the loading side — per-room preload, next-room preload,
+  encounter-family preload, caching — never on the art's.
 
 Masters (1024×1536, 2–4 MB each) live in `docs/art-reference/masters/` and are
 never served.

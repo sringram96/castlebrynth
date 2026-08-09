@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-import { act, boot, dice, state } from './helpers.js'
+import { act, boot, dice, state, where } from './helpers.js'
 
 test.describe('dying, and coming back', () => {
   test('lethal damage lands on a death screen with one obvious way on', async ({ page }) => {
@@ -37,7 +37,8 @@ test.describe('dying, and coming back', () => {
 
     const now = await state(page)
     expect(now.mode).toBe('explore')
-    expect(now.run!.roomId).toBe('entry')
+    expect(now.run!.roomId).toBe(now.run!.map.start)
+    expect(await where(page)).toBe('entry')
     expect(now.run!.hp).toBeGreaterThan(1)
     expect(now.run!.relics).toEqual([])
     expect(now.run!.combat).toBeUndefined()

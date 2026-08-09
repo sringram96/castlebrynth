@@ -15,7 +15,7 @@ import { expect, test } from '@playwright/test'
 
 import type { Page } from '@playwright/test'
 
-import { act, boot, dice, screenName, state, tappable } from './helpers.js'
+import { act, boot, dice, screenName, state, tappable, where } from './helpers.js'
 
 /** Land the killing blow on a fight opened one point from over. */
 async function finishFight(page: Page): Promise<void> {
@@ -34,7 +34,7 @@ test.describe('what a win leaves behind', () => {
     expect(await screenName(page)).toBeNull()
     const now = await state(page)
     expect(now.mode).toBe('explore')
-    expect(now.run!.roomId).toBe('passage')
+    expect(await where(page)).toBe('passage')
     expect(now.run!.dice.every((d) => d === 'plain')).toBe(true)
     expect(now.run!.relics).toEqual([])
   })

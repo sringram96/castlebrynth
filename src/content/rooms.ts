@@ -1,14 +1,15 @@
 /**
- * The rooms, and the authored route through them.
+ * The room library: every authored place, and nothing about the route.
  *
- * There is no generator. The slice is an explicit ten-node graph, because a
- * hand-authored route is trivially inspectable and the interesting question —
- * *is this fun on a second run?* — is not answered by procedure.
+ * There is no generator here and there is no graph here. Each entry answers
+ * four questions in data — what is shown, what the eye should find, what else
+ * can be tapped, and what occupies the room — and one further question it used
+ * to answer is now conspicuously missing: **where does this lead**. That is the
+ * generated map's, in `src/game/map.ts`, and a template that named a
+ * destination would put the descent back inside the content library.
  *
- * Every room answers five questions in data: what is shown, what the eye
- * should find, what else can be tapped, where the exits go, and what occupies
- * the room. A room may never require the player to find a hidden thing in
- * order to leave.
+ * A room may never require the player to find a hidden thing in order to
+ * leave.
  *
  * Three kinds of thing can occupy a room, and they are different in what they
  * withhold. An **enemy** and a **ritual** each hold the exits shut until they
@@ -18,103 +19,39 @@
  * the room's own business: the Reliquary's four never do, and the Chain Vault's
  * do until its gate is up. `exitsOpen` in `content/interactions.ts` is the one
  * statement of that, and the reducer's `GO` is what enforces it.
+ *
+ * The vocabulary — role, territory, composition, topology — is in
+ * `roomTypes.ts`, and the reason each of the ten below is classified the way
+ * it is is written beside it.
  */
 
-export interface Detail {
-  readonly id: string
-  /** What the tap says. Leads with the plain noun. */
-  readonly says: string
-  /** Where the hit region sits, in fractions of the world box. */
-  readonly at: { readonly x: number; readonly y: number }
-  /** Whether this is the one thing the eye should find. */
-  readonly focal?: boolean
-}
+import type { RoomTemplate } from './roomTypes.js'
 
-export interface Exit {
-  /** Two words or fewer — it goes on a button. */
-  readonly label: string
-  readonly to: string
-  /** One line, given before the press, so a fork is a decision. */
-  readonly sense: string
-}
+export type {
+  Composition,
+  Detail,
+  Interactable,
+  Ritual,
+  RoomRole,
+  RoomTemplate,
+  RoomTopology,
+  Territory,
+  ThreatBand,
+} from './roomTypes.js'
 
-/**
- * The one thing in the room that is pressed rather than looked at.
- *
- * A detail answers and moves nothing. A ritual *commits*: the reducer rolls,
- * the run changes, and the room records what it gave. Like an enemy, it holds
- * the exits shut until it is resolved — which is why it is content rather than
- * a class the view could forget to apply.
- */
-export interface Ritual {
-  /** The prop's art family. Its frames are `<art>.idle` and `<art>.1`–`.6`. */
-  readonly art: string
-  /** The name of the thing, for the well. */
-  readonly name: string
-  /** What the press says. Two words or fewer — it goes on a button. */
-  readonly label: string
-  readonly describe: string
-  /** Where the object sits, in fractions of the world box. */
-  readonly at: { readonly x: number; readonly y: number }
-  /** What the well says before it is used. */
-  readonly prompt: string
-}
+/** One way in, one way on. The shape most corridors have. */
+const THROUGH = { minEntrances: 1, maxEntrances: 1, minExits: 1, maxExits: 1 } as const
 
-/**
- * One object in a room that can be worked, and remembers being worked.
- *
- * The third kind of thing in a room, and the one the slice was missing. A
- * `Detail` answers and moves nothing. A `Ritual` commits once and holds the
- * exits shut until it has. An interactable is neither: it has a **position of
- * its own** that survives a reload, several of them can stand in one room, and
- * what any of them will do depends on where the others are standing.
- *
- * What is here is only what does not change: the id the reducer switches on,
- * the art family, and where the object sits. Everything that *does* change —
- * the verb on the button, whether there is a button at all, which frame is up —
- * is a function of state and lives in `content/interactions.ts`, because a
- * label baked in here would be a second place the room's rules were written.
- */
-export interface Interactable {
-  /** What `INTERACT` carries. Unique across the game, not just the room. */
-  readonly id: string
-  /** The prop's art family. Its frames are `<art>.<frame>`. */
-  readonly art: string
-  /** Where the object sits, in fractions of the world box. */
-  readonly at: { readonly x: number; readonly y: number }
-  /**
-   * Default action copy, for the accessible name.
-   *
-   * The starting verb only. A thing whose verb changes with its state resolves
-   * it through `actionFor`, and this is what it says before anything has
-   * happened to it.
-   */
-  readonly describe: string
-}
-
-export interface Room {
-  readonly id: string
-  readonly name: string
-  /** The backdrop asset id. Every room has one; it is validated. */
-  readonly art: string
-  /** The line on arrival. */
-  readonly arrival: string
-  readonly details: readonly Detail[]
-  readonly exits: readonly Exit[]
-  /** An enemy that must be beaten before the exits open. */
-  readonly enemy?: string
-  /** A thing that must be used before the exits open. */
-  readonly ritual?: Ritual
-  /** Objects that can be worked, and remember it. */
-  readonly interactables?: readonly Interactable[]
-  /** The run ends here, and it ends well. */
-  readonly ending?: 'escaped'
-}
-
-export const ROOMS: Readonly<Record<string, Room>> = {
+export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
   entry: {
     id: 'entry',
     name: 'The Long Hall',
+    // The way in. Nothing arrives here, and it was painted as a hall receding
+    // to a door with no light behind it — a long axis, and the first one.
+    role: 'entrance',
+    territory: 'threshold',
+    composition: 'long-axis',
+    tags: [],
     art: 'entry',
     arrival: 'The stair ends in a long hall. Fresh candles are burning down here.',
     details: [
@@ -135,12 +72,18 @@ export const ROOMS: Readonly<Record<string, Room>> = {
         says: 'The hall keeps going. There is a door at the end of it and no light behind it.',
       },
     ],
-    exits: [{ label: 'GO ON', to: 'passage', sense: 'The hall continues to a dark archway.' }],
+    topology: { minEntrances: 0, maxEntrances: 0, minExits: 1, maxExits: 1 },
   },
 
   passage: {
     id: 'passage',
     name: 'The Choir',
+    // It narrows. That is the whole of the picture, and it is why nothing can
+    // be staged in it: there is no room in the frame for a thing to stand.
+    role: 'transition',
+    territory: 'ossuary',
+    composition: 'cramped',
+    tags: [],
     art: 'choir',
     arrival: 'The hall narrows under an arch of skulls. Something has passed through here recently.',
     details: [
@@ -156,14 +99,20 @@ export const ROOMS: Readonly<Record<string, Room>> = {
         says: 'A step, worn down the middle. Whatever uses this passage uses it often.',
       },
     ],
-    exits: [{ label: 'GO ON', to: 'hollow', sense: 'Something is breathing in the room ahead.' }],
+    topology: THROUGH,
   },
 
   hollow: {
     id: 'hollow',
     name: 'The Hollow',
     // The one room painted around its encounter: a long hall with the far end
-    // still visible, because the whole fight is how much of it is left.
+    // still visible, because the whole fight is how much of it is left. Which
+    // is exactly what `closing-horror` means — a thing may be placed here only
+    // if the picture can show it coming.
+    role: 'encounter',
+    territory: 'ossuary',
+    composition: 'long-axis',
+    tags: [],
     art: 'hall',
     arrival: 'The Gnawing is at the far end of the hall. Too many eyes. All of them are on me.',
     details: [
@@ -173,18 +122,25 @@ export const ROOMS: Readonly<Record<string, Room>> = {
         says: 'Niches, packed with skulls. Hundreds. This is where the hall was leading.',
       },
     ],
+    encounterTags: ['closing-horror'],
+    threat: 'low',
     enemy: 'gnawing',
-    exits: [{ label: 'GO ON', to: 'sanctuary', sense: 'The body is down. The corridor continues behind it.' }],
+    topology: THROUGH,
   },
 
   sanctuary: {
     id: 'sanctuary',
     name: 'The Font',
     art: 'sanctuary',
-    // The one room in the slice that gives something back. It sits between the
-    // first fight and the fork on purpose: the decision at the fork is *how
-    // much health am I willing to spend*, and it is a real decision only if
-    // the player knows how much health they have to spend.
+    // The one room in the slice that gives something back. The director puts it
+    // between the first fight and the fork on purpose: the decision at the fork
+    // is *how much health am I willing to spend*, and it is a real decision only
+    // if the player knows how much health they have to spend. That ordering is
+    // the plan's, in `content/runPlans.ts`, and no longer this room's.
+    role: 'recovery',
+    territory: 'chapel',
+    composition: 'altar',
+    tags: [],
     arrival: 'The hall opens into a chapel. The basin is full. Something turns beneath the surface.',
     details: [
       {
@@ -212,7 +168,7 @@ export const ROOMS: Readonly<Record<string, Room>> = {
       // die and every relic in the game is held to.
       prompt: 'A basin, filled to the lip, with a die turning under the surface. It gives back a share of what I have already lost. The higher it lands, the bigger the share.',
     },
-    exits: [{ label: 'GO ON', to: 'reliquary', sense: 'The chapel opens onto a dead one.' }],
+    topology: THROUGH,
   },
 
   /**
@@ -223,6 +179,11 @@ export const ROOMS: Readonly<Record<string, Room>> = {
    * read, leave*, and the fix for that is not another thing the player is made
    * to do — it is a thing they may choose to work out. GO ON is on screen from
    * the first frame and never leaves.
+   *
+   * Its role is `find` and `worked` is a tag, because what it *is* is the room
+   * that pays, and how it pays is by being worked. A plan that wants a paying
+   * room asks for `find`; a plan that wants a room with machinery in it asks
+   * for the tag.
    *
    * The order is bell, dark, mechanism, and it is learnable without a guess:
    * the three marks cut beside the altar's handle say it in the order they have
@@ -239,6 +200,10 @@ export const ROOMS: Readonly<Record<string, Room>> = {
   reliquary: {
     id: 'reliquary',
     name: 'The Reliquary',
+    role: 'find',
+    territory: 'chapel',
+    composition: 'altar',
+    tags: ['worked', 'optional'],
     art: 'reliquary',
     arrival: 'A dead chapel. A bell hangs over an altar. Candles burn beside a locked chest.',
     details: [
@@ -303,12 +268,18 @@ export const ROOMS: Readonly<Record<string, Room>> = {
         describe: 'Take what is inside the reliquary',
       },
     ],
-    exits: [{ label: 'GO ON', to: 'fork', sense: 'The chapel gives onto the passage again.' }],
+    topology: THROUGH,
   },
 
   fork: {
     id: 'fork',
     name: 'The Split',
+    // Two ways on, and the picture was painted with the passage dividing in
+    // front of you — so `maxExits` is 2 and it is a fact about the art.
+    role: 'junction',
+    territory: 'chapel',
+    composition: 'junction',
+    tags: [],
     art: 'shrine',
     arrival: 'The passage splits. The stair goes straight to the door. The deeper tunnel is warmer, louder, and optional.',
     details: [
@@ -324,14 +295,7 @@ export const ROOMS: Readonly<Record<string, Room>> = {
         says: 'Scratches on the stone. Counting something. They stop at nine.',
       },
     ],
-    exits: [
-      { label: 'STAIR', to: 'gate', sense: 'Shorter route to the door.' },
-      {
-        label: 'DEEP',
-        to: 'chain-vault',
-        sense: 'One more fight. More danger, better chance of an upgrade.',
-      },
-    ],
+    topology: { minEntrances: 1, maxEntrances: 1, minExits: 2, maxExits: 2 },
   },
 
   /**
@@ -341,7 +305,8 @@ export const ROOMS: Readonly<Record<string, Room>> = {
    * the opposite way: there is no way out until the gate is up, and getting it
    * wrong costs blood. It is the toll on the deep route, paid before the fight
    * rather than during it, and it is the first place in the slice where a room
-   * itself can kill you.
+   * itself can kill you. `toll` is what that is, and `worked` and `mandatory`
+   * are how it does it.
    *
    * It is still not a guessing game. The wall panel draws the rule in two
    * pictures — a weight falling, then a gate lifting — and the lever's own line
@@ -350,6 +315,12 @@ export const ROOMS: Readonly<Record<string, Room>> = {
   'chain-vault': {
     id: 'chain-vault',
     name: 'The Chain Vault',
+    role: 'toll',
+    territory: 'deep',
+    // A cage on a chain over a plate in the floor: the whole mechanism runs up
+    // and down, and there is no depth in the frame for anything to stand in.
+    composition: 'vertical',
+    tags: ['worked', 'mandatory'],
     art: 'chain-vault',
     arrival: 'The deeper passage ends at an iron gate. A cage hangs over a stone plate.',
     // Measured against the backdrop rather than guessed: the vault was painted
@@ -391,12 +362,19 @@ export const ROOMS: Readonly<Record<string, Room>> = {
       { id: 'vault-chain', art: 'chain', at: { x: 0.81, y: 0.28 }, describe: 'Lower the hanging cage' },
       { id: 'vault-lever', art: 'lever', at: { x: 0.19, y: 0.51 }, describe: 'Pull the iron lever' },
     ],
-    exits: [{ label: 'GO ON', to: 'deep', sense: 'The gate is up. The tunnel goes on.' }],
+    topology: THROUGH,
   },
 
   deep: {
     id: 'deep',
     name: 'The Deep Way',
+    // A tunnel with a thing standing in it. There is no far end in frame, so
+    // nothing that closes the distance can be staged here — only something that
+    // stands and trades.
+    role: 'encounter',
+    territory: 'deep',
+    composition: 'cramped',
+    tags: [],
     art: 'deep',
     arrival: 'The Marrow rises in the tunnel. It is between me and the way back to the door.',
     details: [
@@ -406,13 +384,21 @@ export const ROOMS: Readonly<Record<string, Room>> = {
         says: 'Roots, or something like them, coming through the wall. They are warm.',
       },
     ],
+    encounterTags: ['standing-horror'],
+    threat: 'medium',
     enemy: 'marrow',
-    exits: [{ label: 'GO ON', to: 'gate', sense: 'This tunnel rejoins the path to the door.' }],
+    topology: THROUGH,
   },
 
   gate: {
     id: 'gate',
     name: 'The Door',
+    // The keeper's room, and the one place two ways in converge — the stair and
+    // the deep tunnel both arrive here, so `maxEntrances` is 2.
+    role: 'keeper',
+    territory: 'threshold',
+    composition: 'duel',
+    tags: [],
     art: 'gate',
     arrival: 'The Warden stands in front of the exit door. There is no way through while it is alive.',
     details: [
@@ -422,25 +408,40 @@ export const ROOMS: Readonly<Record<string, Room>> = {
         says: 'A plate on the wall. REPENT OR PERISH. Someone had opinions.',
       },
     ],
+    encounterTags: ['duel-stander'],
+    threat: 'keeper',
     enemy: 'warden',
-    exits: [{ label: 'THROUGH', to: 'exit', sense: 'The door is open.' }],
+    topology: { minEntrances: 1, maxEntrances: 2, minExits: 1, maxExits: 1 },
   },
 
   exit: {
     id: 'exit',
     name: 'Out',
+    role: 'exit',
+    territory: 'threshold',
+    composition: 'threshold',
+    tags: [],
     art: 'brazier',
     arrival: 'Cold air. Open space. I made it out with what I was carrying.',
     details: [],
-    exits: [],
+    topology: { minEntrances: 1, maxEntrances: 1, minExits: 0, maxExits: 0 },
     ending: 'escaped',
   },
 }
 
-export const FIRST_ROOM = 'entry'
+/** Every authored place, in declaration order. The resolver's whole world. */
+export const ROOM_LIBRARY: readonly RoomTemplate[] = Object.values(ROOM_TEMPLATES)
 
-export function room(id: string): Room {
-  const found = ROOMS[id]
-  if (!found) throw new Error(`no such room: ${id}`)
+/**
+ * One authored place, by id.
+ *
+ * Note what this is *not*: a room the run is standing in. That question is
+ * `roomAt(run)` in `src/game/map.ts`, which joins the generated node onto this.
+ * A call to `template()` with `run.roomId` is a bug — those are node ids now —
+ * and there is nothing here that would notice.
+ */
+export function template(id: string): RoomTemplate {
+  const found = ROOM_TEMPLATES[id]
+  if (!found) throw new Error(`no such room template: ${id}`)
   return found
 }

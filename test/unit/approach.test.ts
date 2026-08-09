@@ -25,16 +25,14 @@ import type { Reach } from '../../src/content/enemies.js'
 import { resolve } from '../../src/combat/resolve.js'
 import { load, save } from '../../src/game/save.js'
 import { applyFixture } from '../../src/game/fixture.js'
+import { standIn } from './where.js'
 
 const play = (state: GameState, ...actions: Action[]): GameState =>
   actions.reduce((s, a) => reduce(s, a), state)
 
 /** Standing in the room with it, having pressed nothing. */
-const inTheHall = (seed = 1): GameState => {
-  const started = reduce(TITLE, { type: 'START_RUN', seed })
-  const run = started.run!
-  return { ...started, run: { ...run, roomId: 'hollow', path: [...run.path, 'hollow'] } }
-}
+const inTheHall = (seed = 1): GameState =>
+  standIn(reduce(TITLE, { type: 'START_RUN', seed }), 'hollow')
 
 const opened = (seed = 1): GameState => reduce(inTheHall(seed), { type: 'FIGHT' })
 
@@ -90,11 +88,7 @@ describe('where it is standing', () => {
 
   it('is only a thing about enemies that have one', () => {
     const started = reduce(TITLE, { type: 'START_RUN', seed: 1 })
-    const run = started.run!
-    const standing = reduce(
-      { ...started, run: { ...run, roomId: 'deep', path: [...run.path, 'deep'] } },
-      { type: 'FIGHT' },
-    )
+    const standing = reduce(standIn(started, 'deep'), { type: 'FIGHT' })
     expect(standing.run!.combat!.approach).toBeUndefined()
     expect(enemy('marrow').approach).toBeUndefined()
     expect(enemy('warden').approach).toBeUndefined()
@@ -196,7 +190,7 @@ describe('a dead thing does not take a step', () => {
       const after = reduce(dying, { type: 'DEFEAT_DONE' })
       expect(after.mode).not.toBe('dead')
       expect(after.run!.hp).toBe(MAX_HP)
-      expect(after.run!.cleared).toContain('hollow')
+      expect(after.run!.cleared).toContain(after.run!.roomId)
     })
   }
 

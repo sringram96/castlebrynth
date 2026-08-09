@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-import { act, boot, dice, screenName, state, toFirstFight } from './helpers.js'
+import { act, boot, dice, screenName, state, toFirstFight, wayTo } from './helpers.js'
 import { fightItOut } from './play.js'
 
 test.describe('the first run', () => {
@@ -205,7 +205,7 @@ test.describe('the first run', () => {
 
     await act(page, 'go').click()
     await expect(page.locator('#say')).toContainText('The passage splits')
-    await page.locator('[data-to="chain-vault"]').click() // the long way round, on purpose
+    await (await wayTo(page, 'chain-vault')).click() // the long way round, on purpose
 
     // And the vault, which asks for everything. There is no way on until the
     // gate is up, so the journey has to work it — cage onto the plate, then

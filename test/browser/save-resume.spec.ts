@@ -8,7 +8,7 @@
 
 import { expect, test } from '@playwright/test'
 
-import { act, boot, dice, state } from './helpers.js'
+import { act, boot, dice, state, where } from './helpers.js'
 
 test.describe('saving and resuming', () => {
   test('a reload mid-explore comes back to the same room', async ({ page }) => {
@@ -86,7 +86,8 @@ test.describe('saving and resuming', () => {
     await expect(act(page, 'continue')).toHaveCount(0)
     await act(page, 'start').click()
     const now = await state(page)
-    expect(now.run!.roomId).toBe('entry')
+    expect(now.run!.roomId).toBe(now.run!.map.start)
+    expect(await where(page)).toBe('entry')
     expect(now.run!.dice).toHaveLength(6)
   })
 })

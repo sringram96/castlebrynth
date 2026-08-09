@@ -7,7 +7,10 @@
  * old build ended up with a death screen nobody had ever automated.
  *
  *   ?seed=7                  a known run
- *   ?room=gate               start standing somewhere else
+ *   ?room=gate               stand in the first room of the run built from
+ *                            that authored template
+ *   ?node=n8                 stand in one exact room of the generated map,
+ *                            for when a template is used more than once
  *   ?hp=4                    hurt
  *   ?enemyHp=1               a fight one blow from over
  *   ?turn=2                  the fight standing on a chosen turn of the script
@@ -31,7 +34,7 @@
 import { HAND_SIZE } from '../content/dice.js'
 import { REACHES, turnAt } from '../content/enemies.js'
 import type { Reach } from '../content/enemies.js'
-import { ROOMS, room } from '../content/rooms.js'
+import { firstNodeOf, roomAt } from './map.js'
 import { MAX_HP, newRun, reduce } from './reducer.js'
 import type { Action } from './reducer.js'
 import { SAVE_VERSION } from './state.js'
@@ -56,6 +59,7 @@ export function hasFixture(search: string): boolean {
   return [
     'seed',
     'room',
+    'node',
     'hp',
     'enemyHp',
     'turn',
@@ -77,9 +81,23 @@ export function applyFixture(base: GameState, search: string): GameState {
   let state: GameState = reduce({ ...base, mode: 'title' }, { type: 'START_RUN', seed })
   let run = state.run ?? newRun(seed)
 
-  const roomId = p.get('room')
-  if (roomId && ROOMS[roomId]) {
-    run = { ...run, roomId, path: [...run.path, roomId], say: room(roomId).arrival, looked: [] }
+  // Standing somewhere else in *this run's map*.
+  //
+  // `?room=` names an authored template and lands on the first node of the
+  // descent that used it — which is the convenience that has always been
+  // wanted, and stays unambiguous while a template appears once. `?node=`
+  // names one exact room, and is the answer when it does not: a fixture that
+  // silently picked one of two Reliquaries would be worse than no fixture.
+  const wantedNode = p.get('node')
+  const wantedTemplate = p.get('room')
+  const node = wantedNode
+    ? run.map.nodes[wantedNode]
+    : wantedTemplate
+      ? firstNodeOf(run.map, wantedTemplate)
+      : undefined
+  if (node) {
+    run = { ...run, roomId: node.id, path: [...run.path, node.id], looked: [] }
+    run = { ...run, say: roomAt(run).arrival }
   }
 
   const dice = list(p.get('dice'))
@@ -102,7 +120,7 @@ export function applyFixture(base: GameState, search: string): GameState {
   // lever fixture below only opens the chest because the bell and the brazier
   // were genuinely dealt with first, in that order.
   const stage = p.get('reliquary')
-  if (stage && run.roomId === 'reliquary') {
+  if (stage && roomAt(run).id === 'reliquary') {
     const press = (id: string): void => {
       state = reduce({ version: SAVE_VERSION, mode: 'explore', meta: state.meta, run }, {
         type: 'INTERACT',
@@ -119,7 +137,7 @@ export function applyFixture(base: GameState, search: string): GameState {
   }
 
   const vault = p.get('vault')
-  if (vault && run.roomId === 'chain-vault') {
+  if (vault && roomAt(run).id === 'chain-vault') {
     const press = (id: string): void => {
       state = reduce({ version: SAVE_VERSION, mode: 'explore', meta: state.meta, run }, {
         type: 'INTERACT',
@@ -143,7 +161,7 @@ export function applyFixture(base: GameState, search: string): GameState {
   // the real reducer — so this is the state a save holds if the tab is closed
   // in the two-thirds of a second between the blow and the win, and there is
   // no way for it to be a state the game could not produce.
-  if (p.has('dying') && room(run.roomId).enemy) {
+  if (p.has('dying') && roomAt(run).enemy) {
     const rolled = play(state, { type: 'FIGHT' }, { type: 'ROLL' }, { type: 'SELECT', slot: 0 })
     const combat = rolled.run!.combat!
     const doomed = { ...rolled, run: { ...rolled.run!, combat: { ...combat, enemyHp: 1 } } }
@@ -152,7 +170,7 @@ export function applyFixture(base: GameState, search: string): GameState {
 
   if (
     (mode === 'combat' || p.has('enemyHp') || p.has('turn') || p.has('reach')) &&
-    room(run.roomId).enemy
+    roomAt(run).enemy
   ) {
     state = reduce(state, { type: 'FIGHT' })
     const enemyHp = num(p.get('enemyHp'))

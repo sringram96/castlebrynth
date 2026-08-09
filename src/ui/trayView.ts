@@ -31,7 +31,7 @@ import { preview } from '../combat/scoring.js'
 import { selectionOf } from '../combat/resolve.js'
 import { relic as relicById } from '../content/relics.js'
 import { enemy as enemyById } from '../content/enemies.js'
-import { room as roomById } from '../content/rooms.js'
+import { roomAt } from '../game/map.js'
 import { exitsOpen, stateOf } from '../content/interactions.js'
 import type { GameState } from '../game/state.js'
 import { button, dieButton, el, faceGlyph, place, relicButton, seat, seatBed } from './components.js'
@@ -280,7 +280,7 @@ function renderWell(tray: Tray, state: GameState, on: TrayHandlers): void {
   // Out of a fight the well carries the decision, not the prose. What was
   // looked at is already in the word band over the world; repeating it here
   // would spend the one region that can make a fork legible.
-  const here = roomById(run.roomId)
+  const here = roomAt(run)
 
   if (here.enemy && !run.cleared.includes(run.roomId)) {
     const e = enemyById(here.enemy)
@@ -305,7 +305,7 @@ function renderWell(tray: Tray, state: GameState, on: TrayHandlers): void {
 
   // A shut room says what it is waiting for, exactly as an unresolved font
   // does — the exits are not offered, so the well has to carry the reason.
-  if (!exitsOpen(stateOf(run.rooms, run.roomId))) {
+  if (!exitsOpen(stateOf(run.rooms, run.roomId, here.id))) {
     const box = el('div', 'brief')
     box.append(el('span', 'brief-name', here.name))
     box.append(el('p', 'well-line', run.say))
@@ -389,7 +389,7 @@ function renderBeds(tray: Tray, state: GameState, on: TrayHandlers): void {
   }
 
   // Exploring. The room's enemy, if it is still up, is the only way on.
-  const here = roomById(run.roomId)
+  const here = roomAt(run)
   if (here.enemy && !run.cleared.includes(run.roomId)) {
     bed(1, button({ act: 'fight', label: VERBS.fight, onPress: on.onFight, className: 'act act-primary' }))
     return
@@ -404,8 +404,11 @@ function renderBeds(tray: Tray, state: GameState, on: TrayHandlers): void {
   // not down as a matter of styling: the reducer rejects `GO` while it is, so
   // offering the press would be offering a button that does nothing. One
   // statement — `exitsOpen` — answers for both of them.
-  if (!exitsOpen(stateOf(run.rooms, run.roomId))) return
+  if (!exitsOpen(stateOf(run.rooms, run.roomId, here.id))) return
 
+  // The map's exits, resolved through `roomAt`. The view renders what the
+  // reducer would accept and never constructs a destination of its own — a
+  // `to` here is a node id the map already holds.
   const exits = here.exits
   if (exits[0]) {
     const b = button({

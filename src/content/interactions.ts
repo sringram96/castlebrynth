@@ -92,22 +92,30 @@ export interface Beat {
  * carries only rooms that were touched, and there is exactly one statement
  * anywhere of how a room opens.
  */
-export function initialRoomState(roomId: string): RoomInteractionState | undefined {
-  if (roomId === 'reliquary') {
-    return { roomId, bellRung: false, brazier: 'lit', lever: 'up', chest: 'closed', claimed: false }
+export function initialRoomState(templateId: string): RoomInteractionState | undefined {
+  if (templateId === 'reliquary') {
+    return { templateId, bellRung: false, brazier: 'lit', lever: 'up', chest: 'closed', claimed: false }
   }
-  if (roomId === 'chain-vault') {
-    return { roomId, chain: 'off', cage: 'raised', pressurePlate: 'off', lever: 'up', gate: 'closed' }
+  if (templateId === 'chain-vault') {
+    return { templateId, chain: 'off', cage: 'raised', pressurePlate: 'off', lever: 'up', gate: 'closed' }
   }
   return undefined
 }
 
-/** The room's settled position: what was saved, or how the room opens. */
+/**
+ * The room's settled position: what was saved, or how the room opens.
+ *
+ * Two ids, and they are not the same question. `nodeId` says **which room** —
+ * it is the key a save is written under, so two uses of one template never
+ * share a chest. `templateId` says **what kind of room it is**, which is the
+ * only thing an opening position can be a function of.
+ */
 export function stateOf(
   rooms: Readonly<Record<string, RoomInteractionState>> | undefined,
-  roomId: string,
+  nodeId: string,
+  templateId: string,
 ): RoomInteractionState | undefined {
-  return rooms?.[roomId] ?? initialRoomState(roomId)
+  return rooms?.[nodeId] ?? initialRoomState(templateId)
 }
 
 /**
@@ -120,7 +128,7 @@ export function stateOf(
  * this does not. One table, both jobs, and they cannot drift apart.
  */
 export function actionFor(state: RoomInteractionState, id: string): InteractionAction | undefined {
-  if (state.roomId === 'reliquary') {
+  if (state.templateId === 'reliquary') {
     switch (id) {
       case 'reliquary-bell':
         // Once. It has already answered; a second ring is a press that means
@@ -178,7 +186,7 @@ export function exitsOpen(state: RoomInteractionState | undefined): boolean {
   if (!state) return true
   // The Reliquary is optional in the strongest sense: its puzzle has no bearing
   // on the way out at all.
-  if (state.roomId === 'reliquary') return true
+  if (state.templateId === 'reliquary') return true
   return state.gate === 'open'
 }
 
@@ -191,7 +199,7 @@ export function exitsOpen(state: RoomInteractionState | undefined): boolean {
  * property `## 16 settled rendering` is asking for.
  */
 export function platesFor(state: RoomInteractionState): readonly Plate[] {
-  if (state.roomId === 'reliquary') {
+  if (state.templateId === 'reliquary') {
     // Four objects, four portraits, and the order is back to front: the altar
     // is the hero on the floor, the bell hangs over it, and the candles and the
     // chest sit low on either side. None of them overlaps another, so the order
@@ -244,7 +252,7 @@ export function beatsFor(
 
   // The Reliquary's objects were delivered one plate each, so nothing in that
   // room changes drawing and it has no beats at all. What it has is `movesFor`.
-  if (before.roomId !== 'chain-vault' || after.roomId !== 'chain-vault') return beats
+  if (before.templateId !== 'chain-vault' || after.templateId !== 'chain-vault') return beats
 
   if (before.cage !== after.cage) {
     const lowering = after.cage === 'lowered'
@@ -309,7 +317,7 @@ export function movesFor(
   after: RoomInteractionState,
   _id: string,
 ): readonly Move[] {
-  if (before.roomId !== 'reliquary' || after.roomId !== 'reliquary') return []
+  if (before.templateId !== 'reliquary' || after.templateId !== 'reliquary') return []
   const moves: Move[] = []
   if (!before.bellRung && after.bellRung) moves.push({ id: 'reliquary-bell', move: 'swing', ms: 380 })
   if (before.lever !== after.lever) {
