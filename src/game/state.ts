@@ -16,7 +16,7 @@ import type { Reach } from '../content/enemies.js'
 import type { HandName } from '../combat/scoring.js'
 
 /** Bumped whenever the shape below changes. Old saves are not migrated. */
-export const SAVE_VERSION = 3
+export const SAVE_VERSION = 4
 
 export type Mode = 'title' | 'explore' | 'combat' | 'reward' | 'dead' | 'complete'
 
@@ -76,6 +76,29 @@ export interface CombatState {
   readonly log: readonly string[]
 }
 
+/** What a die in a font can land on. */
+export type RitualRoll = 1 | 2 | 3 | 4 | 5 | 6
+
+/**
+ * A ritual the run has already resolved.
+ *
+ * The authoritative record of one press: what it rolled, what that gave back,
+ * and what was missing at the moment it was rolled. It exists so the answer
+ * cannot be recomputed — a reload replays no draw, a second press finds the
+ * room already answered, and the sequence on screen is reading this rather
+ * than deciding anything.
+ *
+ * `missingBefore` is not needed to apply the heal; it is kept because it is
+ * the only thing that makes the number legible after the fact, and because a
+ * future ritual that recovers something other than health will want it.
+ */
+export interface RitualState {
+  readonly roomId: string
+  readonly roll: RitualRoll
+  readonly healed: number
+  readonly missingBefore: number
+}
+
 export interface RunState {
   readonly seed: number
   readonly roomId: string
@@ -93,6 +116,8 @@ export interface RunState {
   /** What the last press said. The word band reads this. */
   readonly say: string
   readonly combat?: CombatState
+  /** The ritual this run has resolved, and what it gave. */
+  readonly ritual?: RitualState
   /** The three things on offer, when `mode === 'reward'`. */
   readonly offer?: readonly string[]
   /** Why the run ended. */

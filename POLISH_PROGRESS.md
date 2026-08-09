@@ -362,3 +362,52 @@ pipeline entries went with them.
 never usable — each paints a mock tray across its bottom third, and the four
 are separate paintings of the corridor rather than one corridor with the
 creature moved — but they are the look that was being aimed at.
+
+---
+
+## The Font — the healing room between `hollow` and `fork`
+
+**Status: RESOLVED.** Nine plates were authored by a human and delivered. This
+entry stays as the record of what was asked for and what arrived.
+
+Raised by the wave that put a healing room in front of the fork. The rules, the
+state, the sequence and the tests were finished and green before any picture
+existed — the room was playable with an empty midground, because the verb is a
+button in the world, the result is in the word band and the health orb moves —
+and `docs/art-reference/masters/sanctuary/BRIEF.md` was written rather than
+anything being drawn.
+
+**What was asked for, and what arrived:** all nine, at 1024 × 1536 — the chapel
+with nothing standing in it, the chalice still, the instant the die comes out
+of the blood, and one plate per face.
+
+**Nothing was drawn, retouched, recoloured or repainted here.** `tools/art.mjs`
+keys each plate off the flat black field it was delivered on, downsamples, and
+writes the runtime plates. The masters are never served.
+
+**One thing the pipeline had to do that no previous set needed.** The chalice
+plates arrived as portraits of the object rather than as pictures of it
+standing in a chapel — filling their own frames, and not registered with each
+other: painted separately, the basin wanders up to 73 master-pixels vertically
+and 2.4% in size between frames, which at 480 wide is the room jumping every
+time the die changes face. So `buildSanctuary` measures each plate's base — the
+bottom 4% of its opaque mask, which is the plinth and the only feature all
+eight share — and scales and seats every one of them onto a single staged base,
+`SANCTUARY.stance`, in the scene's own fractions. That fixes the drift and
+decides the composition in the same arithmetic, and it is the only place either
+is decided. Measurement and placement, which is what code is for; the pixels
+are untouched, and the numbers are printed on every run.
+
+**What the room gained by waiting:** the chapel is a painting of the place the
+font was designed for, and the die's face is readable off the art — so the word
+band names the result rather than being the only place it exists.
+
+The midground layer — reserved since the reset and unused — is now doing the
+job it was reserved for, and `showProp`/`hideProp` are the whole of its API.
+
+Runtime art went from 3.15 MB to 3.75 MB against the 4 MB cap: 256 KB for the
+chapel and 284 KB for the eight plates. Staging the basin down paid for itself
+twice over — a plate costs almost exactly its opaque area, and the set was
+82–89 KB a frame at delivered size against 37–48 KB staged — so the composition
+decision and the budget decision turned out to be the same decision. The brief
+carries the arithmetic.

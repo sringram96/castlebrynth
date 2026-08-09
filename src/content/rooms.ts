@@ -29,6 +29,28 @@ export interface Exit {
   readonly sense: string
 }
 
+/**
+ * The one thing in the room that is pressed rather than looked at.
+ *
+ * A detail answers and moves nothing. A ritual *commits*: the reducer rolls,
+ * the run changes, and the room records what it gave. Like an enemy, it holds
+ * the exits shut until it is resolved — which is why it is content rather than
+ * a class the view could forget to apply.
+ */
+export interface Ritual {
+  /** The prop's art family. Its frames are `<art>.idle` and `<art>.1`–`.6`. */
+  readonly art: string
+  /** The name of the thing, for the well. */
+  readonly name: string
+  /** What the press says. Two words or fewer — it goes on a button. */
+  readonly label: string
+  readonly describe: string
+  /** Where the object sits, in fractions of the world box. */
+  readonly at: { readonly x: number; readonly y: number }
+  /** What the well says before it is used. */
+  readonly prompt: string
+}
+
 export interface Room {
   readonly id: string
   readonly name: string
@@ -40,6 +62,8 @@ export interface Room {
   readonly exits: readonly Exit[]
   /** An enemy that must be beaten before the exits open. */
   readonly enemy?: string
+  /** A thing that must be used before the exits open. */
+  readonly ritual?: Ritual
   /** The run ends here, and it ends well. */
   readonly ending?: 'escaped'
 }
@@ -107,7 +131,45 @@ export const ROOMS: Readonly<Record<string, Room>> = {
       },
     ],
     enemy: 'gnawing',
-    exits: [{ label: 'GO ON', to: 'fork', sense: 'The body is down. The corridor continues behind it.' }],
+    exits: [{ label: 'GO ON', to: 'sanctuary', sense: 'The body is down. The corridor continues behind it.' }],
+  },
+
+  sanctuary: {
+    id: 'sanctuary',
+    name: 'The Font',
+    art: 'sanctuary',
+    // The one room in the slice that gives something back. It sits between the
+    // first fight and the fork on purpose: the decision at the fork is *how
+    // much health am I willing to spend*, and it is a real decision only if
+    // the player knows how much health they have to spend.
+    arrival: 'The hall opens into a chapel. The basin is full. Something turns beneath the surface.',
+    details: [
+      {
+        id: 'candles',
+        at: { x: 0.16, y: 0.62 },
+        says: 'Candles down both walls, lit and level. Somebody comes down here and keeps them.',
+      },
+      {
+        id: 'niches',
+        at: { x: 0.84, y: 0.4 },
+        says: 'Skulls, shelf on shelf, back into the dark. Every one of them is facing the basin.',
+      },
+    ],
+    ritual: {
+      art: 'chalice',
+      name: 'The Font',
+      label: 'ROLL',
+      describe: 'Roll the die in the font',
+      // On the bowl itself, not on the altar behind it. Measured against the
+      // staged plate: `SANCTUARY.stance` in `tools/art.mjs` stands the basin
+      // with its base at 0.9 of the scene, which puts the blood and the carved
+      // skull under the middle of this.
+      at: { x: 0.5, y: 0.68 },
+      // What it does, in numbers, before the press — the same contract every
+      // die and every relic in the game is held to.
+      prompt: 'A basin, filled to the lip, with a die turning under the surface. It gives back a share of what I have already lost. The higher it lands, the bigger the share.',
+    },
+    exits: [{ label: 'GO ON', to: 'fork', sense: 'The chapel opens onto the passage again.' }],
   },
 
   fork: {

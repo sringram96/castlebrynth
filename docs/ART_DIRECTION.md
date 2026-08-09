@@ -23,7 +23,7 @@ there is no path where a backdrop ends up above an enemy.
 | # | Layer | What it holds |
 | --- | --- | --- |
 | 0 | `backdrop` | the opaque room image |
-| 1 | `midground` | architecture and prop cutouts (unused in the slice) |
+| 1 | `midground` | the room's **prop**: the one object that is pressed |
 | 2 | `enemy` | **mandatory in combat** |
 | 3 | `foreground` | the player's own arm, and occluders |
 | 4 | `fx` | hit flash, shake, damage numbers, vignette |
@@ -67,6 +67,16 @@ Poses are named `<art>.<pose>` in the manifest. A thing that closes carries one
 per reach plus one for the instant it is struck; because a source swap changes
 no placement, an impact plate is only shown where its box matches the plate it
 replaces.
+
+**Props are the same idea with the opposite constraint.** A room's focal object
+— the font's chalice is the first — is keyed `<art>.<frame>` and every frame is
+a **whole scene plate** at 480 × 720 rather than a trimmed sprite. The
+midground cover-fits them exactly as the backdrop is cover-fitted, so the
+object sits where it was painted at every viewport with no coordinate anywhere.
+That is what lets eight frames pass through one element during a throw without
+the object moving by a pixel; a trimmed plate is registered by its own
+silhouette, and a die climbing out of a basin changes that silhouette every
+frame.
 
 ## Content validation
 

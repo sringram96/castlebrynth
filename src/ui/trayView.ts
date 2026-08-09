@@ -282,6 +282,18 @@ function renderWell(tray: Tray, state: GameState, on: TrayHandlers): void {
     return
   }
 
+  // A room whose ritual is unresolved reads exactly as a room whose enemy is
+  // still up: the thing in the middle of it, named, and what it will do. The
+  // press is on the object in the world, so the well never carries the verb —
+  // it carries the reason to want it.
+  if (here.ritual && run.ritual?.roomId !== run.roomId) {
+    const box = el('div', 'brief')
+    box.append(el('span', 'brief-name', here.ritual.name))
+    box.append(el('p', 'well-line', here.ritual.prompt))
+    tray.well.append(box)
+    return
+  }
+
   // Each way on, and what it smells like. This is the whole of the fork.
   const routes = el('div', 'routes')
   for (const exit of here.exits) {
@@ -359,6 +371,11 @@ function renderBeds(tray: Tray, state: GameState, on: TrayHandlers): void {
     bed(1, button({ act: 'fight', label: VERBS.fight, onPress: on.onFight, className: 'act act-primary' }))
     return
   }
+
+  // The same for a font that has not been used. There is no way on yet — the
+  // reducer will not grant one — so no way on is offered. The one thing to do
+  // is the object in the world, which is where the press is.
+  if (here.ritual && run.ritual?.roomId !== run.roomId) return
 
   const exits = here.exits
   if (exits[0]) {

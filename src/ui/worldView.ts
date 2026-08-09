@@ -6,9 +6,9 @@
  * visible before any combat control appears.
  */
 
-import { hideEnemy, holdWeapon, placeEnemy } from '../render/compositor.js'
+import { hideEnemy, hideProp, holdWeapon, placeEnemy, showProp } from '../render/compositor.js'
 import type { World } from '../render/compositor.js'
-import { enemyArt, handArt, roomArt, url } from '../render/assets.js'
+import { enemyArt, handArt, propArt, roomArt, url } from '../render/assets.js'
 import { REACHES, enemy as enemyById, intentAt, stanceAt } from '../content/enemies.js'
 import { room as roomById } from '../content/rooms.js'
 import type { GameState } from '../game/state.js'
@@ -17,6 +17,17 @@ import { button, el } from './components.js'
 export interface WorldHandlers {
   readonly onLook: (detailId: string) => void
   readonly onIntent: () => void
+  /** The room's focal object, pressed. The reducer decides what it gives. */
+  readonly onRitual: () => void
+}
+
+/**
+ * What the room's ritual has already given, if this is a room with one and it
+ * has been used. Every view below asks the same question of the same state.
+ */
+function resolvedRitual(state: GameState) {
+  const run = state.run!
+  return run.ritual?.roomId === run.roomId ? run.ritual : undefined
 }
 
 export function renderWorld(world: World, state: GameState, handlers: WorldHandlers): void {
@@ -24,6 +35,7 @@ export function renderWorld(world: World, state: GameState, handlers: WorldHandl
   if (!run) {
     world.backdrop.src = url(roomArt('threshold'))
     hideEnemy(world)
+    hideProp(world)
     world.hits.replaceChildren()
     world.hud.replaceChildren()
     return
@@ -59,6 +71,17 @@ export function renderWorld(world: World, state: GameState, handlers: WorldHandl
     hideEnemy(world)
   }
 
+  // The room's focal object, at the frame the *state* says it is on: the idle
+  // basin until the font has been used, and afterwards the face it landed on,
+  // for good. Nothing here remembers a frame and nothing here chooses one —
+  // which is why a reload shows the result rather than an unpressed room, and
+  // why the sequence that plays the throw cannot change what it lands on.
+  const ritual = here.ritual
+  const given = resolvedRitual(state)
+  const frame = ritual ? propArt(ritual.art, given ? String(given.roll) : 'idle') : undefined
+  if (frame) showProp(world, url(frame))
+  else hideProp(world)
+
   // The knife comes out for the thing in the room, not for the room. Both
   // plates are mounted here; which one shows is the sequence's business, and
   // the resting one is what a settled screen always lands on.
@@ -81,6 +104,24 @@ function renderHits(world: World, state: GameState, handlers: WorldHandlers): vo
   // Nothing in the world is tappable while a fight is on: the fight is the
   // room, and a stray detail tap during a turn is noise.
   if (state.mode !== 'explore') return
+
+  // The focal object first, and only while it still has something to give.
+  // It carries its verb where the thing itself is rather than in the tray,
+  // because *this basin* is what is being pressed — and once it has answered
+  // it stops being a control, exactly as a beaten enemy stops being a fight.
+  if (here.ritual && !resolvedRitual(state)) {
+    const b = button({
+      act: 'ritual',
+      label: here.ritual.label,
+      describe: here.ritual.describe,
+      onPress: handlers.onRitual,
+      className: 'hit hit-focal hit-ritual',
+    })
+    b.dataset['ritual'] = here.ritual.art
+    b.style.left = `${here.ritual.at.x * 100}%`
+    b.style.top = `${here.ritual.at.y * 100}%`
+    world.hits.append(b)
+  }
 
   for (const detail of here.details) {
     const b = button({

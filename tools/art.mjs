@@ -843,6 +843,215 @@ function buildCrawling() {
   return report
 }
 
+/**
+ * The Font: the chapel, and the die in the blood.
+ *
+ * The second authored set, built the way `BRIEF.md` in the masters folder
+ * describes and the way the Crawling One is built: the room arrives with
+ * nothing in it, and the basin arrives on a flat black field, once per frame.
+ * So the key is the same one — threshold, close, hole-fill, prune — with no
+ * seeds, no radial threshold and nothing set by eye.
+ *
+ * The one difference, and it is the whole reason props exist as a layer:
+ * **nothing here is trimmed.** Every frame stays the full scene, exactly as
+ * the hands do, and the compositor cover-fits it exactly as it cover-fits the
+ * backdrop. A trimmed plate is registered by its own silhouette, and this
+ * silhouette changes every frame — the die climbs out of the blood and turns —
+ * so trimming would walk the basin across the screen while the die tumbled.
+ * Whole frames cost bytes and buy the one property the room cannot do without.
+ */
+const SANCTUARY = {
+  master: 'docs/art-reference/masters/sanctuary/',
+  room: 'sanctuary.png',
+  /** `idle` and `emerge` are the states; `1`–`6` are what it can land on. */
+  frames: ['idle', 'emerge', '1', '2', '3', '4', '5', '6'],
+  file: (frame) => `chalice-${frame}.png`,
+  // The same two numbers as the Crawling One, and for the same reasons: the
+  // delivered field is flat 0 and the subject goes very dark in places, so the
+  // threshold is as low as it can be and the close puts back what falls
+  // through. See `keyBlack`.
+  black: 2,
+  close: 3,
+  /**
+   * Where the basin stands in the room, and how big it is.
+   *
+   * All three in the scene's own fractions, measured off the chapel: the
+   * flagstones in front of the altar steps run to about `foot`, and a font is
+   * a thing you could get both arms around rather than a thing the size of the
+   * nave. The master is a portrait — the object fills its whole frame — so
+   * without this the basin arrives four times the size of the room it is in.
+   *
+   * This is the only place the composition is decided. Every plate is scaled
+   * and seated by it, which is also what registers the eight with each other.
+   */
+  stance: { width: 0.3, at: 0.5, foot: 0.9 },
+  /** The same as everything else. Staged at 0.3 the set costs 284 KB. */
+  steps: 32,
+}
+
+/**
+ * Where a plate's subject stands, measured off its own base.
+ *
+ * The bottom band of the opaque mask and nothing else: for the font that is
+ * the plinth, which is the one feature every frame shares — the bowl fills and
+ * empties, the die climbs out of it, the splash throws pixels to one side, and
+ * through all of it the thing is standing on the same stone.
+ *
+ * Returns the base's centre, its width and the floor it stands on, in the
+ * plate's own pixels.
+ */
+function footprint(image, band = 0.04) {
+  const box = bounds(image)
+  if (!box) return null
+  const from = Math.max(box.y0, box.y1 - Math.round(image.height * band))
+  let x0 = image.width
+  let x1 = -1
+  for (let y = from; y <= box.y1; y++) {
+    for (let x = 0; x < image.width; x++) {
+      if (image.rgba[(y * image.width + x) * 4 + 3] === 0) continue
+      if (x < x0) x0 = x
+      if (x > x1) x1 = x
+    }
+  }
+  return { cx: (x0 + x1 + 1) / 2, bottom: box.y1 + 1, width: x1 - x0 + 1 }
+}
+
+/**
+ * Stand a plate's subject on a chosen spot, at a chosen size.
+ *
+ * Two jobs in one resample, because they are the same arithmetic:
+ *
+ *   1. **register the family.** The frames were painted separately, so the
+ *      basin drifts and changes size between them — and this room's whole
+ *      promise is that it does not move while the die tumbles. Measuring each
+ *      plate's own base and mapping it onto one shared base removes that.
+ *   2. **stage it.** How big the object is in the room is a composition
+ *      decision, and the master is a portrait of the thing rather than a
+ *      picture of it standing in a chapel. `stance` is that decision, in the
+ *      scene's own fractions, in one place.
+ *
+ * **Nothing is drawn, retouched or repainted.** The plate is measured, scaled
+ * and moved, which is what `CLAUDE.md` § *No art in the polish sweep* reserves
+ * to code: placement is the pipeline's job and the pixels are the painter's.
+ */
+function standOn(image, from, to, width, height) {
+  const scale = to.width / from.width
+  const scaled = resample(image, Math.round(image.width * scale), Math.round(image.height * scale))
+  const dx = Math.round(to.cx - from.cx * scale)
+  const dy = Math.round(to.bottom - from.bottom * scale)
+  const out = new Uint8Array(width * height * 4)
+  for (let y = 0; y < scaled.height; y++) {
+    const ty = y + dy
+    if (ty < 0 || ty >= height) continue
+    for (let x = 0; x < scaled.width; x++) {
+      const tx = x + dx
+      if (tx < 0 || tx >= width) continue
+      const s = (y * scaled.width + x) * 4
+      const d = (ty * width + tx) * 4
+      out[d] = scaled.rgba[s]
+      out[d + 1] = scaled.rgba[s + 1]
+      out[d + 2] = scaled.rgba[s + 2]
+      out[d + 3] = scaled.rgba[s + 3]
+    }
+  }
+  return { width, height, rgba: out }
+}
+
+/** The middle value. Robust to one frame having been painted a size out. */
+function median(values) {
+  const sorted = [...values].sort((a, b) => a - b)
+  const half = sorted.length >> 1
+  return sorted.length % 2 ? sorted[half] : (sorted[half - 1] + sorted[half]) / 2
+}
+
+function buildSanctuary() {
+  const dir = join(ROOT, SANCTUARY.master)
+  const room = join(dir, SANCTUARY.room)
+  const frames = SANCTUARY.frames.filter((f) => existsSync(join(dir, SANCTUARY.file(f))))
+
+  if (!existsSync(room) && frames.length === 0) {
+    console.log(
+      `\nsanctuary: no plates yet — ${SANCTUARY.master}BRIEF.md is what they have to be.\n` +
+        '           the room runs on a stand-in backdrop and no basin until they land.',
+    )
+    return []
+  }
+  if (frames.length > 0 && frames.length !== SANCTUARY.frames.length) {
+    // Half a family is worse than none: the missing frames would fall back to
+    // the idle basin, and the die would appear to vanish on those faces.
+    const missing = SANCTUARY.frames.filter((f) => !frames.includes(f))
+    throw new Error(`sanctuary is missing chalice frames: ${missing.join(', ')}`)
+  }
+
+  const report = []
+  if (existsSync(room)) {
+    const scene = posterise(
+      resample(
+        coverCrop(read(SANCTUARY.master + SANCTUARY.room), SCENE_WIDTH / SCENE_HEIGHT, 0.5),
+        SCENE_WIDTH,
+        SCENE_HEIGHT,
+      ),
+      32,
+    )
+    for (let i = 3; i < scene.rgba.length; i += 4) scene.rgba[i] = 255
+    report.push({
+      id: 'room.sanctuary',
+      path: write('rooms/sanctuary.png', scene),
+      width: SCENE_WIDTH,
+      height: SCENE_HEIGHT,
+    })
+  }
+
+  // Key every frame first, at the master's own resolution, and measure where
+  // each one is standing. Nothing is written until all eight have been read,
+  // because the shared base they are moved onto is a property of the family.
+  const keyed = frames.map((frame) => {
+    const image = keyBlack(read(SANCTUARY.master + SANCTUARY.file(frame)), SANCTUARY.black, SANCTUARY.close)
+    const stood = footprint(image)
+    if (!stood) throw new Error(`sanctuary/${SANCTUARY.file(frame)} is entirely transparent`)
+    return { frame, image, stood }
+  })
+
+  // Where every plate is going: the staged base, in scene pixels. One target
+  // for all eight, which is what makes them register with each other — a
+  // family that each landed on its own base would still drift.
+  const shared = {
+    cx: SANCTUARY.stance.at * SCENE_WIDTH,
+    bottom: SANCTUARY.stance.foot * SCENE_HEIGHT,
+    width: SANCTUARY.stance.width * SCENE_WIDTH,
+  }
+  // How far apart the masters were before any of that, so a repaint that
+  // fixes it can see it has. A family delivered already registered reports the
+  // same scale on every row.
+  const drift = median(keyed.map((k) => k.stood.width))
+  console.log('\nsanctuary — where each plate was standing, and what it was scaled by:')
+
+  for (const { frame, image, stood } of keyed) {
+    // Straight from the master to the scene, in one resample: the two are the
+    // same 2:3, so there is no crop to do and no reason to filter twice.
+    const plate = posterise(
+      hardenAlpha(standOn(image, stood, shared, SCENE_WIDTH, SCENE_HEIGHT)),
+      SANCTUARY.steps,
+    )
+    let opaque = 0
+    for (let i = 3; i < plate.rgba.length; i += 4) if (plate.rgba[i] === 255) opaque++
+    console.log(
+      `  ${frame.padEnd(7)} base ${String(Math.round(stood.width)).padStart(4)}px wide at ` +
+        `(${Math.round(stood.cx)}, ${stood.bottom}) — ${((stood.width / drift - 1) * 100).toFixed(1)}% ` +
+        `off the family — scaled ${(shared.width / stood.width).toFixed(4)}`,
+    )
+    report.push({
+      id: `chalice.${frame}`,
+      path: write(`props/chalice-${frame}.png`, plate, { cutout: true }),
+      width: plate.width,
+      height: plate.height,
+      coverage: +(opaque / (plate.width * plate.height)).toFixed(3),
+    })
+  }
+
+  return report
+}
+
 /** The tray frame: one authored plate, scaled to a phone-sensible width. */
 function buildUi() {
   const report = []
@@ -856,7 +1065,13 @@ function main() {
   if (!existsSync(join(ROOT, 'docs/art-reference/masters/regions/ossuary/hall.png'))) {
     throw new Error('the region masters are missing; nothing to build from')
   }
-  const built = [...buildBackdrops(), ...buildEnemies(), ...buildCrawling(), ...buildUi()]
+  const built = [
+    ...buildBackdrops(),
+    ...buildEnemies(),
+    ...buildCrawling(),
+    ...buildSanctuary(),
+    ...buildUi(),
+  ]
   let bytes = 0
   for (const item of built) {
     const size = readFileSync(item.path).length

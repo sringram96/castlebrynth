@@ -29,6 +29,8 @@ const SIZES = [
 const STATIONS: readonly (readonly [string, string, readonly string[]])[] = [
   ['entry', '?room=entry', []],
   ['the fork', '?room=fork', []],
+  ['the chapel, before the font', '?room=sanctuary&hp=40', []],
+  ['the chapel, after the font', '?room=sanctuary&hp=40', ['[data-act=ritual]']],
   ['the hollow, before the fight', '?room=hollow', []],
   ['the hollow, waiting to roll', '?room=hollow&mode=combat', []],
   ['the hollow, rolled', '?room=hollow&mode=combat', ['[data-act=roll]']],

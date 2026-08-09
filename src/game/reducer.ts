@@ -18,7 +18,7 @@ import { FIRST_ROOM, room } from '../content/rooms.js'
 import { Rng, reroll, roll, toggle } from '../combat/dice.js'
 import { resolve } from '../combat/resolve.js'
 import { SAVE_VERSION } from './state.js'
-import type { CombatState, GameState, MetaState, RunState } from './state.js'
+import type { CombatState, GameState, MetaState, RitualRoll, RunState } from './state.js'
 
 /**
  * The body.
@@ -41,6 +41,89 @@ export type Action =
   | { readonly type: 'REROLL' }
   | { readonly type: 'SCORE' }
   | { readonly type: 'TAKE'; readonly id: string }
+  | { readonly type: 'RITUAL_ROLL' }
+
+// ── the font ───────────────────────────────────────────────────────────
+
+/**
+ * What each face of the font gives back, as a share of what is **missing**.
+ *
+ * A share of the wound, not a share of the body. Six flat health is a gift to
+ * a player who is nearly dead and nothing at all to a player who is nearly
+ * whole; a share of the wound is worth the most to whoever needs it the most,
+ * which is what a healing room in a push-your-luck game is for. It also cannot
+ * be farmed: a player at full health gets nothing however well they roll.
+ *
+ * Written out rather than derived. The curve is a decision, and a decision
+ * that lives in a formula is a decision nobody can see.
+ */
+export const HEAL_FRACTIONS: Readonly<Record<RitualRoll, number>> = {
+  1: 0.19,
+  2: 0.35,
+  3: 0.51,
+  4: 0.68,
+  5: 0.84,
+  6: 1.0,
+}
+
+/**
+ * The pools a ritual could pour into.
+ *
+ * There is one, and there is deliberately a table with one row in it: the
+ * ritual is meant to grow a choice of target — health, armour, whatever the
+ * game grows next — and the only part of that which is hard is keeping the
+ * arithmetic away from the room, the view and the sequence. This is where it
+ * is kept. Adding a stat is a row here and a target on the action.
+ */
+const POOLS = {
+  hp: (run: RunState) => ({ now: run.hp, max: run.maxHp }),
+} as const
+
+export type Recoverable = keyof typeof POOLS
+
+/**
+ * How much of a missing pool one face gives back.
+ *
+ * Two guarantees the fractions alone do not give:
+ *
+ *   - **six is whole.** Not "100% of a number that rounded" — the whole of
+ *     what is missing, so `six restores you` has no edge case at any HP.
+ *   - **a face never gives nothing.** If anything is missing at all, the
+ *     worst roll still returns at least one point. A ritual that can answer a
+ *     press with zero is a press the player will think failed.
+ */
+export function recovered(roll: RitualRoll, missing: number): number {
+  if (missing <= 0) return 0
+  const fraction = HEAL_FRACTIONS[roll]
+  if (fraction >= 1) return missing
+  return Math.max(1, Math.round(missing * fraction))
+}
+
+/** One face, applied to one pool. The only place the two ever meet. */
+export function applyRecovery(
+  stat: Recoverable,
+  roll: RitualRoll,
+  run: RunState,
+): { readonly missingBefore: number; readonly healed: number; readonly value: number } {
+  const { now, max } = POOLS[stat](run)
+  const missingBefore = max - now
+  const healed = recovered(roll, missingBefore)
+  return { missingBefore, healed, value: Math.min(max, now + healed) }
+}
+
+const NUMBER: readonly string[] = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six']
+
+/**
+ * What the room says about what just happened.
+ *
+ * The face is already on screen and readable, so the line does not repeat it
+ * as a digit — it names it, states the health, and stops.
+ */
+function ritualSay(roll: RitualRoll, healed: number): string {
+  if (healed === 0) return `The die turns. ${NUMBER[roll]}. There is nothing left for it to mend.`
+  if (roll === 6) return `${NUMBER[roll]}. The wound closes completely.`
+  return `${NUMBER[roll]}. The basin gives back ${healed} HP.`
+}
 
 // ── helpers ────────────────────────────────────────────────────────────
 
@@ -63,6 +146,18 @@ function rngFor(run: RunState, salt: number): Rng {
 
 function combatSalt(run: RunState, combat: CombatState, extra: number): number {
   return run.path.length * 1013 + combat.turn * 31 + extra
+}
+
+/**
+ * Where the font's one draw sits in the same stream.
+ *
+ * The same rule as a fight: seed plus history, derived rather than stored, so
+ * a save can never disagree with it. There is no turn here — the room is one
+ * press — so the position is the path length and a constant of its own, and
+ * the constant is what keeps it clear of `combatSalt`'s `turn * 31 + extra`.
+ */
+function ritualSalt(run: RunState): number {
+  return run.path.length * 1013 + 977
 }
 
 /**
@@ -209,6 +304,11 @@ export function reduce(state: GameState, action: Action): GameState {
       const here = room(run.roomId)
       // A room with a living enemy has no exits. The fight is the way out.
       if (here.enemy && !run.cleared.includes(run.roomId)) return state
+      // A room with an unresolved ritual has none either, for the same reason:
+      // the thing in the middle of it *is* the room. The exit is withheld here,
+      // in state, rather than hidden by a view — so no dispatch, no fixture and
+      // no reload can walk past it.
+      if (here.ritual && run.ritual?.roomId !== run.roomId) return state
       if (!here.exits.some((e) => e.to === action.to)) return state
 
       const next = room(action.to)
@@ -338,6 +438,32 @@ export function reduce(state: GameState, action: Action): GameState {
               : [...combat.spentHands, out.preview.hand.name],
             log: out.beats,
           },
+        },
+      }
+    }
+
+    case 'RITUAL_ROLL': {
+      const run = state.run
+      if (!run || state.mode !== 'explore') return state
+      const here = room(run.roomId)
+      if (!here.ritual) return state
+      // Once. The room has already answered, so a second press has nothing
+      // left to decide — which is the same sentence that makes a reload
+      // unable to reroll it and a held thumb unable to farm it.
+      if (run.ritual?.roomId === run.roomId) return state
+
+      const roll = (rngFor(run, ritualSalt(run)).int(6) + 1) as RitualRoll
+      // For now the only damaged thing a run carries is its body, so the
+      // target is not offered. When there is a second pool, the choice
+      // arrives on the action and nothing below has to change.
+      const { missingBefore, healed, value } = applyRecovery('hp', roll, run)
+      return {
+        ...state,
+        run: {
+          ...run,
+          hp: value,
+          ritual: { roomId: run.roomId, roll, healed, missingBefore },
+          say: ritualSay(roll, healed),
         },
       }
     }

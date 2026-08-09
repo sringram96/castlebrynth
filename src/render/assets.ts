@@ -35,6 +35,35 @@ export const ROOM_ART: Readonly<Record<string, Asset>> = {
   gate: asset('gate', 'rooms/gate.png', 480, 720),
   brazier: asset('brazier', 'rooms/brazier.png', 480, 720),
   threshold: asset('threshold', 'rooms/threshold.png', 480, 720),
+  sanctuary: asset('sanctuary', 'rooms/sanctuary.png', 480, 720),
+}
+
+/**
+ * Props: the one object in a room that is pressed rather than looked at.
+ *
+ * Keyed `<art>.<frame>`, and every frame of a family is a **whole scene
+ * plate** at the backdrop's own size rather than a trimmed sprite. That is the
+ * point of them: the midground is cover-fitted exactly as the backdrop is, so
+ * a family sits where it was painted at every viewport and swapping one frame
+ * for another cannot move the object by a pixel. A trimmed plate could not
+ * promise that — a die erupting out of a basin changes the silhouette every
+ * frame, and the object would walk across the screen as its box changed.
+ *
+ * The font's basin is the first family: the still bowl, the instant the die
+ * comes out of the blood, and one plate per face. `idle` and `emerge` are
+ * states; `1`–`6` are results, and the one the run landed on stays on screen
+ * for good, because it is painted from `run.ritual` rather than left behind by
+ * the sequence that played it.
+ */
+export const PROP_ART: Readonly<Record<string, Asset>> = {
+  'chalice.idle': asset('chalice.idle', 'props/chalice-idle.png', 480, 720),
+  'chalice.emerge': asset('chalice.emerge', 'props/chalice-emerge.png', 480, 720),
+  'chalice.1': asset('chalice.1', 'props/chalice-1.png', 480, 720),
+  'chalice.2': asset('chalice.2', 'props/chalice-2.png', 480, 720),
+  'chalice.3': asset('chalice.3', 'props/chalice-3.png', 480, 720),
+  'chalice.4': asset('chalice.4', 'props/chalice-4.png', 480, 720),
+  'chalice.5': asset('chalice.5', 'props/chalice-5.png', 480, 720),
+  'chalice.6': asset('chalice.6', 'props/chalice-6.png', 480, 720),
 }
 
 /**
@@ -110,6 +139,19 @@ export function enemyPose(id: string, pose: string | undefined): Asset | undefin
   return pose ? ENEMY_ART[`${id}.${pose}`] : undefined
 }
 
+/**
+ * One frame of a room's prop, or nothing because it was never painted.
+ *
+ * It must be able to say no. A room whose focal object has no plate is still a
+ * playable room — the verb is a button in the world, the outcome is in the
+ * word band and the health orb — and it degrades to exactly that rather than
+ * to a broken image. `ART_DIRECTION.md`'s rule applies: scenery may degrade,
+ * the opponent may not, and a font is scenery you can press.
+ */
+export function propArt(id: string, frame: string): Asset | undefined {
+  return PROP_ART[`${id}.${frame}`]
+}
+
 export function handArt(pose: string): Asset {
   const found = HAND_ART[pose]
   if (!found) throw new Error(`no hand art for pose "${pose}"`)
@@ -128,6 +170,7 @@ export function allAssets(): readonly Asset[] {
   return [
     ...Object.values(ROOM_ART),
     ...Object.values(ENEMY_ART),
+    ...Object.values(PROP_ART),
     ...Object.values(HAND_ART),
     TRAY_ART,
   ].filter((a) => !seen.has(a.file) && seen.add(a.file))

@@ -141,13 +141,13 @@ test.describe('the first run', () => {
 
   test('each room in the slice is its own place', async ({ page }) => {
     const seen = new Set<string>()
-    for (const room of ['entry', 'passage', 'hollow', 'fork', 'deep', 'gate']) {
+    for (const room of ['entry', 'passage', 'hollow', 'sanctuary', 'fork', 'deep', 'gate']) {
       await boot(page, `?room=${room}`)
       const src = await page.locator('#backdrop').getAttribute('src')
       expect(src, `${room} has no backdrop`).toBeTruthy()
       seen.add(src!)
     }
-    expect(seen.size, 'two rooms are the same picture').toBe(6)
+    expect(seen.size, 'two rooms are the same picture').toBe(7)
   })
 
   test('plays the whole route to the way out, in one browser, with real presses', async ({
@@ -176,6 +176,14 @@ test.describe('the first run', () => {
 
     expect(await fightItOut(page), 'lost to the Gnawing').toBe('won')
     await takeAnyReward()
+
+    // The chapel, between the first fight and the fork. There is no way on out
+    // of it until the font has been used, so the journey has to press it.
+    await act(page, 'go').click()
+    await expect(page.locator('#say')).toContainText('The hall opens into a chapel')
+    await expect(act(page, 'go')).toHaveCount(0)
+    await act(page, 'ritual').click()
+    await expect(act(page, 'ritual')).toHaveCount(0)
 
     await act(page, 'go').click()
     await expect(page.locator('#say')).toContainText('The passage splits')

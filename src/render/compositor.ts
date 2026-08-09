@@ -33,6 +33,16 @@ export interface World {
   readonly root: HTMLElement
   readonly backdrop: HTMLImageElement
   readonly midground: HTMLElement
+  /**
+   * The room's focal object, held on the midground as one whole scene frame.
+   *
+   * Cover-fitted exactly as the backdrop is, so it needs no coordinate and has
+   * none: the object is where it was painted, at every viewport, and a frame
+   * swap moves it by nothing. That is the one property the font's die depends
+   * on — a basin that shifted between the idle plate and the face it landed on
+   * would read as the whole room jumping.
+   */
+  readonly prop: HTMLImageElement
   readonly enemy: HTMLImageElement
   readonly foreground: HTMLElement
   /**
@@ -76,6 +86,13 @@ export function mountWorld(root: HTMLElement): World {
   backdrop.alt = ''
 
   const midground = layer('div', 'midground', Layer.Midground)
+  const prop = document.createElement('img')
+  prop.id = 'prop'
+  prop.className = 'prop'
+  prop.alt = ''
+  prop.hidden = true
+  midground.append(prop)
+
   const enemy = layer('img', 'enemy', Layer.Enemy)
   enemy.id = 'enemy'
   enemy.alt = ''
@@ -103,7 +120,24 @@ export function mountWorld(root: HTMLElement): World {
   hud.id = 'hud'
 
   root.append(backdrop, midground, enemy, foreground, fx, hits, hud)
-  return { root, backdrop, midground, enemy, foreground, weapon, strike, fx, hits, hud }
+  return { root, backdrop, midground, prop, enemy, foreground, weapon, strike, fx, hits, hud }
+}
+
+/**
+ * Show one frame of the room's focal object, or take it away.
+ *
+ * No geometry, deliberately. The plate is the scene, so there is nothing to
+ * place and nothing to drift — which is what lets a sequence swap eight frames
+ * through here and be certain the object has not moved.
+ */
+export function showProp(world: World, src: string): void {
+  if (world.prop.getAttribute('src') !== src) world.prop.src = src
+  world.prop.hidden = false
+}
+
+export function hideProp(world: World): void {
+  world.prop.hidden = true
+  world.prop.removeAttribute('src')
 }
 
 export interface Grip {

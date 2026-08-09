@@ -195,6 +195,14 @@ export function simulateRun(seed: number, tier: Tier, { deep = true } = {}): Run
       continue
     }
 
+    // A room with a font is used on the way past. There is no decision in it —
+    // the press costs nothing and the exits do not open until it is made — so
+    // the policy tiers have nothing to disagree about here.
+    if (here.ritual && state.run!.ritual?.roomId !== here.id) {
+      state = reduce(state, { type: 'RITUAL_ROLL' })
+      continue
+    }
+
     const exits = here.exits
     const chosen = deep ? (exits.find((e) => e.to === 'deep') ?? exits[0]) : exits[0]
     if (!chosen) break

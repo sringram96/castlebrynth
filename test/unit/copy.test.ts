@@ -30,6 +30,7 @@ function everySentence(): string[] {
     out.push(r.arrival)
     for (const d of r.details) out.push(d.says)
     for (const x of r.exits) out.push(x.label, x.sense)
+    if (r.ritual) out.push(r.ritual.name, r.ritual.label, r.ritual.describe, r.ritual.prompt)
   }
   return out
 }
@@ -143,6 +144,26 @@ describe('the rooms say what changed', () => {
     // The player is making a game decision. Say so before the tap.
     expect(risky?.sense, 'the deep route does not state its risk').toMatch(/fight|danger/i)
     expect(risky?.sense, 'the deep route does not state its reward').toMatch(/upgrade|chance/i)
+  })
+
+  it('says what a font gives back before it is pressed, and what it does not', () => {
+    for (const r of Object.values(ROOMS)) {
+      if (!r.ritual) continue
+      // The rule, in the well, before the press — the same contract every die
+      // and every relic is held to. What it gives is a share of the damage
+      // already taken, so the copy has to say *lost* rather than promise a
+      // number, and it has to say that a higher face is worth more.
+      expect(r.ritual.prompt, `${r.name} does not say what its font gives back`).toMatch(
+        /lost|missing/i,
+      )
+      expect(r.ritual.prompt, `${r.name} does not say the face matters`).toMatch(/higher|share/i)
+      // And it must not read as a flat gift, which is the misreading this
+      // design is most likely to attract.
+      expect(r.ritual.prompt, `${r.name}'s font promises a flat amount`).not.toMatch(/\d+ HP/)
+      // The verb is a control: a plain imperative, two words or fewer.
+      expect(r.ritual.label.split(/\s+/).length).toBeLessThanOrEqual(2)
+      expect(r.ritual.describe.length).toBeGreaterThan(0)
+    }
   })
 
   it('lays nothing out on a step: an upgrade is beaten out of something', () => {

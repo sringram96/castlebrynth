@@ -13,15 +13,17 @@ import { describe, expect, it } from 'vitest'
 import {
   ENEMY_ART,
   HAND_ART,
+  PROP_ART,
   ROOM_ART,
   TRAY_ART,
   allAssets,
   enemyArt,
   handArt,
+  propArt,
   roomArt,
 } from '../../src/render/assets.js'
 import { ENEMIES, REACHES } from '../../src/content/enemies.js'
-import { ROOMS } from '../../src/content/rooms.js'
+import { ROOMS, room } from '../../src/content/rooms.js'
 
 const PUBLIC = new URL('../../public/assets/', import.meta.url)
 
@@ -179,5 +181,78 @@ describe('every room has a backdrop', () => {
 
   it('ships the tray frame', () => {
     expect(png(TRAY_ART.file).bytes).toBeGreaterThan(0)
+  })
+
+  it('gives the chapel a backdrop of its own', () => {
+    // The room the font stands in. It is currently a stand-in composed from
+    // the ossuary plates — see `## HUMAN ART REQUIRED` — and what has to be
+    // true of it is what has to be true of every room: it exists, it is the
+    // scene size, and it is not another room's picture.
+    const art = roomArt(room('sanctuary').art)
+    expect(png(art.file).bytes).toBeGreaterThan(0)
+    expect([art.width, art.height]).toEqual([480, 720])
+  })
+})
+
+/**
+ * The room's focal object.
+ *
+ * Props are optional in a way an enemy is not: a room whose basin has not been
+ * painted is still a playable room, because the verb is a button and the
+ * outcome is in the word band and the health orb. What is *not* optional is
+ * that a family which exists is whole and registered — half a family would
+ * make the die vanish on the faces that are missing, and a family whose frames
+ * disagreed about their box would move the basin as the die tumbled.
+ */
+describe('a room prop is whole, registered, and does not move', () => {
+  /** Every frame a ritual room can ask for, by family. */
+  const wanted = (art: string): readonly string[] => [
+    'idle',
+    'emerge',
+    ...['1', '2', '3', '4', '5', '6'],
+  ].map((frame) => `${art}.${frame}`)
+
+  it('has a frame for every face, or no frames at all', () => {
+    for (const r of Object.values(ROOMS)) {
+      if (!r.ritual) continue
+      const keys = wanted(r.ritual.art)
+      const held = keys.filter((key) => PROP_ART[key])
+      expect(
+        held.length === 0 || held.length === keys.length,
+        `${r.id} has ${held.length} of ${keys.length} chalice frames`,
+      ).toBe(true)
+    }
+  })
+
+  it('holds every frame at one box, so the object cannot move between them', () => {
+    for (const r of Object.values(ROOMS)) {
+      if (!r.ritual) continue
+      const frames = wanted(r.ritual.art)
+        .map((key) => PROP_ART[key])
+        .filter((a): a is NonNullable<typeof a> => a !== undefined)
+      if (frames.length === 0) continue
+      const boxes = new Set(frames.map((a) => `${a.width}x${a.height}`))
+      expect([...boxes], `${r.id}'s frames are not one box`).toHaveLength(1)
+      // Whole scene plates, cover-fitted exactly as the backdrop is. That is
+      // what removes every coordinate from the room.
+      expect([frames[0]!.width, frames[0]!.height]).toEqual([480, 720])
+      for (const frame of frames) expect(png(frame.file).bytes).toBeGreaterThan(0)
+    }
+  })
+
+  it('names no prop art that no room asks for', () => {
+    const asked = new Set(
+      Object.values(ROOMS)
+        .filter((r) => r.ritual)
+        .flatMap((r) => wanted(r.ritual!.art)),
+    )
+    for (const key of Object.keys(PROP_ART)) expect([...asked]).toContain(key)
+  })
+
+  it('answers with nothing rather than throwing when a frame is unpainted', () => {
+    // The room degrades; it does not break. `ART_DIRECTION.md`: scenery may
+    // degrade, the opponent may not, and a font is scenery you can press.
+    expect(() => propArt('chalice', 'idle')).not.toThrow()
+    expect(propArt('nothing-at-all', '4')).toBeUndefined()
   })
 })
