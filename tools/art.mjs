@@ -622,6 +622,140 @@ function buildEnemies() {
   return report
 }
 
+/**
+ * The Crawling One: the encounter's authored plates.
+ *
+ * Everything else in this file cuts a figure out of a scene it was painted
+ * into, because that is the only thing the pre-reset masters allow. This set
+ * is authored the other way round and is much better for it: the corridor
+ * arrives with nothing standing in it, and each pose arrives on a transparent
+ * canvas of the *same frame*, with the creature already where it belongs.
+ *
+ * So there is no key here and no seeds. The pipeline resamples, snaps the
+ * alpha back to binary, trims, and reads the placement straight off the trim
+ * box — which means nobody ever hand-tunes a coordinate, and a repaint that
+ * moves the thing six inches left moves it six inches left in the game.
+ *
+ * The plates are not in the repository yet. `docs/art-reference/masters/
+ * crawling-one/BRIEF.md` is the contract they have to meet, and until they
+ * land this build is skipped rather than failing: the encounter runs on the
+ * existing sprite, staged at each reach.
+ */
+const CRAWLING = {
+  master: 'docs/art-reference/masters/crawling-one/',
+  hall: 'hall.png',
+  /** Required, then optional. A pose that is absent is simply not built. */
+  poses: ['far', 'mid', 'close', 'hit', 'far-hit', 'mid-hit'],
+  hands: ['hand-rest', 'hand-thrust'],
+}
+
+/**
+ * Where a pose sits, as the compositor's own fractions.
+ *
+ * Read off the trim box, with one correction: a 480x720 scene shown in the
+ * world box of a 390x844 phone loses a tenth of its width to the cover-crop,
+ * so a fraction of the scene is not yet a fraction of what is on screen.
+ */
+const WORLD_ASPECT = 390 / (844 - 390 * (364 / 730))
+function stanceOf(box, width, height) {
+  const visible = WORLD_ASPECT / (SCENE_WIDTH / SCENE_HEIGHT)
+  const centre = (box.x0 + box.x1 + 1) / 2 / width
+  return {
+    width: +((box.x1 - box.x0 + 1) / width / visible).toFixed(3),
+    at: +(0.5 + (centre - 0.5) / visible).toFixed(3),
+    foot: +(((box.y1 + 1) / height)).toFixed(3),
+  }
+}
+
+/** The opaque box of an image. `null` when nothing in it is opaque. */
+function bounds(image) {
+  const { width, height, rgba } = image
+  let x0 = width
+  let x1 = -1
+  let y0 = height
+  let y1 = -1
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (rgba[(y * width + x) * 4 + 3] === 0) continue
+      if (x < x0) x0 = x
+      if (x > x1) x1 = x
+      if (y < y0) y0 = y
+      if (y > y1) y1 = y
+    }
+  }
+  return x1 < 0 ? null : { x0, y0, x1, y1 }
+}
+
+/**
+ * Snap a resampled alpha back to binary.
+ *
+ * Averaging a hard edge produces soft pixels, and this repository's plates are
+ * binary by contract — a pixel's colour never depends on what is behind it, so
+ * a room renders identically every visit. The threshold is the middle.
+ */
+function hardenAlpha(image) {
+  for (let i = 3; i < image.rgba.length; i += 4) {
+    image.rgba[i] = image.rgba[i] >= 128 ? 255 : 0
+  }
+  return image
+}
+
+function buildCrawling() {
+  const dir = join(ROOT, CRAWLING.master)
+  if (!existsSync(join(dir, CRAWLING.hall))) {
+    console.log(
+      `\ncrawling-one: no plates yet — ${CRAWLING.master}BRIEF.md is what they have to be.\n` +
+        '            the encounter runs on the existing sprite until they land.',
+    )
+    return []
+  }
+
+  const report = []
+  const hall = posterise(
+    resample(coverCrop(read(CRAWLING.master + CRAWLING.hall), SCENE_WIDTH / SCENE_HEIGHT, 0.5), SCENE_WIDTH, SCENE_HEIGHT),
+    32,
+  )
+  for (let i = 3; i < hall.rgba.length; i += 4) hall.rgba[i] = 255
+  report.push({
+    id: 'room.hall',
+    path: write('rooms/hall.png', hall),
+    width: SCENE_WIDTH,
+    height: SCENE_HEIGHT,
+  })
+
+  const stances = {}
+  for (const id of [...CRAWLING.poses, ...CRAWLING.hands]) {
+    const file = `${CRAWLING.master}${id}.png`
+    if (!existsSync(join(ROOT, `${CRAWLING.master}${id}.png`))) continue
+    // The same crop as the corridor, so a pose stays registered with it.
+    const plate = hardenAlpha(
+      resample(coverCrop(read(file), SCENE_WIDTH / SCENE_HEIGHT, 0.5), SCENE_WIDTH, SCENE_HEIGHT),
+    )
+    const box = bounds(plate)
+    if (!box) throw new Error(`crawling-one/${id}.png is entirely transparent`)
+    stances[id] = stanceOf(box, SCENE_WIDTH, SCENE_HEIGHT)
+
+    const sprite = posterise(trim(plate), 32)
+    const kind = id.startsWith('hand-') ? 'hands' : 'enemies'
+    const path = write(`${kind}/crawling-${id.replace(/^hand-/, '')}.png`, sprite, { cutout: true })
+    let opaque = 0
+    for (let i = 3; i < sprite.rgba.length; i += 4) if (sprite.rgba[i] === 255) opaque++
+    report.push({
+      id: `crawling.${id}`,
+      path,
+      width: sprite.width,
+      height: sprite.height,
+      coverage: +(opaque / (sprite.width * sprite.height)).toFixed(3),
+    })
+  }
+
+  console.log('\ncrawling-one stances — paste into the ladder in src/content/enemies.ts:')
+  for (const [id, s] of Object.entries(stances)) {
+    console.log(`  ${id.padEnd(10)} { width: ${s.width}, at: ${s.at}, foot: ${s.foot} },`)
+  }
+  return report
+}
+
 /** The tray frame: one authored plate, scaled to a phone-sensible width. */
 function buildUi() {
   const report = []
@@ -635,7 +769,7 @@ function main() {
   if (!existsSync(join(ROOT, 'docs/art-reference/masters/regions/ossuary/hall.png'))) {
     throw new Error('the region masters are missing; nothing to build from')
   }
-  const built = [...buildBackdrops(), ...buildEnemies(), ...buildUi()]
+  const built = [...buildBackdrops(), ...buildEnemies(), ...buildCrawling(), ...buildUi()]
   let bytes = 0
   for (const item of built) {
     const size = readFileSync(item.path).length

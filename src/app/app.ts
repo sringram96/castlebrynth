@@ -20,6 +20,7 @@
  */
 
 import { intentAt } from '../content/enemies.js'
+import type { Reach } from '../content/enemies.js'
 import { preview } from '../combat/scoring.js'
 import { selectionOf } from '../combat/resolve.js'
 import { reduce } from '../game/reducer.js'
@@ -37,14 +38,17 @@ import type { Overlay } from '../ui/screens.js'
 import {
   Sequence,
   confirm,
+  enemyAdvance,
+  enemyContact,
+  enemyHit,
   fireFace,
-  flash,
   orbChange,
   pulseRelic,
   reducedMotion,
   shake,
   tumble,
   tumbleDuration,
+  weaponThrust,
 } from '../render/animation.js'
 
 /**
@@ -59,9 +63,44 @@ const SCORE = {
   chosen: 0,
   relics: 190,
   faces: 330,
+  /** The arm draws back. One frame of anticipation and no more. */
+  wind: 395,
+  /** And goes in. Forty-five milliseconds of travel, so it reads as violence. */
+  thrust: 440,
+  /** Full extension. The blade arrives, the flesh blows white, the number. */
   landed: 480,
+  rest: 580,
   answer: 720,
   next: 950,
+} as const
+
+/**
+ * The extra beats of a thing coming one reach nearer.
+ *
+ * They start after the strike has been allowed to read: an advance that
+ * happens on the same frame as the impact is an advance nobody saw, because
+ * the eye is on the white flesh and the number. The uncomfortable pause
+ * between `SCORE.rest` and `gather` is the point of the whole encounter.
+ */
+const APPROACH = {
+  gather: 700,
+  /** The hard cut. No tween, no interpolation — the next authored picture. */
+  arrive: 772,
+  next: 1000,
+} as const
+
+/**
+ * And of it arriving.
+ *
+ * Longer, uglier and much larger than an advance, because the difference
+ * between *it is closer* and *it is on me* is the only thing this fight has to
+ * say. Three discrete enlargements, held.
+ */
+const CONTACT = {
+  hold: 700,
+  ladder: [790, 880, 960],
+  landed: 1050,
+  next: 1500,
 } as const
 
 export interface AppOptions {
@@ -233,6 +272,19 @@ export class App {
     const afterFaces = Math.max(0, Math.min(run.maxHp, run.hp + faceDelta))
     const answer = Math.max(0, afterFaces - (after.run?.hp ?? afterFaces))
 
+    // Where the thing ended up, read off the two authoritative states and
+    // nowhere else. The sequence below has no say in any of it: if the reducer
+    // did not move it, nothing here can, and if the reducer says it arrived,
+    // the player is already dead whether or not a single frame plays.
+    const settledCombat = after.run?.combat
+    const advancedTo =
+      combat.approach !== undefined &&
+      settledCombat?.approach !== undefined &&
+      settledCombat.approach !== combat.approach
+        ? settledCombat.approach
+        : undefined
+    const reached = settledCombat?.reached === true
+
     const frame = (patch: Partial<CombatState>, hp = run.hp): GameState => ({
       ...before,
       run: { ...run, hp, combat: { ...combat, ...patch } },
@@ -243,7 +295,7 @@ export class App {
     if (!this.animated) {
       this.presenting = undefined
       this.render()
-      if (dealt > 0) flash(this.world, dealt)
+      if (dealt > 0) enemyHit(this.world, dealt)
       if (answer > 0) shake(this.world, answer)
       return
     }
@@ -276,10 +328,21 @@ export class App {
       orbChange(this.tray.orb, faceDelta)
     })
 
+    // The arm. Back, then in — and a hand that lands on nothing is a hand that
+    // did not swing, so a score that deals no damage never plays the strike.
+    if (dealt > 0) {
+      sequence.at(SCORE.wind, () => weaponThrust(this.world, 'wind'))
+      sequence.at(SCORE.thrust, () => weaponThrust(this.world, 'thrust'))
+      sequence.at(SCORE.rest, () => weaponThrust(this.world, 'rest'))
+    }
+
     sequence.at(SCORE.landed, () => {
       this.presenting = frame({ enemyHp: enemyAfter }, afterFaces)
       this.render()
-      if (dealt > 0) flash(this.world, dealt)
+      // Exactly at full extension: the flesh goes white, the number rises and
+      // the frame kicks, all on the same frame. Damage of zero gets none of
+      // it — a convincing hit for a hand that did nothing is a lie.
+      if (dealt > 0) enemyHit(this.world, dealt)
     })
 
     sequence.at(SCORE.answer, () => {
@@ -289,15 +352,76 @@ export class App {
       shake(this.world, answer)
     })
 
+    if (reached) return this.playContact(sequence, frame, enemyAfter, afterFaces)
+    if (advancedTo) return this.playAdvance(sequence, frame, enemyAfter, afterFaces, advancedTo)
+
     // Only now does the next turn — or the reward, or the death screen — take
     // the screen. A terminal screen that arrives before its own blow lands is
     // the fight ending without the player seeing how, so the last beat is the
     // same length whether or not the enemy got to answer.
-    sequence.at(SCORE.next, () => {
-      this.presenting = undefined
-      this.sequence = undefined
+    sequence.at(SCORE.next, () => this.finish())
+  }
+
+  /**
+   * It survived, so it comes one reach nearer.
+   *
+   * Three beats and a hard cut in the middle. Nothing is interpolated between
+   * the two authored compositions, and nothing here chooses the destination —
+   * `to` came out of the reducer before the first of these was scheduled.
+   */
+  private playAdvance(
+    sequence: Sequence,
+    frame: (patch: Partial<CombatState>, hp?: number) => GameState,
+    enemyHp: number,
+    hp: number,
+    to: Reach,
+  ): void {
+    sequence.at(APPROACH.gather, () => enemyAdvance(this.world, 'gather'))
+    sequence.at(APPROACH.arrive, () => {
+      this.presenting = frame({ enemyHp, approach: to }, hp)
+      this.render()
+      enemyAdvance(this.world, 'arrive')
+    })
+    sequence.at(APPROACH.next, () => this.finish())
+  }
+
+  /**
+   * It was already at `close`, and it survived.
+   *
+   * The largest motion in the encounter, and the only one that leaves the
+   * established composition. It reveals a death the reducer committed before
+   * any of this was scheduled — settling it early lands on exactly the same
+   * screen, which is the promise the whole file is built around.
+   */
+  private playContact(
+    sequence: Sequence,
+    frame: (patch: Partial<CombatState>, hp?: number) => GameState,
+    enemyHp: number,
+    hp: number,
+  ): void {
+    // It holds still first. The stillness is what makes the next 260 ms read.
+    sequence.at(CONTACT.hold, () => enemyAdvance(this.world, 'gather'))
+    CONTACT.ladder.forEach((at, step) => {
+      sequence.at(at, () => {
+        this.presenting = frame({ enemyHp }, hp)
+        this.render()
+        enemyContact(this.world, step + 1)
+        shake(this.world, step + 1)
+      })
+    })
+    sequence.at(CONTACT.landed, () => {
+      this.presenting = frame({ enemyHp, reached: true }, hp)
       this.render()
     })
+    sequence.at(CONTACT.next, () => this.finish())
+  }
+
+  /** Drop the transition and paint the settled truth. Always the last beat. */
+  private finish(): void {
+    this.presenting = undefined
+    this.sequence = undefined
+    weaponThrust(this.world, 'rest')
+    this.render()
   }
 
   // ── painting ─────────────────────────────────────────────────────────

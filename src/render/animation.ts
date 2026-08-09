@@ -166,8 +166,24 @@ export function orbChange(orb: HTMLElement, delta: number): void {
   tag.addEventListener('animationend', () => tag.remove(), { once: true })
 }
 
-/** The blow you landed: the enemy brightens for a frame and the number rises. */
-export function flash(world: World, damage: number): void {
+/**
+ * How long the bright frame stays on. Punctuation, not a state.
+ *
+ * The damage was decided before any of this ran, so there is nothing for a
+ * long flash to wait for. It is one frame of white flesh at the instant the
+ * blade arrives and then it is gone.
+ */
+const IMPACT = 130
+
+/**
+ * The blow you landed.
+ *
+ * Three things at once and deliberately so: the enemy blows out bright, the
+ * number rises, and the frame takes a small kick. They are one event, and
+ * splitting them across even 80 ms makes the hit read as two soft things
+ * rather than one hard one.
+ */
+export function enemyHit(world: World, damage: number): void {
   const number = document.createElement('b')
   number.className = 'hit-number'
   number.textContent = String(damage)
@@ -180,8 +196,75 @@ export function flash(world: World, damage: number): void {
   }
 
   world.enemy.classList.add('struck')
+  world.root.classList.add('kicked')
   number.addEventListener('animationend', () => number.remove(), { once: true })
-  window.setTimeout(() => world.enemy.classList.remove('struck'), 180)
+  window.setTimeout(() => {
+    world.enemy.classList.remove('struck')
+    world.root.classList.remove('kicked')
+  }, IMPACT)
+}
+
+/**
+ * The player's arm, going in.
+ *
+ * Three poses and nothing between them: back a couple of pixels, out to full
+ * extension, back to rest. A hand that glides is a hand attached to nobody —
+ * the whole read is that it is fast enough to be violent, and the only way to
+ * get that out of two transforms is to give the second one almost no time.
+ *
+ * It moves the foreground layer, which is where the first-person hand plate
+ * mounts when one exists (see `## HUMAN ART REQUIRED` in POLISH_PROGRESS.md).
+ * Until then the same pose drives the camera instead — the frame is the
+ * player's head, so the body leaning in is the body leaning in either way.
+ */
+export function weaponThrust(world: World, pose: 'wind' | 'thrust' | 'rest'): void {
+  if (reducedMotion()) return
+  world.foreground.classList.remove('wind', 'thrust')
+  world.root.classList.remove('wind', 'thrust')
+  if (pose === 'rest') return
+  world.foreground.classList.add(pose)
+  world.root.classList.add(pose)
+}
+
+/**
+ * The thing dragging itself one reach nearer.
+ *
+ * Two pokes with the picture changing between them, because the picture
+ * changing *is* the animation. `gather` is the 40–80 ms of it bunching where
+ * it stands; the caller then paints the next authored reach — a hard cut, no
+ * tween, nothing interpolated — and `arrive` is the pixel or two of it
+ * settling into the new composition.
+ *
+ * The discontinuity is the effect. It should look like you blinked and it
+ * covered six feet.
+ */
+export function enemyAdvance(world: World, phase: 'gather' | 'arrive'): void {
+  if (reducedMotion()) return
+  if (phase === 'gather') {
+    world.enemy.classList.remove('settling')
+    world.enemy.classList.add('gathering')
+    return
+  }
+  world.enemy.classList.remove('gathering')
+  void world.enemy.offsetWidth
+  world.enemy.classList.add('settling')
+  window.setTimeout(() => world.enemy.classList.remove('settling'), 220)
+}
+
+/**
+ * It arrives.
+ *
+ * The one moment in the encounter that breaks the composition. Not a zoom —
+ * a short ladder of ugly discrete enlargements, each held long enough to be a
+ * separate picture, ending with the thing wider than the frame. `step` is an
+ * index into that ladder and the stylesheet holds the numbers.
+ *
+ * It decides nothing. The player was already dead when this was called.
+ */
+export function enemyContact(world: World, step: number): void {
+  if (reducedMotion()) return
+  world.enemy.dataset['contact'] = String(step)
+  world.root.dataset['contact'] = String(step)
 }
 
 /**

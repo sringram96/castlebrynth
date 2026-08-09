@@ -13,7 +13,7 @@
 
 import { HAND_SIZE, LOOT_DICE, STARTING_DICE, die, isDieId } from '../content/dice.js'
 import { LOOT_RELICS, relic } from '../content/relics.js'
-import { enemy, intentAt } from '../content/enemies.js'
+import { REACHES, enemy, intentAt } from '../content/enemies.js'
 import { FIRST_ROOM, room } from '../content/rooms.js'
 import { Rng, reroll, roll, toggle } from '../combat/dice.js'
 import { resolve } from '../combat/resolve.js'
@@ -101,6 +101,10 @@ function beginCombat(run: RunState): CombatState {
     roll: [],
     selected: [],
     spentHands: [],
+    // A thing that closes always opens the fight at the far end of the room.
+    // There is no content that starts one anywhere else, and there is no
+    // action that can put it back.
+    ...(e.approach ? { approach: REACHES[0]! } : {}),
     log: [e.tell],
   }
 }
@@ -272,6 +276,13 @@ export function reduce(state: GameState, action: Action): GameState {
 
       const out = resolve(run, combat)
 
+      // Where the enemy stands after this score, and whether it is standing on
+      // you. Both are already decided; every branch below only records them.
+      const moved = {
+        ...(out.approach ? { approach: out.approach } : {}),
+        ...(out.reached ? { reached: true } : {}),
+      }
+
       if (out.died) {
         return {
           ...state,
@@ -279,10 +290,12 @@ export function reduce(state: GameState, action: Action): GameState {
           run: {
             ...run,
             hp: 0,
-            combat: { ...combat, enemyHp: out.enemyHp, log: out.beats },
-            cause: out.blow
-              ? `${enemy(combat.enemyId).name} — ${out.blow.verb}.`
-              : 'My own dice.',
+            combat: { ...combat, enemyHp: out.enemyHp, ...moved, log: out.beats },
+            cause: out.reached
+              ? enemy(combat.enemyId).approach!.cause
+              : out.blow
+                ? `${enemy(combat.enemyId).name} — ${out.blow.verb}.`
+                : 'My own dice.',
           },
         }
       }
@@ -315,6 +328,7 @@ export function reduce(state: GameState, action: Action): GameState {
           combat: {
             ...combat,
             enemyHp: out.enemyHp,
+            ...moved,
             turn: nextTurn,
             phase: 'intent',
             roll: [],

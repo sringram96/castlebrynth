@@ -55,8 +55,21 @@ export function roomArt(id: string): Asset {
   return found
 }
 
-export function enemyArt(id: string): Asset {
-  const found = ENEMY_ART[id]
+/**
+ * The sprite for an enemy, at a reach if one has been painted for it.
+ *
+ * A thing that closes wants a painting per reach — `gnawing.far`, `.mid`,
+ * `.close` — because the composition at arm's length is not the composition at
+ * the end of the hall scaled up. Until those exist the one sprite is staged at
+ * each reach by the compositor, which is a stand-in and reads as one: the
+ * brief is recorded under `## HUMAN ART REQUIRED` in `POLISH_PROGRESS.md`.
+ *
+ * Adding `gnawing.close` to the manifest is the whole of the swap. Nothing
+ * else in the codebase names a reach's file.
+ */
+export function enemyArt(id: string, reach?: string): Asset {
+  const staged = reach ? ENEMY_ART[`${id}.${reach}`] : undefined
+  const found = staged ?? ENEMY_ART[id]
   if (!found) throw new Error(`no combat art for enemy "${id}"`)
   return found
 }

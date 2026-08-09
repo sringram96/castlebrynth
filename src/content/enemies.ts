@@ -36,11 +36,67 @@ export interface Intent {
   readonly explain: string
 }
 
+/**
+ * How far away a thing that closes the distance is standing.
+ *
+ * Three stable compositions and nothing between them. There is no fourth, and
+ * there is no half-step: an enemy is at one of these or the fight is over.
+ */
+export type Reach = 'far' | 'mid' | 'close'
+
+/** The order it closes them in. `close` is the last one before contact. */
+export const REACHES: readonly Reach[] = ['far', 'mid', 'close']
+
+/**
+ * Where the sprite sits at one reach.
+ *
+ * The same numbers as a still pose, plus `at` — because a thing crawling down
+ * a corridor is not politely centred in it, and a pose painted six inches
+ * left of the middle has to appear six inches left of the middle. All three
+ * are read off the art by `npm run art`; none of them is set by hand.
+ */
+export interface Stance {
+  /** Fraction of the world's width the sprite occupies. */
+  readonly width: number
+  /** Where its feet sit, as a fraction of world height. */
+  readonly foot: number
+  /** Its horizontal centre, as a fraction of world width. Middle by default. */
+  readonly at?: number
+}
+
+/**
+ * An enemy that comes for you instead of standing and trading blows.
+ *
+ * The whole rule is one sentence: **every score it survives brings it one
+ * reach nearer, and there is nothing past `close`.** So the fight is a count
+ * the player can read off the picture — three attacks, then it is on you —
+ * and the number is never printed anywhere, because the thing getting bigger
+ * is the number.
+ *
+ * It is a per-enemy content rule, not a combat mode. An enemy without this
+ * field fights exactly as it always did.
+ */
+export interface Approach {
+  /** One stance per reach. Its still pose must be the `far` one. */
+  readonly stances: Readonly<Record<Reach, Stance>>
+  /** The beat when it arrives. Said once, and it is the last thing said. */
+  readonly says: string
+  /** Why the run ended, for the death screen. */
+  readonly cause: string
+}
+
 export interface Enemy {
   readonly id: string
   readonly name: string
   readonly hp: number
-  /** The cycle. Turn N takes `script[N % script.length]`. */
+  /**
+   * The cycle. Turn N takes `script[N % script.length]`.
+   *
+   * An approaching enemy declares one intent per reach, in `REACHES` order —
+   * it advances exactly once per surviving score, so its turn count and its
+   * reach are the same number, and `test/unit/approach.test.ts` holds them to
+   * it.
+   */
   readonly script: readonly Intent[]
   /** The one sentence the player sees on first sight. */
   readonly tell: string
@@ -49,6 +105,8 @@ export interface Enemy {
   readonly width: number
   /** Where its feet sit, as a fraction of world height. */
   readonly foot: number
+  /** Set when the thing closes the distance rather than standing in it. */
+  readonly approach?: Approach
   /** What it can drop: ids drawn from dice and relics. */
   readonly rewards: readonly string[]
   /**
@@ -67,22 +125,61 @@ export interface Enemy {
 const RAKE = 'RAKE will deal 6 damage after you score, unless you kill it first.'
 const STRIKE = 'STRIKE will deal 8 damage after you score, unless you kill it first.'
 
+/**
+ * The stances of the maw, measured against the hall it is crawling down.
+ *
+ * Three authored compositions rather than a slide: at `far` it is a shape at
+ * the end of the corridor, at `mid` it is unmistakably nearer, and at `close`
+ * it is wider than the frame and its jaw is on the floor in front of you.
+ * Nothing interpolates between them — see `docs/ART_DIRECTION.md`.
+ */
+const MAW: Approach = {
+  stances: {
+    // A shape at the end of the corridor: readable, and plainly not near you.
+    far: { width: 0.34, foot: 0.6 },
+    // Half the hall gone. Roughly four times the area, which is what makes the
+    // second one land — the step has to be too big to be a trick of the light.
+    mid: { width: 0.66, foot: 0.81 },
+    // Wider than the frame, jaw on the floor, no corridor left behind it.
+    close: { width: 1.3, foot: 1.0 },
+  },
+  says: 'It has me.',
+  cause: 'The Gnawing — it got close enough.',
+}
+
 const GNAWING: Enemy = {
   id: 'gnawing',
   name: 'The Gnawing',
-  hp: 170,
-  // No special rule. Every blow is the same size and it never surprises you.
+  // Three attacks, and the third had better kill it. Tuned so that a player
+  // who has not yet learned the ladder still wins this one — the fight teaches
+  // by being frightening, not by being lost. See `npm run balance`.
+  hp: 64,
+  // No special rule and no blow. It cannot reach you from down the hall, so
+  // every intent it declares is the same intent: it is getting closer. What
+  // kills you is arriving, and the picture says how long that will take.
   script: [
     {
-      verb: 'BITE',
-      damage: 6,
-      explain: 'BITE deals 6 damage after you score, unless you kill it first.',
+      verb: 'CRAWL',
+      damage: 0,
+      explain: 'CRAWL brings it halfway down the hall after you score, unless you kill it first.',
+    },
+    {
+      verb: 'CLOSE IN',
+      damage: 0,
+      explain: 'CLOSE IN puts it within reach of me after you score, unless you kill it first.',
+    },
+    {
+      verb: 'REACH',
+      damage: 0,
+      explain: 'REACH kills me after you score. This is the last turn there is.',
     },
   ],
-  tell: 'Too many eyes. All of them found me.',
+  tell: 'Too many eyes. All of them found me. It is a long hall, and it has started down it.',
   art: 'gnawing',
-  width: 0.72,
-  foot: 0.82,
+  // Its still pose is where it stands before the fight opens: far away.
+  width: MAW.stances.far.width,
+  foot: MAW.stances.far.foot,
+  approach: MAW,
   rewards: ['knuckle', 'wax', 'careful', 'plate', 'leech'],
   rewardChance: 0.6,
   rewardChoices: 2,
@@ -164,4 +261,23 @@ export function enemy(id: string): Enemy {
 export function intentAt(id: string, turn: number): Intent {
   const script = enemy(id).script
   return script[turn % script.length]!
+}
+
+/**
+ * The next reach in, or nothing because there is no next one.
+ *
+ * `undefined` is the whole of the contact rule: a thing at `close` that
+ * survives your hand has nowhere left to move except onto you. The caller in
+ * `combat/resolve.ts` is the only place that reads it, and it is the only
+ * place that may decide what that means.
+ */
+export function nextReach(from: Reach): Reach | undefined {
+  return REACHES[REACHES.indexOf(from) + 1]
+}
+
+/** Where an enemy's sprite sits at a reach. Its still pose when it has none. */
+export function stanceAt(id: string, reach: Reach | undefined): Stance {
+  const e = enemy(id)
+  if (!reach || !e.approach) return { width: e.width, foot: e.foot }
+  return e.approach.stances[reach]
 }

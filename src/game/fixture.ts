@@ -10,6 +10,7 @@
  *   ?room=gate               start standing somewhere else
  *   ?hp=4                    hurt
  *   ?enemyHp=1               a fight one blow from over
+ *   ?reach=close             a thing that closes, already on top of you
  *   ?dice=careful,leech      a chosen loadout (padded to six with plain bones)
  *   ?relics=nail,plate       carrying something
  *   ?mode=combat             open the room's fight, or jump to an ending
@@ -21,6 +22,8 @@
  */
 
 import { HAND_SIZE } from '../content/dice.js'
+import { REACHES } from '../content/enemies.js'
+import type { Reach } from '../content/enemies.js'
 import { ROOMS, room } from '../content/rooms.js'
 import { MAX_HP, newRun, reduce } from './reducer.js'
 import { SAVE_VERSION } from './state.js'
@@ -39,7 +42,7 @@ const num = (raw: string | null): number | undefined => {
 
 export function hasFixture(search: string): boolean {
   const p = new URLSearchParams(search)
-  return ['seed', 'room', 'hp', 'enemyHp', 'dice', 'relics', 'mode'].some((k) => p.has(k))
+  return ['seed', 'room', 'hp', 'enemyHp', 'reach', 'dice', 'relics', 'mode'].some((k) => p.has(k))
 }
 
 export function applyFixture(base: GameState, search: string): GameState {
@@ -73,14 +76,28 @@ export function applyFixture(base: GameState, search: string): GameState {
   const wanted = p.get('mode')
   const mode = wanted && (MODES as readonly string[]).includes(wanted) ? (wanted as Mode) : undefined
 
-  if ((mode === 'combat' || p.has('enemyHp')) && room(run.roomId).enemy) {
+  if ((mode === 'combat' || p.has('enemyHp') || p.has('reach')) && room(run.roomId).enemy) {
     state = reduce(state, { type: 'FIGHT' })
     const enemyHp = num(p.get('enemyHp'))
+    // Standing where the fight would have put it after N turns. It is the
+    // same state the reducer produces by playing to it — the reach, and the
+    // turn that goes with it, because an approaching enemy advances exactly
+    // once per turn and a fixture that split them would be a state the game
+    // cannot reach.
+    const wantedReach = p.get('reach')
+    const turn = wantedReach ? REACHES.indexOf(wantedReach as Reach) : -1
     const combat = state.run?.combat
-    if (enemyHp !== undefined && combat) {
+    if (combat && (enemyHp !== undefined || turn > 0)) {
       state = {
         ...state,
-        run: { ...state.run!, combat: { ...combat, enemyHp: Math.max(1, enemyHp) } },
+        run: {
+          ...state.run!,
+          combat: {
+            ...combat,
+            ...(enemyHp !== undefined ? { enemyHp: Math.max(1, enemyHp) } : {}),
+            ...(turn > 0 && combat.approach ? { approach: REACHES[turn]!, turn } : {}),
+          },
+        },
       }
     }
     return state

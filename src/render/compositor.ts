@@ -84,6 +84,25 @@ export interface EnemyPose {
   readonly width: number
   /** Where its feet land, as a fraction of world height. */
   readonly foot: number
+  /** Its horizontal centre, as a fraction of world width. Middle by default. */
+  readonly at?: number
+  /**
+   * How far away it is standing, when that is a thing about this enemy.
+   *
+   * Written to the element as an attribute and read by nothing but the
+   * stylesheet and the tests. It is a copy of authoritative state, never a
+   * source of it: `renderWorld` writes it on every paint, so it cannot survive
+   * a state that no longer says it.
+   */
+  readonly reach?: string
+  /**
+   * It arrived, and this is the settled picture of that.
+   *
+   * The terminal rung of the contact ladder, written from state rather than
+   * left behind by the sequence that played it — so reloading onto the death
+   * screen shows the thing on top of you rather than politely down the hall.
+   */
+  readonly contact?: boolean
 }
 
 /**
@@ -100,13 +119,27 @@ export function placeEnemy(world: World, src: string, pose: EnemyPose): void {
   // hero asset can be swapped without touching content. `height: auto` in the
   // stylesheet does the rest.
   world.enemy.style.width = `${pose.width * 100}%`
-  world.enemy.style.left = `${(0.5 - pose.width / 2) * 100}%`
+  world.enemy.style.left = `${((pose.at ?? 0.5) - pose.width / 2) * 100}%`
   world.enemy.style.bottom = `${(1 - pose.foot) * 100}%`
   world.enemy.dataset['enemy'] = 'present'
+  if (pose.reach) world.enemy.dataset['reach'] = pose.reach
+  else delete world.enemy.dataset['reach']
+  // Written on every paint, in both directions, so no rung of the contact
+  // ladder can outlive the state that put it there.
+  if (pose.contact) {
+    world.enemy.dataset['contact'] = 'landed'
+    world.root.dataset['contact'] = 'landed'
+  } else {
+    delete world.enemy.dataset['contact']
+    delete world.root.dataset['contact']
+  }
 }
 
 export function hideEnemy(world: World): void {
   world.enemy.hidden = true
   world.enemy.removeAttribute('src')
   delete world.enemy.dataset['enemy']
+  delete world.enemy.dataset['reach']
+  delete world.enemy.dataset['contact']
+  delete world.root.dataset['contact']
 }
