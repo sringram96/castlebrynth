@@ -103,7 +103,54 @@ export const ENEMY_ART: Readonly<Record<string, Asset>> = {
   'gnawing.close': asset('gnawing.close', 'enemies/crawling-close.png', 480, 708),
   'gnawing.hit': asset('gnawing.hit', 'enemies/crawling-hit.png', 480, 708),
   marrow: asset('marrow', 'enemies/marrow.png', 348, 679),
-  warden: asset('warden', 'enemies/warden.png', 357, 568),
+  // The Warden: ten authored plates, every one of them a **whole scene** at the
+  // backdrop's own size rather than a trimmed sprite. Same size, same box, same
+  // registration, so a pose swap changes the drawing and moves nothing — which
+  // is the only way ten silhouettes this different can be one standing figure.
+  // `SCENE` below is what says so, and `isScenePlate` is how the renderer asks.
+  //
+  // The plain key is the plate it stands in before the fight opens, and the
+  // full-health idle is that plate — so walking into the gate and opening the
+  // fight cannot show it two ways.
+  warden: asset('warden', 'enemies/warden-idle-full-1.png', 480, 720),
+  'warden.idle.full.1': asset('warden.idle.full.1', 'enemies/warden-idle-full-1.png', 480, 720),
+  'warden.idle.full.2': asset('warden.idle.full.2', 'enemies/warden-idle-full-2.png', 480, 720),
+  'warden.idle.mid.1': asset('warden.idle.mid.1', 'enemies/warden-idle-mid-1.png', 480, 720),
+  'warden.idle.mid.2': asset('warden.idle.mid.2', 'enemies/warden-idle-mid-2.png', 480, 720),
+  'warden.idle.low.1': asset('warden.idle.low.1', 'enemies/warden-idle-low-1.png', 480, 720),
+  'warden.idle.low.2': asset('warden.idle.low.2', 'enemies/warden-idle-low-2.png', 480, 720),
+  'warden.attack': asset('warden.attack', 'enemies/warden-attack.png', 480, 720),
+  'warden.defense': asset('warden.defense', 'enemies/warden-defense.png', 480, 720),
+  'warden.defeat.1': asset('warden.defeat.1', 'enemies/warden-defeat-1.png', 480, 720),
+  'warden.defeat.2': asset('warden.defeat.2', 'enemies/warden-defeat-2.png', 480, 720),
+}
+
+/**
+ * The one scene size, which every whole-frame plate in the game is built at.
+ *
+ * Backdrops, props, ambience, the player's arm and the Warden's ten plates are
+ * all this box, because all of them are cover-fitted by the same four CSS
+ * lines. It is declared once here so the renderer can *ask* whether a plate is
+ * a whole scene rather than being told, in content, twice.
+ */
+export const SCENE = { width: 480, height: 720 } as const
+
+/**
+ * Whether a plate is the whole scene rather than a trimmed silhouette.
+ *
+ * The distinction the compositor needs, and the only honest place to take it
+ * from is the art itself. A trimmed sprite is registered *by* its silhouette —
+ * it has to be given a width and a foot, because its box says nothing about
+ * where the thing stands. A scene plate is registered by the frame, so it wants
+ * no coordinate at all: it is cover-fitted exactly as the backdrop is, and the
+ * subject lands where it was painted at every viewport.
+ *
+ * Deriving it from the dimensions rather than declaring it in content means the
+ * two can never disagree. A plate built at the scene size *is* a scene plate,
+ * and there is no way to ship one and stage it as though it were not.
+ */
+export function isScenePlate(a: Asset): boolean {
+  return a.width === SCENE.width && a.height === SCENE.height
 }
 
 /**

@@ -8,8 +8,9 @@
 
 import { hideEnemy, hideProp, holdWeapon, placeEnemy, showProp, showProps } from '../render/compositor.js'
 import type { World } from '../render/compositor.js'
-import { enemyArt, handArt, propArt, roomArt, url } from '../render/assets.js'
+import { enemyArt, handArt, isScenePlate, propArt, roomArt, url } from '../render/assets.js'
 import { REACHES, enemy as enemyById, intentAt, stanceAt } from '../content/enemies.js'
+import { idlePose } from '../content/enemyPresentation.js'
 import { room as roomById } from '../content/rooms.js'
 import { actionFor, platesFor, stateOf } from '../content/interactions.js'
 import type { GameState } from '../game/state.js'
@@ -63,11 +64,28 @@ export function renderWorld(world: World, state: GameState, handlers: WorldHandl
     const fighting = run.combat?.enemyId === standing ? run.combat.approach : undefined
     const reach = fighting ?? (e.approach ? REACHES[0] : undefined)
     const stance = stanceAt(standing, reach)
-    placeEnemy(world, url(enemyArt(e.art, reach)), {
+    // And how hurt it is, for a horror that has been painted deteriorating.
+    // Straight off the same state the enemy bar reads, recomputed here on every
+    // paint and stored nowhere — which is the whole reason a reload at 150 of
+    // 300 shows the middle plate without a frame index in the save.
+    //
+    // The *first* plate of the band, always. The second is a beat of an idle
+    // loop, the loop belongs to `app/app.ts`, and a settled picture is the one
+    // every band is authored to rest on.
+    //
+    // Before the fight opens there is no health in state yet — and a thing
+    // standing at its own door is standing there whole, which is what the
+    // enemy's own `hp` says.
+    const combat = run.combat?.enemyId === standing ? run.combat : undefined
+    const pose =
+      idlePose(standing, combat?.enemyHp ?? e.hp, combat?.enemyMaxHp ?? e.hp) ?? reach
+    const art = enemyArt(e.art, pose)
+    placeEnemy(world, url(art), {
       width: stance.width,
       foot: stance.foot,
       ...(stance.at !== undefined ? { at: stance.at } : {}),
       ...(reach ? { reach } : {}),
+      ...(isScenePlate(art) ? { scene: true } : {}),
       ...(run.combat?.reached ? { contact: true } : {}),
     })
   } else {

@@ -32,14 +32,22 @@ there is no path where a backdrop ends up above an enemy.
 ## Sizes
 
 - Scene: **480 × 720**, portrait, `object-fit: cover` into the world zone.
-- Enemy sprites: at most 480 wide, binary alpha, trimmed to their silhouette.
-- Runtime payload budget: **4.5 MB**. It is measured by
+- Enemy sprites: at most 480 wide, binary alpha, trimmed to their silhouette —
+  **unless the encounter is a family of poses**, in which case every plate is
+  the whole 480 × 720 scene and nothing is trimmed. A trimmed sprite is
+  registered by its own silhouette, which is fine for a thing with one; the
+  Warden has ten and they differ enormously, so trimming each and sizing each
+  to one CSS width would change the figure's size every time its pose changed.
+  Whole frames cost bytes and buy registration. `isScenePlate` in
+  `src/render/assets.ts` is how the compositor tells the two apart, and it asks
+  the art rather than content.
+- Runtime payload budget: **5.6 MB**. It is measured by
   `test/unit/assets.test.ts` and printed by `npm run art`. It was 4 MB for nine
-  rooms; the Reliquary and the Chain Vault cost 512 KB of backdrop between them
-  and there is no posterisation of two dark, gradient-heavy plates that reaches
-  4 MB without banding them visibly. The comment on the test carries the
-  measured before and after. **Raising it again is a product decision**, and
-  the headroom is deliberately smaller than one backdrop so that it has to be.
+  rooms, then 4.5 MB when the Reliquary and the Chain Vault cost 512 KB of
+  backdrop between them, and it is now 5.6 MB because the Warden became an
+  authored family. The comment on the test carries the measured numbers for
+  every raise. **Raising it again is a product decision**, and the headroom is
+  deliberately smaller than one backdrop so that it has to be.
 
 Masters (1024×1536, 2–4 MB each) live in `docs/art-reference/masters/` and are
 never served.

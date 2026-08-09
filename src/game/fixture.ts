@@ -10,6 +10,7 @@
  *   ?room=gate               start standing somewhere else
  *   ?hp=4                    hurt
  *   ?enemyHp=1               a fight one blow from over
+ *   ?turn=2                  the fight standing on a chosen turn of the script
  *   ?reach=close             a thing that closes, already on top of you
  *   ?dice=careful,leech      a chosen loadout (padded to six with plain bones)
  *   ?relics=nail,plate       carrying something
@@ -57,6 +58,7 @@ export function hasFixture(search: string): boolean {
     'room',
     'hp',
     'enemyHp',
+    'turn',
     'reach',
     'dice',
     'relics',
@@ -148,7 +150,10 @@ export function applyFixture(base: GameState, search: string): GameState {
     return reduce(doomed, { type: 'SCORE' })
   }
 
-  if ((mode === 'combat' || p.has('enemyHp') || p.has('reach')) && room(run.roomId).enemy) {
+  if (
+    (mode === 'combat' || p.has('enemyHp') || p.has('turn') || p.has('reach')) &&
+    room(run.roomId).enemy
+  ) {
     state = reduce(state, { type: 'FIGHT' })
     const enemyHp = num(p.get('enemyHp'))
     // Standing where the fight would have put it. Both the reach *and* the
@@ -166,7 +171,23 @@ export function applyFixture(base: GameState, search: string): GameState {
         ? (wantedReach as Reach)
         : undefined
     const turn = reach ? turnAt(combat!.enemyId, reach) : -1
-    if (combat && (enemyHp !== undefined || turn > 0)) {
+    // Which turn of the script it is standing on.
+    //
+    // The other end of the same idea as `enemyHp`: a fight is a health and a
+    // position in a cycle, and standing it somewhere the walk would take three
+    // scores to reach is the whole reason this file exists. A boss whose
+    // telegraph is on turn 2 cannot otherwise be looked at without playing to
+    // it, which is how the old build ended up with beats nobody had automated.
+    //
+    // Refused for a thing that closes: its turn is not free — `reachAfter` ties
+    // it to where the thing is standing, and setting one without the other
+    // would be a position the game cannot reach. `reach` is that fixture.
+    const wantedTurn = num(p.get('turn'))
+    const onTurn =
+      wantedTurn !== undefined && combat && !combat.approach && wantedTurn >= 0
+        ? Math.floor(wantedTurn)
+        : undefined
+    if (combat && (enemyHp !== undefined || turn > 0 || onTurn !== undefined)) {
       state = {
         ...state,
         run: {
@@ -174,6 +195,7 @@ export function applyFixture(base: GameState, search: string): GameState {
           combat: {
             ...combat,
             ...(enemyHp !== undefined ? { enemyHp: Math.max(1, enemyHp) } : {}),
+            ...(onTurn !== undefined ? { turn: onTurn } : {}),
             ...(reach && turn > 0 ? { approach: reach, turn } : {}),
           },
         },

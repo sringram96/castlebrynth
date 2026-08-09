@@ -15,15 +15,18 @@ import {
   HAND_ART,
   PROP_ART,
   ROOM_ART,
+  SCENE,
   TRAY_ART,
   allAssets,
   enemyArt,
   handArt,
+  isScenePlate,
   propArt,
   roomArt,
 } from '../../src/render/assets.js'
 import { ENEMIES, REACHES } from '../../src/content/enemies.js'
 import { ROOMS, room } from '../../src/content/rooms.js'
+import { decode } from '../../tools/png.mjs'
 
 const PUBLIC = new URL('../../public/assets/', import.meta.url)
 
@@ -36,6 +39,22 @@ function png(file: string): { width: number; height: number; bytes: number } {
     height: view.getUint32(20),
     bytes: statSync(path).size,
   }
+}
+
+const exists = (file: string): boolean => {
+  try {
+    return statSync(new URL(file, PUBLIC)).size > 0
+  } catch {
+    return false
+  }
+}
+
+/** Every alpha a plate uses. Binary art has exactly `{0, 255}`, or `{255}`. */
+function alphas(file: string): Set<number> {
+  const { rgba } = decode(readFileSync(new URL(file, PUBLIC)))
+  const seen = new Set<number>()
+  for (let i = 3; i < rgba.length; i += 4) seen.add(rgba[i]!)
+  return seen
 }
 
 describe('the manifest', () => {
@@ -73,12 +92,39 @@ describe('the manifest', () => {
    * a visible seam in the art direction is the wrong trade in a game whose
    * systems are in service of the art.
    *
-   * The headroom left is deliberately less than one backdrop: another room
-   * cannot be added without this conversation happening again.
+   * Raised again, from 4.5 MB to 5.6 MB, when the Warden became an authored
+   * family:
+   *
+   *   before  4.248 MB   one 102 KB trimmed Warden sprite
+   *   after   5.467 MB   ten 480x720 Warden plates, 1.316 MB between them
+   *
+   * The cost is structural rather than careless. The boss now has ten poses
+   * where it had one, and every one of them is a **whole scene** rather than a
+   * trimmed silhouette — which is not a saving that was skipped but the feature
+   * itself: ten silhouettes this different cannot be trimmed and then sized to
+   * one width without the figure changing size every time it changes pose. See
+   * `ART_DIRECTION.md` § *Sizes*.
+   *
+   * Compression was tried first here too, measured over the ten plates:
+   *
+   *   32 steps  1.316 MB     the rest of the game's setting
+   *   24 steps  1.105 MB
+   *   16 steps  0.889 MB
+   *   12 steps  0.773 MB
+   *
+   * Not one of them reaches 4.5 MB — the deepest banding on offer saves 543 KB
+   * against an overage of 967 KB — and every one of them bands a black robe
+   * carrying fine gold filigree, which is the single most gradient-heavy
+   * subject in the slice and is also the boss. Same trade as last time, same
+   * answer, and this time it does not even buy the ceiling.
+   *
+   * The headroom left is again deliberately less than one backdrop: another
+   * room, or another family, cannot be added without this conversation
+   * happening a third time.
    */
   it('keeps the runtime art payload inside its budget', () => {
     const total = allAssets().reduce((sum, a) => sum + png(a.file).bytes, 0)
-    expect(total).toBeLessThan(4.5 * 1024 * 1024)
+    expect(total).toBeLessThan(5.6 * 1024 * 1024)
   })
 })
 
@@ -114,6 +160,21 @@ describe('every enemy has combat art', () => {
     }
   })
 
+  it('never mixes whole-scene plates with trimmed ones in a family', () => {
+    // The two kinds are registered by different things — a scene plate by the
+    // frame, a trimmed sprite by its own silhouette — so an enemy that shipped
+    // one of each would be staged two ways and would jump between them. Which
+    // kind an enemy is, is a property of its whole family.
+    for (const e of Object.values(ENEMIES)) {
+      const family = Object.entries(ENEMY_ART).filter(([key]) => key.split('.')[0] === e.art)
+      const scene = family.filter(([, art]) => isScenePlate(art))
+      expect(
+        scene.length === 0 || scene.length === family.length,
+        `${e.id} has ${scene.length} of ${family.length} plates at the scene size`,
+      ).toBe(true)
+    }
+  })
+
   it('gives the impact plate the box of a pose it can actually stand in', () => {
     // The bright frame is a source swap and changes no placement, so it is
     // only ever shown where its dimensions match the plate it replaces. A
@@ -127,6 +188,90 @@ describe('every enemy has combat art', () => {
       })
       expect(fits.length, `${e.id}'s impact plate fits no reach`).toBeGreaterThan(0)
     }
+  })
+})
+
+/**
+ * The Warden.
+ *
+ * The one encounter in the slice built out of whole-scene plates, and the
+ * reason the distinction exists at all. Everything below is a statement of the
+ * same property from a different side: **ten drawings, one box.** A pose swap
+ * has to be a change of what is drawn and nothing else, because the sequence
+ * that swaps them touches no placement — so if two of these files disagreed
+ * about their size, the boss would jump every time it raised its arms.
+ */
+describe('the Warden is one registered family', () => {
+  /** Every plate, as the `<pose>` half of its key. The order is the ladder. */
+  const POSES = [
+    'idle.full.1',
+    'idle.full.2',
+    'idle.mid.1',
+    'idle.mid.2',
+    'idle.low.1',
+    'idle.low.2',
+    'attack',
+    'defense',
+    'defeat.1',
+    'defeat.2',
+  ] as const
+
+  it('ships all ten plates, and no fewer', () => {
+    for (const pose of POSES) {
+      const art = ENEMY_ART[`warden.${pose}`]
+      expect(art, `warden.${pose} is not in the manifest`).toBeDefined()
+      expect(png(art!.file).bytes, `warden.${pose} has no file`).toBeGreaterThan(0)
+    }
+    // And nothing else claims to be a Warden plate. A stray key here is a plate
+    // the loader downloads on every boot and nothing ever shows.
+    const held = Object.keys(ENEMY_ART).filter((k) => k.startsWith('warden'))
+    expect(held.sort()).toEqual(['warden', ...POSES.map((p) => `warden.${p}`)].sort())
+  })
+
+  it('holds every one of them at the scene box, whole and untrimmed', () => {
+    // 480x720 exactly — not "about the same", not "the same as each other".
+    // The plates are cover-fitted like the backdrop, so the scene size is what
+    // registers them with the room as well as with one another.
+    for (const pose of POSES) {
+      const art = enemyArt('warden', pose)
+      expect([art.width, art.height], `warden.${pose} is not the scene box`).toEqual([
+        SCENE.width,
+        SCENE.height,
+      ])
+      expect(isScenePlate(art)).toBe(true)
+      const real = png(art.file)
+      expect([real.width, real.height], `warden.${pose} on disk is not the scene box`).toEqual([
+        SCENE.width,
+        SCENE.height,
+      ])
+    }
+  })
+
+  it('keeps the alpha binary: opaque or absent, never in between', () => {
+    // The contract every plate in the game is built on — a pixel's colour never
+    // depends on what is behind it, so a room renders identically every visit.
+    // A resample softens a hard edge, and `hardenAlpha` in the pipeline is what
+    // puts it back; this is the assertion that it ran.
+    for (const pose of POSES) {
+      const seen = [...alphas(enemyArt('warden', pose).file)].sort((a, b) => a - b)
+      expect(seen, `warden.${pose} has soft alpha`).toEqual([0, 255])
+    }
+  })
+
+  it('answers a plain ask with the plate it is standing in at full health', () => {
+    // Anything that wants "the Warden" and names no pose — the preloader, a
+    // fallback, a test — has to get the picture the room actually opens on.
+    expect(ENEMY_ART['warden']!.file).toBe('enemies/warden-idle-full-1.png')
+    expect(enemyArt('warden').file).toBe(enemyArt('warden', 'idle.full.1').file)
+  })
+
+  it('has retired the sprite it used to be', () => {
+    // The old Warden was cut out of a whole composition by a luminance key and
+    // shipped as one 357x568 sprite. Nothing may name it, and `npm run art`
+    // deletes it — a withdrawn output left in `public/` is a second Warden for
+    // the next person to find.
+    for (const asset of allAssets()) expect(asset.file).not.toBe('enemies/warden.png')
+    expect(exists('enemies/warden.png'), 'the old Warden sprite is still on disk').toBe(false)
   })
 })
 

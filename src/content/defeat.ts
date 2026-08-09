@@ -34,10 +34,11 @@ export interface DefeatFrame {
    * The authored plate for this beat, as an enemy art pose — the `<pose>` half
    * of an `ENEMY_ART` key — or nothing to hold the plate it died standing in.
    *
-   * Four `defeat.1` … `defeat.4` plates are what this wants. See
-   * `## HUMAN ART REQUIRED` in `POLISH_PROGRESS.md`: until they are drawn the
-   * frames below name no pose, and the sequence is staged out of the plates the
-   * encounter already ships. Adding a pose here is the whole of the swap.
+   * Naming one is the whole of the swap, and the two deaths below are the two
+   * halves of that: the Warden names `defeat.1` and `defeat.2` and is therefore
+   * staged at identity, while the Gnawing names nothing and has its collapse
+   * made for it out of `scale`, `drop` and `dim`. See `## HUMAN ART REQUIRED`
+   * in `POLISH_PROGRESS.md` for the plates the Gnawing is still waiting on.
    */
   readonly pose?: string
   /** How long this frame is up, in milliseconds. */
@@ -98,9 +99,39 @@ const GNAWING: Defeat = {
   ],
 }
 
+/**
+ * The Warden, stopping.
+ *
+ * The same framework and the opposite staging, which is what the framework was
+ * for. The Gnawing's death is *staged* — its frames name no plate, so the
+ * sequence makes the collapse out of the sprite it died standing in by shrinking
+ * it, dropping it and taking the light out of it. The Warden's death is
+ * **painted**: two authored plates, one of it giving way and one of it down in
+ * its own robe, each the whole 480x720 scene.
+ *
+ * So every staging number here is the identity. `scale: 1`, `drop: 0`,
+ * `dim: 1` on both frames is not an oversight — it is the statement that this
+ * death needs no help. Shrinking a plate that already draws a collapsed figure
+ * would collapse it twice, and moving a scene-registered plate would slide the
+ * whole picture off the door it is standing in front of.
+ *
+ * 120 + 180 + 420 = 720 ms, and the last frame is more than twice the first.
+ * The body is the beat; the fall is the punctuation that makes it land.
+ */
+const WARDEN: Defeat = {
+  still: 120,
+  frames: [
+    // Still on its feet, and no longer holding itself up.
+    { pose: 'defeat.1', hold: 180, scale: 1, drop: 0, dim: 1 },
+    // Down. Held, and the last thing the fight has to say.
+    { pose: 'defeat.2', hold: 420, scale: 1, drop: 0, dim: 1 },
+  ],
+}
+
 /** Every horror whose death is played out. Keyed by enemy id. */
 export const DEFEATS: Readonly<Record<string, Defeat>> = {
   gnawing: GNAWING,
+  warden: WARDEN,
 }
 
 /** The death of a horror, or nothing because it has not been authored. */

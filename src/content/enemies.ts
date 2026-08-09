@@ -274,8 +274,14 @@ const WARDEN: Enemy = {
   ],
   tell: 'It was waiting at this door. It has been waiting a long time.',
   art: 'warden',
-  width: 0.86,
-  foot: 0.99,
+  // The whole frame, because every one of its ten plates *is* the whole frame.
+  // A scene-registered family carries its own position in the drawing — where
+  // the skeleton stands inside its 480x720 canvas is the staging — so the only
+  // honest stance for it is the one that says "all of it, where it was
+  // painted". The compositor cover-fits it exactly as it cover-fits the
+  // backdrop; see `isScenePlate`.
+  width: 1,
+  foot: 1,
   // The boss stands at the way out. Escape is the reward.
   rewards: [],
   rewardChance: 0,
