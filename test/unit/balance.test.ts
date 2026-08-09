@@ -12,6 +12,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { fightIn, simulateFight, simulateRun } from '../balance/simulate.js'
+import { REACHES, enemy } from '../../src/content/enemies.js'
 
 const SEEDS = Array.from({ length: 120 }, (_, i) => (i + 1) * 2654435761)
 const rate = (xs: readonly boolean[]): number => xs.filter(Boolean).length / xs.length
@@ -22,15 +23,17 @@ describe('the first encounter', () => {
     expect(rate(wins)).toBeGreaterThanOrEqual(0.9)
   })
 
-  it('is over in three scoring turns, because there are only three', () => {
-    // The encounter is a count, not a health bar: it closes one reach per
-    // score it survives and there is nothing past `close`. So no seed, at any
-    // tier, may take a fourth turn — a fourth turn would mean something
-    // advanced twice or not at all.
+  it('is over inside its deadline, because the deadline is the encounter', () => {
+    // The encounter is a count as well as a health bar: it covers a stretch of
+    // hall every `every` scores it survives, and there is nothing past
+    // `close`. So no seed, at any tier, may outlive the walk — a turn past it
+    // would mean something failed to move, or moved twice.
+    const ladder = enemy('gnawing').approach!
+    const deadline = ladder.every * REACHES.length
     for (const tier of ['naive', 'heuristic'] as const) {
       for (const seed of SEEDS) {
         const turns = simulateFight(fightIn('hollow', seed), tier).result.turns
-        expect(turns, `${tier}/${seed}`).toBeLessThanOrEqual(3)
+        expect(turns, `${tier}/${seed}`).toBeLessThanOrEqual(deadline)
         expect(turns).toBeGreaterThanOrEqual(1)
       }
     }

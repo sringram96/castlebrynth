@@ -13,7 +13,7 @@
 
 import { HAND_SIZE, LOOT_DICE, STARTING_DICE, die, isDieId } from '../content/dice.js'
 import { LOOT_RELICS, relic } from '../content/relics.js'
-import { REACHES, enemy, intentAt } from '../content/enemies.js'
+import { enemy, intentAt, reachAfter } from '../content/enemies.js'
 import { FIRST_ROOM, room } from '../content/rooms.js'
 import { Rng, reroll, roll, toggle } from '../combat/dice.js'
 import { resolve } from '../combat/resolve.js'
@@ -101,10 +101,10 @@ function beginCombat(run: RunState): CombatState {
     roll: [],
     selected: [],
     spentHands: [],
-    // A thing that closes always opens the fight at the far end of the room.
-    // There is no content that starts one anywhere else, and there is no
-    // action that can put it back.
-    ...(e.approach ? { approach: REACHES[0]! } : {}),
+    // A thing that closes always opens the fight at the far end of the room:
+    // nothing has survived yet, so this is the same call every later turn
+    // makes. There is no action anywhere that can put it back.
+    ...(e.approach ? { approach: reachAfter(id, 0)! } : {}),
     log: [e.tell],
   }
 }

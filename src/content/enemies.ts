@@ -79,6 +79,19 @@ export interface Stance {
 export interface Approach {
   /** One stance per reach. Its still pose must be the `far` one. */
   readonly stances: Readonly<Record<Reach, Stance>>
+  /**
+   * How many scores it survives at each reach before it takes the next step.
+   *
+   * The hall is long and it is dragging itself down it, so a stretch takes
+   * more than one turn to cover. This is what sets the deadline: the player
+   * gets `every × 3` attacks, and the last of them had better kill it.
+   *
+   * It is not the same lever as health. Health decides how long the fight
+   * *is*; this decides how long the fight *may be* before the thing arrives.
+   * Raising one without the other either makes the deadline irrelevant or
+   * makes it the only thing that matters.
+   */
+  readonly every: number
   /** The beat when it arrives. Said once, and it is the last thing said. */
   readonly says: string
   /** Why the run ended, for the death screen. */
@@ -92,10 +105,11 @@ export interface Enemy {
   /**
    * The cycle. Turn N takes `script[N % script.length]`.
    *
-   * An approaching enemy declares one intent per reach, in `REACHES` order —
-   * it advances exactly once per surviving score, so its turn count and its
-   * reach are the same number, and `test/unit/approach.test.ts` holds them to
-   * it.
+   * An approaching enemy declares one intent per turn of the whole walk —
+   * `every × 3` of them — because the two turns it spends at a reach are not
+   * the same turn. One of them ends with it still where it was and the other
+   * ends with it nearer, and an intent that cannot tell the player which is
+   * which is a lie on the turn that matters most.
    */
   readonly script: readonly Intent[]
   /** The one sentence the player sees on first sight. */
@@ -143,6 +157,9 @@ const MAW: Approach = {
     // Wider than the frame, jaw on the floor, no corridor left behind it.
     close: { width: 1.24, foot: 1.02 },
   },
+  // Two scores per stretch of hall. Six attacks, and the sixth had better
+  // finish it.
+  every: 2,
   says: 'It has me.',
   cause: 'The Gnawing — it got close enough.',
 }
@@ -150,23 +167,43 @@ const MAW: Approach = {
 const GNAWING: Enemy = {
   id: 'gnawing',
   name: 'The Gnawing',
-  // Three attacks, and the third had better kill it. Tuned so that a player
-  // who has not yet learned the ladder still wins this one — the fight teaches
-  // by being frightening, not by being lost. See `npm run balance`.
-  hp: 64,
+  // Six attacks, and the sixth had better kill it. Tuned so that a player who
+  // has not yet learned the ladder still wins this one — the fight teaches by
+  // being frightening, not by being lost. See `npm run balance`.
+  hp: 140,
   // No special rule and no blow. It cannot reach you from down the hall, so
   // every intent it declares is the same intent: it is getting closer. What
   // kills you is arriving, and the picture says how long that will take.
+  //
+  // Two intents per reach, and they are not interchangeable: the first ends
+  // with it still where it was, the second ends with it nearer. The pair at
+  // `close` is the whole encounter in two lines — one that says the next move
+  // reaches you, and one that says this is the move.
   script: [
     {
       verb: 'CRAWL',
       damage: 0,
-      explain: 'CRAWL brings it halfway down the hall after you score, unless you kill it first.',
+      explain: 'CRAWL drags it a little further down the hall after you score. It has most of the way still to come.',
+    },
+    {
+      verb: 'CRAWL',
+      damage: 0,
+      explain: 'CRAWL puts it halfway down the hall after you score, unless you kill it first.',
+    },
+    {
+      verb: 'CLOSE IN',
+      damage: 0,
+      explain: 'CLOSE IN drags it nearer again after you score. It is most of the way here.',
     },
     {
       verb: 'CLOSE IN',
       damage: 0,
       explain: 'CLOSE IN puts it within reach of me after you score, unless you kill it first.',
+    },
+    {
+      verb: 'GATHER',
+      damage: 0,
+      explain: 'GATHER is it setting itself, and it does not move this turn. What it does next reaches me.',
     },
     {
       verb: 'REACH',
@@ -264,15 +301,28 @@ export function intentAt(id: string, turn: number): Intent {
 }
 
 /**
- * The next reach in, or nothing because there is no next one.
+ * Where it stands after surviving `turns` scores, or nothing because it has
+ * run out of hall and is standing on you.
  *
- * `undefined` is the whole of the contact rule: a thing at `close` that
- * survives your hand has nowhere left to move except onto you. The caller in
+ * `undefined` is the whole of the contact rule. The caller in
  * `combat/resolve.ts` is the only place that reads it, and it is the only
  * place that may decide what that means.
+ *
+ * A pure function of the turn count and the content, so the reach recorded in
+ * state and the number of turns that produced it can never disagree — which
+ * is what lets a fixture stand a fight at a reach without inventing a
+ * position the game could not have reached.
  */
-export function nextReach(from: Reach): Reach | undefined {
-  return REACHES[REACHES.indexOf(from) + 1]
+export function reachAfter(id: string, turns: number): Reach | undefined {
+  const ladder = enemy(id).approach
+  if (!ladder) return undefined
+  return REACHES[Math.floor(turns / ladder.every)]
+}
+
+/** The turn an enemy first stands at a reach. Its whole walk, in one line. */
+export function turnAt(id: string, reach: Reach): number {
+  const ladder = enemy(id).approach
+  return ladder ? REACHES.indexOf(reach) * ladder.every : 0
 }
 
 /** Where an enemy's sprite sits at a reach. Its still pose when it has none. */

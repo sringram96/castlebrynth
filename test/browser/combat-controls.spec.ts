@@ -19,7 +19,7 @@ test.describe('the combat controls', () => {
 
     await intent.click()
     // The order is the lesson, so the explanation states it.
-    await expect(page.locator('#say')).toContainText('after you score, unless you kill it first')
+    await expect(page.locator('#say')).toContainText('after you score')
   })
 
   test('rolls exactly six dice, and holding never changes that', async ({ page }) => {
@@ -124,11 +124,20 @@ test.describe('the combat controls', () => {
 
     const after = await state(page)
     expect(after.run!.combat!.enemyHp).toBe(enemyBefore - damage)
-    // Nothing through: it cannot bite you from down the hall. Its answer is a
-    // step, and the step is the thing that eventually kills you.
+    // Nothing through: it cannot bite you from down the hall. Its answer is to
+    // haul itself along the hall, and covering a stretch of it takes more than
+    // one turn — so this score leaves it exactly where it was.
     expect(after.run!.hp).toBe(before.run!.hp)
-    expect(after.run!.combat!.approach).toBe('mid')
+    expect(after.run!.combat!.approach).toBe('far')
     await expect(page.locator('#say')).toContainText('CRAWL')
+
+    // And the next one lands it. The cadence itself is
+    // `test/browser/approach.spec.ts`; what matters here is that the answer to
+    // a score is real and eventually arrives.
+    await act(page, 'roll').click()
+    await dice(page).nth(0).click()
+    await act(page, 'score').click()
+    expect((await state(page)).run!.combat!.approach).toBe('mid')
     // And the next turn starts clean.
     expect(after.run!.combat!.phase).toBe('intent')
     expect(after.run!.combat!.selected).toEqual([])

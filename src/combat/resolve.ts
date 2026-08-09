@@ -7,7 +7,7 @@
  * property of the build rather than of anybody's care.
  */
 
-import { enemy, intentAt, nextReach } from '../content/enemies.js'
+import { enemy, intentAt, reachAfter } from '../content/enemies.js'
 import type { Reach } from '../content/enemies.js'
 import { armorOf, preview } from './scoring.js'
 import type { Preview, Selected } from './scoring.js'
@@ -124,14 +124,15 @@ export function resolve(run: RunState, combat: CombatState): Resolution {
     beats.push(`${intent.verb}.`)
   }
 
-  // It closes. One reach per turn it survives, and the last one is onto you:
-  // `nextReach` returning nothing is the whole of the contact rule, and the
-  // player has been told for two turns that this is what `close` means.
+  // It closes. A stretch of hall takes more than one score to cover, and the
+  // last stretch ends on you: `reachAfter` returning nothing is the whole of
+  // the contact rule, and the player has been told for two turns that this is
+  // what `close` means.
   const ladder = enemy(combat.enemyId).approach
   let approach = combat.approach
   let reached = false
   if (ladder && approach) {
-    const next = nextReach(approach)
+    const next = reachAfter(combat.enemyId, combat.turn + 1)
     if (next) {
       approach = next
     } else {

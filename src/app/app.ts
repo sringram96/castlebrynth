@@ -371,6 +371,15 @@ export class App {
     if (reached) return this.playContact(sequence, frame, enemyAfter, afterFaces)
     if (advancedTo) return this.playAdvance(sequence, frame, enemyAfter, afterFaces, advancedTo)
 
+    // It survived, it is a thing that closes, and it did not get anywhere. A
+    // stretch of hall takes more than one score to cover, so this is what most
+    // of them look like: it hauls, and it is still where it was. Without the
+    // beat the turn reads as the thing ignoring you.
+    if (combat.approach !== undefined && settledCombat?.approach !== undefined) {
+      sequence.at(APPROACH.gather, () => enemyAdvance(this.world, 'gather'))
+      sequence.at(APPROACH.arrive, () => enemyAdvance(this.world, 'arrive'))
+    }
+
     // Only now does the next turn — or the reward, or the death screen — take
     // the screen. A terminal screen that arrives before its own blow lands is
     // the fight ending without the player seeing how, so the last beat is the
