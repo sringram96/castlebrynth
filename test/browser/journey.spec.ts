@@ -10,7 +10,7 @@
 import { expect, test } from '@playwright/test'
 
 import { act, boot, livingBones, screenName, state } from './helpers.js'
-import { clearReward, fightItOut } from './play.js'
+import { clearReward, fight, fightItOut } from './play.js'
 
 test.describe('the short route', () => {
   test('door to exit, without a single injected state', async ({ page }) => {
@@ -90,9 +90,13 @@ test.describe('the deep route', () => {
     expect((await state(page)).run!.roomId).toBe('deep')
 
     const vials = (await state(page)).run!.vials
-    if ((await fightItOut(page)) === 'died') return
-    // The Marrow always leaves a Vial, offer or no offer.
-    expect((await state(page)).run!.vials).toBe(vials + 1)
+    const report = await fight(page)
+    if (report.end === 'died') return
+    // The Marrow always leaves a Vial, offer or no offer — **net of whatever
+    // the fight drank**. A round that spends one and then wins one leaves the
+    // satchel where it started, and a bare count would read that as a missing
+    // drop rather than as the fight being expensive.
+    expect((await state(page)).run!.vials).toBe(vials - report.drank + 1)
     await clearReward(page, false)
   })
 })

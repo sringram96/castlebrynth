@@ -64,10 +64,19 @@ async function fieldSpecials(page: Page, want: readonly string[]): Promise<void>
   await act(page, 'close').click()
 }
 
-/** One round: field, throw, maybe a Charm, smash, and on to the next. */
-export async function takeRound(page: Page): Promise<void> {
+/**
+ * One round: field, throw, maybe a Charm, smash, and on to the next.
+ *
+ * Returns how many Vials it drank, because a caller checking a guaranteed
+ * drop needs to know: a fight that pays one Vial and spends one leaves the
+ * satchel exactly where it started, and an assertion that only looked at the
+ * count would call that a missing drop.
+ */
+export async function takeRound(page: Page): Promise<number> {
+  let drank = 0
   if (drinkFor(await table(page), 'heuristic') && (await act(page, 'drink').count()) > 0) {
     await act(page, 'drink').click()
+    drank += 1
   }
 
   const decision = fieldFor(await table(page), 'heuristic')
@@ -94,6 +103,7 @@ export async function takeRound(page: Page): Promise<void> {
 
   await act(page, 'smash').click()
   if ((await act(page, 'round').count()) > 0) await act(page, 'round').click()
+  return drank
 }
 
 function cssEscape(value: string): string {
@@ -102,22 +112,34 @@ function cssEscape(value: string): string {
 
 export type FightEnd = 'won' | 'died'
 
+export interface FightReport {
+  readonly end: FightEnd
+  /** Vials spent getting there. A caller checking a drop has to net these off. */
+  readonly drank: number
+}
+
 /** Play a fight to its end, or fail loudly if it never ends. */
-export async function fightItOut(page: Page, maxRounds = 25): Promise<FightEnd> {
+export async function fight(page: Page, maxRounds = 25): Promise<FightReport> {
   await act(page, 'fight').click()
+  let drank = 0
   for (let round = 0; round < maxRounds; round++) {
     const screen = await screenName(page)
-    if (screen === 'reward') return 'won'
-    if (screen === 'dead') return 'died'
+    if (screen === 'reward') return { end: 'won', drank }
+    if (screen === 'dead') return { end: 'died', drank }
     // A win with nothing to give goes straight back to the room, and a fight
     // that is over has no verb of its own left on the tray.
     if ((await act(page, 'field').count()) === 0 && (await act(page, 'round').count()) === 0) {
-      return (await screenName(page)) === 'dead' ? 'died' : 'won'
+      return { end: (await screenName(page)) === 'dead' ? 'died' : 'won', drank }
     }
-    await takeRound(page)
+    drank += await takeRound(page)
   }
   expect(null, `the fight did not end in ${maxRounds} rounds`).not.toBeNull()
-  return 'died'
+  return { end: 'died', drank }
+}
+
+/** The end alone, for a caller that does not care what it cost. */
+export async function fightItOut(page: Page, maxRounds = 25): Promise<FightEnd> {
+  return (await fight(page, maxRounds)).end
 }
 
 /** Take whatever a reward screen is offering, or leave it. */
