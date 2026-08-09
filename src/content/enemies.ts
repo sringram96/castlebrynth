@@ -15,6 +15,8 @@
  * fight, it is an absent one.
  */
 
+import type { ThreatBand } from './roomTypes.js'
+
 export interface Intent {
   /** Two words or fewer, and it is a verb. */
   readonly verb: string
@@ -102,6 +104,23 @@ export interface Enemy {
   readonly id: string
   readonly name: string
   readonly hp: number
+  /**
+   * What the picture it stands in has to be able to do.
+   *
+   * The art's veto over generation, from the other side: a room declares the
+   * kinds of encounter its composition can hold, an enemy declares the kind it
+   * is, and `canHost` in `content/roomResolver.ts` is the one place the two
+   * meet. Three words for three encounters — this is a compatibility key, not
+   * a taxonomy, and it should stay one.
+   */
+  readonly encounterTags: readonly string[]
+  /**
+   * How heavy a fight this is, as one of three words.
+   *
+   * What a plan asks for. The numbers stay below, authored; this only says
+   * where in a descent a thing of this weight belongs.
+   */
+  readonly threat: ThreatBand
   /**
    * The cycle. Turn N takes `script[N % script.length]`.
    *
@@ -212,6 +231,11 @@ const GNAWING: Enemy = {
     },
   ],
   tell: 'Too many eyes. All of them found me. It is a long hall, and it has started down it.',
+  // It needs the hall to be *in the picture*. Put it in a room painted as a
+  // cramped passage and the whole encounter — three authored distances, the
+  // count the player reads off the size of it — has nowhere to happen.
+  encounterTags: ['closing-horror'],
+  threat: 'low',
   art: 'gnawing',
   // Its still pose is where it stands before the fight opens: far away.
   width: MAW.stances.far.width,
@@ -243,6 +267,10 @@ const MARROW: Enemy = {
     },
   ],
   tell: 'The bones of it are somebody. Several somebodies.',
+  // It stands where it is and trades. A trimmed sprite at a bit over half the
+  // width, so what it needs is floor to stand on rather than distance to cover.
+  encounterTags: ['standing-horror'],
+  threat: 'medium',
   art: 'marrow',
   width: 0.62,
   foot: 0.94,
@@ -273,6 +301,11 @@ const WARDEN: Enemy = {
     },
   ],
   tell: 'It was waiting at this door. It has been waiting a long time.',
+  // Ten whole-scene plates, every one of them painted filling a doorway. There
+  // is exactly one composition in the game that can carry that, and a room
+  // that does not declare `duel-stander` may not be given this fight.
+  encounterTags: ['duel-stander'],
+  threat: 'keeper',
   art: 'warden',
   // The whole frame, because every one of its ten plates *is* the whole frame.
   // A scene-registered family carries its own position in the drawing — where
@@ -293,6 +326,9 @@ export const ENEMIES: Readonly<Record<string, Enemy>> = {
   marrow: MARROW,
   warden: WARDEN,
 }
+
+/** Every authored encounter, in declaration order. The resolver's whole world. */
+export const ENEMY_LIST: readonly Enemy[] = Object.values(ENEMIES)
 
 export function enemy(id: string): Enemy {
   const found = ENEMIES[id]

@@ -18,7 +18,8 @@ import { HEAL_FRACTIONS, MAX_HP, applyRecovery, newRun, recovered, reduce } from
 import type { Action } from '../../src/game/reducer.js'
 import { SAVE_VERSION, TITLE } from '../../src/game/state.js'
 import type { GameState, RitualRoll, RunState } from '../../src/game/state.js'
-import { ROOMS, room } from '../../src/content/rooms.js'
+import { ROOM_LIBRARY } from '../../src/content/rooms.js'
+import { firstNodeOf, roomAt } from '../../src/game/map.js'
 import { load, save } from '../../src/game/save.js'
 
 const ROLLS: readonly RitualRoll[] = [1, 2, 3, 4, 5, 6]
@@ -35,14 +36,22 @@ const play = (state: GameState, ...actions: Action[]): GameState =>
  * these tests are about.
  */
 function inSanctuary(seed = 1, hp = MAX_HP): GameState {
+  const started = reduce(TITLE, { type: 'START_RUN', seed })
   const walked = play(
-    reduce(TITLE, { type: 'START_RUN', seed }),
-    { type: 'GO', to: 'passage' },
-    { type: 'GO', to: 'hollow' },
+    started,
+    { type: 'GO', to: node(started, 'passage') },
+    { type: 'GO', to: node(started, 'hollow') },
   )
-  const beaten = { ...walked, run: { ...walked.run!, cleared: ['hollow'] } }
-  const arrived = reduce(beaten, { type: 'GO', to: 'sanctuary' })
+  const beaten = { ...walked, run: { ...walked.run!, cleared: [node(walked, 'hollow')] } }
+  const arrived = reduce(beaten, { type: 'GO', to: node(beaten, 'sanctuary') })
   return { ...arrived, run: { ...arrived.run!, hp } }
+}
+
+/** The node of this run that used a named authored template. */
+function node(state: GameState, templateId: string): string {
+  const found = firstNodeOf(state.run!.map, templateId)
+  if (!found) throw new Error(`this run has no ${templateId}`)
+  return found.id
 }
 
 /** A tiny in-memory Storage, so a reload can be tested without a browser. */
@@ -69,49 +78,69 @@ function reloaded(state: GameState): GameState {
 
 describe('the route', () => {
   it('puts the chapel between the Gnawing and the fork', () => {
-    expect(room('hollow').exits.map((e) => e.to)).toEqual(['sanctuary'])
+    // Asked of the generated map rather than of the rooms, because rooms no
+    // longer know where they lead. What is being asserted is unchanged: the
+    // director still lays the descent out in this order.
+    const run = reduce(TITLE, { type: 'START_RUN', seed: 1 }).run!
+    const onward = (templateId: string): readonly string[] =>
+      roomAt(run, node({ ...TITLE, run }, templateId)).exits.map((e) => roomAt(run, e.to).id)
+
+    expect(onward('hollow')).toEqual(['sanctuary'])
     // The Reliquary was inserted between the two. The chapel's job is
     // unchanged — it is still the last thing before the run's one route
     // decision — and the dead chapel it now opens onto is optional in every
     // sense, so nothing about the font's placement moved.
-    expect(room('sanctuary').exits.map((e) => e.to)).toEqual(['reliquary'])
-    expect(room('reliquary').exits.map((e) => e.to)).toEqual(['fork'])
+    expect(onward('sanctuary')).toEqual(['reliquary'])
+    expect(onward('reliquary')).toEqual(['fork'])
     // And the fork is untouched as a *decision*: still two ways, still the
     // stair straight to the door. The deep way now has the Chain Vault in
     // front of its fight.
-    expect(room('fork').exits.map((e) => e.to)).toEqual(['gate', 'chain-vault'])
+    expect(onward('fork')).toEqual(['gate', 'chain-vault'])
   })
 
   it('walks there by beating the Gnawing and pressing GO ON', () => {
     const here = inSanctuary()
     expect(here.mode).toBe('explore')
-    expect(here.run?.roomId).toBe('sanctuary')
-    expect(here.run?.path).toEqual(['entry', 'passage', 'hollow', 'sanctuary'])
-    expect(here.run?.say).toBe(room('sanctuary').arrival)
+    expect(roomAt(here.run!).id).toBe('sanctuary')
+    expect(here.run?.path.map((id) => roomAt(here.run!, id).id)).toEqual([
+      'entry',
+      'passage',
+      'hollow',
+      'sanctuary',
+    ])
+    expect(here.run?.say).toBe(roomAt(here.run!).arrival)
   })
 
   it('holds you in the chapel until the font has been used', () => {
     const held = inSanctuary()
+    const on = node(held, 'reliquary')
     // Not a hidden exit and not a disabled button: the reducer refuses, so
     // there is no dispatch, fixture or reload that walks past it.
-    expect(reduce(held, { type: 'GO', to: 'reliquary' })).toBe(held)
+    expect(reduce(held, { type: 'GO', to: on })).toBe(held)
     const rolled = reduce(held, { type: 'RITUAL_ROLL' })
-    expect(reduce(rolled, { type: 'GO', to: 'reliquary' }).run?.roomId).toBe('reliquary')
+    expect(roomAt(reduce(rolled, { type: 'GO', to: on }).run!).id).toBe('reliquary')
   })
 
-  it('leaves exactly one ritual in the graph', () => {
-    // The run carries one `ritual` record, so two ritual rooms would have the
-    // second overwrite the first — and the first would shut behind you. When
-    // there is a second, this is the test that says what has to change.
-    const ritual = Object.values(ROOMS).filter((r) => r.ritual)
-    expect(ritual.map((r) => r.id)).toEqual(['sanctuary'])
+  it('leaves exactly one ritual in the run', () => {
+    // The run carries one `ritual` record, so two ritual rooms in one descent
+    // would have the second overwrite the first — and the first would shut
+    // behind you. Asked of the *map* rather than the library, because the
+    // library is now free to hold a second font that this plan does not use.
+    const run = reduce(TITLE, { type: 'START_RUN', seed: 1 }).run!
+    const fonts = Object.values(run.map.nodes).filter((n) => roomAt(run, n.id).ritual)
+    expect(fonts.map((n) => n.templateId)).toEqual(['sanctuary'])
   })
 
   it('gives the chapel a way on that is worth reading, and no enemy', () => {
-    const here = room('sanctuary')
+    const here = roomAt(inSanctuary().run!)
     expect(here.enemy).toBeUndefined()
     expect(here.ritual?.label.length).toBeGreaterThan(0)
     expect(here.exits).toHaveLength(1)
+    expect(here.exits[0]?.sense.length).toBeGreaterThan(0)
+  })
+
+  it('is the one recovery room the library declares', () => {
+    expect(ROOM_LIBRARY.filter((r) => r.ritual).map((r) => r.id)).toEqual(['sanctuary'])
   })
 })
 
@@ -157,8 +186,9 @@ describe('the draw', () => {
   })
 
   it('cannot be rolled from anywhere that is not a room with a font', () => {
+    const fresh: GameState = { ...TITLE, mode: 'explore', run: newRun(1) }
     for (const id of ['entry', 'passage', 'hollow', 'fork', 'deep', 'gate']) {
-      const run = { ...newRun(1), roomId: id }
+      const run = { ...fresh.run!, roomId: node(fresh, id) }
       const state: GameState = { ...TITLE, mode: 'explore', run }
       expect(reduce(state, { type: 'RITUAL_ROLL' })).toBe(state)
     }
@@ -241,9 +271,13 @@ describe('what a face gives back', () => {
     expect(full.run?.ritual?.missingBefore).toBe(0)
     // The room is used up either way, so the way on opens and the press is
     // not silently ignored.
-    expect(full.run?.ritual?.roomId).toBe('sanctuary')
+    // Recorded against the *node*, so a second chapel later in the descent
+    // would be a second font rather than a room that is already spent.
+    expect(full.run?.ritual?.roomId).toBe(full.run?.roomId)
+    expect(roomAt(full.run!).id).toBe('sanctuary')
     expect(full.run?.say).toMatch(/nothing left for it to mend/i)
-    expect(reduce(full, { type: 'GO', to: 'reliquary' }).run?.roomId).toBe('reliquary')
+    const on = node(full, 'reliquary')
+    expect(roomAt(reduce(full, { type: 'GO', to: on }).run!).id).toBe('reliquary')
   })
 
   it('says the number it landed on, and the health, in the same line', () => {

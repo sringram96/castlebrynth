@@ -19,27 +19,45 @@ import { describe, expect, it } from 'vitest'
 
 import { MAX_HP, VAULT_BACKLASH, newRun, reduce } from '../../src/game/reducer.js'
 import { SAVE_VERSION, TITLE } from '../../src/game/state.js'
-import type { GameState, RoomInteractionState } from '../../src/game/state.js'
+import type { GameState, RoomInteractionState, RunState } from '../../src/game/state.js'
 import { load, save } from '../../src/game/save.js'
 import { LOOT_RELICS } from '../../src/content/relics.js'
-import { room } from '../../src/content/rooms.js'
+import { firstNodeOf, roomAt } from '../../src/game/map.js'
 import { actionFor, initialRoomState, stateOf } from '../../src/content/interactions.js'
 
-/** Standing in a room, mid-run, with nothing in it touched. */
-function standingIn(roomId: string, seed = 7, hp = MAX_HP): GameState {
-  const run = newRun(seed)
-  return {
-    ...TITLE,
-    mode: 'explore',
-    run: { ...run, roomId, hp, path: [...run.path, roomId], say: room(roomId).arrival },
-  }
+/**
+ * The node of a run that used a named authored template.
+ *
+ * Named by template, stood in by node. Both of these rooms are worked rooms,
+ * which is exactly where the difference bites: their state is filed under the
+ * node, so two Reliquaries in one descent would be two chests.
+ */
+function nodeOf(run: RunState, templateId: string): string {
+  const found = firstNodeOf(run.map, templateId)
+  if (!found) throw new Error(`this run has no ${templateId}`)
+  return found.id
 }
+
+/** Standing in a room, mid-run, with nothing in it touched. */
+function standingIn(templateId: string, seed = 7, hp = MAX_HP): GameState {
+  const run = newRun(seed)
+  const roomId = nodeOf(run, templateId)
+  const stood: RunState = { ...run, roomId, hp, path: [...run.path, roomId], say: '' }
+  return { ...TITLE, mode: 'explore', run: { ...stood, say: roomAt(stood).arrival } }
+}
+
+/** Where a press has to go, from where the run is standing. */
+const onwardFrom = (state: GameState): string => roomAt(state.run!).exits[0]!.to
+
+/** The way on from a fork, by the label the player reads. */
+const towards = (state: GameState, label: string): string =>
+  roomAt(state.run!).exits.find((e) => e.label === label)!.to
 
 const press = (state: GameState, ...ids: readonly string[]): GameState =>
   ids.reduce((s, interactionId) => reduce(s, { type: 'INTERACT', interactionId }), state)
 
 const roomStateOf = (state: GameState): RoomInteractionState =>
-  stateOf(state.run!.rooms, state.run!.roomId)!
+  stateOf(state.run!.rooms, state.run!.roomId, roomAt(state.run!).id)!
 
 /** Save, boot, and press CONTINUE — the whole of what a reload is. */
 function reloaded(state: GameState): GameState {
@@ -60,7 +78,7 @@ describe('the Reliquary', () => {
     // and a run that walked past writes no entry at all.
     expect(here.run?.rooms).toBeUndefined()
     expect(roomStateOf(here)).toEqual({
-      roomId: 'reliquary',
+      templateId: 'reliquary',
       bellRung: false,
       brazier: 'lit',
       lever: 'up',
@@ -72,7 +90,7 @@ describe('the Reliquary', () => {
   it('records the bell as rung', () => {
     const rung = press(standingIn('reliquary'), 'reliquary-bell')
     const after = roomStateOf(rung)
-    expect(after.roomId === 'reliquary' && after.bellRung).toBe(true)
+    expect(after.templateId === 'reliquary' && after.bellRung).toBe(true)
     expect(rung.run?.say).toMatch(/The bell answers once/)
   })
 
@@ -87,12 +105,12 @@ describe('the Reliquary', () => {
   it('puts the brazier out, and lights it again', () => {
     const out = press(standingIn('reliquary'), 'reliquary-brazier')
     const dark = roomStateOf(out)
-    expect(dark.roomId === 'reliquary' && dark.brazier).toBe('out')
+    expect(dark.templateId === 'reliquary' && dark.brazier).toBe('out')
     expect(out.run?.say).toMatch(/The flame folds into the wick/)
 
     const lit = press(out, 'reliquary-brazier')
     const back = roomStateOf(lit)
-    expect(back.roomId === 'reliquary' && back.brazier).toBe('lit')
+    expect(back.templateId === 'reliquary' && back.brazier).toBe('lit')
     expect(lit.run?.say).toBe('The flame returns.')
   })
 
@@ -103,15 +121,15 @@ describe('the Reliquary', () => {
       expect(actionFor(roomStateOf(partial), 'reliquary-lever')).toBeUndefined()
       expect(reduce(partial, { type: 'INTERACT', interactionId: 'reliquary-lever' })).toBe(partial)
       const still = roomStateOf(partial)
-      expect(still.roomId === 'reliquary' && still.chest).toBe('closed')
+      expect(still.templateId === 'reliquary' && still.chest).toBe('closed')
     }
   })
 
   it('opens the chest when the bell has rung and the flame is out', () => {
     const solved = press(standingIn('reliquary'), 'reliquary-bell', 'reliquary-brazier', 'reliquary-lever')
     const open = roomStateOf(solved)
-    expect(open.roomId === 'reliquary' && open.lever).toBe('down')
-    expect(open.roomId === 'reliquary' && open.chest).toBe('open')
+    expect(open.templateId === 'reliquary' && open.lever).toBe('down')
+    expect(open.templateId === 'reliquary' && open.chest).toBe('open')
     expect(solved.run?.say).toMatch(/Something moves inside the altar/)
     // And the lever is spent — the chest cannot be opened a second time.
     expect(actionFor(open, 'reliquary-lever')).toBeUndefined()
@@ -137,8 +155,8 @@ describe('the Reliquary', () => {
     // An existing relic. No new species, no new noun.
     expect(LOOT_RELICS).toContain(found)
     const claimed = roomStateOf(took)
-    expect(claimed.roomId === 'reliquary' && claimed.claimed).toBe(true)
-    expect(claimed.roomId === 'reliquary' && claimed.rewardId).toBe(found)
+    expect(claimed.templateId === 'reliquary' && claimed.claimed).toBe(true)
+    expect(claimed.templateId === 'reliquary' && claimed.rewardId).toBe(found)
     expect(took.run?.say).toContain('Inside:')
     // Meta remembers it exactly as a reward screen would.
     expect(took.meta.seenRelics).toContain(found)
@@ -161,8 +179,8 @@ describe('the Reliquary', () => {
     expect(took.run?.relics).toEqual([...LOOT_RELICS])
     expect(took.run?.say).toBe('The chest is empty.')
     const claimed = roomStateOf(took)
-    expect(claimed.roomId === 'reliquary' && claimed.claimed).toBe(true)
-    expect(claimed.roomId === 'reliquary' && claimed.rewardId).toBeUndefined()
+    expect(claimed.templateId === 'reliquary' && claimed.claimed).toBe(true)
+    expect(claimed.templateId === 'reliquary' && claimed.rewardId).toBeUndefined()
   })
 
   it('draws the same relic for the same seed and the same history', () => {
@@ -207,8 +225,9 @@ describe('the Reliquary', () => {
   })
 
   it('lets you leave without touching anything in it', () => {
-    const walked = reduce(standingIn('reliquary'), { type: 'GO', to: 'fork' })
-    expect(walked.run?.roomId).toBe('fork')
+    const here = standingIn('reliquary')
+    const walked = reduce(here, { type: 'GO', to: onwardFrom(here) })
+    expect(roomAt(walked.run!).id).toBe('fork')
     // No penalty, and no trace: the run records nothing about a room it
     // walked through.
     expect(walked.run?.rooms).toBeUndefined()
@@ -223,7 +242,7 @@ describe('the Reliquary', () => {
       press(fresh, 'reliquary-bell', 'reliquary-brazier'),
       press(fresh, 'reliquary-bell', 'reliquary-brazier', 'reliquary-lever'),
     ]) {
-      expect(reduce(part, { type: 'GO', to: 'fork' }).run?.roomId).toBe('fork')
+      expect(roomAt(reduce(part, { type: 'GO', to: onwardFrom(part) }).run!).id).toBe('fork')
     }
   })
 })
@@ -231,7 +250,7 @@ describe('the Reliquary', () => {
 describe('the Chain Vault', () => {
   it('opens with the cage up, the plate off and the gate shut', () => {
     expect(initialRoomState('chain-vault')).toEqual({
-      roomId: 'chain-vault',
+      templateId: 'chain-vault',
       chain: 'off',
       cage: 'raised',
       pressurePlate: 'off',
@@ -244,7 +263,7 @@ describe('the Chain Vault', () => {
     const down = press(standingIn('chain-vault'), 'vault-chain')
     const weighted = roomStateOf(down)
     expect(weighted).toEqual({
-      roomId: 'chain-vault',
+      templateId: 'chain-vault',
       chain: 'on',
       cage: 'lowered',
       pressurePlate: 'on',
@@ -271,8 +290,8 @@ describe('the Chain Vault', () => {
     let state = standingIn('chain-vault')
     for (let i = 0; i < 3; i++) state = press(state, 'vault-lever')
     const shut = roomStateOf(state)
-    expect(shut.roomId === 'chain-vault' && shut.gate).toBe('closed')
-    expect(shut.roomId === 'chain-vault' && shut.lever).toBe('up')
+    expect(shut.templateId === 'chain-vault' && shut.gate).toBe('closed')
+    expect(shut.templateId === 'chain-vault' && shut.lever).toBe('up')
     expect(state.run?.hp).toBe(MAX_HP - VAULT_BACKLASH * 3)
   })
 
@@ -296,7 +315,7 @@ describe('the Chain Vault', () => {
     const open = press(standingIn('chain-vault'), 'vault-chain', 'vault-lever')
     expect(open.run?.hp).toBe(MAX_HP)
     expect(roomStateOf(open)).toEqual({
-      roomId: 'chain-vault',
+      templateId: 'chain-vault',
       chain: 'on',
       cage: 'lowered',
       pressurePlate: 'on',
@@ -318,21 +337,24 @@ describe('the Chain Vault', () => {
     const shut = standingIn('chain-vault')
     // In the reducer, not in a stylesheet: no dispatch, fixture or reload gets
     // through a gate that is down.
-    expect(reduce(shut, { type: 'GO', to: 'deep' })).toBe(shut)
+    const deep = onwardFrom(shut)
+    expect(reduce(shut, { type: 'GO', to: deep })).toBe(shut)
     expect(press(shut, 'vault-chain')).not.toBe(shut)
-    expect(reduce(press(shut, 'vault-chain'), { type: 'GO', to: 'deep' }).run?.roomId).toBe('chain-vault')
+    expect(roomAt(reduce(press(shut, 'vault-chain'), { type: 'GO', to: deep }).run!).id).toBe('chain-vault')
   })
 
   it('leads to the Deep Way once the gate is up', () => {
     const open = press(standingIn('chain-vault'), 'vault-chain', 'vault-lever')
-    const on = reduce(open, { type: 'GO', to: 'deep' })
-    expect(on.run?.roomId).toBe('deep')
-    expect(room('deep').exits.map((e) => e.to)).toEqual(['gate'])
+    const on = reduce(open, { type: 'GO', to: onwardFrom(open) })
+    expect(roomAt(on.run!).id).toBe('deep')
+    // And the deep way rejoins. The map says so now, not the room.
+    expect(roomAt(on.run!, onwardFrom(on)).id).toBe('gate')
   })
 
-  it('is only on the deep route', () => {
-    expect(room('fork').exits.find((e) => e.label === 'STAIR')?.to).toBe('gate')
-    expect(room('fork').exits.find((e) => e.label === 'DEEP')?.to).toBe('chain-vault')
+  it('is only on the deep route, and the stair skips it', () => {
+    const fork = standingIn('fork')
+    expect(roomAt(fork.run!, towards(fork, 'STAIR')).id).toBe('gate')
+    expect(roomAt(fork.run!, towards(fork, 'DEEP')).id).toBe('chain-vault')
   })
 })
 
@@ -342,7 +364,7 @@ describe('what a save carries', () => {
     const round = JSON.parse(JSON.stringify(worked.run!.rooms)) as unknown
     expect(round).toEqual(worked.run!.rooms)
     // No frame index, no timestamp, no clock of any kind.
-    const keys = Object.keys(worked.run!.rooms!['reliquary']!)
+    const keys = Object.keys(worked.run!.rooms![worked.run!.roomId]!)
     expect(keys.some((k) => /frame|time|at$|tick|ms/i.test(k))).toBe(false)
   })
 
@@ -355,7 +377,7 @@ describe('what a save carries', () => {
       'reliquary-chest',
     )
     const back = reloaded(solved)
-    expect(back.run?.roomId).toBe('reliquary')
+    expect(roomAt(back.run!).id).toBe('reliquary')
     expect(roomStateOf(back)).toEqual(roomStateOf(solved))
     expect(back.run?.relics).toEqual(solved.run?.relics)
     // Every one-shot is spent: the bell has answered, the lever is down and
@@ -367,29 +389,29 @@ describe('what a save carries', () => {
     // light you can keep changing your mind about, and the only thing that
     // ever depended on it — the lever — is already spent.
     expect(actionFor(roomStateOf(back), 'reliquary-brazier')?.label).toBe('LIGHT')
-    expect(reduce(back, { type: 'GO', to: 'fork' }).run?.roomId).toBe('fork')
+    expect(roomAt(reduce(back, { type: 'GO', to: onwardFrom(back) }).run!).id).toBe('fork')
   })
 
   it('brings the Chain Vault back with its gate still up', () => {
     const open = press(standingIn('chain-vault'), 'vault-chain', 'vault-lever')
     const back = reloaded(open)
     expect(roomStateOf(back)).toEqual(roomStateOf(open))
-    expect(reduce(back, { type: 'GO', to: 'deep' }).run?.roomId).toBe('deep')
+    expect(roomAt(reduce(back, { type: 'GO', to: onwardFrom(back) }).run!).id).toBe('deep')
   })
 
   it('brings a half-worked Chain Vault back half-worked, and still shut', () => {
     const half = press(standingIn('chain-vault'), 'vault-chain')
     const back = reloaded(half)
     const weighted = roomStateOf(back)
-    expect(weighted.roomId === 'chain-vault' && weighted.pressurePlate).toBe('on')
-    expect(weighted.roomId === 'chain-vault' && weighted.gate).toBe('closed')
-    expect(reduce(back, { type: 'GO', to: 'deep' })).toBe(back)
+    expect(weighted.templateId === 'chain-vault' && weighted.pressurePlate).toBe('on')
+    expect(weighted.templateId === 'chain-vault' && weighted.gate).toBe('closed')
+    expect(reduce(back, { type: 'GO', to: onwardFrom(back) })).toBe(back)
   })
 
   it('was bumped, because the shape of a run changed', () => {
-    expect(SAVE_VERSION).toBe(6)
+    expect(SAVE_VERSION).toBe(7)
     // And the policy is unchanged: an older save is discarded, never migrated.
-    const held = new Map<string, string>([['castlebrynth', JSON.stringify({ version: 5, mode: 'explore' })]])
+    const held = new Map<string, string>([['castlebrynth', JSON.stringify({ version: 6, mode: 'explore' })]])
     const store = {
       getItem: (k: string) => held.get(k) ?? null,
       setItem: () => {},
@@ -422,7 +444,7 @@ describe('the rules a press is held to', () => {
     // of both rooms.
     const walk = (state: GameState, depth: number): void => {
       if (depth === 0) return
-      const here = room(state.run!.roomId)
+      const here = roomAt(state.run!)
       for (const thing of here.interactables ?? []) {
         const offered = actionFor(roomStateOf(state), thing.id) !== undefined
         const moved = reduce(state, { type: 'INTERACT', interactionId: thing.id }) !== state

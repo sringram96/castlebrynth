@@ -14,7 +14,7 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 
-import { act, boot, screenName, settled, state, tappable } from './helpers.js'
+import { act, boot, screenName, settled, state, tappable, wayTo, where } from './helpers.js'
 import { fightItOut } from './play.js'
 
 const say = (page: Page) => page.locator('#say')
@@ -130,7 +130,7 @@ test.describe('the Reliquary', () => {
   test('can be walked straight through, and lands at the fork', async ({ page }) => {
     await boot(page, '?room=reliquary&seed=3')
     await act(page, 'go').click()
-    expect((await state(page)).run?.roomId).toBe('fork')
+    expect(await where(page)).toBe('fork')
     // Untouched and unpunished.
     expect((await state(page)).run?.hp).toBe(100)
     await expect(act(page, 'go')).toHaveCount(2)
@@ -189,7 +189,7 @@ test.describe('the Chain Vault', () => {
     await expect(go).toBeVisible()
     await tappable(page, go)
     await go.click()
-    expect((await state(page)).run?.roomId).toBe('deep')
+    expect(await where(page)).toBe('deep')
     await expect(say(page)).toContainText('The Marrow')
   })
 
@@ -206,31 +206,31 @@ test.describe('the Chain Vault', () => {
 test.describe('the deep route, end to end', () => {
   test('runs fork → vault → Deep Way, and the stair still does not', async ({ page }) => {
     await boot(page, '?room=fork&seed=3')
-    const deep = page.locator('[data-act="go"][data-to="chain-vault"]')
+    const deep = await wayTo(page, 'chain-vault')
     await expect(deep).toHaveText('DEEP')
     await deep.click()
-    expect((await state(page)).run?.roomId).toBe('chain-vault')
+    expect(await where(page)).toBe('chain-vault')
 
     await thing(page, 'vault-chain').click()
     await thing(page, 'vault-lever').click()
     await act(page, 'go').click()
-    expect((await state(page)).run?.roomId).toBe('deep')
+    expect(await where(page)).toBe('deep')
 
     // And the short way is untouched: straight to the door, no vault.
     await boot(page, '?room=fork&seed=3')
-    const stair = page.locator('[data-act="go"][data-to="gate"]')
+    const stair = await wayTo(page, 'gate')
     await expect(stair).toHaveText('STAIR')
     await stair.click()
-    expect((await state(page)).run?.roomId).toBe('gate')
+    expect(await where(page)).toBe('gate')
   })
 
   test('puts the Reliquary between the chapel and the fork', async ({ page }) => {
     await boot(page, '?room=sanctuary&hp=40&seed=3')
     await act(page, 'ritual').click()
     await act(page, 'go').click()
-    expect((await state(page)).run?.roomId).toBe('reliquary')
+    expect(await where(page)).toBe('reliquary')
     await act(page, 'go').click()
-    expect((await state(page)).run?.roomId).toBe('fork')
+    expect(await where(page)).toBe('fork')
   })
 })
 
@@ -283,7 +283,7 @@ test.describe('with motion reduced', () => {
     await expect(hp(page)).toHaveText('94')
     await expect(act(page, 'go')).toBeVisible()
     await act(page, 'go').click()
-    expect((await state(page)).run?.roomId).toBe('deep')
+    expect(await where(page)).toBe('deep')
   })
 })
 
@@ -454,7 +454,7 @@ test.describe('across a real reload', () => {
     await act(page, 'go').click()
     await act(page, 'ritual').click()
     await act(page, 'go').click()
-    expect((await state(page)).run!.roomId).toBe('reliquary')
+    expect(await where(page)).toBe('reliquary')
   }
 
   test('brings the Reliquary back solved, claimed and unrepeatable', async ({ page }) => {
@@ -473,7 +473,7 @@ test.describe('across a real reload', () => {
     await act(page, 'continue').click()
 
     const after = await state(page)
-    expect(after.run!.roomId).toBe('reliquary')
+    expect(await where(page)).toBe('reliquary')
     expect(after.run!.relics).toEqual(before.run!.relics)
     // Nothing left to press, and nothing that could pay a second time.
     for (const id of ['reliquary-bell', 'reliquary-lever', 'reliquary-chest']) {
@@ -486,7 +486,7 @@ test.describe('across a real reload', () => {
     )
     expect(painted).toEqual(midground)
     await act(page, 'go').click()
-    expect((await state(page)).run!.roomId).toBe('fork')
+    expect(await where(page)).toBe('fork')
   })
 
   test('brings the Chain Vault back shut when it was shut, and open when it was open', async ({
@@ -494,8 +494,8 @@ test.describe('across a real reload', () => {
   }) => {
     await walkToReliquary(page)
     await act(page, 'go').click()
-    await page.locator('[data-act="go"][data-to="chain-vault"]').click()
-    expect((await state(page)).run!.roomId).toBe('chain-vault')
+    await (await wayTo(page, 'chain-vault')).click()
+    expect(await where(page)).toBe('chain-vault')
 
     // Half-worked: the cage is down, the gate is not up, and there is no exit.
     await thing(page, 'vault-chain').click()
@@ -507,7 +507,7 @@ test.describe('across a real reload', () => {
     await expect(thing(page, 'vault-chain')).toHaveText('RAISE')
     await expect(act(page, 'go')).toHaveCount(0)
     // A reload is not a way through a shut gate.
-    expect((await state(page)).run!.roomId).toBe('chain-vault')
+    expect(await where(page)).toBe('chain-vault')
 
     // Finish it, and reload again on the open side.
     await thing(page, 'vault-lever').click()
@@ -519,6 +519,6 @@ test.describe('across a real reload', () => {
     await expect(act(page, 'go')).toBeVisible()
     await expect(thing(page, 'vault-lever')).toHaveCount(0)
     await act(page, 'go').click()
-    expect((await state(page)).run!.roomId).toBe('deep')
+    expect(await where(page)).toBe('deep')
   })
 })

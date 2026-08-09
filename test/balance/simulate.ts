@@ -14,7 +14,7 @@ import type { Action } from '../../src/game/reducer.js'
 import { TITLE } from '../../src/game/state.js'
 import type { GameState } from '../../src/game/state.js'
 import { die } from '../../src/content/dice.js'
-import { room } from '../../src/content/rooms.js'
+import { firstNodeOf, roomAt } from '../../src/game/map.js'
 import { exitsOpen, legal, stateOf } from '../../src/content/interactions.js'
 import { bestClaim, keepFor } from './policies.js'
 import type { Table, Tier } from './policies.js'
@@ -109,20 +109,29 @@ export function simulateFight(
   }
 }
 
-/** Open a fight in a named room, with a chosen loadout. */
+/**
+ * Open a fight in a named room, with a chosen loadout.
+ *
+ * Named by its **authored template** — `hollow`, `deep`, `gate` — because that
+ * is what the report's rows are about, and resolved to whichever node of this
+ * run's map used it. The model never invents a room: it stands the run in one
+ * the director actually built.
+ */
 export function fightIn(
-  roomId: string,
+  templateId: string,
   seed: number,
   loadout: { dice?: readonly string[]; relics?: readonly string[]; hp?: number } = {},
 ): GameState {
   const started = reduce(TITLE, { type: 'START_RUN', seed })
   const run = started.run!
+  const node = firstNodeOf(run.map, templateId)
+  if (!node) throw new Error(`this run has no ${templateId} in it`)
   return {
     ...started,
     run: {
       ...run,
-      roomId,
-      path: [...run.path, roomId],
+      roomId: node.id,
+      path: [...run.path, node.id],
       ...(loadout.dice ? { dice: [...loadout.dice] } : {}),
       ...(loadout.relics ? { relics: [...loadout.relics] } : {}),
       ...(loadout.hp !== undefined ? { hp: loadout.hp } : {}),
@@ -132,6 +141,8 @@ export function fightIn(
 
 export interface RunResult {
   readonly reachedExit: boolean
+  /** Which authored room the run ended in. Template, not node: the report is
+   *  about which *fight* kills people, not which instance of it. */
   readonly diedIn?: string
   readonly rooms: number
   readonly hp: number
@@ -160,7 +171,10 @@ export function simulateRun(seed: number, tier: Tier, { deep = true } = {}): Run
   }
 
   for (let step = 0; step < 40; step++) {
-    const here = room(state.run!.roomId)
+    // The room the run is standing in, joined from the generated map. There is
+    // no second map here and there could not be one: the model walks the exits
+    // the reducer would accept, or it walks nothing.
+    const here = roomAt(state.run!)
 
     if (here.ending || state.mode === 'complete') {
       return { reachedExit: true, rooms: state.run!.path.length, hp: state.run!.hp, fights, upgrades }
@@ -168,7 +182,7 @@ export function simulateRun(seed: number, tier: Tier, { deep = true } = {}): Run
     if (state.mode === 'dead') {
       return {
         reachedExit: false,
-        diedIn: state.run!.roomId,
+        diedIn: roomAt(state.run!).id,
         rooms: state.run!.path.length,
         hp: 0,
         fights,
@@ -182,7 +196,7 @@ export function simulateRun(seed: number, tier: Tier, { deep = true } = {}): Run
       continue
     }
 
-    if (here.enemy && !state.run!.cleared.includes(here.id)) {
+    if (here.enemy && !state.run!.cleared.includes(here.instanceId)) {
       const fight = simulateFight(state, tier)
       fights.push(fight.result)
       state = fight.state
@@ -203,7 +217,7 @@ export function simulateRun(seed: number, tier: Tier, { deep = true } = {}): Run
     // A room with a font is used on the way past. There is no decision in it —
     // the press costs nothing and the exits do not open until it is made — so
     // the policy tiers have nothing to disagree about here.
-    if (here.ritual && state.run!.ritual?.roomId !== here.id) {
+    if (here.ritual && state.run!.ritual?.roomId !== here.instanceId) {
       state = reduce(state, { type: 'RITUAL_ROLL' })
       continue
     }
@@ -217,10 +231,10 @@ export function simulateRun(seed: number, tier: Tier, { deep = true } = {}): Run
     // measuring the model's ignorance rather than the slice's difficulty. What
     // it does measure is the real cost of the deep way — one more room, one
     // more fight — which is the question the fork asks.
-    const machinery = stateOf(state.run!.rooms, here.id)
+    const machinery = stateOf(state.run!.rooms, here.instanceId, here.id)
     if (machinery && !exitsOpen(machinery)) {
       for (const thing of here.interactables ?? []) {
-        if (legal(stateOf(state.run!.rooms, here.id)!, thing.id)) {
+        if (legal(stateOf(state.run!.rooms, here.instanceId, here.id)!, thing.id)) {
           state = reduce(state, { type: 'INTERACT', interactionId: thing.id })
         }
       }

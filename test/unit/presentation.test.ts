@@ -28,6 +28,7 @@ import { MAX_HP, reduce } from '../../src/game/reducer.js'
 import type { Action } from '../../src/game/reducer.js'
 import { TITLE } from '../../src/game/state.js'
 import type { GameState } from '../../src/game/state.js'
+import { standIn } from './where.js'
 
 const play = (state: GameState, ...actions: Action[]): GameState =>
   actions.reduce((s, a) => reduce(s, a), state)
@@ -35,11 +36,7 @@ const play = (state: GameState, ...actions: Action[]): GameState =>
 /** The Warden's fight, rolled, every die chosen, on whatever health is asked. */
 function atTheDoor(enemyHp: number, turn = 0, seed = 1): GameState {
   const started = reduce(TITLE, { type: 'START_RUN', seed })
-  const run = started.run!
-  const opened = reduce(
-    { ...started, run: { ...run, roomId: 'gate', path: [...run.path, 'gate'] } },
-    { type: 'FIGHT' },
-  )
+  const opened = reduce(standIn(started, 'gate'), { type: 'FIGHT' })
   const rolled = reduce(opened, { type: 'ROLL' })
   const combat = rolled.run!.combat!
   return {

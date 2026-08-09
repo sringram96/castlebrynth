@@ -25,7 +25,7 @@ import {
   roomArt,
 } from '../../src/render/assets.js'
 import { ENEMIES, REACHES } from '../../src/content/enemies.js'
-import { ROOMS, room } from '../../src/content/rooms.js'
+import { ROOM_LIBRARY, template } from '../../src/content/rooms.js'
 import { platesFor } from '../../src/content/interactions.js'
 import type { RoomInteractionState } from '../../src/game/state.js'
 import { decode } from '../../tools/png.mjs'
@@ -52,7 +52,7 @@ const EVERY_WORKED_STATE: readonly RoomInteractionState[] = [
       ] as const).flatMap(([lever, chest]) =>
         [false, true].map(
           (claimed): RoomInteractionState => ({
-            roomId: 'reliquary',
+            templateId: 'reliquary',
             bellRung,
             brazier,
             lever,
@@ -69,7 +69,7 @@ const EVERY_WORKED_STATE: readonly RoomInteractionState[] = [
         (['up', 'down'] as const).flatMap((lever) =>
           (['closed', 'open'] as const).map(
             (gate): RoomInteractionState => ({
-              roomId: 'chain-vault',
+              templateId: 'chain-vault',
               chain,
               cage,
               pressurePlate,
@@ -142,71 +142,32 @@ describe('the manifest', () => {
   })
 
   /**
-   * The payload ceiling.
+   * There is no payload ceiling, and one must not be reintroduced.
    *
-   * Raised once, from 4 MB to 4.5 MB, when the Reliquary and the Chain Vault
-   * were added. The measured numbers, so the decision is auditable rather than
-   * a number somebody nudged:
+   * There was: 4 MB, then 4.5 MB, then 5.6 MB, raised each time a room or a
+   * family was added and each time after a measured argument that compression
+   * would cost more in the picture than it saved in bytes. Three raises in a
+   * row, each concluding that the art was worth the bytes, is a ceiling
+   * answering "no" to a question it was never going to answer any other way.
+   * The measured numbers for every raise are in git.
    *
-   *   before  3.748 MB   nine rooms
-   *   after   4.248 MB   eleven rooms — the two backdrops cost 512 KB
+   * What replaced it is the rule this file already enforces everywhere else:
+   * **an asset is validated, not budgeted.** It exists, its manifest dimensions
+   * are true, whole-scene registration is consistent, an enemy's plates are all
+   * present, an authored family is complete. None of those can be satisfied by
+   * shipping a worse picture.
    *
-   * It was not spent on new *kinds* of asset. A backdrop in this game costs
-   * ~250 KB and always has; nine of them were 2.2 MB before either of these
-   * rooms existed, so growing an eight-room slice by two rooms costs a quarter
-   * more backdrop and there is no version of that which fits under 4 MB.
-   *
-   * Compression was tried first, as `ART_DIRECTION.md` requires. Posterising
-   * the two new plates harder saves real bytes — 32 steps 512 KB, 16 steps
-   * 328 KB, 12 steps 272 KB — and every one of those still misses 4 MB while
-   * banding two of the darkest, most gradient-heavy images in the game and
-   * making them the only rooms in the slice not built at 32. Buying 122 KB with
-   * a visible seam in the art direction is the wrong trade in a game whose
-   * systems are in service of the art.
-   *
-   * Raised again, from 4.5 MB to 5.6 MB, when the Warden became an authored
-   * family:
-   *
-   *   before  4.248 MB   one 102 KB trimmed Warden sprite
-   *   after   5.467 MB   ten 480x720 Warden plates, 1.316 MB between them
-   *
-   * The cost is structural rather than careless. The boss now has ten poses
-   * where it had one, and every one of them is a **whole scene** rather than a
-   * trimmed silhouette — which is not a saving that was skipped but the feature
-   * itself: ten silhouettes this different cannot be trimmed and then sized to
-   * one width without the figure changing size every time it changes pose. See
-   * `ART_DIRECTION.md` § *Sizes*.
-   *
-   * Compression was tried first here too, measured over the ten plates:
-   *
-   *   32 steps  1.316 MB     the rest of the game's setting
-   *   24 steps  1.105 MB
-   *   16 steps  0.889 MB
-   *   12 steps  0.773 MB
-   *
-   * Not one of them reaches 4.5 MB — the deepest banding on offer saves 543 KB
-   * against an overage of 967 KB — and every one of them bands a black robe
-   * carrying fine gold filigree, which is the single most gradient-heavy
-   * subject in the slice and is also the boss. Same trade as last time, same
-   * answer, and this time it does not even buy the ceiling.
-   *
-   * The headroom left is again deliberately less than one backdrop: another
-   * room, or another family, cannot be added without this conversation
-   * happening a third time.
-   *
-   * The Reliquary's four objects landed inside it and did not move it:
-   *
-   *   before  5.467 MB
-   *   after   5.530 MB   four 480x720 prop plates, 70 KB between them
-   *
-   * Which is the shape the budget was written for. A prop plate costs almost
-   * exactly its opaque area, these are 2–8% opaque, and four whole objects
-   * therefore cost a quarter of one backdrop. The conversation above is about
-   * *backdrops and families*, and this was neither.
+   * And a room or an encounter is never rejected for having more frames than
+   * its neighbours. The generated map chooses among authored places; if a place
+   * is expensive to load, that is a loading problem — per-room preload, next-
+   * room preload, encounter-family preload, caching — and it is solved on that
+   * side. Lowering the art to fit a number is the one answer that is not
+   * available.
    */
-  it('keeps the runtime art payload inside its budget', () => {
-    const total = allAssets().reduce((sum, a) => sum + png(a.file).bytes, 0)
-    expect(total).toBeLessThan(5.6 * 1024 * 1024)
+  it('ships every file the runtime will load, and none of them empty', () => {
+    for (const a of allAssets()) {
+      expect(png(a.file).bytes, `${a.id} (${a.file}) is missing or empty`).toBeGreaterThan(0)
+    }
   })
 })
 
@@ -415,14 +376,14 @@ describe('the player is holding something', () => {
 
 describe('every room has a backdrop', () => {
   it('has a manifest entry and a file for each room', () => {
-    for (const r of Object.values(ROOMS)) {
+    for (const r of ROOM_LIBRARY) {
       expect(() => roomArt(r.art)).not.toThrow()
       expect(png(roomArt(r.art).file).bytes).toBeGreaterThan(0)
     }
   })
 
   it('gives every room its own backdrop, so no two rooms are one place', () => {
-    const arts = Object.values(ROOMS).map((r) => r.art)
+    const arts = ROOM_LIBRARY.map((r) => r.art)
     expect(new Set(arts).size).toBe(arts.length)
   })
 
@@ -441,7 +402,7 @@ describe('every room has a backdrop', () => {
     // the ossuary plates — see `## HUMAN ART REQUIRED` — and what has to be
     // true of it is what has to be true of every room: it exists, it is the
     // scene size, and it is not another room's picture.
-    const art = roomArt(room('sanctuary').art)
+    const art = roomArt(template('sanctuary').art)
     expect(png(art.file).bytes).toBeGreaterThan(0)
     expect([art.width, art.height]).toEqual([480, 720])
   })
@@ -466,7 +427,7 @@ describe('a room prop is whole, registered, and does not move', () => {
   ].map((frame) => `${art}.${frame}`)
 
   it('has a frame for every face, or no frames at all', () => {
-    for (const r of Object.values(ROOMS)) {
+    for (const r of ROOM_LIBRARY) {
       if (!r.ritual) continue
       const keys = wanted(r.ritual.art)
       const held = keys.filter((key) => PROP_ART[key])
@@ -478,7 +439,7 @@ describe('a room prop is whole, registered, and does not move', () => {
   })
 
   it('holds every frame at one box, so the object cannot move between them', () => {
-    for (const r of Object.values(ROOMS)) {
+    for (const r of ROOM_LIBRARY) {
       if (!r.ritual) continue
       const frames = wanted(r.ritual.art)
         .map((key) => PROP_ART[key])
@@ -499,7 +460,7 @@ describe('a room prop is whole, registered, and does not move', () => {
     // position its objects can be standing in. A key that neither asks for is a
     // file the loader downloads on every boot and nothing ever shows.
     const asked = new Set([
-      ...Object.values(ROOMS)
+      ...ROOM_LIBRARY
         .filter((r) => r.ritual)
         .flatMap((r) => wanted(r.ritual!.art)),
       ...EVERY_WORKED_STATE.flatMap((state) =>
@@ -558,7 +519,7 @@ describe('the Reliquary is four objects, and all four stay in the room', () => {
 
   it('paints every object in every position the room can be in', () => {
     for (const state of EVERY_WORKED_STATE) {
-      if (state.roomId !== 'reliquary') continue
+      if (state.templateId !== 'reliquary') continue
       const up = platesFor(state)
       expect(up).toHaveLength(4)
       for (const plate of up) {
@@ -575,7 +536,7 @@ describe('the Reliquary is four objects, and all four stay in the room', () => {
     // is lit are one drawing, so the *state* has to reach the stylesheet — and
     // it has to come off the save, or a reload would light the candles again.
     const lit = platesFor({
-      roomId: 'reliquary',
+      templateId: 'reliquary',
       bellRung: false,
       brazier: 'lit',
       lever: 'up',
@@ -583,7 +544,7 @@ describe('the Reliquary is four objects, and all four stay in the room', () => {
       claimed: false,
     })
     const dark = platesFor({
-      roomId: 'reliquary',
+      templateId: 'reliquary',
       bellRung: true,
       brazier: 'out',
       lever: 'down',

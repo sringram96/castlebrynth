@@ -14,7 +14,7 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 
-import { act, boot, screenName, state, tappable } from './helpers.js'
+import { act, boot, screenName, state, tappable, wayTo, where } from './helpers.js'
 import { fightItOut } from './play.js'
 
 /** Hurt, standing in the chapel, on a known seed. */
@@ -170,8 +170,8 @@ test.describe('one press, and the room is spent', () => {
     await expect(page.locator('#say')).toContainText('The passage splits')
     // Both routes, untouched by any of this. The deep way now has the Chain
     // Vault in front of its fight; it is still the same decision at the fork.
-    await expect(page.locator('[data-to="gate"]')).toBeVisible()
-    await expect(page.locator('[data-to="chain-vault"]')).toBeVisible()
+    await expect(await wayTo(page, 'gate')).toBeVisible()
+    await expect(await wayTo(page, 'chain-vault')).toBeVisible()
   })
 
   test('gives a whole body nothing, and still lets it past', async ({ page }) => {
@@ -201,7 +201,7 @@ test.describe('one press, and the room is spent', () => {
     }
 
     await act(page, 'go').click()
-    expect((await state(page)).run!.roomId).toBe('sanctuary')
+    expect(await where(page)).toBe('sanctuary')
 
     await act(page, 'ritual').click()
     const before = await state(page)

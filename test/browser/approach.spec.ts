@@ -191,7 +191,7 @@ test.describe('the hall empties out one score at a time', () => {
       const now = await state(page)
       expect(now.mode, `it survived a killing blow at ${reach}`).not.toBe('dead')
       expect(now.run!.hp).toBe(100)
-      expect(now.run!.cleared).toContain('hollow')
+      expect(now.run!.cleared).toContain(now.run!.roomId)
     }
   })
 

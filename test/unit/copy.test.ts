@@ -15,7 +15,8 @@ import { describe, expect, it } from 'vitest'
 import { DICE, die } from '../../src/content/dice.js'
 import { RELICS, relic } from '../../src/content/relics.js'
 import { ENEMIES } from '../../src/content/enemies.js'
-import { ROOMS, room } from '../../src/content/rooms.js'
+import { ROOM_LIBRARY } from '../../src/content/rooms.js'
+import { WAYS, way } from '../../src/content/runPlans.js'
 
 /** Everything the player can read, so a banned word cannot hide in a corner. */
 function everySentence(): string[] {
@@ -26,12 +27,15 @@ function everySentence(): string[] {
     out.push(e.tell)
     for (const i of e.script) out.push(i.explain)
   }
-  for (const r of Object.values(ROOMS)) {
+  for (const r of ROOM_LIBRARY) {
     out.push(r.arrival)
     for (const d of r.details) out.push(d.says)
-    for (const x of r.exits) out.push(x.label, x.sense)
     if (r.ritual) out.push(r.ritual.name, r.ritual.label, r.ritual.describe, r.ritual.prompt)
   }
+  // The ways on are copy too, and they moved out of the rooms with the
+  // topology. They are still sentences a player reads, so they are still held
+  // to every rule below.
+  for (const w of Object.values(WAYS)) out.push(w.label, w.sense)
   return out
 }
 
@@ -127,27 +131,36 @@ describe('the enemies say what they are about to do', () => {
 })
 
 describe('the rooms say what changed', () => {
-  it('tells the player the way on is open once the enemy is down', () => {
-    for (const r of Object.values(ROOMS)) {
-      if (!r.enemy) continue
-      for (const exit of r.exits) {
-        expect(exit.sense, `${r.name}'s way on says nothing about the way on`).toMatch(
-          /corridor|passage|tunnel|door|path|open/i,
-        )
-      }
+  it('tells the player the way on is open once a fight is behind them', () => {
+    // The ways out of an encounter. They are authored on the plan's edges now
+    // rather than on the room, which is what lets a different fight sit in
+    // front of the same line — but the line still has to say where you are
+    // going, or the button is a shrug.
+    for (const id of ['past-the-body', 'gate-up', 'rejoin', 'through']) {
+      expect(way(id).sense, `${id} says nothing about the way on`).toMatch(
+        /corridor|passage|tunnel|door|path|open/i,
+      )
     }
   })
 
   it('makes the fork a decision rather than a riddle', () => {
-    const [safe, risky] = room('fork').exits
-    expect(safe?.sense, 'the short route does not say it is shorter').toMatch(/short/i)
+    const safe = way('stair')
+    const risky = way('deep')
+    expect(safe.sense, 'the short route does not say it is shorter').toMatch(/short/i)
     // The player is making a game decision. Say so before the tap.
-    expect(risky?.sense, 'the deep route does not state its risk').toMatch(/fight|danger/i)
-    expect(risky?.sense, 'the deep route does not state its reward').toMatch(/upgrade|chance/i)
+    expect(risky.sense, 'the deep route does not state its risk').toMatch(/fight|danger/i)
+    expect(risky.sense, 'the deep route does not state its reward').toMatch(/upgrade|chance/i)
+  })
+
+  it('keeps every way on to two words, because it goes on a button', () => {
+    for (const [id, w] of Object.entries(WAYS)) {
+      expect(w.label.split(/\s+/).length, `${id} is too long for a button`).toBeLessThanOrEqual(2)
+      expect(w.sense.length, `${id} gives no reason to press it`).toBeGreaterThan(0)
+    }
   })
 
   it('says what a font gives back before it is pressed, and what it does not', () => {
-    for (const r of Object.values(ROOMS)) {
+    for (const r of ROOM_LIBRARY) {
       if (!r.ritual) continue
       // The rule, in the well, before the press — the same contract every die
       // and every relic is held to. What it gives is a share of the damage
@@ -167,7 +180,7 @@ describe('the rooms say what changed', () => {
   })
 
   it('lays nothing out on a step: an upgrade is beaten out of something', () => {
-    for (const r of Object.values(ROOMS)) {
+    for (const r of ROOM_LIBRARY) {
       expect(r.arrival, `${r.name} claims items are waiting`).not.toMatch(/two things|carry one/i)
     }
   })

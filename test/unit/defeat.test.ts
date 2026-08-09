@@ -17,6 +17,7 @@ import { MAX_HP, reduce } from '../../src/game/reducer.js'
 import type { Action } from '../../src/game/reducer.js'
 import { TITLE } from '../../src/game/state.js'
 import type { GameState } from '../../src/game/state.js'
+import { nodeOf, standIn } from './where.js'
 import { ENEMIES, REACHES, enemy, turnAt } from '../../src/content/enemies.js'
 import { DEFEATS, defeatDuration, defeatOf, defeatStance } from '../../src/content/defeat.js'
 import type { Defeat } from '../../src/content/defeat.js'
@@ -28,11 +29,7 @@ const play = (state: GameState, ...actions: Action[]): GameState =>
 /** A fight against the Gnawing, rolled, with every die chosen. */
 function poised(enemyHp: number, seed = 1): GameState {
   const started = reduce(TITLE, { type: 'START_RUN', seed })
-  const run = started.run!
-  const opened = reduce(
-    { ...started, run: { ...run, roomId: 'hollow', path: [...run.path, 'hollow'] } },
-    { type: 'FIGHT' },
-  )
+  const opened = reduce(standIn(started, 'hollow'), { type: 'FIGHT' })
   const rolled = reduce(opened, { type: 'ROLL' })
   const combat = rolled.run!.combat!
   return {
@@ -42,13 +39,9 @@ function poised(enemyHp: number, seed = 1): GameState {
 }
 
 /** A fight in a named room, rolled, with every die chosen. */
-function poisedIn(roomId: string, enemyHp: number, seed = 1): GameState {
+function poisedIn(templateId: string, enemyHp: number, seed = 1): GameState {
   const started = reduce(TITLE, { type: 'START_RUN', seed })
-  const run = started.run!
-  const opened = reduce(
-    { ...started, run: { ...run, roomId, path: [...run.path, roomId] } },
-    { type: 'FIGHT' },
-  )
+  const opened = reduce(standIn(started, templateId), { type: 'FIGHT' })
   const rolled = reduce(opened, { type: 'ROLL' })
   const combat = rolled.run!.combat!
   return {
@@ -60,11 +53,7 @@ function poisedIn(roomId: string, enemyHp: number, seed = 1): GameState {
 /** A fight against something that stands still, and has no authored death. */
 function poisedTrading(enemyHp: number, seed = 1): GameState {
   const started = reduce(TITLE, { type: 'START_RUN', seed })
-  const run = started.run!
-  const opened = reduce(
-    { ...started, run: { ...run, roomId: 'deep', path: [...run.path, 'deep'] } },
-    { type: 'FIGHT' },
-  )
+  const opened = reduce(standIn(started, 'deep'), { type: 'FIGHT' })
   const rolled = reduce(opened, { type: 'ROLL' })
   const combat = rolled.run!.combat!
   return {
@@ -85,7 +74,7 @@ describe('killing a horror whose death is authored', () => {
     // Nothing about the win has happened yet. This is the whole point: the
     // room is still un-cleared, so a reload lands back in the death rather
     // than in a room that has already been packed away.
-    expect(dying.run!.cleared).not.toContain('hollow')
+    expect(dying.run!.cleared).not.toContain(dying.run!.roomId)
     expect(dying.run!.offer).toBeUndefined()
   })
 
@@ -139,7 +128,7 @@ describe('the end of the death', () => {
     const won = reduce(killed(), { type: 'DEFEAT_DONE' })
     expect(won.mode === 'reward' || won.mode === 'explore').toBe(true)
     expect(won.run!.combat).toBeUndefined()
-    expect(won.run!.cleared).toContain('hollow')
+    expect(won.run!.cleared).toContain(won.run!.roomId)
   })
 
   it('grants exactly the win the fight would have granted in one press', () => {
@@ -160,7 +149,7 @@ describe('the end of the death', () => {
     expect(reduce(won, { type: 'DEFEAT_DONE' })).toBe(won)
     // And the room was cleared exactly once, however many times it is pressed.
     const thrice = play(won, { type: 'DEFEAT_DONE' }, { type: 'DEFEAT_DONE' })
-    expect(thrice.run!.cleared.filter((id) => id === 'hollow')).toHaveLength(1)
+    expect(thrice.run!.cleared.filter((id) => id === thrice.run!.roomId)).toHaveLength(1)
   })
 
   it('is refused by every fight that is not being held open on a death', () => {
@@ -216,7 +205,7 @@ describe('the Warden stops', () => {
     // The door is still shut. `cleared` is what opens it, and it has not been
     // granted — so a reload lands back inside the death rather than in front of
     // an open exit the player never saw earned.
-    expect(dying.run!.cleared).not.toContain('gate')
+    expect(dying.run!.cleared).not.toContain(dying.run!.roomId)
   })
 
   it('takes no further press while it plays, and cannot be killed twice', () => {
@@ -235,7 +224,7 @@ describe('the Warden stops', () => {
   it('opens the door only once DEFEAT_DONE has been taken', () => {
     const won = reduce(felled(), { type: 'DEFEAT_DONE' })
     expect(won.run!.combat).toBeUndefined()
-    expect(won.run!.cleared).toContain('gate')
+    expect(won.run!.cleared).toContain(won.run!.roomId)
     // And the boss pays nothing but the way out. Escape is the reward.
     expect(enemy('warden').rewards).toEqual([])
     expect(won.mode).toBe('explore')
@@ -246,14 +235,15 @@ describe('the Warden stops', () => {
     const won = reduce(felled(), { type: 'DEFEAT_DONE' })
     expect(reduce(won, { type: 'DEFEAT_DONE' })).toBe(won)
     const thrice = play(won, { type: 'DEFEAT_DONE' }, { type: 'DEFEAT_DONE' })
-    expect(thrice.run!.cleared.filter((id) => id === 'gate')).toHaveLength(1)
+    expect(thrice.run!.cleared.filter((id) => id === thrice.run!.roomId)).toHaveLength(1)
     expect(thrice).toBe(won)
   })
 
   it('ends the run exactly where it always did: through the door, and out', () => {
     // The whole point of not touching gameplay. The win after the boss's new
     // death is the same win, reached by the same press, ending the same run.
-    const out = play(felled(), { type: 'DEFEAT_DONE' }, { type: 'GO', to: 'exit' })
+    const dead = felled()
+    const out = play(dead, { type: 'DEFEAT_DONE' }, { type: 'GO', to: nodeOf(dead.run!, 'exit') })
     expect(out.mode).toBe('complete')
     expect(out.meta.wins).toBe(1)
   })
@@ -275,7 +265,7 @@ describe('a horror with no authored death', () => {
     expect(defeatOf('marrow')).toBeUndefined()
     expect(won.mode === 'reward' || won.mode === 'explore').toBe(true)
     expect(won.run!.combat).toBeUndefined()
-    expect(won.run!.cleared).toContain('deep')
+    expect(won.run!.cleared).toContain(won.run!.roomId)
   })
 
   it('never parks a fight waiting for a picture that does not exist', () => {
