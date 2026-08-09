@@ -1,16 +1,33 @@
 # The Crawling One — asset brief
 
-Everything the encounter in `hollow` needs, and nothing else. The code is
-finished and waiting: drop these files into this folder, run `npm run art`,
-paste the three numbers it prints into `src/content/enemies.ts`, and add the
-manifest rows listed at the bottom. No other code changes.
+**Delivered.** Seven plates, all at 1024 × 1536, sitting beside this file:
+`hall`, `far`, `mid`, `close`, `hit`, `hand-rest`, `hand-thrust`. They are the
+masters and are never served — `npm run art` builds the runtime plates from
+them, and `docs/ART_DIRECTION.md` § *The pipeline* is where that is described.
 
-`supplied/` holds the four mock-up plates this brief was written from
-(`far`, `mid`, `close`, `hit`). They are the look to hit. They are **not**
-usable as they are, for two reasons: each one paints a mock tray across the
-bottom third, and each one is a separate painting of the corridor rather than
-one corridor with the creature moved — so there is no way to lift the creature
-off one and put it on another.
+The brief below is kept as the contract they were made against. It is what a
+repaint has to meet, and it is what to hand an artist for the next encounter
+that works this way.
+
+`supplied/` holds the four mock-ups this brief was originally written from.
+They are the look that was being aimed at, and they were never usable: each
+paints a mock tray across the bottom third, and each is a separate painting of
+the corridor rather than one corridor with the creature moved — so there is no
+way to lift the creature off one and put it on another. The delivered set fixed
+exactly that by separating the corridor from the things standing in it.
+
+## What changed between the brief and the delivery
+
+Two things, both improvements, and the pipeline was written to the delivery:
+
+- **Black fields, not transparency.** The brief asked for transparent
+  canvases; image tools do not do honest alpha, so every plate arrived on flat
+  `#000000`. `tools/art.mjs` keys it — threshold, close, hole-fill, prune —
+  which is a better matte than a soft alpha channel would have been.
+- **The arm is a whole frame.** The hands are not trimmed; they stay the full
+  scene and the foreground layer cover-fits them exactly as the backdrop is
+  cover-fitted, so the arm lands in the corridor at every viewport with no
+  coordinate to measure and none to drift.
 
 ---
 

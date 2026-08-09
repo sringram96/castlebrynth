@@ -81,7 +81,13 @@ test.describe('the first run', () => {
     // its way in, not what it does on arrival at the room. What has to be true
     // here is that it is unmistakably there before any control appears. That it
     // grows, and by how much, is `test/browser/approach.spec.ts`.
-    expect(share, 'the enemy is not on screen at all').toBeGreaterThan(0.05)
+    //
+    // Legibility is asserted in pixels rather than as a share of the frame.
+    // Area is a bad proxy for a thing that was painted to be distant: the
+    // Gnawing opens at 117 x 87 on a 390 x 844 phone — a plainly readable
+    // shape at the end of a hall — and that is 4% of the world box. The share
+    // below is only a guard that something is on screen at all.
+    expect(share, 'the enemy is not on screen at all').toBeGreaterThan(0.03)
     expect(Math.min(box.width, box.height), 'the enemy is a speck').toBeGreaterThan(80)
     expect(box.x).toBeGreaterThanOrEqual(-1)
     expect(box.x + box.width).toBeLessThanOrEqual(world.width + 1)

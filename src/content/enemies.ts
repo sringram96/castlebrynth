@@ -136,12 +136,12 @@ const STRIKE = 'STRIKE will deal 8 damage after you score, unless you kill it fi
 const MAW: Approach = {
   stances: {
     // A shape at the end of the corridor: readable, and plainly not near you.
-    far: { width: 0.34, foot: 0.6 },
+    far: { width: 0.3, foot: 0.6 },
     // Half the hall gone. Roughly four times the area, which is what makes the
     // second one land — the step has to be too big to be a trick of the light.
-    mid: { width: 0.66, foot: 0.81 },
+    mid: { width: 0.62, foot: 0.82 },
     // Wider than the frame, jaw on the floor, no corridor left behind it.
-    close: { width: 1.3, foot: 1.0 },
+    close: { width: 1.24, foot: 1.02 },
   },
   says: 'It has me.',
   cause: 'The Gnawing — it got close enough.',

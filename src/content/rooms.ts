@@ -95,8 +95,10 @@ export const ROOMS: Readonly<Record<string, Room>> = {
   hollow: {
     id: 'hollow',
     name: 'The Hollow',
-    art: 'ossuary',
-    arrival: 'The Gnawing is blocking the passage ahead. Too many eyes. All of them are on me.',
+    // The one room painted around its encounter: a long hall with the far end
+    // still visible, because the whole fight is how much of it is left.
+    art: 'hall',
+    arrival: 'The Gnawing is at the far end of the hall. Too many eyes. All of them are on me.',
     details: [
       {
         id: 'niches',

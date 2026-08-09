@@ -35,6 +35,21 @@ export interface World {
   readonly midground: HTMLElement
   readonly enemy: HTMLImageElement
   readonly foreground: HTMLElement
+  /**
+   * The player's own arm, held on the foreground layer, as two plates.
+   *
+   * Whole scene frames, cover-fitted exactly as the backdrop is, so the arm
+   * sits in the corridor at every viewport without a coordinate anywhere.
+   *
+   * Two elements rather than one source that gets swapped, because a paint
+   * lands in the middle of the strike — the blow is revealed at 480 ms and the
+   * arm is extended from 440 to 580 — and a paint that rewrites the source
+   * would put the arm back at rest under the very frame it is meant to be
+   * landing. So the resting arm is the one written from state, and the
+   * extended one is a sibling the sequence uncovers for 140 ms.
+   */
+  readonly weapon: HTMLImageElement
+  readonly strike: HTMLImageElement
   readonly fx: HTMLElement
   /** Where the room's tappable details live. The only layer that takes taps. */
   readonly hits: HTMLElement
@@ -65,6 +80,18 @@ export function mountWorld(root: HTMLElement): World {
   enemy.id = 'enemy'
   enemy.alt = ''
   const foreground = layer('div', 'foreground', Layer.Foreground)
+  const weapon = document.createElement('img')
+  weapon.id = 'weapon'
+  weapon.className = 'weapon'
+  weapon.alt = ''
+  weapon.hidden = true
+  const strike = document.createElement('img')
+  strike.id = 'weapon-strike'
+  strike.className = 'weapon weapon-strike'
+  strike.alt = ''
+  strike.hidden = true
+  foreground.append(weapon, strike)
+
   const fx = layer('div', 'fx', Layer.Fx)
   fx.id = 'fx'
 
@@ -76,7 +103,35 @@ export function mountWorld(root: HTMLElement): World {
   hud.id = 'hud'
 
   root.append(backdrop, midground, enemy, foreground, fx, hits, hud)
-  return { root, backdrop, midground, enemy, foreground, fx, hits, hud }
+  return { root, backdrop, midground, enemy, foreground, weapon, strike, fx, hits, hud }
+}
+
+export interface Grip {
+  readonly rest: string
+  readonly thrust: string
+}
+
+/**
+ * Put the knife in the player's hand, or take it away.
+ *
+ * Both plates are mounted; only the resting one is ever visible from a paint.
+ * Which of them the player sees is a class the sequence owns and this function
+ * does not touch, so the settled screen is the resting arm however a sequence
+ * ended — including one settled halfway through.
+ */
+export function holdWeapon(world: World, grip: Grip | undefined): void {
+  for (const [node, src] of [
+    [world.weapon, grip?.rest],
+    [world.strike, grip?.thrust],
+  ] as const) {
+    if (!src) {
+      node.hidden = true
+      node.removeAttribute('src')
+      continue
+    }
+    if (node.getAttribute('src') !== src) node.src = src
+    node.hidden = false
+  }
 }
 
 export interface EnemyPose {

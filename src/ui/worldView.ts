@@ -6,10 +6,10 @@
  * visible before any combat control appears.
  */
 
-import { hideEnemy, placeEnemy } from '../render/compositor.js'
+import { hideEnemy, holdWeapon, placeEnemy } from '../render/compositor.js'
 import type { World } from '../render/compositor.js'
-import { enemyArt, roomArt, url } from '../render/assets.js'
-import { enemy as enemyById, intentAt, stanceAt } from '../content/enemies.js'
+import { enemyArt, handArt, roomArt, url } from '../render/assets.js'
+import { REACHES, enemy as enemyById, intentAt, stanceAt } from '../content/enemies.js'
 import { room as roomById } from '../content/rooms.js'
 import type { GameState } from '../game/state.js'
 import { button, el } from './components.js'
@@ -41,7 +41,12 @@ export function renderWorld(world: World, state: GameState, handlers: WorldHandl
     // it was a moment ago and nothing here moves it: a reload paints the reach
     // the save records, which is the only reason the picture can be trusted to
     // mean how many attacks are left.
-    const reach = run.combat?.enemyId === standing ? run.combat.approach : undefined
+    //
+    // Before the fight opens there is no reach in state yet — but a thing that
+    // closes is still standing somewhere, and it is standing where the fight
+    // will start it.
+    const fighting = run.combat?.enemyId === standing ? run.combat.approach : undefined
+    const reach = fighting ?? (e.approach ? REACHES[0] : undefined)
     const stance = stanceAt(standing, reach)
     placeEnemy(world, url(enemyArt(e.art, reach)), {
       width: stance.width,
@@ -53,6 +58,16 @@ export function renderWorld(world: World, state: GameState, handlers: WorldHandl
   } else {
     hideEnemy(world)
   }
+
+  // The knife comes out for the thing in the room, not for the room. Both
+  // plates are mounted here; which one shows is the sequence's business, and
+  // the resting one is what a settled screen always lands on.
+  holdWeapon(
+    world,
+    standing && enemyById(standing).approach
+      ? { rest: url(handArt('rest')), thrust: url(handArt('thrust')) }
+      : undefined,
+  )
 
   renderHits(world, state, handlers)
   renderHud(world, state, handlers)

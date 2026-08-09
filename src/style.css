@@ -118,6 +118,18 @@ button {
 }
 
 /*
+ * The authored impact plate, when one exists for the pose.
+ *
+ * It is already painted white, so there is nothing to do to it but hold it
+ * still: no filter, no scale, no transition. The one frame of the encounter
+ * that is entirely somebody's drawing.
+ */
+.layer-enemy.lit {
+  animation: none;
+  transition: none;
+}
+
+/*
  * ── a thing that closes ──────────────────────────────────────────────
  *
  * Three authored reaches and nothing between them. The compositor sets the
@@ -234,19 +246,53 @@ button {
 /*
  * ── the strike ───────────────────────────────────────────────────────
  *
- * The foreground layer is where the first-person hand plate mounts. Until one
- * exists the same two poses drive the whole frame instead: the camera is the
- * player's head, so leaning in is leaning in either way. Three poses, no
- * tween on the way out — the forward move has 45ms and has to read as
- * violence rather than as a transition.
+ * The arm is a whole scene frame, cover-fitted exactly as the backdrop is, so
+ * it lands in the corridor identically at every viewport with no coordinate
+ * anywhere. The plate swaps and the camera leans in the same instant: the
+ * frame is the player's head, so a body driving a knife forward drives its
+ * head forward too.
+ *
+ * Three poses, no tween on the way out — the forward move has 45ms and has to
+ * read as violence rather than as a transition.
  */
-.layer-foreground.wind,
+
+.weapon {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 45%;
+  pointer-events: none;
+}
+
+.weapon[hidden] {
+  display: none;
+}
+
+/* Both plates are mounted; the extended one is uncovered for 140ms. A hard
+   swap, with no transition — the whole read is that it was too fast to see. */
+.weapon-strike {
+  opacity: 0;
+}
+
+.layer-foreground.thrust .weapon {
+  opacity: 0;
+}
+
+.layer-foreground.thrust .weapon-strike {
+  opacity: 1;
+}
+/* The arm moves by swapping plates; the camera leans with it, because the
+   frame is the player's head and a body that drives a knife forward drives
+   its head forward too. Only the frame is transformed — transforming the arm
+   as well would slide an authored plate out of the corridor it was painted
+   into. */
 #world.wind {
   transition: transform 45ms linear;
   transform: scale(0.994) translateY(2px);
 }
 
-.layer-foreground.thrust,
 #world.thrust {
   transition: transform 40ms linear;
   transform: scale(1.035) translateY(-4px);
