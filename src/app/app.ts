@@ -21,6 +21,7 @@
 
 import { enemy, intentAt, stanceAt } from '../content/enemies.js'
 import type { Reach, Stance } from '../content/enemies.js'
+import { idleFrameMs, idlePose, intentPose } from '../content/enemyPresentation.js'
 import { defeatOf, defeatStance } from '../content/defeat.js'
 import type { DefeatFrame } from '../content/defeat.js'
 import { preview } from '../combat/scoring.js'
@@ -34,7 +35,7 @@ import { mountWorld, placeEnemy, showProp, showProps } from '../render/composito
 import type { World } from '../render/compositor.js'
 import { RoomAmbience } from '../render/ambience.js'
 import { beatsDuration, beatsFor, platesFor, stateOf } from '../content/interactions.js'
-import { TRAY_ART, enemyArt, enemyPose, propArt, url } from '../render/assets.js'
+import { TRAY_ART, enemyArt, enemyPose, isScenePlate, propArt, url } from '../render/assets.js'
 import { mountTray, paintTumble, renderTray } from '../ui/trayView.js'
 import type { Tray } from '../ui/trayView.js'
 import { renderWorld } from '../ui/worldView.js'
@@ -77,6 +78,29 @@ const SCORE = {
   rest: 580,
   answer: 720,
   next: 950,
+} as const
+
+/**
+ * The extra beats of a horror that has a drawing of what it is doing.
+ *
+ * They sit *inside* the score above and add nothing to it: the turn is still
+ * 950 ms long, the blow still lands at 720, and the damage was decided before
+ * any of this was scheduled. All that happens is that the plate on screen for
+ * the middle of the turn is the one the encounter authored for the intent that
+ * actually resolved.
+ *
+ * The order is the point, as it is everywhere else in this file. It draws
+ * itself up at `taken` — 170 ms of a thing about to do something, which is what
+ * makes the blow at `SCORE.answer` read as *its* blow rather than as the health
+ * bar moving. `again` is not a beat: it is the same picture put back, because
+ * the paint at `SCORE.answer` reads the plate off state and state does not know
+ * a pose is up. `settled` returns it to the plate its health says it stands in,
+ * with 70 ms to spare before the next turn takes the screen.
+ */
+const POSE = {
+  taken: 650,
+  again: SCORE.answer,
+  settled: 880,
 } as const
 
 /**
@@ -202,6 +226,22 @@ export class App {
    */
   private presenting: GameState | undefined
   private sequence: Sequence | undefined
+  /**
+   * The idle loop: which enemy it is running for, its clock, and which plate.
+   *
+   * All three are presentation and all three are deliberately here rather than
+   * in `GameState`. A horror breathing is not a fact about a run: it survives
+   * nothing, it decides nothing, and a save that carried a frame index would
+   * give a reload an animation clock to recover — which is exactly the class of
+   * thing `combat.defeated` is written as a flag to avoid.
+   *
+   * `enemyIdling` is what makes the loop idempotent. `render` runs it on every
+   * paint and a sequence paints several times, so a loop that restarted per
+   * paint would never reach its second frame.
+   */
+  private enemyIdling: string | undefined
+  private enemyIdleTimer: number | undefined
+  private enemyIdleFrame = 0
 
   constructor(options: AppOptions) {
     this.state = options.initial
@@ -484,6 +524,12 @@ export class App {
     // exactly what the player was shown before they committed.
     const p = preview(selectionOf(combat), run.relics, combat.spentHands)
 
+    // What it is doing *this* turn, read before the next turn exists. `after`
+    // already holds the following intent, and the following intent is a
+    // different picture — for the Warden, the difference between RAISE and the
+    // JUDGE it announces is the difference between the two drawings there are.
+    const acting = intentAt(combat.enemyId, combat.turn)
+
     const enemyAfter = Math.max(0, combat.enemyHp - p.damage)
     const dealt = combat.enemyHp - enemyAfter
     const faceDelta = p.heal - p.cost
@@ -584,6 +630,11 @@ export class App {
     if (defeated) return this.playDefeat(sequence, frame, combat, afterFaces, settledCombat!.log)
     if (reached) return this.playContact(sequence, frame, enemyAfter, afterFaces)
     if (advancedTo) return this.playAdvance(sequence, frame, enemyAfter, afterFaces, advancedTo)
+
+    // It survived, so it gets to be seen doing the thing it just did. Only
+    // here: a dead horror does not take its turn, and a thing that closed the
+    // distance is already being shown doing that instead.
+    this.playPose(sequence, combat.enemyId, acting.verb)
 
     // It survived, it is a thing that closes, and it did not get anywhere. A
     // stretch of hall takes more than one score to cover, so this is what most
@@ -760,7 +811,140 @@ export class App {
     placeEnemy(this.world, src, {
       ...defeatStance(base, f),
       ...(combat.approach ? { reach: combat.approach } : {}),
+      // A death painted on whole-scene plates is placed by the frame, exactly
+      // as the standing pose is. `defeatStance` still runs and still has to be
+      // the identity for it — see the Warden's entry in `content/defeat.ts`.
+      ...(isScenePlate(plate ?? enemyArt(art, combat.approach)) ? { scene: true } : {}),
       defeat: { step, dim: f.dim },
+    })
+  }
+
+  // ── the idle loop ────────────────────────────────────────────────────
+
+  /**
+   * Keep a standing horror breathing, or stop it.
+   *
+   * Run from `render`, off the **settled** state rather than the presented one,
+   * and idempotent for the same enemy — the same contract `RoomAmbience.show`
+   * has, for the same reason: a sequence paints several times and a loop torn
+   * down and rebuilt on each of them would never advance.
+   *
+   * It stops on everything that means there is nothing standing there: the room
+   * changed, the fight was won, the thing died, motion is off. And it starts
+   * only for a horror whose idle plates have actually been painted, so an enemy
+   * with no family is still, exactly as it was before this existed.
+   */
+  private idle(): void {
+    const run = this.state.run
+    const here = run && this.state.mode !== 'title' ? roomById(run.roomId) : undefined
+    const standing =
+      run && here?.enemy && !run.cleared.includes(run.roomId) && !run.combat?.defeated
+        ? here.enemy
+        : undefined
+    // Reduced motion gets the settled plate and no loop at all. It is not a
+    // shorter loop or a slower one: the first plate of the band is the whole
+    // picture, and everything the fight can say is said without it moving.
+    const every = standing && this.animated ? idleFrameMs(standing) : undefined
+    if (!standing || every === undefined) return this.stopIdle()
+    if (this.enemyIdling === standing) return
+    this.stopIdle()
+    this.enemyIdling = standing
+    this.enemyIdleTimer = window.setInterval(() => this.stepIdle(standing), every)
+  }
+
+  private stopIdle(): void {
+    if (this.enemyIdleTimer !== undefined) window.clearInterval(this.enemyIdleTimer)
+    this.enemyIdleTimer = undefined
+    this.enemyIdling = undefined
+    this.enemyIdleFrame = 0
+  }
+
+  /**
+   * One beat of it. A hard swap, and nothing else.
+   *
+   * No tween and no crossfade: two authored drawings of a thing standing still,
+   * cut between. The discontinuity is the whole effect — a fade would make it a
+   * UI element that happens to be shaped like a corpse.
+   *
+   * A running sequence owns the picture, so the tick paints nothing while one
+   * is up and puts the counter back to the plate that sequence's own paints
+   * land on. That is the whole of "stop when a sequence begins, resume when it
+   * ends": there is no start, no stop, and no state to get out of step.
+   */
+  private stepIdle(enemyId: string): void {
+    if (this.sequence && !this.sequence.finished) {
+      this.enemyIdleFrame = 0
+      return
+    }
+    this.enemyIdleFrame += 1
+    const pose = idlePose(enemyId, ...this.enemyHealth(enemyId), this.enemyIdleFrame)
+    if (pose) this.showPose(enemyId, pose)
+  }
+
+  /**
+   * How hurt a horror is, as the two numbers a band is computed from.
+   *
+   * Off the presented state, so a beat that is holding the previous turn on
+   * screen asks about the health that turn showed. Before a fight opens there
+   * is no combat in state and the answer is the enemy's own full health, which
+   * is what a thing waiting at its door is standing there with.
+   */
+  private enemyHealth(enemyId: string): [number, number] {
+    const combat = (this.presenting ?? this.state).run?.combat
+    if (combat?.enemyId === enemyId) return [combat.enemyHp, combat.enemyMaxHp]
+    const e = enemy(enemyId)
+    return [e.hp, e.hp]
+  }
+
+  /**
+   * Put one named plate of a horror on screen, where it already is.
+   *
+   * Straight at the compositor, the way the font's frames and a death's frames
+   * go, and for the same reason: a paint reads the plate off state, and state
+   * says nothing about which drawing of a thing is up. The placement is the one
+   * the settled paint would have used — a pose swap is a change of source and
+   * never a change of box.
+   */
+  private showPose(enemyId: string, pose: string): void {
+    const state = this.presenting ?? this.state
+    const combat = state.run?.combat?.enemyId === enemyId ? state.run.combat : undefined
+    const art = enemyArt(enemy(enemyId).art, pose)
+    const stance = stanceAt(enemyId, combat?.approach)
+    placeEnemy(this.world, url(art), {
+      width: stance.width,
+      foot: stance.foot,
+      ...(stance.at !== undefined ? { at: stance.at } : {}),
+      ...(combat?.approach ? { reach: combat.approach } : {}),
+      ...(isScenePlate(art) ? { scene: true } : {}),
+      ...(combat?.reached ? { contact: true } : {}),
+    })
+  }
+
+  /**
+   * The picture of the intent that just resolved, inside the turn that ran it.
+   *
+   * Three beats and no fourth. It is scheduled from the verb the reducer
+   * *acted on* — captured before the next turn replaced it — because that is
+   * the only thing that can be right: RAISE deals nothing and still has a
+   * drawing, so damage cannot say which pose this is, and the next intent is a
+   * different turn's business.
+   *
+   * Nothing here is allowed to matter. Every beat is a source swap on a
+   * scene-registered plate, the health and the damage were settled before the
+   * first of them, and a turn played with motion off skips all three and ends
+   * on precisely the same state.
+   */
+  private playPose(sequence: Sequence, enemyId: string, verb: string): void {
+    const pose = intentPose(enemyId, verb)
+    if (!pose) return
+    sequence.at(POSE.taken, () => this.showPose(enemyId, pose))
+    // Put it back after the blow's own paint, which restored the plate state
+    // says it stands in. Cheaper and steadier than teaching `render` about a
+    // transient pose, and it cannot outlive the beat below it.
+    sequence.at(POSE.again, () => this.showPose(enemyId, pose))
+    sequence.at(POSE.settled, () => {
+      const idle = idlePose(enemyId, ...this.enemyHealth(enemyId))
+      if (idle) this.showPose(enemyId, idle)
     })
   }
 
@@ -820,6 +1004,11 @@ export class App {
     )
 
     if (this.opened) renderOverlay(this.overlay, this.opened, state, () => this.close())
+
+    // And the horror keeps breathing under all of it, on the same terms the
+    // room's ambience does: idempotent for the same enemy, torn down the moment
+    // there is nothing standing there.
+    this.idle()
   }
 
   private open(view: Overlay): void {

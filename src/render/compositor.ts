@@ -252,6 +252,21 @@ export interface EnemyPose {
    */
   readonly reach?: string
   /**
+   * The plate is the whole scene, so there is nothing to place.
+   *
+   * A trimmed sprite has to be given a width and a foot, because its box is its
+   * silhouette and says nothing about where the thing stands. A scene plate is
+   * the opposite: the frame *is* the coordinate system, the empty part of it is
+   * positioning data, and it is cover-fitted exactly as the backdrop is — the
+   * same four lines, at every viewport. So `width`, `foot` and `at` are ignored
+   * here, and a family of ten poses is registered by construction rather than
+   * by ten numbers that have to agree.
+   *
+   * Never set by hand: `isScenePlate` reads it off the manifest, so a plate
+   * built at the scene size cannot be staged as though it were not.
+   */
+  readonly scene?: boolean
+  /**
    * It arrived, and this is the settled picture of that.
    *
    * The terminal rung of the contact ladder, written from state rather than
@@ -284,12 +299,24 @@ export interface EnemyPose {
 export function placeEnemy(world: World, src: string, pose: EnemyPose): void {
   if (world.enemy.getAttribute('src') !== src) world.enemy.src = src
   world.enemy.hidden = false
-  // Anchored by the feet, so the sprite's own aspect sets its height and a
-  // hero asset can be swapped without touching content. `height: auto` in the
-  // stylesheet does the rest.
-  world.enemy.style.width = `${pose.width * 100}%`
-  world.enemy.style.left = `${((pose.at ?? 0.5) - pose.width / 2) * 100}%`
-  world.enemy.style.bottom = `${(1 - pose.foot) * 100}%`
+  if (pose.scene) {
+    // Nothing to place. Every inline coordinate is cleared rather than
+    // overwritten, so the stylesheet's cover-fit is the only thing positioning
+    // it — which is what keeps it registered with the backdrop at every
+    // viewport, and what makes a pose swap a change of drawing and nothing else.
+    world.enemy.dataset['scene'] = 'plate'
+    world.enemy.style.removeProperty('width')
+    world.enemy.style.removeProperty('left')
+    world.enemy.style.removeProperty('bottom')
+  } else {
+    // Anchored by the feet, so the sprite's own aspect sets its height and a
+    // hero asset can be swapped without touching content. `height: auto` in the
+    // stylesheet does the rest.
+    delete world.enemy.dataset['scene']
+    world.enemy.style.width = `${pose.width * 100}%`
+    world.enemy.style.left = `${((pose.at ?? 0.5) - pose.width / 2) * 100}%`
+    world.enemy.style.bottom = `${(1 - pose.foot) * 100}%`
+  }
   world.enemy.dataset['enemy'] = 'present'
   if (pose.reach) world.enemy.dataset['reach'] = pose.reach
   else delete world.enemy.dataset['reach']
@@ -315,6 +342,7 @@ export function hideEnemy(world: World): void {
   world.enemy.hidden = true
   world.enemy.removeAttribute('src')
   delete world.enemy.dataset['enemy']
+  delete world.enemy.dataset['scene']
   delete world.enemy.dataset['reach']
   delete world.enemy.dataset['contact']
   delete world.enemy.dataset['defeat']

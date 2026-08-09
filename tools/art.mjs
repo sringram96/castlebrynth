@@ -16,7 +16,7 @@
  * out, so the runtime assets are diffable and a rebuild is a no-op.
  */
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdirSync, existsSync, rmSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { decode, encode } from './png.mjs'
 
@@ -479,25 +479,26 @@ const ENEMIES = [
     feather: 2,
     width: 400,
   },
-  {
-    // The Warden: robes on a dark door, so the key runs much lower and the
-    // face, both hands and the skirt are all seeded.
-    id: 'enemy.warden',
-    from: 'docs/art-reference/visual/territory-gate-warden.png',
-    window: { x: 0.11, y: 0.13, width: 0.78, height: 0.84 },
-    core: 9,
-    rim: 120,
-    falloff: 5.5,
-    seed: [
-      { x: 0.449, y: 0.202, width: 0.115, height: 0.072 },
-      { x: 0.077, y: 0.44, width: 0.115, height: 0.072 },
-      { x: 0.833, y: 0.44, width: 0.129, height: 0.072 },
-      { x: 0.449, y: 0.619, width: 0.128, height: 0.179 },
-    ],
-    dilate: 4,
-    feather: 2,
-    width: 470,
-  },
+  // The Warden used to be cut out of `territory-gate-warden.png` here, with a
+  // window, a radial threshold and four seed boxes found by eye. It is now an
+  // authored family built by `buildWarden` below, from plates delivered the way
+  // the Crawling One's are. The old master stays in `docs/art-reference/visual/`
+  // as history; nothing builds from it. See `RETIRED`.
+]
+
+/**
+ * Runtime art this script used to write and does not any more.
+ *
+ * A pipeline that only ever writes cannot retire anything: the file it stopped
+ * building sits in `public/` looking exactly like a file it still builds, and
+ * the next person to read the manifest finds two Wardens. So a source that is
+ * withdrawn is named here and the output is deleted, which keeps `public/` a
+ * pure function of the masters and of this file — the same property a rebuild
+ * being a no-op depends on.
+ */
+const RETIRED = [
+  // Superseded by the ten authored `enemies/warden-*.png` plates.
+  'enemies/warden.png',
 ]
 
 /** Mirror an image horizontally. Two of a plate is two of a thing. */
@@ -1210,6 +1211,93 @@ function buildRooms() {
   return report
 }
 
+/**
+ * The Warden: the boss, as an authored family.
+ *
+ * Built exactly the way the environmental rooms' plates are, and for exactly
+ * their reason: **nothing here is trimmed.** Every plate stays the whole
+ * 1024 × 1536 scene, is keyed at the master's own resolution, and is resampled
+ * whole to 480 × 720 — so the compositor can cover-fit it the way it cover-fits
+ * the backdrop, and the ten plates are registered with each other and with the
+ * gate by construction rather than by measurement.
+ *
+ * That is the difference between this and every other enemy in the file. A
+ * trimmed sprite is registered by its own silhouette, which is fine while an
+ * enemy has one silhouette; the Warden has ten, and they differ enormously —
+ * arms flung wide for `attack`, a heap on the floor for `defeat-2`. Trimming
+ * each and then sizing each to one CSS width would make the skeleton change
+ * size every time it changed pose. Whole frames cost bytes and buy the one
+ * property the encounter cannot do without.
+ *
+ * There is also nothing to set by eye. The plates arrive on flat `#000000`, so
+ * the key is the same threshold-close-fill-prune that `keyBlack` does for the
+ * Crawling One, the font and both environmental rooms — no window, no radial
+ * threshold, no seed boxes.
+ */
+const WARDEN = {
+  master: 'docs/art-reference/masters/warden/',
+  /**
+   * Every plate, as the `<pose>` half of its `ENEMY_ART` key.
+   *
+   * The three idle pairs are a health ladder, not three moods, and which band a
+   * pair belongs to is said in `src/content/enemyPresentation.ts` and nowhere
+   * else. This list is only which files exist and what they are called.
+   */
+  poses: [
+    'idle-full-1',
+    'idle-full-2',
+    'idle-mid-1',
+    'idle-mid-2',
+    'idle-low-1',
+    'idle-low-2',
+    'attack',
+    'defense',
+    'defeat-1',
+    'defeat-2',
+  ],
+  file: (pose) => `warden-${pose}.png`,
+}
+
+function buildWarden() {
+  const dir = join(ROOT, WARDEN.master)
+  const files = WARDEN.poses.map(WARDEN.file)
+  const held = files.filter((f) => existsSync(join(dir, f)))
+
+  if (held.length === 0) {
+    console.log(
+      `\nwarden: no plates yet — ${WARDEN.master}BRIEF.md is what they have to be.\n` +
+        '        the boss has no runtime art at all until they land, and\n' +
+        "        test/unit/assets.test.ts is where that is caught.",
+    )
+    return []
+  }
+  // Half a family is worse than none, and worse here than anywhere else in the
+  // file: the missing plates are named by the manifest, so the boss would show
+  // a broken image on exactly the beats that matter.
+  if (held.length !== files.length) {
+    throw new Error(`the Warden is missing ${files.filter((f) => !held.includes(f)).join(', ')}`)
+  }
+
+  const report = []
+  for (const pose of WARDEN.poses) {
+    const plate = scenePlate(WARDEN.master + WARDEN.file(pose), { opaque: false })
+    // Every plate is the scene, whole. Nothing below may have moved it.
+    if (plate.width !== SCENE_WIDTH || plate.height !== SCENE_HEIGHT) {
+      throw new Error(`warden/${WARDEN.file(pose)} built at ${plate.width}x${plate.height}`)
+    }
+    let opaque = 0
+    for (let i = 3; i < plate.rgba.length; i += 4) if (plate.rgba[i] === 255) opaque++
+    report.push({
+      id: `warden.${pose}`,
+      path: write(`enemies/${WARDEN.file(pose)}`, plate, { cutout: true }),
+      width: plate.width,
+      height: plate.height,
+      coverage: +(opaque / (plate.width * plate.height)).toFixed(3),
+    })
+  }
+  return report
+}
+
 /** The tray frame: one authored plate, scaled to a phone-sensible width. */
 function buildUi() {
   const report = []
@@ -1227,10 +1315,21 @@ function main() {
     ...buildBackdrops(),
     ...buildEnemies(),
     ...buildCrawling(),
+    ...buildWarden(),
     ...buildSanctuary(),
     ...buildRooms(),
     ...buildUi(),
   ]
+
+  // Withdraw what this script no longer writes, so `public/` stays a pure
+  // function of the masters and of this file rather than an accumulation.
+  for (const stale of RETIRED) {
+    const full = join(OUT, stale)
+    if (!existsSync(full)) continue
+    rmSync(full)
+    console.log(`retired            ${'—'.padStart(9)}        public/assets/${stale}`)
+  }
+
   let bytes = 0
   for (const item of built) {
     const size = readFileSync(item.path).length

@@ -148,6 +148,29 @@ button {
 }
 
 /*
+ * An enemy whose plates are whole scenes.
+ *
+ * Cover-fitted identically to `.prop`, to `.ambient` and to the backdrop — the
+ * same four lines again, and `object-position` has to match them exactly or the
+ * figure drifts against the room it is standing in. The compositor clears every
+ * inline coordinate before this applies, so nothing is fighting it.
+ *
+ * This is what buys the Warden its registration: ten plates with ten different
+ * silhouettes, all laid into the same box, so a pose swap changes the drawing
+ * and moves nothing. `max-height` is off for the same reason it is off for a
+ * reach — the height came from art painted into this exact frame, and clamping
+ * it would slide the figure out of the doorway.
+ */
+.layer-enemy[data-scene] {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  object-fit: cover;
+  object-position: 50% 45%;
+}
+
+/*
  * The bright frame.
  *
  * One frame of blown-out flesh at the instant the blade arrives, and then it
@@ -160,6 +183,18 @@ button {
     contrast(1.3);
   transform: translateX(-3px) scale(1.015);
   transition: none;
+}
+
+/*
+ * The same blow, on a plate that is the whole scene.
+ *
+ * The brighten stays — it is the hit — and the three pixels go. A sprite
+ * flinching off a blade is the figure moving; a scene plate doing it is the
+ * room moving, and it would show bare frame down one edge for the 130 ms the
+ * flash is up.
+ */
+.layer-enemy[data-scene].struck {
+  transform: none;
 }
 
 /*
@@ -315,6 +350,19 @@ button {
  */
 .layer-enemy[data-defeat="0"] {
   transform: translateX(-2px) scale(1.01);
+}
+
+/*
+ * Except when the plate is the whole scene.
+ *
+ * The recoil above is two pixels of a *sprite* flinching off the blow that
+ * killed it. Applied to a scene plate it would be two pixels of the whole
+ * picture sliding against the door behind it — the one thing cover-fitting the
+ * figure exists to prevent. An authored death has the recoil painted into it
+ * anyway; that is what `defeat.1` is.
+ */
+.layer-enemy[data-scene][data-defeat] {
+  transform: none;
 }
 
 /*

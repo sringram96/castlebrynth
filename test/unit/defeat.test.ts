@@ -19,6 +19,7 @@ import { TITLE } from '../../src/game/state.js'
 import type { GameState } from '../../src/game/state.js'
 import { ENEMIES, REACHES, enemy, turnAt } from '../../src/content/enemies.js'
 import { DEFEATS, defeatDuration, defeatOf, defeatStance } from '../../src/content/defeat.js'
+import type { Defeat } from '../../src/content/defeat.js'
 import { ENEMY_ART } from '../../src/render/assets.js'
 
 const play = (state: GameState, ...actions: Action[]): GameState =>
@@ -30,6 +31,22 @@ function poised(enemyHp: number, seed = 1): GameState {
   const run = started.run!
   const opened = reduce(
     { ...started, run: { ...run, roomId: 'hollow', path: [...run.path, 'hollow'] } },
+    { type: 'FIGHT' },
+  )
+  const rolled = reduce(opened, { type: 'ROLL' })
+  const combat = rolled.run!.combat!
+  return {
+    ...rolled,
+    run: { ...rolled.run!, combat: { ...combat, enemyHp, selected: [0, 1, 2, 3, 4, 5] } },
+  }
+}
+
+/** A fight in a named room, rolled, with every die chosen. */
+function poisedIn(roomId: string, enemyHp: number, seed = 1): GameState {
+  const started = reduce(TITLE, { type: 'START_RUN', seed })
+  const run = started.run!
+  const opened = reduce(
+    { ...started, run: { ...run, roomId, path: [...run.path, roomId] } },
     { type: 'FIGHT' },
   )
   const rolled = reduce(opened, { type: 'ROLL' })
@@ -167,6 +184,91 @@ describe('a fight that is not over', () => {
   })
 })
 
+/**
+ * The Warden, through the same framework.
+ *
+ * There is no second death system and there must not be one. The boss is a row
+ * in the same table, played by the same sequence, ended by the same single
+ * transition — the only thing new about it is that its frames name plates, so
+ * the collapse is drawn rather than staged.
+ */
+describe('the Warden stops', () => {
+  /** The boss's fight, on its last point of health, ready to be scored. */
+  const doomed = (seed = 1): GameState => poisedIn('gate', 1, seed)
+  const felled = (seed = 1): GameState => reduce(doomed(seed), { type: 'SCORE' })
+
+  it('has a death at all, of exactly the two authored plates', () => {
+    const death = defeatOf('warden')
+    expect(death, 'the boss has no death').toBeDefined()
+    expect(death!.frames).toHaveLength(2)
+    expect(death!.frames.map((f) => f.pose)).toEqual(['defeat.1', 'defeat.2'])
+    // In that order, and the body is held longest: 120 + 180 + 420.
+    expect(death!.still).toBe(120)
+    expect(death!.frames.map((f) => f.hold)).toEqual([180, 420])
+    expect(defeatDuration('warden')).toBe(720)
+  })
+
+  it('holds the fight open on the kill instead of popping to the way out', () => {
+    const dying = felled()
+    expect(dying.mode).toBe('combat')
+    expect(dying.run!.combat!.defeated).toBe(true)
+    expect(dying.run!.combat!.enemyHp).toBe(0)
+    // The door is still shut. `cleared` is what opens it, and it has not been
+    // granted — so a reload lands back inside the death rather than in front of
+    // an open exit the player never saw earned.
+    expect(dying.run!.cleared).not.toContain('gate')
+  })
+
+  it('takes no further press while it plays, and cannot be killed twice', () => {
+    const dying = felled()
+    for (const action of [
+      { type: 'ROLL' },
+      { type: 'REROLL' },
+      { type: 'SELECT', slot: 0 },
+      { type: 'SCORE' },
+      { type: 'FIGHT' },
+    ] as const) {
+      expect(reduce(dying, action), `${action.type} moved a dead boss`).toBe(dying)
+    }
+  })
+
+  it('opens the door only once DEFEAT_DONE has been taken', () => {
+    const won = reduce(felled(), { type: 'DEFEAT_DONE' })
+    expect(won.run!.combat).toBeUndefined()
+    expect(won.run!.cleared).toContain('gate')
+    // And the boss pays nothing but the way out. Escape is the reward.
+    expect(enemy('warden').rewards).toEqual([])
+    expect(won.mode).toBe('explore')
+    expect(won.run!.offer).toBeUndefined()
+  })
+
+  it('pays once: a second DEFEAT_DONE is not a second win', () => {
+    const won = reduce(felled(), { type: 'DEFEAT_DONE' })
+    expect(reduce(won, { type: 'DEFEAT_DONE' })).toBe(won)
+    const thrice = play(won, { type: 'DEFEAT_DONE' }, { type: 'DEFEAT_DONE' })
+    expect(thrice.run!.cleared.filter((id) => id === 'gate')).toHaveLength(1)
+    expect(thrice).toBe(won)
+  })
+
+  it('ends the run exactly where it always did: through the door, and out', () => {
+    // The whole point of not touching gameplay. The win after the boss's new
+    // death is the same win, reached by the same press, ending the same run.
+    const out = play(felled(), { type: 'DEFEAT_DONE' }, { type: 'GO', to: 'exit' })
+    expect(out.mode).toBe('complete')
+    expect(out.meta.wins).toBe(1)
+  })
+
+  it('grants the same run it would have granted in one press, across seeds', () => {
+    for (let seed = 1; seed <= 40; seed++) {
+      const held = play(doomed(seed), { type: 'SCORE' }, { type: 'DEFEAT_DONE' })
+      const again = play(doomed(seed), { type: 'SCORE' }, { type: 'DEFEAT_DONE' })
+      expect(held.mode).toBe(again.mode)
+      expect(held.run!.hp).toBe(again.run!.hp)
+      expect(held.run!.offer).toEqual(again.run!.offer)
+    }
+  })
+})
+
 describe('a horror with no authored death', () => {
   it('wins on the killing press, exactly as it always did', () => {
     const won = reduce(poisedTrading(1), { type: 'SCORE' })
@@ -198,8 +300,25 @@ describe('the defeat manifest', () => {
     }
   })
 
-  it('gives it out: smaller, lower and darker with every frame', () => {
+  /**
+   * Staging is for a death that has not been drawn.
+   *
+   * `scale`, `drop` and `dim` make a collapse out of a plate that is not one:
+   * the Gnawing dies in the sprite it was fighting in, so the sequence has to
+   * shrink it, sink it and take the light out of it or nothing happens on
+   * screen. A death whose frames name authored plates is the opposite case —
+   * the collapse is already painted — and every one of those three has to be
+   * the identity there, or the drawing gets collapsed a second time on top of
+   * itself.
+   *
+   * So the invariant is not "always shrink". It is **stage exactly what has not
+   * been drawn**, and the two deaths in the table are the two sides of it.
+   */
+  const staged = (death: Defeat): boolean => death.frames.some((f) => !f.pose)
+
+  it('gives a staged death out: smaller, lower and darker with every frame', () => {
     for (const [id, death] of Object.entries(DEFEATS)) {
+      if (!staged(death)) continue
       death.frames.forEach((frame, index) => {
         if (index === 0) return
         const before = death.frames[index - 1]!
@@ -209,6 +328,20 @@ describe('the defeat manifest', () => {
       })
       const last = death.frames[death.frames.length - 1]!
       expect(last.dim, `${id} ends as lit as it started`).toBeLessThan(0.5)
+    }
+  })
+
+  it('leaves an authored death alone: it was drawn falling, so nothing moves it', () => {
+    for (const [id, death] of Object.entries(DEFEATS)) {
+      if (staged(death)) continue
+      for (const frame of death.frames) {
+        expect(frame.scale, `${id} is being shrunk on top of its own drawing`).toBe(1)
+        expect(frame.drop, `${id} is being dropped on top of its own drawing`).toBe(0)
+        expect(frame.dim, `${id} is being dimmed on top of its own drawing`).toBe(1)
+      }
+      // Which makes the staging the identity, at every reach it can die at.
+      const base = { width: 0.5, foot: 0.9 }
+      for (const frame of death.frames) expect(defeatStance(base, frame)).toEqual(base)
     }
   })
 
