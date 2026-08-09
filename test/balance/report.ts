@@ -145,11 +145,23 @@ gate('upgrades — naive, the stair', upgrades('naive/stair'), 0.4, 0.9, (n) => 
 gate('upgrades — naive, the deep way', upgrades('naive/deep'), 0.9, 1.6, (n) => n.toFixed(2))
 
 const outRate = (key: keyof typeof runs) => runs[key].filter((r) => r.reachedExit).length / SEEDS.length
-// This is the real balance target. A first-timer taking the safe way gets out
-// four times in five; taking the deep way is a coin flip for the same player
-// and a good bet for one who has learned the ladder. That gap is the reward
-// for learning, and the coin flip is the push-your-luck.
-gate('whole run — naive, the stair', outRate('naive/stair'), 0.75, 0.92)
+// Re-based for the same reason as the deep-way row below it, and it is worth
+// stating plainly because it is a real change to the slice rather than a
+// tuning drift:
+//
+//   the safe route is now, for a first-timer, almost entirely the first
+//   fight.
+//
+// It used to be three fights of attrition with the boss finishing off anyone
+// who arrived worn down. The Gnawing no longer wears anybody down — it costs
+// nothing unless it costs everything — so a first-timer reaches the Warden at
+// full health and beats it. This row therefore tracks *surviving the hollow*
+// and little else, and the band says so.
+//
+// Whether the boss should be a real threat to a first-timer again is a
+// product decision, not a tuning one. It would mean changing the Warden, and
+// nothing in this wave was asked to.
+gate('whole run — naive, the stair', outRate('naive/stair'), 0.85, 0.97)
 // Re-based when the first fight stopped charging rent: the Gnawing used to
 // take 18–24 HP off every run on the way past and the boss inherited it. It
 // now costs nothing unless it costs everything, so a first-timer reaches the

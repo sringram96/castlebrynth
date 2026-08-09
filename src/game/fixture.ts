@@ -22,7 +22,7 @@
  */
 
 import { HAND_SIZE } from '../content/dice.js'
-import { REACHES } from '../content/enemies.js'
+import { REACHES, turnAt } from '../content/enemies.js'
 import type { Reach } from '../content/enemies.js'
 import { ROOMS, room } from '../content/rooms.js'
 import { MAX_HP, newRun, reduce } from './reducer.js'
@@ -79,14 +79,21 @@ export function applyFixture(base: GameState, search: string): GameState {
   if ((mode === 'combat' || p.has('enemyHp') || p.has('reach')) && room(run.roomId).enemy) {
     state = reduce(state, { type: 'FIGHT' })
     const enemyHp = num(p.get('enemyHp'))
-    // Standing where the fight would have put it after N turns. It is the
-    // same state the reducer produces by playing to it — the reach, and the
-    // turn that goes with it, because an approaching enemy advances exactly
-    // once per turn and a fixture that split them would be a state the game
-    // cannot reach.
+    // Standing where the fight would have put it. Both the reach *and* the
+    // turn that goes with it, from the same content the reducer reads — a
+    // fixture that set one without the other would be a position the game
+    // cannot reach, and the turn is what decides when it steps again.
+    //
+    // It lands on the *first* turn at that reach, which is where the fight
+    // arrives. Getting it to move from there takes as many scores as the
+    // content says, exactly as playing to it would.
     const wantedReach = p.get('reach')
-    const turn = wantedReach ? REACHES.indexOf(wantedReach as Reach) : -1
     const combat = state.run?.combat
+    const reach =
+      wantedReach && combat?.approach && (REACHES as readonly string[]).includes(wantedReach)
+        ? (wantedReach as Reach)
+        : undefined
+    const turn = reach ? turnAt(combat!.enemyId, reach) : -1
     if (combat && (enemyHp !== undefined || turn > 0)) {
       state = {
         ...state,
@@ -95,7 +102,7 @@ export function applyFixture(base: GameState, search: string): GameState {
           combat: {
             ...combat,
             ...(enemyHp !== undefined ? { enemyHp: Math.max(1, enemyHp) } : {}),
-            ...(turn > 0 && combat.approach ? { approach: REACHES[turn]!, turn } : {}),
+            ...(reach && turn > 0 ? { approach: reach, turn } : {}),
           },
         },
       }

@@ -20,7 +20,7 @@ import { MAX_HP, reduce } from '../../src/game/reducer.js'
 import type { Action } from '../../src/game/reducer.js'
 import { TITLE } from '../../src/game/state.js'
 import type { GameState } from '../../src/game/state.js'
-import { REACHES, enemy, intentAt, nextReach, stanceAt } from '../../src/content/enemies.js'
+import { REACHES, enemy, intentAt, reachAfter, stanceAt, turnAt } from '../../src/content/enemies.js'
 import type { Reach } from '../../src/content/enemies.js'
 import { resolve } from '../../src/combat/resolve.js'
 import { load, save } from '../../src/game/save.js'
@@ -38,12 +38,17 @@ const inTheHall = (seed = 1): GameState => {
 
 const opened = (seed = 1): GameState => reduce(inTheHall(seed), { type: 'FIGHT' })
 
+/** How many scores it survives at a reach before it takes the next step. */
+const EVERY = enemy('gnawing').approach!.every
+
 /**
- * A fight standing at `reach`, with the enemy on `enemyHp`, one press from a
- * score that spends every die.
+ * A fight standing at `reach`, on its *first* turn there, with the enemy on
+ * `enemyHp` and one press from a score that spends every die.
  *
  * The reach and the turn move together because that is the only way the game
- * can produce either of them: it advances exactly once per surviving score.
+ * can produce either of them: the reach is a function of the turn count and
+ * the content, so a fixture that set one without the other would be a
+ * position no play could reach.
  */
 function poised(reach: Reach, enemyHp: number, seed = 1): GameState {
   const rolled = reduce(opened(seed), { type: 'ROLL' })
@@ -55,7 +60,7 @@ function poised(reach: Reach, enemyHp: number, seed = 1): GameState {
       combat: {
         ...combat,
         approach: reach,
-        turn: REACHES.indexOf(reach),
+        turn: turnAt('gnawing', reach),
         enemyHp,
         selected: [0, 1, 2, 3, 4, 5],
       },
@@ -96,24 +101,60 @@ describe('where it is standing', () => {
   })
 })
 
-describe('it comes one reach nearer for every score it survives', () => {
-  it('goes far to mid on the first', () => {
-    const after = reduce(poised('far', UNKILLABLE), { type: 'SCORE' })
-    expect(after.mode).toBe('combat')
-    expect(after.run!.combat!.approach).toBe('mid')
-    expect(after.run!.combat!.reached).toBeUndefined()
+/** Score once, survivably, from wherever the fight currently stands. */
+function survive(state: GameState): GameState {
+  const rolled = reduce(state, { type: 'ROLL' })
+  return reduce(
+    {
+      ...rolled,
+      run: {
+        ...rolled.run!,
+        combat: { ...rolled.run!.combat!, enemyHp: UNKILLABLE, selected: [0] },
+      },
+    },
+    { type: 'SCORE' },
+  )
+}
+
+describe('it comes one reach nearer for every stretch of hall it covers', () => {
+  it('holds where it is until it has covered the stretch', () => {
+    // The whole point of a cadence over one: most turns end with it still
+    // where it was, and the turn that does not is the one that lands.
+    let state = poised('far', UNKILLABLE)
+    for (let n = 1; n < EVERY; n++) {
+      state = reduce(state, { type: 'SCORE' })
+      expect(state.mode).toBe('combat')
+      expect(state.run!.combat!.approach, `it jumped after ${n} of ${EVERY}`).toBe('far')
+    }
+    state = survive(state)
+    expect(state.run!.combat!.approach).toBe('mid')
   })
 
-  it('goes mid to close on the second', () => {
-    const after = reduce(poised('mid', UNKILLABLE), { type: 'SCORE' })
-    expect(after.mode).toBe('combat')
-    expect(after.run!.combat!.approach).toBe('close')
-    expect(after.run!.combat!.reached).toBeUndefined()
+  it('goes far to mid, then mid to close, and never the other way', () => {
+    let state = opened()
+    const seen: (Reach | undefined)[] = [state.run!.combat!.approach]
+    for (let turn = 0; turn < EVERY * (REACHES.length - 1); turn++) {
+      state = survive(state)
+      expect(state.run!.combat!.turn).toBe(turn + 1)
+      const at = state.run!.combat!.approach!
+      // Forward or nowhere, one rung at a time, never twice for one score.
+      const was = seen.at(-1)!
+      expect(REACHES.indexOf(at) - REACHES.indexOf(was)).toBeLessThanOrEqual(1)
+      expect(REACHES.indexOf(at)).toBeGreaterThanOrEqual(REACHES.indexOf(was))
+      seen.push(at)
+    }
+    expect(seen.at(0)).toBe('far')
+    expect(seen.at(-1)).toBe('close')
+    expect(new Set(seen)).toEqual(new Set(REACHES))
   })
 
-  it('reaches you on the third, and that is the run', () => {
-    const before = poised('close', UNKILLABLE)
-    const after = reduce(before, { type: 'SCORE' })
+  it('reaches you off the last turn at close, and that is the run', () => {
+    let state = poised('close', UNKILLABLE)
+    for (let n = 1; n < EVERY; n++) {
+      state = reduce(state, { type: 'SCORE' })
+      expect(state.mode, 'it arrived before it had finished gathering').toBe('combat')
+    }
+    const after = survive(state)
     expect(after.mode).toBe('dead')
     expect(after.run!.hp).toBe(0)
     expect(after.run!.combat!.reached).toBe(true)
@@ -123,30 +164,14 @@ describe('it comes one reach nearer for every score it survives', () => {
     expect(after.run!.combat!.log.join(' ')).toContain(enemy('gnawing').approach!.says)
   })
 
-  it('never skips a reach, and never takes two steps for one score', () => {
-    let state = opened()
-    const seen: (Reach | undefined)[] = [state.run!.combat!.approach]
-    for (let turn = 0; turn < 2; turn++) {
-      const rolled = reduce(state, { type: 'ROLL' })
-      // Survivable, so the step is the only thing that happens.
-      const survivable: GameState = {
-        ...rolled,
-        run: {
-          ...rolled.run!,
-          combat: { ...rolled.run!.combat!, enemyHp: UNKILLABLE, selected: [0] },
-        },
-      }
-      state = reduce(survivable, { type: 'SCORE' })
-      expect(state.run!.combat!.turn).toBe(turn + 1)
-      seen.push(state.run!.combat!.approach)
+  it('runs out of ladder exactly when the last stretch is covered', () => {
+    const last = EVERY * REACHES.length
+    for (let turns = 0; turns < last; turns++) {
+      expect(reachAfter('gnawing', turns), `turn ${turns}`).toBe(REACHES[Math.floor(turns / EVERY)])
     }
-    expect(seen).toEqual(['far', 'mid', 'close'])
-  })
-
-  it('runs out of ladder exactly at close', () => {
-    expect(nextReach('far')).toBe('mid')
-    expect(nextReach('mid')).toBe('close')
-    expect(nextReach('close')).toBeUndefined()
+    expect(reachAfter('gnawing', last)).toBeUndefined()
+    // And an enemy that does not close never has anywhere to be.
+    expect(reachAfter('marrow', 0)).toBeUndefined()
   })
 })
 
@@ -175,15 +200,17 @@ describe('a dead thing does not take a step', () => {
 })
 
 describe('the encounter says what it is going to do', () => {
-  it('declares one intent per reach, in the order it closes them', () => {
+  it('declares one intent for every turn of the walk, and no spares', () => {
     const e = enemy('gnawing')
-    expect(e.script).toHaveLength(REACHES.length)
-    // The reach and the turn are the same number, by construction: it advances
-    // exactly once per turn it survives, so `script[turn]` is `script[reach]`.
-    REACHES.forEach((reach, turn) => {
-      expect(intentAt('gnawing', turn)).toBe(e.script[turn])
-      expect(nextReach(reach) === undefined).toBe(turn === REACHES.length - 1)
+    // One per turn, not one per reach: the two turns spent at a reach are not
+    // the same turn, and the script has to be able to say so.
+    expect(e.script).toHaveLength(EVERY * REACHES.length)
+    e.script.forEach((intent, turn) => {
+      expect(intentAt('gnawing', turn)).toBe(intent)
+      // Every turn is a real position, and the turn after the last one is not.
+      expect(reachAfter('gnawing', turn)).toBe(REACHES[Math.floor(turn / EVERY)])
     })
+    expect(reachAfter('gnawing', e.script.length)).toBeUndefined()
   })
 
   it('deals no damage from down the hall: arriving is the whole threat', () => {
@@ -193,9 +220,15 @@ describe('the encounter says what it is going to do', () => {
   })
 
   it('tells you the last turn is the last turn, before you spend it', () => {
-    const atClose = intentAt('gnawing', REACHES.indexOf('close'))
-    expect(atClose.explain.toLowerCase()).toContain('kills me')
-    expect(atClose.explain.toLowerCase()).toContain('last turn')
+    const last = intentAt('gnawing', turnAt('gnawing', 'close') + EVERY - 1)
+    expect(last.explain.toLowerCase()).toContain('kills me')
+    expect(last.explain.toLowerCase()).toContain('last turn')
+
+    // And the turn before it says what is coming, so the warning is not the
+    // same turn as the thing it warns about.
+    const warning = intentAt('gnawing', turnAt('gnawing', 'close') + EVERY - 2)
+    expect(warning.explain.toLowerCase()).toContain('reaches me')
+    expect(warning.explain.toLowerCase()).not.toContain('last turn')
   })
 })
 
@@ -203,7 +236,7 @@ describe('the reach is state, and only state', () => {
   it('is decided by the reducer before anything can be drawn', () => {
     // The same call, twice, with nothing rendered in between. If presentation
     // could reach the outcome, these two would be free to differ.
-    const before = poised('mid', UNKILLABLE)
+    const before = survive(poised('mid', UNKILLABLE))
     const a = resolve(before.run!, before.run!.combat!)
     const b = resolve(before.run!, before.run!.combat!)
     expect(a).toEqual(b)
@@ -237,7 +270,8 @@ describe('the reach is state, and only state', () => {
       removeItem: (k: string) => void store.delete(k),
     } as unknown as Storage
 
-    const dead = reduce(poised('close', UNKILLABLE), { type: 'SCORE' })
+    let dead = poised('close', UNKILLABLE)
+    for (let n = 0; n < EVERY; n++) dead = survive(dead)
     save(dead, storage)
     const back = load(storage)
     expect(back.state.run!.combat!.reached).toBe(true)
@@ -252,21 +286,22 @@ describe('the reach is state, and only state', () => {
       const combat = state.run!.combat!
       expect(state.mode).toBe('combat')
       expect(combat.approach).toBe(reach)
-      expect(combat.turn, 'the fixture and the ladder disagree').toBe(REACHES.indexOf(reach))
+      expect(combat.turn, 'the fixture and the ladder disagree').toBe(turnAt('gnawing', reach))
+      expect(reachAfter('gnawing', combat.turn)).toBe(reach)
     }
   })
 })
 
 describe('the run it belongs to', () => {
-  it('is a fight of exactly three attacks, however it goes', () => {
+  it('is a fight of a fixed number of attacks, however it goes', () => {
     let state = opened()
     let scores = 0
-    while (state.mode === 'combat' && scores < 10) {
+    while (state.mode === 'combat' && scores < 20) {
       state = play(state, { type: 'ROLL' }, { type: 'SELECT', slot: 0 }, { type: 'SELECT', slot: 1 })
       state = reduce(state, { type: 'SCORE' })
       scores++
     }
     expect(state.mode).not.toBe('combat')
-    expect(scores).toBeLessThanOrEqual(REACHES.length)
+    expect(scores).toBeLessThanOrEqual(EVERY * REACHES.length)
   })
 })

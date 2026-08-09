@@ -15,7 +15,7 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 
-import { act, boot, dice, state } from './helpers.js'
+import { act, boot, dice, settled, state } from './helpers.js'
 
 const enemy = (page: Page) => page.locator('#enemy')
 
@@ -109,11 +109,36 @@ async function saw(page: Page, settleFor = 2000): Promise<Seen> {
   })
 }
 
+/**
+ * How many scores it survives at a reach before it steps.
+ *
+ * Mirrors `MAW.every` in `src/content/enemies.ts`. It is written out rather
+ * than imported so this spec stays free of the runtime's module graph; if the
+ * two ever disagree, every test below that walks the ladder fails at once,
+ * which is the point.
+ */
+const EVERY = 2
+
 /** Score the cheapest legal hand: one die, so it certainly does not kill. */
 async function scoreOneDie(page: Page): Promise<void> {
   await act(page, 'roll').click()
   await dice(page).nth(0).click()
   await act(page, 'score').click()
+}
+
+/**
+ * Spend the turns it holds still, so the next score is the one that lands.
+ *
+ * A stretch of hall takes `EVERY` scores to cover. These are the ones before
+ * the last, settled as they go — an impatient thumb does the same thing, and
+ * every one of them is asserted to leave the thing exactly where it was.
+ */
+async function upToTheStep(page: Page, reach: string): Promise<void> {
+  for (let n = 1; n < EVERY; n++) {
+    await scoreOneDie(page)
+    await settled(page)
+    await expect(enemy(page), `it stepped after ${n} of ${EVERY}`).toHaveAttribute('data-reach', reach)
+  }
 }
 
 test.describe('the hall empties out one score at a time', () => {
@@ -143,7 +168,8 @@ test.describe('the hall empties out one score at a time', () => {
     await act(page, 'fight').click()
     await expect(enemy(page)).toHaveAttribute('data-reach', 'far')
 
-    for (const expected of ['mid', 'close'] as const) {
+    for (const [from, expected] of [['far', 'mid'], ['mid', 'close']] as const) {
+      await upToTheStep(page, from)
       await scoreOneDie(page)
       const now = await state(page)
       expect(now.run!.combat!.approach).toBe(expected)
@@ -171,6 +197,7 @@ test.describe('the hall empties out one score at a time', () => {
 
   test('surviving it at close is the end of the run', async ({ page }) => {
     await boot(page, '?room=hollow&reach=close&enemyHp=9999')
+    await upToTheStep(page, 'close')
     await scoreOneDie(page)
     const now = await state(page)
     expect(now.mode).toBe('dead')
@@ -183,8 +210,14 @@ test.describe('the hall empties out one score at a time', () => {
     await boot(page, '?room=hollow&mode=combat')
     await expect(page.locator('#intent')).toContainText('CRAWL')
 
+    // At `close` the warning comes a turn before the thing it warns about, so
+    // arriving there is not already too late to read it.
     await boot(page, '?room=hollow&reach=close&enemyHp=9999')
     const intent = page.locator('#intent')
+    await intent.click()
+    await expect(page.locator('#say')).toContainText('reaches me')
+
+    await upToTheStep(page, 'close')
     await expect(intent).toContainText('REACH')
     await intent.click()
     // No modal, no tutorial label. The intent it already shows says it.
@@ -226,6 +259,7 @@ test.describe('a strike, and then it comes closer', () => {
 
   test('it advances only after the strike has been allowed to read', async ({ page }) => {
     await boot(page, '?room=hollow&enemyHp=9999', { motion: true })
+    await upToTheStep(page, 'far')
     await act(page, 'roll').click()
     await dice(page).nth(0).click()
 
@@ -246,6 +280,7 @@ test.describe('a strike, and then it comes closer', () => {
 
   test('reaching you is bigger than any of it, and ends on the death screen', async ({ page }) => {
     await boot(page, '?room=hollow&reach=close&enemyHp=9999', { motion: true })
+    await upToTheStep(page, 'close')
     await act(page, 'roll').click()
     await dice(page).nth(0).click()
 
@@ -268,6 +303,7 @@ test.describe('a strike, and then it comes closer', () => {
 
   test('an impatient press lands on exactly the state the reducer committed', async ({ page }) => {
     await boot(page, '?room=hollow&reach=mid&enemyHp=9999', { motion: true })
+    await upToTheStep(page, 'mid')
     await act(page, 'roll').click()
     await dice(page).nth(0).click()
     await act(page, 'score').click()
@@ -289,6 +325,7 @@ test.describe('reduced motion is the same encounter, immediately', () => {
 
   test('lands on the far end of the ladder with nothing in the air', async ({ page }) => {
     await boot(page, '?room=hollow&reach=mid&enemyHp=9999', { motion: true })
+    await upToTheStep(page, 'mid')
     await act(page, 'roll').click()
     await dice(page).nth(0).click()
     await act(page, 'score').click()
@@ -303,6 +340,7 @@ test.describe('reduced motion is the same encounter, immediately', () => {
 
   test('reaches the same death, without the lunge', async ({ page }) => {
     await boot(page, '?room=hollow&reach=close&enemyHp=9999', { motion: true })
+    await upToTheStep(page, 'close')
     await act(page, 'roll').click()
     await dice(page).nth(0).click()
     await act(page, 'score').click()

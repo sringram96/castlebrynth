@@ -68,20 +68,27 @@ The order is fixed and the whole outcome is computed before a frame is drawn.
 
 One enemy rule, and one enemy has it. Instead of standing at a fixed range and
 trading, the thing crawls at you: it holds one of three **reaches** — `far`,
-`mid`, `close` — and **every score it survives brings it one nearer**. There
-is nothing past `close`, so a thing at `close` that survives your hand arrives,
-and that ends the run outright.
+`mid`, `close` — and covers a stretch of hall every `every` scores it
+survives. There is nothing past `close`, so a thing at `close` that runs out
+of stretch arrives, and that ends the run outright.
 
 ```
-far ──score, survived──▶ mid ──score, survived──▶ close ──score, survived──▶ dead
- └──────────────── score, killed: it never moves ────────────────┘
+        ┌── holds ──┐        ┌── holds ──┐        ┌── holds ──┐
+far ────┴──────▶ mid┴──────────────▶ close┴──────────────▶ dead
+ └──────────── score, killed: it never moves ─────────────┘
 ```
 
-So the fight is a count: **three attacks, and the third had better kill it.**
-The count is never printed. The picture is the count — it is unmistakably
-larger every turn — and the intent at each reach says in words what the next
-step means, ending at `close` with the plain statement that this is the last
-turn there is.
+So the fight is a count as well as a health bar: **`every × 3` attacks, and
+the last had better kill it.** The count is never printed. The picture is the
+count — it is unmistakably larger each time it lands — and the intents say in
+words which turn is which, because the turn it holds and the turn it arrives
+are not the same turn and a script that could not tell them apart would be
+lying on the one that matters.
+
+Two levers, and they are not the same lever. **Health** decides how long the
+fight *is*. **`every`** decides how long the fight *may be* before the thing
+arrives. Raising one without the other either makes the deadline irrelevant or
+makes it the only thing that matters.
 
 - The reach lives in `CombatState.approach` and only the reducer moves it. A
   reload paints the reach the save records, so the composition on screen can
@@ -138,8 +145,10 @@ Enforced by `test/unit/` and, where they are visible, by `test/browser/`.
 - Hand recognition labels every supported pattern and invents none.
 - The previewed damage equals the committed damage for the same settled state.
 - An enemy at 0 HP cannot act, which includes taking a step.
-- An enemy that closes advances exactly once per score it survives, never
-  skips a reach, and never moves twice for one score.
+- An enemy that closes covers exactly one stretch of hall per `every` scores
+  it survives, never skips a reach, and never moves twice for one score.
+- It declares one intent per turn of the whole walk, so the turn it holds and
+  the turn it arrives never read the same.
 - Reaching 0 HP always sets `mode: 'dead'`.
 - A new run starts with six dice and no combat state.
 - Every face keyword used in content has a visible descriptor in the UI.
