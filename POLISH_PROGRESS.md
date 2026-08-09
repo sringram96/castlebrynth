@@ -10,8 +10,8 @@ Working branch: `claude/polish-clarity-motion-tray-cvvq2h`.
 sweep*. Every change is layout, motion, copy, or rules — `git diff --stat main`
 touches nothing under `public/`, and no new image file exists.
 
-There is no `## HUMAN ART REQUIRED` section. Nothing in the specification
-turned out to need one.
+The approach-encounter wave that followed did need art, and stopped rather
+than drawing it: see `## HUMAN ART REQUIRED` at the end of this file.
 
 ---
 
@@ -318,3 +318,38 @@ Two of these have a specific thing to look at:
   that number.
 - **10** is where 950 ms is either right or long. The beats are named constants
   at the top of `src/app/app.ts`; changing the feel is changing six numbers.
+
+---
+
+# HUMAN ART REQUIRED
+
+## The Crawling One — the approach encounter in `hollow`
+
+Raised by the wave that turned the first fight into a thing that closes the
+distance. The rules, the state, the sequence and the tests are finished and
+green; the pictures are not, and no coding agent may draw them.
+
+**What is missing:** one empty corridor, three authored creature poses (`far`,
+`mid`, `close`), and one bright impact plate (`hit`). Wanted but not required:
+a bright plate for the other two reaches, and a two-pose first-person hand.
+
+**The contract:** `docs/art-reference/masters/crawling-one/BRIEF.md`. It gives
+the frame, the alpha rule, the budget, and the five-step integration. The
+folder's `supplied/` holds the four mock-up plates the brief was written from —
+they are the look to hit and are not themselves usable: each paints a mock tray
+across its bottom third, and the four are separate paintings of the corridor
+rather than one corridor with the creature moved.
+
+**What ships in the meantime:** the encounter runs on the existing `gnawing`
+sprite, staged at the three reaches by the compositor. Nothing is missing
+mechanically — the ladder, the intents, the strike, the advance, the contact
+and the death all work and are covered by `test/unit/approach.test.ts` and
+`test/browser/approach.spec.ts`. What it lacks is authorship: one drawing
+scaled three ways reads as a transformed DOM image at `close`, which is
+exactly what `ART_DIRECTION.md` § *Motion budget* says it must not.
+
+**Cost of leaving it:** the encounter is playable and correct but does not
+look authored at the near reaches. Nothing else in the game is affected.
+
+`npm run art` picks the plates up the moment they are in the folder, prints a
+placement line per pose, and skips itself until then.

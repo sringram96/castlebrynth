@@ -59,8 +59,39 @@ The order is fixed and the whole outcome is computed before a frame is drawn.
    enemy never acts.**
 4. Otherwise the enemy performs its declared intent. Armor (a relic effect)
    subtracts flat.
-5. If you are at 0, you are dead.
-6. The next intent is chosen and the turn returns to `intent`.
+5. An enemy that closes takes one step in — or arrives, and arriving is the
+   run. See below.
+6. If you are at 0, you are dead.
+7. The next intent is chosen and the turn returns to `intent`.
+
+## Things that close the distance
+
+One enemy rule, and one enemy has it. Instead of standing at a fixed range and
+trading, the thing crawls at you: it holds one of three **reaches** — `far`,
+`mid`, `close` — and **every score it survives brings it one nearer**. There
+is nothing past `close`, so a thing at `close` that survives your hand arrives,
+and that ends the run outright.
+
+```
+far ──score, survived──▶ mid ──score, survived──▶ close ──score, survived──▶ dead
+ └──────────────── score, killed: it never moves ────────────────┘
+```
+
+So the fight is a count: **three attacks, and the third had better kill it.**
+The count is never printed. The picture is the count — it is unmistakably
+larger every turn — and the intent at each reach says in words what the next
+step means, ending at `close` with the plain statement that this is the last
+turn there is.
+
+- The reach lives in `CombatState.approach` and only the reducer moves it. A
+  reload paints the reach the save records, so the composition on screen can
+  never disagree with how many attacks are left.
+- Arriving sets `CombatState.reached` and is terminal. It is not a large blow
+  that happens to equal your health; nothing subtracts.
+- **A dead enemy never advances**, which is the only reason killing it at
+  `close` is survivable.
+- Such an enemy deals no damage on the way in. It cannot reach you from down
+  the hall; what kills you is that it stops being down the hall.
 
 ## Enemies
 
@@ -70,7 +101,7 @@ and never random.
 
 | Enemy | HP | Teaches | Special |
 | --- | --- | --- | --- |
-| The Gnawing | see `content/enemies.ts` | make a combination and hit it | none |
+| The Gnawing | see `content/enemies.ts` | make a combination and hit it, before it arrives | it closes the distance; contact ends the run |
 | The Marrow | ” | the telegraph | one blow in its cycle is announced a turn early and hits harder |
 | The Warden | ” | both, together | the telegraph, plus a heavier floor |
 
@@ -106,7 +137,9 @@ Enforced by `test/unit/` and, where they are visible, by `test/browser/`.
 - A selection never contains a duplicate slot.
 - Hand recognition labels every supported pattern and invents none.
 - The previewed damage equals the committed damage for the same settled state.
-- An enemy at 0 HP cannot act.
+- An enemy at 0 HP cannot act, which includes taking a step.
+- An enemy that closes advances exactly once per score it survives, never
+  skips a reach, and never moves twice for one score.
 - Reaching 0 HP always sets `mode: 'dead'`.
 - A new run starts with six dice and no combat state.
 - Every face keyword used in content has a visible descriptor in the UI.

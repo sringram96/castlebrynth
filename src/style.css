@@ -102,9 +102,176 @@ button {
   display: none;
 }
 
+/*
+ * The bright frame.
+ *
+ * One frame of blown-out flesh at the instant the blade arrives, and then it
+ * is gone — 130ms, held by `render/animation.ts`. It is punctuation for a
+ * number that was decided before any of this ran, not a state the enemy is in
+ * while something is being worked out.
+ */
 .layer-enemy.struck {
-  filter: drop-shadow(0 0 14px rgb(0 0 0 / 0.85)) brightness(2.4) saturate(0.4);
+  filter: drop-shadow(0 0 14px rgb(0 0 0 / 0.85)) brightness(3.2) saturate(0.25)
+    contrast(1.3);
   transform: translateX(-3px) scale(1.015);
+  transition: none;
+}
+
+/*
+ * ── a thing that closes ──────────────────────────────────────────────
+ *
+ * Three authored reaches and nothing between them. The compositor sets the
+ * width and the foot from content; everything below is the small ugly motion
+ * around the moment one picture is replaced by the next.
+ *
+ * `translate` rather than `transform`, throughout, so the idle displacement
+ * and the impact scale are separate properties and never overwrite each other.
+ */
+
+/*
+ * Breathing, at the threshold of noticing.
+ *
+ * One pixel, in discrete steps, on an interval that does not divide evenly
+ * into anything. A sine wave here would make it a UI element that happens to
+ * be shaped like a monster; this should read as a still picture that is not
+ * quite still.
+ */
+/*
+ * A pose placed at a reach owns its own height.
+ *
+ * The 96% cap exists so a hero sprite of unknown aspect cannot run off the
+ * top of the world box. A reach is the opposite case: its height is derived
+ * from art that was painted into this exact frame, and clamping it would slide
+ * the thing out of the corridor it is standing in.
+ */
+.layer-enemy[data-reach] {
+  max-height: none;
+  animation: loom 6.4s steps(1, end) infinite;
+}
+
+@keyframes loom {
+  0%,
+  36% {
+    translate: 0 0;
+  }
+  37%,
+  55% {
+    translate: 0 -1px;
+  }
+  56%,
+  82% {
+    translate: 0 0;
+  }
+  83%,
+  95% {
+    translate: 0 1px;
+  }
+  96%,
+  100% {
+    translate: 0 0;
+  }
+}
+
+/* It bunches where it stands, for the 70ms before the picture changes. */
+.layer-enemy.gathering {
+  animation: none;
+  transition: none;
+  transform: scale(0.985) translateY(2px);
+}
+
+/* And settles into the new one. Two pixels, once, and then it is a still. */
+.layer-enemy.settling {
+  animation: settle 200ms steps(2, end) 1;
+}
+
+@keyframes settle {
+  0% {
+    translate: 0 -2px;
+  }
+  100% {
+    translate: 0 0;
+  }
+}
+
+/*
+ * The contact ladder.
+ *
+ * Not a zoom. Three discrete enlargements, each a separate picture held long
+ * enough to be seen as one, ending with the thing wider than the frame. The
+ * numbers are here because they are composition, and the step index that
+ * selects them comes from `enemyContact`.
+ */
+.layer-enemy[data-contact] {
+  animation: none;
+  transition: none;
+  transform-origin: 50% 100%;
+}
+
+.layer-enemy[data-contact="1"] {
+  transform: scale(1.18);
+}
+
+.layer-enemy[data-contact="2"] {
+  transform: scale(1.46) translateY(3%);
+}
+
+.layer-enemy[data-contact="3"] {
+  transform: scale(1.9) translateY(7%);
+  filter: drop-shadow(0 0 14px rgb(0 0 0 / 0.85)) brightness(1.25);
+}
+
+/* The settled picture of having arrived. Written from state, not left over. */
+.layer-enemy[data-contact="landed"] {
+  transform: scale(1.9) translateY(7%);
+}
+
+/* Everything the frame can still see goes dark around it. */
+#world[data-contact="3"]::after,
+#world[data-contact="landed"]::after {
+  background: radial-gradient(90% 60% at 50% 62%, transparent 0%, rgb(0 0 0 / 0.92) 100%);
+}
+
+/*
+ * ── the strike ───────────────────────────────────────────────────────
+ *
+ * The foreground layer is where the first-person hand plate mounts. Until one
+ * exists the same two poses drive the whole frame instead: the camera is the
+ * player's head, so leaning in is leaning in either way. Three poses, no
+ * tween on the way out — the forward move has 45ms and has to read as
+ * violence rather than as a transition.
+ */
+.layer-foreground.wind,
+#world.wind {
+  transition: transform 45ms linear;
+  transform: scale(0.994) translateY(2px);
+}
+
+.layer-foreground.thrust,
+#world.thrust {
+  transition: transform 40ms linear;
+  transform: scale(1.035) translateY(-4px);
+}
+
+#world.wind,
+#world.thrust {
+  transform-origin: 50% 62%;
+}
+
+/* The frame taking the impact, on the same frame as the bright flesh. */
+#world.kicked {
+  animation: kick 130ms steps(2, end) 1;
+}
+
+@keyframes kick {
+  0% {
+    translate: 0 0;
+  }
+  50% {
+    translate: -3px 2px;
+  }
+  100% {
+    translate: 0 0;
+  }
 }
 
 /* A soft floor of darkness so HUD text never sits on a busy focal region. */

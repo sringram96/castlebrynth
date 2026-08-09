@@ -9,7 +9,7 @@
 import { hideEnemy, placeEnemy } from '../render/compositor.js'
 import type { World } from '../render/compositor.js'
 import { enemyArt, roomArt, url } from '../render/assets.js'
-import { enemy as enemyById, intentAt } from '../content/enemies.js'
+import { enemy as enemyById, intentAt, stanceAt } from '../content/enemies.js'
 import { room as roomById } from '../content/rooms.js'
 import type { GameState } from '../game/state.js'
 import { button, el } from './components.js'
@@ -37,7 +37,19 @@ export function renderWorld(world: World, state: GameState, handlers: WorldHandl
   const standing = here.enemy && !run.cleared.includes(run.roomId) ? here.enemy : undefined
   if (standing) {
     const e = enemyById(standing)
-    placeEnemy(world, url(enemyArt(e.art)), { width: e.width, foot: e.foot })
+    // How far away it is, straight off the state. Nothing here remembers where
+    // it was a moment ago and nothing here moves it: a reload paints the reach
+    // the save records, which is the only reason the picture can be trusted to
+    // mean how many attacks are left.
+    const reach = run.combat?.enemyId === standing ? run.combat.approach : undefined
+    const stance = stanceAt(standing, reach)
+    placeEnemy(world, url(enemyArt(e.art, reach)), {
+      width: stance.width,
+      foot: stance.foot,
+      ...(stance.at !== undefined ? { at: stance.at } : {}),
+      ...(reach ? { reach } : {}),
+      ...(run.combat?.reached ? { contact: true } : {}),
+    })
   } else {
     hideEnemy(world)
   }

@@ -80,8 +80,12 @@ export function encode(width, height, rgba, { cutout = false } = {}) {
  *
  * The screen art under `reference/visual/` is the source the runtime plates
  * are **cut from** (`tools/slice.mjs`), and cutting one means reading it.
- * 8-bit, greyscale / RGB / RGBA, not interlaced — which is everything the
- * repository holds and everything this file writes.
+ * 8-bit, greyscale / RGB / RGBA / palette, not interlaced — which is
+ * everything the repository holds and everything this file writes.
+ *
+ * Palette is read because authored plates arrive that way: a hand-made
+ * four-pose set is colour-reduced by whatever drew it, and a decoder that
+ * cannot open the master is a pipeline that cannot use it.
  */
 export function decode(buf) {
   const view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength)
@@ -89,6 +93,8 @@ export function decode(buf) {
   let width = 0
   let height = 0
   let channels = 4
+  let palette = null
+  let alphas = null
   const parts = []
   while (at < buf.length) {
     const len = view.getUint32(at)
@@ -97,11 +103,14 @@ export function decode(buf) {
       width = view.getUint32(at + 8)
       height = view.getUint32(at + 12)
       const colour = buf[at + 17]
-      channels = colour === 6 ? 4 : colour === 2 ? 3 : colour === 4 ? 2 : colour === 0 ? 1 : 0
+      channels = colour === 6 ? 4 : colour === 2 ? 3 : colour === 4 ? 2 : colour === 0 || colour === 3 ? 1 : 0
+      if (colour === 3) palette = new Uint8Array(0)
       if (buf[at + 16] !== 8 || channels === 0 || buf[at + 20] !== 0) {
-        throw new Error('only 8-bit grey/RGB/RGBA, non-interlaced PNG is read here')
+        throw new Error('only 8-bit grey/RGB/RGBA/palette, non-interlaced PNG is read here')
       }
     }
+    if (type === 'PLTE') palette = buf.subarray(at + 8, at + 8 + len)
+    if (type === 'tRNS') alphas = buf.subarray(at + 8, at + 8 + len)
     if (type === 'IDAT') parts.push(buf.subarray(at + 8, at + 8 + len))
     at += len + 12
     if (type === 'IEND') break
@@ -132,6 +141,16 @@ export function decode(buf) {
   }
   if (channels === 4) return { width, height, rgba: flat }
   const rgba = new Uint8Array(width * height * 4)
+  if (palette && palette.length > 0) {
+    for (let i = 0; i < width * height; i++) {
+      const index = flat[i]
+      rgba[i * 4] = palette[index * 3]
+      rgba[i * 4 + 1] = palette[index * 3 + 1]
+      rgba[i * 4 + 2] = palette[index * 3 + 2]
+      rgba[i * 4 + 3] = alphas && index < alphas.length ? alphas[index] : 255
+    }
+    return { width, height, rgba }
+  }
   for (let i = 0; i < width * height; i++) {
     const from = i * channels
     const grey = channels <= 2

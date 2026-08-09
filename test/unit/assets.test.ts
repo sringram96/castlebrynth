@@ -11,7 +11,7 @@ import { readFileSync, statSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 import { ENEMY_ART, ROOM_ART, TRAY_ART, allAssets, enemyArt, roomArt } from '../../src/render/assets.js'
-import { ENEMIES } from '../../src/content/enemies.js'
+import { ENEMIES, REACHES } from '../../src/content/enemies.js'
 import { ROOMS } from '../../src/content/rooms.js'
 
 const PUBLIC = new URL('../../public/assets/', import.meta.url)
@@ -54,18 +54,60 @@ describe('every enemy has combat art', () => {
   })
 
   it('has no enemy art nothing uses, and no enemy using art nothing has', () => {
+    // A thing that closes carries one file per reach, keyed `<art>.<reach>`.
+    // They belong to the enemy whose art they are named for, so the roster is
+    // compared on the base id and a pose family cannot go unnoticed.
     const used = new Set(Object.values(ENEMIES).map((e) => e.art))
-    expect([...Object.keys(ENEMY_ART)].sort()).toEqual([...used].sort())
+    const held = new Set(Object.keys(ENEMY_ART).map((key) => key.split('.')[0]!))
+    expect([...held].sort()).toEqual([...used].sort())
+  })
+
+  it('gives a thing that closes a file for every reach, or none at all', () => {
+    // Half a pose family is the failure this catches: a `close` plate that
+    // landed while `mid` did not silently falls back to the plain sprite, and
+    // the encounter reads as the thing changing shape as it comes.
+    for (const e of Object.values(ENEMIES)) {
+      if (!e.approach) continue
+      const posed = REACHES.filter((reach) => ENEMY_ART[`${e.art}.${reach}`])
+      expect(
+        posed.length === 0 || posed.length === REACHES.length,
+        `${e.id} has plates for ${posed.join(', ')} and not the rest`,
+      ).toBe(true)
+      for (const key of posed) expect(png(enemyArt(e.art, key).file).bytes).toBeGreaterThan(0)
+    }
   })
 
   it('gives every enemy a silhouette large enough to dominate the scene', () => {
     // The blueprint's floor is that the opponent is unmissable before the first
     // roll. Width is a fraction of the world box; the sprite's own aspect does
     // the rest, and the browser suite checks the rendered result.
+    //
+    // A thing that closes is measured at the reach it ends on. At `far` it is
+    // *supposed* to look like it is a long way off — that is the encounter —
+    // but it still has to be a legible shape rather than a speck, so its
+    // opening stance carries a floor of its own.
     for (const e of Object.values(ENEMIES)) {
-      expect(e.width).toBeGreaterThanOrEqual(0.35)
+      const widest = e.approach ? e.approach.stances.close.width : e.width
+      expect(widest, `${e.id} never dominates`).toBeGreaterThanOrEqual(0.35)
+      expect(e.width, `${e.id} opens invisibly`).toBeGreaterThanOrEqual(e.approach ? 0.3 : 0.35)
+      // Only a thing on top of you may be wider than the frame it is in.
       expect(e.width).toBeLessThanOrEqual(1)
       expect(e.foot).toBeGreaterThan(0.5)
+    }
+  })
+
+  it('never shrinks or stalls on the way in', () => {
+    // Every step has to be big enough that nobody wonders whether it moved.
+    for (const e of Object.values(ENEMIES)) {
+      if (!e.approach) continue
+      const { far, mid, close } = e.approach.stances
+      expect(mid.width, `${e.id} barely moves to mid`).toBeGreaterThan(far.width * 1.5)
+      expect(close.width, `${e.id} barely moves to close`).toBeGreaterThan(mid.width * 1.5)
+      expect(mid.foot).toBeGreaterThan(far.foot)
+      expect(close.foot).toBeGreaterThanOrEqual(mid.foot)
+      // Its still pose is where the fight opens, so walking in and starting a
+      // fight cannot make it jump.
+      expect({ width: e.width, foot: e.foot }).toEqual(far)
     }
   })
 })

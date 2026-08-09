@@ -33,6 +33,23 @@ function intoFirstFight(seed = 1): GameState {
   return play(toPassage(seed), { type: 'GO', to: 'hollow' }, { type: 'FIGHT' })
 }
 
+/**
+ * A fight against something that stands still and hits you.
+ *
+ * The first fight no longer does either — the Gnawing closes the distance
+ * instead, and deals nothing on the way — so anything about *taking a blow*
+ * has to be asked of an enemy that throws one. See `test/unit/approach.test.ts`
+ * for the encounter that replaced it.
+ */
+function intoTradingFight(seed = 1): GameState {
+  const started = start(seed)
+  const run = started.run!
+  return reduce(
+    { ...started, run: { ...run, roomId: 'deep', path: [...run.path, 'deep'] } },
+    { type: 'FIGHT' },
+  )
+}
+
 describe('a new run', () => {
   it('starts with six dice, full health, and no stale combat', () => {
     const state = start()
@@ -186,23 +203,34 @@ describe('a turn', () => {
   })
 
   it('takes the enemy blow, less armour', () => {
-    const bare = play(intoFirstFight(), { type: 'ROLL' }, { type: 'SELECT', slot: 0 }, { type: 'SCORE' })
-    const bite = intentAt('gnawing', 0).damage
-    expect(bare.run!.hp).toBe(MAX_HP - bite)
+    const bare = play(intoTradingFight(), { type: 'ROLL' }, { type: 'SELECT', slot: 0 }, { type: 'SCORE' })
+    const rake = intentAt('marrow', 0).damage
+    expect(rake).toBeGreaterThan(0)
+    expect(bare.run!.hp).toBe(MAX_HP - rake)
 
     const armoured = play(
-      { ...intoFirstFight(), run: { ...intoFirstFight().run!, relics: ['plate'] } },
+      { ...intoTradingFight(), run: { ...intoTradingFight().run!, relics: ['plate'] } },
       { type: 'ROLL' },
       { type: 'SELECT', slot: 0 },
       { type: 'SCORE' },
     )
-    expect(armoured.run!.hp).toBe(MAX_HP - (bite - 2))
+    expect(armoured.run!.hp).toBe(MAX_HP - (rake - 2))
   })
 })
 
 /** A fight one blow from over, on a chosen seed. */
 const fightAt = (enemyHp: number, hp: number, seed = 1): GameState => {
   const rolled = reduce(intoFirstFight(seed), { type: 'ROLL' })
+  const combat = rolled.run!.combat!
+  return {
+    ...rolled,
+    run: { ...rolled.run!, hp, combat: { ...combat, enemyHp, selected: [0, 1, 2, 3, 4, 5] } },
+  }
+}
+
+/** The same, against something that answers with a blow rather than a step. */
+const tradingFightAt = (enemyHp: number, hp: number, seed = 1): GameState => {
+  const rolled = reduce(intoTradingFight(seed), { type: 'ROLL' })
   const combat = rolled.run!.combat!
   return {
     ...rolled,
@@ -248,7 +276,7 @@ describe('the outcome', () => {
   })
 
   it('always sets mode dead when health reaches zero, and says why', () => {
-    const after = reduce(fightAt(9999, 3), { type: 'SCORE' })
+    const after = reduce(tradingFightAt(9999, 3), { type: 'SCORE' })
     expect(after.mode).toBe('dead')
     expect(after.run?.hp).toBe(0)
     expect(after.run?.cause).toBeTruthy()
@@ -294,7 +322,7 @@ describe('the doors of the machine', () => {
   })
 
   it('does not continue back into a run that ended', () => {
-    const state = intoFirstFight()
+    const state = intoTradingFight()
     const rolled = reduce(state, { type: 'ROLL' })
     const doomed = {
       ...rolled,

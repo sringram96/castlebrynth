@@ -48,6 +48,10 @@ function fightStats(room: string, tier: Tier, loadout: Parameters<typeof fightIn
     dpt: mean(results.map((r) => r.damagePerTurn)),
     hpLeft: mean(results.filter((r) => r.won).map((r) => r.hp)),
     empty: results.reduce((n, r) => n + r.emptyTurns, 0),
+    // Only meaningful against a thing that closes: how often it got to take a
+    // step at all, and how often it finished the walk.
+    moved: results.filter((r) => r.turns > 1).length / results.length,
+    reached: results.filter((r) => !r.won).length / results.length,
   }
 }
 
@@ -89,7 +93,12 @@ gate('first fight — naive', first.naive.win, 0.9, 1)
 gate('first fight — heuristic', first.heuristic.win, 0.95, 1)
 gate('second fight — naive', second.naive.win, 0.85, 1)
 gate('boss — naive, two rewards', boss.naive.win, 0.85, 1)
-gate('median first fight turns', first.heuristic.turns, 3, 5, String)
+// The first fight is a count now, not a pool: three scores and it is on you.
+// A median of 1 would mean nobody ever sees it move; anything over 3 would
+// mean the ladder is not being enforced.
+gate('median first fight turns', first.heuristic.turns, 2, 3, String)
+gate('first fight — it is seen coming', first.naive.moved, 0.6, 1)
+gate('first fight — it reaches somebody', first.naive.reached, 0.02, 0.25)
 gate('median normal fight turns', second.heuristic.turns, 4, 7, String)
 gate('median boss turns', boss.heuristic.turns, 4, 8, String)
 gate('turns with no productive action', first.heuristic.empty + second.heuristic.empty + boss.heuristic.empty, 0, 0, String)
@@ -141,7 +150,18 @@ const outRate = (key: keyof typeof runs) => runs[key].filter((r) => r.reachedExi
 // and a good bet for one who has learned the ladder. That gap is the reward
 // for learning, and the coin flip is the push-your-luck.
 gate('whole run — naive, the stair', outRate('naive/stair'), 0.75, 0.92)
-gate('whole run — naive, the deep way', outRate('naive/deep'), 0.4, 0.65)
+// Re-based when the first fight stopped charging rent: the Gnawing used to
+// take 18–24 HP off every run on the way past and the boss inherited it. It
+// now costs nothing unless it costs everything, so a first-timer reaches the
+// fork nearly whole. The gap between the two rows below is the fork's meaning
+// and is the number to watch; the absolute rate is downstream of it.
+gate('whole run — naive, the deep way', outRate('naive/deep'), 0.6, 0.85)
+gate(
+  'the fork still costs something',
+  outRate('naive/stair') - outRate('naive/deep'),
+  0.1,
+  0.4,
+)
 gate('whole run — heuristic, the stair', outRate('heuristic/stair'), 0.9, 1)
 gate('whole run — heuristic, the deep way', outRate('heuristic/deep'), 0.8, 1)
 

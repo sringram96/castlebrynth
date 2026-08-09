@@ -76,18 +76,27 @@ test.describe('the first run', () => {
     const box = (await enemy.boundingBox())!
     const world = (await page.locator('#world').boundingBox())!
     const share = (box.width * box.height) / (world.width * world.height)
-    expect(share, 'the enemy does not dominate the scene').toBeGreaterThan(0.2)
+    // The Gnawing is a thing that closes, and it opens the encounter at the
+    // far end of a long hall — so *dominating the scene* is what it does on
+    // its way in, not what it does on arrival at the room. What has to be true
+    // here is that it is unmistakably there before any control appears. That it
+    // grows, and by how much, is `test/browser/approach.spec.ts`.
+    expect(share, 'the enemy is not on screen at all').toBeGreaterThan(0.05)
+    expect(Math.min(box.width, box.height), 'the enemy is a speck').toBeGreaterThan(80)
     expect(box.x).toBeGreaterThanOrEqual(-1)
     expect(box.x + box.width).toBeLessThanOrEqual(world.width + 1)
   })
 
   test('every enemy in the slice is on screen in its own room', async ({ page }) => {
-    for (const [room, name] of [
-      ['hollow', 'The Gnawing'],
-      ['deep', 'The Marrow'],
-      ['gate', 'The Warden'],
+    // The Gnawing is measured where it ends up rather than where it starts:
+    // it is the one enemy in the slice that arrives at you, and the fixture
+    // stands it at the reach it arrives from.
+    for (const [room, name, fixture, floor] of [
+      ['hollow', 'The Gnawing', '?room=hollow&reach=close', 0.2],
+      ['deep', 'The Marrow', '?room=deep', 0.2],
+      ['gate', 'The Warden', '?room=gate', 0.2],
     ] as const) {
-      await boot(page, `?room=${room}`)
+      await boot(page, fixture)
       const enemy = page.locator('#enemy')
       await expect(enemy).toHaveAttribute('data-enemy', 'present')
       const box = (await enemy.boundingBox())!
@@ -95,8 +104,10 @@ test.describe('the first run', () => {
       expect(
         (box.width * box.height) / (world.width * world.height),
         `${name} does not dominate its scene`,
-      ).toBeGreaterThan(0.2)
-      await expect(page.locator('#well')).toContainText(name)
+      ).toBeGreaterThan(floor)
+      // Named where the mode names things: the well out of a fight, the
+      // enemy bar in one.
+      await expect(page.locator(room === 'hollow' ? '#enemy-bar' : '#well')).toContainText(name)
     }
   })
 

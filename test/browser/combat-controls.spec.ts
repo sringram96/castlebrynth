@@ -13,12 +13,13 @@ test.describe('the combat controls', () => {
     await expect(act(page, 'roll')).toBeVisible()
     const intent = page.locator('#intent')
     await expect(intent).toBeVisible()
-    await expect(intent).toContainText('BITE')
-    await expect(intent).toContainText('6')
+    // The Gnawing never throws a blow. What it declares is that it is coming,
+    // which is the only thing it does and the only thing that can kill you.
+    await expect(intent).toContainText('CRAWL')
 
     await intent.click()
     // The order is the lesson, so the explanation states it.
-    await expect(page.locator('#say')).toContainText('BITE deals 6 damage after you score')
+    await expect(page.locator('#say')).toContainText('after you score, unless you kill it first')
   })
 
   test('rolls exactly six dice, and holding never changes that', async ({ page }) => {
@@ -108,6 +109,9 @@ test.describe('the combat controls', () => {
   })
 
   test('scoring commits exactly the previewed damage and the enemy answers', async ({ page }) => {
+    // Enough health on it that it certainly survives, so the answer is the
+    // step rather than the death.
+    await boot(page, '?room=hollow&enemyHp=9999')
     await act(page, 'roll').click()
     await dice(page).nth(0).click()
     await dice(page).nth(1).click()
@@ -120,9 +124,11 @@ test.describe('the combat controls', () => {
 
     const after = await state(page)
     expect(after.run!.combat!.enemyHp).toBe(enemyBefore - damage)
-    // 6 through, because the Gnawing bites for 6 and nothing blocks it yet.
-    expect(after.run!.hp).toBe(before.run!.hp - 6)
-    await expect(page.locator('#say')).toContainText('BITE')
+    // Nothing through: it cannot bite you from down the hall. Its answer is a
+    // step, and the step is the thing that eventually kills you.
+    expect(after.run!.hp).toBe(before.run!.hp)
+    expect(after.run!.combat!.approach).toBe('mid')
+    await expect(page.locator('#say')).toContainText('CRAWL')
     // And the next turn starts clean.
     expect(after.run!.combat!.phase).toBe('intent')
     expect(after.run!.combat!.selected).toEqual([])

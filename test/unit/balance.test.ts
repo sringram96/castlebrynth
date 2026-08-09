@@ -22,11 +22,25 @@ describe('the first encounter', () => {
     expect(rate(wins)).toBeGreaterThanOrEqual(0.9)
   })
 
-  it('is over in three to five scoring turns', () => {
-    const turns = SEEDS.map((seed) => simulateFight(fightIn('hollow', seed), 'heuristic').result.turns)
-    const median = [...turns].sort((a, b) => a - b)[Math.floor(turns.length / 2)]!
-    expect(median).toBeGreaterThanOrEqual(3)
-    expect(median).toBeLessThanOrEqual(5)
+  it('is over in three scoring turns, because there are only three', () => {
+    // The encounter is a count, not a health bar: it closes one reach per
+    // score it survives and there is nothing past `close`. So no seed, at any
+    // tier, may take a fourth turn — a fourth turn would mean something
+    // advanced twice or not at all.
+    for (const tier of ['naive', 'heuristic'] as const) {
+      for (const seed of SEEDS) {
+        const turns = simulateFight(fightIn('hollow', seed), tier).result.turns
+        expect(turns, `${tier}/${seed}`).toBeLessThanOrEqual(3)
+        expect(turns).toBeGreaterThanOrEqual(1)
+      }
+    }
+  })
+
+  it('is usually seen coming: most players watch it move at least once', () => {
+    // If the fight ended on the first score every time, the whole encounter
+    // would be a still picture. This is the number that says it is not.
+    const moved = SEEDS.map((seed) => simulateFight(fightIn('hollow', seed), 'naive').result.turns > 1)
+    expect(rate(moved)).toBeGreaterThan(0.6)
   })
 
   it('never gives a turn with nothing productive to do', () => {
@@ -48,9 +62,17 @@ describe('the whole slice', () => {
   })
 
   it('makes the deep way a real gamble for that same player', () => {
-    const out = rate(SEEDS.map((s) => simulateRun(s, 'naive').reachedExit))
-    expect(out).toBeGreaterThan(0.35)
-    expect(out).toBeLessThan(0.7)
+    // The band moved when the first fight stopped charging rent. It used to
+    // take 18–24 HP off every run on the way past, and the boss inherited
+    // that; the Gnawing now costs nothing at all unless it costs everything,
+    // so a first-timer reaches the fork close to full. The decision at the
+    // fork is still a decision — it is just a narrower one, and the gap below
+    // is the part that has to survive any retuning.
+    const deep = rate(SEEDS.map((s) => simulateRun(s, 'naive').reachedExit))
+    const stair = rate(SEEDS.map((s) => simulateRun(s, 'naive', { deep: false }).reachedExit))
+    expect(deep).toBeGreaterThan(0.55)
+    expect(deep).toBeLessThan(0.85)
+    expect(stair - deep, 'the deep way costs a first-timer nothing').toBeGreaterThan(0.1)
   })
 
   it('rewards learning the ladder', () => {

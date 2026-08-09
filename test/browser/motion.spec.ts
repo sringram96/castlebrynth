@@ -158,7 +158,9 @@ test.describe('a score is a chain of events', () => {
   test('confirms the hand, lands the blow, and only then lets the enemy answer', async ({
     page,
   }) => {
-    await withMotion(page, '?room=hollow&mode=combat')
+    // The Marrow, because this is about a blow coming back. The first fight's
+    // answer is a step rather than a blow — see `test/browser/approach.spec.ts`.
+    await withMotion(page, '?room=deep&mode=combat')
     await act(page, 'roll').click()
     await thrown(page)
     await dice(page).nth(0).click()
@@ -266,7 +268,7 @@ test.describe('reduced motion is the same game, immediately', () => {
   })
 
   test('reaches every number without waiting for anything', async ({ page }) => {
-    await withMotion(page, '?room=hollow&mode=combat')
+    await withMotion(page, '?room=deep&mode=combat')
     expect(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches)).toBe(
       true,
     )

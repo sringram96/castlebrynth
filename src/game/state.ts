@@ -12,10 +12,11 @@
  */
 
 import type { Value } from '../content/dice.js'
+import type { Reach } from '../content/enemies.js'
 import type { HandName } from '../combat/scoring.js'
 
 /** Bumped whenever the shape below changes. Old saves are not migrated. */
-export const SAVE_VERSION = 2
+export const SAVE_VERSION = 3
 
 export type Mode = 'title' | 'explore' | 'combat' | 'reward' | 'dead' | 'complete'
 
@@ -57,6 +58,20 @@ export interface CombatState {
   readonly selected: readonly number[]
   /** Hand families already scored, read only by first-of-fight relics. */
   readonly spentHands: readonly HandName[]
+  /**
+   * How far away the thing is standing, when it is a thing that closes.
+   *
+   * This is gameplay, not staging: it decides how many attacks are left before
+   * contact, so it lives here and the reducer is the only thing that moves it.
+   * Absent for an enemy with no approach ladder.
+   *
+   * Nothing in `render/` may own or advance it. A reload paints the reach the
+   * save records, which is why the composition on screen can never disagree
+   * with the number of turns the player has left.
+   */
+  readonly approach?: Reach
+  /** Set once, when it arrived. Terminal: the run ended on this. */
+  readonly reached?: boolean
   /** What just happened, for the word band and the beats. */
   readonly log: readonly string[]
 }
