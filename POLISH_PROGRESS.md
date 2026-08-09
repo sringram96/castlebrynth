@@ -325,31 +325,40 @@ Two of these have a specific thing to look at:
 
 ## The Crawling One — the approach encounter in `hollow`
 
+**Status: RESOLVED.** The plates were authored by a human and delivered. This
+entry stays as the record of what was asked for and what arrived.
+
 Raised by the wave that turned the first fight into a thing that closes the
-distance. The rules, the state, the sequence and the tests are finished and
-green; the pictures are not, and no coding agent may draw them.
+distance. The rules, the state, the sequence and the tests were finished and
+green; the pictures were not, and no coding agent may draw them. So it stopped
+and wrote `docs/art-reference/masters/crawling-one/BRIEF.md` instead.
 
-**What is missing:** one empty corridor, three authored creature poses (`far`,
-`mid`, `close`), and one bright impact plate (`hit`). Wanted but not required:
-a bright plate for the other two reaches, and a two-pose first-person hand.
+**What was asked for, and what arrived:** all seven, at 1024 × 1536 — an empty
+corridor, the creature at `far`, `mid` and `close`, the same creature lit white
+for the instant it is struck, and the player's own arm at rest and at full
+extension. The optional bright plates for `far` and `mid` were not needed in
+the end; at those reaches the sprite's own brightness carries the frame.
 
-**The contract:** `docs/art-reference/masters/crawling-one/BRIEF.md`. It gives
-the frame, the alpha rule, the budget, and the five-step integration. The
-folder's `supplied/` holds the four mock-up plates the brief was written from —
-they are the look to hit and are not themselves usable: each paints a mock tray
-across its bottom third, and the four are separate paintings of the corridor
-rather than one corridor with the creature moved.
+**Nothing was drawn, retouched, recoloured or repainted here.** `tools/art.mjs`
+lifts each subject off the flat black field it was delivered on, downsamples,
+and writes the runtime plates. The masters are never served. The one thing the
+pipeline decides is the matte, and it decides it identically every run.
 
-**What ships in the meantime:** the encounter runs on the existing `gnawing`
-sprite, staged at the three reaches by the compositor. Nothing is missing
-mechanically — the ladder, the intents, the strike, the advance, the contact
-and the death all work and are covered by `test/unit/approach.test.ts` and
-`test/browser/approach.spec.ts`. What it lacks is authorship: one drawing
-scaled three ways reads as a transformed DOM image at `close`, which is
-exactly what `ART_DIRECTION.md` § *Motion budget* says it must not.
+**What the encounter gained by waiting:**
 
-**Cost of leaving it:** the encounter is playable and correct but does not
-look authored at the near reaches. Nothing else in the game is affected.
+- the room is the corridor the fight was painted for, rather than a reused
+  ossuary hall;
+- each reach is its own drawing rather than one sprite at three sizes, which
+  is what `ART_DIRECTION.md` § *Motion budget* was asking for;
+- the impact frame at `close` is an authored plate instead of a filter;
+- the strike moves a real arm, so the foreground layer is finally doing the
+  job it was reserved for.
 
-`npm run art` picks the plates up the moment they are in the folder, prints a
-placement line per pose, and skips itself until then.
+Runtime art went from 2.44 MB to 3.15 MB against the 4 MB cap. The old
+`gnawing` sprite and the `ossuary` backdrop it stood in are retired, and their
+pipeline entries went with them.
+
+`supplied/` keeps the four mock-up plates the brief was written from. They were
+never usable — each paints a mock tray across its bottom third, and the four
+are separate paintings of the corridor rather than one corridor with the
+creature moved — but they are the look that was being aimed at.

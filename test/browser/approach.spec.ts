@@ -68,7 +68,12 @@ async function watch(page: Page): Promise<void> {
       if ((world.classList.contains('thrust') || el.ownerDocument.querySelector('.layer-foreground.thrust')) && seen.thrustAt === null) {
         seen.thrustAt = since()
       }
-      if (el.classList.contains('struck') && seen.brightAt === null) seen.brightAt = since()
+      // Two ways to be lit: an authored impact plate where one was painted for
+      // the pose, and the sprite's own brightness where one was not. Both are
+      // the same beat and both count.
+      if ((el.classList.contains('struck') || el.classList.contains('lit')) && seen.brightAt === null) {
+        seen.brightAt = since()
+      }
       if (document.querySelector('#fx .hit-number') && seen.hitAt === null) seen.hitAt = since()
       if (el.classList.contains('gathering') && seen.gatherAt === null) seen.gatherAt = since()
       const reach = el.dataset['reach']

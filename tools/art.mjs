@@ -411,16 +411,6 @@ const BACKDROPS = [
     ],
   },
   {
-    // The hollow: walls packed with niches, and something hanging overhead.
-    id: 'ossuary',
-    base: HALL,
-    over: [
-      { from: `${REG}ossuary/niche-skulls.png`, cx: 0.14, cy: 0.52, w: 0.62 },
-      { from: `${REG}ossuary/niche-skulls.png`, cx: 0.86, cy: 0.52, w: 0.62, flip: true },
-      { from: `${REG}ossuary/hanging-skull-cluster.png`, cx: 0.5, cy: 0.14, w: 0.86 },
-    ],
-  },
-  {
     // The split: a shrine somebody knelt at, and a ledge of candles beside it.
     id: 'shrine',
     base: HALL,
@@ -469,22 +459,6 @@ const BACKDROPS = [
  * honest way to set them.
  */
 const ENEMIES = [
-  {
-    // The Gnawing: the maw filling the corridor. One seed, on the brow. The
-    // lower jaw is a separate island across an open mouth and floats when it is
-    // seeded too, which reads as a rendering fault; the head alone is the brief
-    // (low, wide, jaw-heavy, eyes and teeth readable at phone scale).
-    id: 'enemy.gnawing',
-    from: 'docs/art-reference/visual/territory-close-maw.png',
-    window: { x: 0.06, y: 0.08, width: 0.8, height: 0.72 },
-    core: 15,
-    rim: 150,
-    falloff: 5.5,
-    seed: [{ x: 0.45, y: 0.278, width: 0.225, height: 0.111 }],
-    dilate: 3,
-    feather: 2,
-    width: 460,
-  },
   {
     // The Marrow: the keeper of the ossuary. Its hands hang free of the body,
     // so each gets a seed of its own.
@@ -628,18 +602,19 @@ function buildEnemies() {
  * Everything else in this file cuts a figure out of a scene it was painted
  * into, because that is the only thing the pre-reset masters allow. This set
  * is authored the other way round and is much better for it: the corridor
- * arrives with nothing standing in it, and each pose arrives on a transparent
- * canvas of the *same frame*, with the creature already where it belongs.
+ * arrives with nothing standing in it, and every other plate arrives as its
+ * subject alone on a flat black field.
  *
- * So there is no key here and no seeds. The pipeline resamples, snaps the
- * alpha back to binary, trims, and reads the placement straight off the trim
- * box — which means nobody ever hand-tunes a coordinate, and a repaint that
- * moves the thing six inches left moves it six inches left in the game.
+ * So the key here has no seeds, no radial threshold and no guesswork: black is
+ * background, everything else is the subject. What is left of the key is
+ * housekeeping — drop the specks, put back the shadowed pixels inside the
+ * figure that fell under the threshold, and snap the resampled edge back to
+ * the binary alpha the rest of the repository is built on.
  *
- * The plates are not in the repository yet. `docs/art-reference/masters/
- * crawling-one/BRIEF.md` is the contract they have to meet, and until they
- * land this build is skipped rather than failing: the encounter runs on the
- * existing sprite, staged at each reach.
+ * The hands are the exception to trimming. They stay the full scene, because
+ * the foreground layer is `object-fit: cover` exactly like the backdrop is —
+ * which is what makes the arm land in the corridor identically at every
+ * viewport, with nothing to measure and nothing to drift.
  */
 const CRAWLING = {
   master: 'docs/art-reference/masters/crawling-one/',
@@ -647,6 +622,27 @@ const CRAWLING = {
   /** Required, then optional. A pose that is absent is simply not built. */
   poses: ['far', 'mid', 'close', 'hit', 'far-hit', 'mid-hit'],
   hands: ['hand-rest', 'hand-thrust'],
+  /**
+   * Luminance at or above which a pixel is the subject.
+   *
+   * As low as it can be. The delivered fields are flat 0, and the subjects go
+   * *very* dark in places — the shadow between two coils of the arm's leather
+   * strapping, the underside of the creature's hide — so a threshold set to
+   * clear the field comfortably instead eats the subject from the inside.
+   * One is the whole margin there is, and `close` below is what puts back
+   * what still falls through.
+   */
+  black: 2,
+  /**
+   * How wide a dark gap inside a subject may be and still be bridged.
+   *
+   * A shadow that runs from inside the figure out to the frame's edge is not
+   * a hole and cannot be filled as one — the arm's coils and the creature's
+   * flanks are both exactly that, which is why they came through the first
+   * build shredded. Dilating and then eroding by the same amount seals a gap
+   * up to twice this wide while leaving the silhouette where it was.
+   */
+  close: 3,
 }
 
 /**
@@ -655,6 +651,11 @@ const CRAWLING = {
  * Read off the trim box, with one correction: a 480x720 scene shown in the
  * world box of a 390x844 phone loses a tenth of its width to the cover-crop,
  * so a fraction of the scene is not yet a fraction of what is on screen.
+ *
+ * This is what the plate itself says. Where it is *staged* — how big the
+ * thing is at each reach — is a composition decision and lives in
+ * `src/content/enemies.ts`; this is printed so that decision can be made
+ * against a real number rather than by eye alone.
  */
 const WORLD_ASPECT = 390 / (844 - 390 * (364 / 730))
 function stanceOf(box, width, height) {
@@ -665,6 +666,83 @@ function stanceOf(box, width, height) {
     at: +(0.5 + (centre - 0.5) / visible).toFixed(3),
     foot: +(((box.y1 + 1) / height)).toFixed(3),
   }
+}
+
+/**
+ * Lift a subject off the black field it was delivered on.
+ *
+ * Four steps, in this order and for a reason:
+ *
+ *   1. threshold — black is background;
+ *   2. close — dilate then erode by the same amount, sealing the dark seams
+ *      that run out of the figure to the frame's edge. These are the ones a
+ *      hole fill cannot reach, and they are most of the damage: the shadow
+ *      between two coils of the arm's strapping, the creature's shaded flank
+ *      where it leaves the frame;
+ *   3. fill — put back any transparent region that does *not* touch the edge,
+ *      which is the rest of the hide's own shadow;
+ *   4. prune — a generator leaves a scatter of embers around a lit subject,
+ *      and a floating speck beside a monster reads as a rendering fault
+ *      rather than as detail. Last, so it judges finished shapes.
+ *
+ * Done at the master's own resolution, before the resample, so the edge that
+ * gets averaged is the real one.
+ */
+function keyBlack(src, threshold, seal) {
+  const { width, height, rgba } = src
+  let mask = new Uint8Array(width * height)
+  for (let i = 0; i < width * height; i++) mask[i] = lum(rgba, i * 4) >= threshold ? 1 : 0
+  mask = erode(dilate(mask, width, height, seal), width, height, seal)
+  mask = pruneIslands(fillHoles(mask, width, height), width, height, 0.01)
+  for (let i = 0; i < width * height; i++) rgba[i * 4 + 3] = mask[i] ? 255 : 0
+  return src
+}
+
+/** Grow a mask by `passes` pixels in the four directions. */
+function dilate(mask, width, height, passes) {
+  let out = mask
+  for (let pass = 0; pass < passes; pass++) {
+    const next = new Uint8Array(width * height)
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const i = y * width + x
+        next[i] =
+          out[i] ||
+          (x > 0 && out[i - 1]) ||
+          (x < width - 1 && out[i + 1]) ||
+          (y > 0 && out[i - width]) ||
+          (y < height - 1 && out[i + width])
+            ? 1
+            : 0
+      }
+    }
+    out = next
+  }
+  return out
+}
+
+/** Shrink a mask by `passes` pixels. The frame's edge counts as inside, so a
+ *  figure that runs off the plate is not eaten back from the crop. */
+function erode(mask, width, height, passes) {
+  let out = mask
+  for (let pass = 0; pass < passes; pass++) {
+    const next = new Uint8Array(width * height)
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const i = y * width + x
+        next[i] =
+          out[i] &&
+          (x === 0 || out[i - 1]) &&
+          (x === width - 1 || out[i + 1]) &&
+          (y === 0 || out[i - width]) &&
+          (y === height - 1 || out[i + width])
+            ? 1
+            : 0
+      }
+    }
+    out = next
+  }
+  return out
 }
 
 /** The opaque box of an image. `null` when nothing in it is opaque. */
@@ -726,18 +804,27 @@ function buildCrawling() {
   const stances = {}
   for (const id of [...CRAWLING.poses, ...CRAWLING.hands]) {
     const file = `${CRAWLING.master}${id}.png`
-    if (!existsSync(join(ROOT, `${CRAWLING.master}${id}.png`))) continue
-    // The same crop as the corridor, so a pose stays registered with it.
+    if (!existsSync(join(ROOT, file))) continue
+    const hand = id.startsWith('hand-')
+    // The same crop as the corridor, so a plate stays registered with it.
     const plate = hardenAlpha(
-      resample(coverCrop(read(file), SCENE_WIDTH / SCENE_HEIGHT, 0.5), SCENE_WIDTH, SCENE_HEIGHT),
+      resample(
+        coverCrop(keyBlack(read(file), CRAWLING.black, CRAWLING.close), SCENE_WIDTH / SCENE_HEIGHT, 0.5),
+        SCENE_WIDTH,
+        SCENE_HEIGHT,
+      ),
     )
     const box = bounds(plate)
     if (!box) throw new Error(`crawling-one/${id}.png is entirely transparent`)
-    stances[id] = stanceOf(box, SCENE_WIDTH, SCENE_HEIGHT)
+    if (!hand) stances[id] = stanceOf(box, SCENE_WIDTH, SCENE_HEIGHT)
 
-    const sprite = posterise(trim(plate), 32)
-    const kind = id.startsWith('hand-') ? 'hands' : 'enemies'
-    const path = write(`${kind}/crawling-${id.replace(/^hand-/, '')}.png`, sprite, { cutout: true })
+    // A hand keeps the whole frame; a pose is trimmed to its own silhouette.
+    const sprite = posterise(hand ? plate : trim(plate), 32)
+    const path = write(
+      hand ? `hands/${id.replace(/^hand-/, '')}.png` : `enemies/crawling-${id}.png`,
+      sprite,
+      { cutout: true },
+    )
     let opaque = 0
     for (let i = 3; i < sprite.rgba.length; i += 4) if (sprite.rgba[i] === 255) opaque++
     report.push({
@@ -749,7 +836,7 @@ function buildCrawling() {
     })
   }
 
-  console.log('\ncrawling-one stances — paste into the ladder in src/content/enemies.ts:')
+  console.log('\ncrawling-one — what the plates themselves say, before staging:')
   for (const [id, s] of Object.entries(stances)) {
     console.log(`  ${id.padEnd(10)} { width: ${s.width}, at: ${s.at}, foot: ${s.foot} },`)
   }

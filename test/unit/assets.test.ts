@@ -10,7 +10,16 @@
 import { readFileSync, statSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
-import { ENEMY_ART, ROOM_ART, TRAY_ART, allAssets, enemyArt, roomArt } from '../../src/render/assets.js'
+import {
+  ENEMY_ART,
+  HAND_ART,
+  ROOM_ART,
+  TRAY_ART,
+  allAssets,
+  enemyArt,
+  handArt,
+  roomArt,
+} from '../../src/render/assets.js'
 import { ENEMIES, REACHES } from '../../src/content/enemies.js'
 import { ROOMS } from '../../src/content/rooms.js'
 
@@ -75,6 +84,43 @@ describe('every enemy has combat art', () => {
       ).toBe(true)
       for (const key of posed) expect(png(enemyArt(e.art, key).file).bytes).toBeGreaterThan(0)
     }
+  })
+
+  it('gives the impact plate the box of a pose it can actually stand in', () => {
+    // The bright frame is a source swap and changes no placement, so it is
+    // only ever shown where its dimensions match the plate it replaces. A
+    // `hit` that matches nothing is a plate that would never appear.
+    for (const e of Object.values(ENEMIES)) {
+      const lit = ENEMY_ART[`${e.art}.hit`]
+      if (!lit) continue
+      const fits = REACHES.filter((reach) => {
+        const at = ENEMY_ART[`${e.art}.${reach}`]
+        return at && at.width === lit.width && at.height === lit.height
+      })
+      expect(fits.length, `${e.id}'s impact plate fits no reach`).toBeGreaterThan(0)
+    }
+  })
+})
+
+describe('the player is holding something', () => {
+  it('ships both arm poses, at the scene size the foreground covers with', () => {
+    // Whole scene frames, not trimmed sprites: the foreground is cover-fitted
+    // exactly as the backdrop is, which is what puts the arm in the corridor
+    // at every viewport without a coordinate anywhere.
+    for (const pose of ['rest', 'thrust']) {
+      const art = handArt(pose)
+      expect(png(art.file).bytes).toBeGreaterThan(0)
+      expect([art.width, art.height]).toEqual([480, 720])
+    }
+  })
+
+  it('gives an enemy that closes an arm to close on it with', () => {
+    // The strike is the other half of the approach: the thing comes at you and
+    // you put something in it. An encounter with one and not the other is half
+    // an encounter.
+    const closing = Object.values(ENEMIES).filter((e) => e.approach)
+    expect(closing.length).toBeGreaterThan(0)
+    expect(Object.keys(HAND_ART).sort()).toEqual(['rest', 'thrust'])
   })
 
   it('gives every enemy a silhouette large enough to dominate the scene', () => {

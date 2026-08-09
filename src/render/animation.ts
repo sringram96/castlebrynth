@@ -182,8 +182,14 @@ const IMPACT = 130
  * number rises, and the frame takes a small kick. They are one event, and
  * splitting them across even 80 ms makes the hit read as two soft things
  * rather than one hard one.
+ *
+ * `bright` is an authored plate of the thing lit white, when one exists for
+ * the pose it is standing in — it has to share that pose's box, because this
+ * swaps the source and touches no placement. Without one, the same frame is
+ * made by driving the sprite's own brightness, which is weaker and is why the
+ * plate exists.
  */
-export function enemyHit(world: World, damage: number): void {
+export function enemyHit(world: World, damage: number, bright?: string): void {
   const number = document.createElement('b')
   number.className = 'hit-number'
   number.textContent = String(damage)
@@ -195,11 +201,21 @@ export function enemyHit(world: World, damage: number): void {
     return
   }
 
-  world.enemy.classList.add('struck')
+  const was = world.enemy.getAttribute('src')
+  if (bright) {
+    world.enemy.src = bright
+    world.enemy.classList.add('lit')
+  } else {
+    world.enemy.classList.add('struck')
+  }
   world.root.classList.add('kicked')
   number.addEventListener('animationend', () => number.remove(), { once: true })
   window.setTimeout(() => {
-    world.enemy.classList.remove('struck')
+    // Back to the plate it was on, not to whatever a later paint has decided —
+    // this beat is over before the next one runs, and putting back exactly what
+    // was taken is what keeps that true even if it is not.
+    if (bright && was) world.enemy.src = was
+    world.enemy.classList.remove('struck', 'lit')
     world.root.classList.remove('kicked')
   }, IMPACT)
 }
@@ -210,12 +226,18 @@ export function enemyHit(world: World, damage: number): void {
  * Three poses and nothing between them: back a couple of pixels, out to full
  * extension, back to rest. A hand that glides is a hand attached to nobody —
  * the whole read is that it is fast enough to be violent, and the only way to
- * get that out of two transforms is to give the second one almost no time.
+ * get that out of two authored plates is to give the second one almost no
+ * time.
  *
- * It moves the foreground layer, which is where the first-person hand plate
- * mounts when one exists (see `## HUMAN ART REQUIRED` in POLISH_PROGRESS.md).
- * Until then the same pose drives the camera instead — the frame is the
- * player's head, so the body leaning in is the body leaning in either way.
+ * Two things move together and deliberately so: the arm plate swaps on the
+ * foreground layer, and the whole frame leans with it. The frame is the
+ * player's head — a body that drives a knife forward drives its head forward
+ * too, so the camera is not standing in for the arm, it is the rest of the
+ * same movement.
+ *
+ * Both arm plates are already mounted by the paint. All this does is say which
+ * one is uncovered, so nothing here knows an asset name and a settled sequence
+ * lands on the resting arm without having to put anything back.
  */
 export function weaponThrust(world: World, pose: 'wind' | 'thrust' | 'rest'): void {
   if (reducedMotion()) return

@@ -19,7 +19,7 @@
  * over it instantly is a score the player never saw.
  */
 
-import { intentAt } from '../content/enemies.js'
+import { enemy, intentAt } from '../content/enemies.js'
 import type { Reach } from '../content/enemies.js'
 import { preview } from '../combat/scoring.js'
 import { selectionOf } from '../combat/resolve.js'
@@ -29,7 +29,7 @@ import { save } from '../game/save.js'
 import type { CombatState, GameState } from '../game/state.js'
 import { mountWorld } from '../render/compositor.js'
 import type { World } from '../render/compositor.js'
-import { TRAY_ART, url } from '../render/assets.js'
+import { TRAY_ART, enemyArt, enemyPose, url } from '../render/assets.js'
 import { mountTray, paintTumble, renderTray } from '../ui/trayView.js'
 import type { Tray } from '../ui/trayView.js'
 import { renderWorld } from '../ui/worldView.js'
@@ -102,6 +102,22 @@ const CONTACT = {
   landed: 1050,
   next: 1500,
 } as const
+
+/**
+ * The authored impact plate for a fight, when there is one it can be used in.
+ *
+ * A source swap changes no placement, so a bright plate can only stand in for
+ * a pose whose box it shares — which for this encounter means the reach it was
+ * painted at, and no other. Anywhere else the sprite's own brightness makes
+ * the frame instead, and the difference is exactly what the plate buys.
+ */
+function brightPlate(combat: CombatState): string | undefined {
+  const art = enemy(combat.enemyId).art
+  const lit = enemyPose(art, 'hit')
+  if (!lit) return undefined
+  const standing = enemyArt(art, combat.approach)
+  return lit.width === standing.width && lit.height === standing.height ? url(lit) : undefined
+}
 
 export interface AppOptions {
   readonly root: HTMLElement
@@ -342,7 +358,7 @@ export class App {
       // Exactly at full extension: the flesh goes white, the number rises and
       // the frame kicks, all on the same frame. Damage of zero gets none of
       // it — a convincing hit for a hand that did nothing is a lie.
-      if (dealt > 0) enemyHit(this.world, dealt)
+      if (dealt > 0) enemyHit(this.world, dealt, brightPlate(combat))
     })
 
     sequence.at(SCORE.answer, () => {

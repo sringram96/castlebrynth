@@ -25,7 +25,7 @@ there is no path where a backdrop ends up above an enemy.
 | 0 | `backdrop` | the opaque room image |
 | 1 | `midground` | architecture and prop cutouts (unused in the slice) |
 | 2 | `enemy` | **mandatory in combat** |
-| 3 | `foreground` | occluders and hand/weapon accents (unused in the slice) |
+| 3 | `foreground` | the player's own arm, and occluders |
 | 4 | `fx` | hit flash, shake, damage numbers, vignette |
 | 5 | `hud` | the word band, the intent, the tray — never world art |
 
@@ -54,6 +54,19 @@ shadow.
 
 Seeds and thresholds are in `tools/art.mjs` and were set by eye against the
 output. That is the only honest way to set them.
+
+**Authored sets do not need any of that.** A set drawn for the game arrives as
+the corridor with nothing in it, plus each subject alone on a flat black field
+at the same frame and the same pixel size. Then the key is one threshold, a
+morphological close to seal the dark seams that run out to the frame's edge, a
+hole fill and a speck prune — no seeds, no radial threshold, nothing set by
+eye. `docs/art-reference/masters/crawling-one/BRIEF.md` is the contract, and
+the Crawling One is the set built that way.
+
+Poses are named `<art>.<pose>` in the manifest. A thing that closes carries one
+per reach plus one for the instant it is struck; because a source swap changes
+no placement, an impact plate is only shown where its box matches the plate it
+replaces.
 
 ## Content validation
 
