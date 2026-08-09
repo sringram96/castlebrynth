@@ -4,8 +4,8 @@
  * Nothing here rolls, branches, or reads a game rule. Every function is handed
  * a number the reducer already computed, or a node it should move, and reveals
  * it. That is what makes determinism structural: **an animation has no outcome
- * to change.** The intermediate faces a die shows while tumbling come from a
- * counter, not from a generator, and the die always settles onto the face the
+ * to change.** The intermediate faces a bone shows while tumbling come from a
+ * counter, not from a generator, and the bone always settles onto the face the
  * reducer chose.
  *
  * With `prefers-reduced-motion`, or with `motion: false`, every effect resolves
@@ -19,9 +19,9 @@ import type { World } from './compositor.js'
 export const reducedMotion = (): boolean =>
   typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
 
-/** The stagger between one die leaving the hand and the next. */
+/** The stagger between one bone leaving the hand and the next. */
 const STAGGER = 28
-/** How long a single die tumbles before it snaps onto its face. */
+/** How long a single bone tumbles before it snaps onto its face. */
 const TUMBLE = 300
 /** How many intermediate faces flicker past on the way. */
 const FLICKERS = 3
@@ -77,86 +77,93 @@ export class Sequence {
 
 const noop = (): void => {}
 
-/** How long a throw of `count` dice takes on screen, in ms. */
+/** How long a throw of `count` bones takes on screen, in ms. */
 export function tumbleDuration(count: number): number {
   return TUMBLE + Math.max(0, count - 1) * STAGGER
 }
 
 export interface Tumble {
-  /** The die buttons to throw. Dice that were held are simply not passed. */
-  readonly dice: readonly HTMLElement[]
+  /** The bone buttons to throw. Every committed bone, every time. */
+  readonly bones: readonly HTMLElement[]
   /**
-   * Paint an intermediate face on a die, or restore its settled one at
+   * Paint an intermediate face on a bone, or restore its settled one at
    * `step === undefined`.
    *
-   * Injected, so this file never learns how a die is drawn — and so the faces
-   * that flicker past are the caller's deterministic function of the slot, not
+   * Injected, so this file never learns how a bone is drawn — and so the faces
+   * that flicker past are the caller's deterministic function of the lane, not
    * anything this file could have randomised.
    */
-  readonly paint?: (die: HTMLElement, step: number | undefined) => void
+  readonly paint?: (bone: HTMLElement, step: number | undefined) => void
 }
 
 /**
- * Throw dice.
+ * Throw bones.
  *
- * Each die lifts, turns and drops onto its face, one after another. The
- * stagger is the whole reason it reads as six objects landing rather than one
- * row changing value.
+ * Each one lifts, turns and drops onto its face, one after another. The
+ * stagger is the whole reason it reads as several objects landing rather than
+ * one row changing value.
  */
-export function tumble(sequence: Sequence, { dice, paint }: Tumble): void {
-  dice.forEach((die, index) => {
+export function tumble(sequence: Sequence, { bones, paint }: Tumble): void {
+  bones.forEach((bone, index) => {
     const delay = index * STAGGER
     sequence.at(delay, () => {
-      die.classList.remove('die-settle')
-      die.classList.add('die-rolling')
+      bone.classList.remove('bone-settle')
+      bone.classList.add('bone-rolling')
     })
     for (let step = 0; step < FLICKERS; step++) {
-      sequence.at(delay + (TUMBLE / (FLICKERS + 1)) * step, () => paint?.(die, step))
+      sequence.at(delay + (TUMBLE / (FLICKERS + 1)) * step, () => paint?.(bone, step))
     }
     sequence.at(delay + TUMBLE, () => {
-      paint?.(die, undefined)
-      die.classList.remove('die-rolling')
-      die.classList.add('die-settle')
+      paint?.(bone, undefined)
+      bone.classList.remove('bone-rolling')
+      bone.classList.add('bone-settle')
     })
   })
   // The settle class is only there to play its snap once; it is cleared with
   // the next throw, and nothing reads it.
 }
 
-/** The dice you chose, confirming that they are the hand. */
-export function confirm(dice: readonly HTMLElement[]): void {
-  for (const die of dice) {
-    die.classList.remove('die-scoring')
-    void die.offsetWidth
-    die.classList.add('die-scoring')
+/** The bones you committed, confirming that they are the line. */
+export function confirm(bones: readonly HTMLElement[]): void {
+  for (const bone of bones) {
+    bone.classList.remove('bone-committing')
+    void bone.offsetWidth
+    bone.classList.add('bone-committing')
   }
 }
 
-/** The relic that contributed, in its own bay, at the moment its term lands. */
-export function pulseRelic(host: HTMLElement, relicId: string): void {
-  const bay = host.querySelector<HTMLElement>(`.relic[data-relic-id="${relicId}"]`)
-  if (!bay) return
-  bay.classList.remove('relic-triggered')
-  void bay.offsetWidth
-  bay.classList.add('relic-triggered')
-  window.setTimeout(() => bay.classList.remove('relic-triggered'), 620)
+/**
+ * One bone breaking, in the lane it was standing in.
+ *
+ * The whole of a casualty on screen. It is looked up by key rather than by
+ * position, because a lane is where a bone *is* and a key is what it *is* —
+ * and after a re-sort those are not the same question.
+ *
+ * The class is not removed on a timer. A broken bone stays broken until the
+ * next paint replaces the line, which is the truth: it does not come back.
+ */
+export function boneBreak(host: HTMLElement, boneKey: string): void {
+  const bone = host.querySelector<HTMLElement>(`[data-bone-key="${cssEscape(boneKey)}"]`)
+  if (!bone) return
+  bone.dataset['broken'] = 'yes'
+  if (reducedMotion()) return
+  bone.classList.remove('bone-breaking')
+  void bone.offsetWidth
+  bone.classList.add('bone-breaking')
 }
 
-/** A red or green face doing what it said it would, on the die that did it. */
-export function fireFace(die: HTMLElement): void {
-  const mark = die.querySelector<HTMLElement>('.mark')
-  if (!mark) return
-  mark.classList.remove('mark-fired')
-  void mark.offsetWidth
-  mark.classList.add('mark-fired')
-  window.setTimeout(() => mark.classList.remove('mark-fired'), 520)
+/** Keys carry a colon, which a selector reads as a pseudo-class. */
+function cssEscape(value: string): string {
+  return typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+    ? CSS.escape(value)
+    : value.replace(/[^\w-]/g, (c) => `\\${c}`)
 }
 
-/** The health you just spent or gained, over the orb that holds it. */
-export function orbChange(orb: HTMLElement, delta: number): void {
+/** The bones you just lost or got back, over the pile that holds them. */
+export function pileChange(orb: HTMLElement, delta: number): void {
   if (delta === 0) return
   const tag = document.createElement('b')
-  tag.className = `orb-delta orb-delta-${delta < 0 ? 'hurt' : 'heal'}`
+  tag.className = `pile-delta pile-delta-${delta < 0 ? 'lost' : 'back'}`
   tag.textContent = `${delta < 0 ? '−' : '+'}${Math.abs(delta)}`
   orb.append(tag)
   if (reducedMotion()) {
@@ -169,8 +176,8 @@ export function orbChange(orb: HTMLElement, delta: number): void {
 /**
  * How long the bright frame stays on. Punctuation, not a state.
  *
- * The damage was decided before any of this ran, so there is nothing for a
- * long flash to wait for. It is one frame of white flesh at the instant the
+ * The casualties were decided before any of this ran, so there is nothing
+ * for a long flash to wait for. It is one frame of white flesh at the instant the
  * blade arrives and then it is gone.
  */
 const IMPACT = 130
@@ -178,10 +185,14 @@ const IMPACT = 130
 /**
  * The blow you landed.
  *
- * Three things at once and deliberately so: the enemy blows out bright, the
- * number rises, and the frame takes a small kick. They are one event, and
- * splitting them across even 80 ms makes the hit read as two soft things
- * rather than one hard one.
+ * The thing blows out bright and the frame takes a small kick, on the same
+ * frame, because they are one event.
+ *
+ * **There is no number.** Damage does not exist: what happened is that some of
+ * its bones broke, and those bones are on screen breaking. A figure rising off
+ * the enemy would be the old game's arithmetic drawn over the top of the new
+ * game's physical fact. `count` decides how hard the frame kicks and nothing
+ * else.
  *
  * `bright` is an authored plate of the thing lit white, when one exists for
  * the pose it is standing in — it has to share that pose's box, because this
@@ -189,17 +200,8 @@ const IMPACT = 130
  * made by driving the sprite's own brightness, which is weaker and is why the
  * plate exists.
  */
-export function enemyHit(world: World, damage: number, bright?: string): void {
-  const number = document.createElement('b')
-  number.className = 'hit-number'
-  number.textContent = String(damage)
-  number.dataset['damage'] = String(damage)
-  world.fx.append(number)
-
-  if (reducedMotion()) {
-    number.remove()
-    return
-  }
+export function enemyHit(world: World, count: number, bright?: string): void {
+  if (reducedMotion() || count <= 0) return
 
   const was = world.enemy.getAttribute('src')
   if (bright) {
@@ -209,7 +211,6 @@ export function enemyHit(world: World, damage: number, bright?: string): void {
     world.enemy.classList.add('struck')
   }
   world.root.classList.add('kicked')
-  number.addEventListener('animationend', () => number.remove(), { once: true })
   window.setTimeout(() => {
     // Back to the plate it was on, not to whatever a later paint has decided —
     // this beat is over before the next one runs, and putting back exactly what
@@ -274,33 +275,19 @@ export function enemyAdvance(world: World, phase: 'gather' | 'arrive'): void {
 }
 
 /**
- * It arrives.
- *
- * The one moment in the encounter that breaks the composition. Not a zoom —
- * a short ladder of ugly discrete enlargements, each held long enough to be a
- * separate picture, ending with the thing wider than the frame. `step` is an
- * index into that ladder and the stylesheet holds the numbers.
- *
- * It decides nothing. The player was already dead when this was called.
- */
-export function enemyContact(world: World, step: number): void {
-  if (reducedMotion()) return
-  world.enemy.dataset['contact'] = String(step)
-  world.root.dataset['contact'] = String(step)
-}
-
-/**
  * The blow that landed on you.
  *
  * The frame is the player's body, so this is the one effect that moves the
- * whole world. Spending it anywhere else spends it for nothing.
+ * whole world. Spending it anywhere else spends it for nothing. `weight` is
+ * how many bones of yours broke — it decides how hard, and it is not a
+ * damage number by another name: nothing reads it back.
  */
-export function shake(world: World, damage: number): void {
+export function shake(world: World, weight: number): void {
   if (reducedMotion()) return
   world.root.classList.remove('struck')
   // Reading offsetWidth restarts the animation when two blows land in a row.
   void world.root.offsetWidth
-  world.root.dataset['blow'] = String(damage)
+  world.root.dataset['blow'] = String(weight)
   world.root.classList.add('struck')
   window.setTimeout(() => world.root.classList.remove('struck'), 320)
 }

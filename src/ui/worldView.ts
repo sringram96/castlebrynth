@@ -9,7 +9,7 @@
 import { hideEnemy, hideProp, holdWeapon, placeEnemy, showProp, showProps } from '../render/compositor.js'
 import type { World } from '../render/compositor.js'
 import { enemyArt, handArt, isScenePlate, propArt, roomArt, url } from '../render/assets.js'
-import { REACHES, enemy as enemyById, intentAt, stanceAt } from '../content/enemies.js'
+import { STAGES, armySize, enemy as enemyById, stageForRound, stanceAt } from '../content/enemies.js'
 import { idlePose } from '../content/enemyPresentation.js'
 import { room as roomById } from '../content/rooms.js'
 import { actionFor, platesFor, stateOf } from '../content/interactions.js'
@@ -18,7 +18,8 @@ import { button, el } from './components.js'
 
 export interface WorldHandlers {
   readonly onLook: (detailId: string) => void
-  readonly onIntent: () => void
+  /** The encounter's rule, said out loud. Reads state, changes none. */
+  readonly onRule: () => void
   /** The room's focal object, pressed. The reducer decides what it gives. */
   readonly onRitual: () => void
   /** One of the room's objects, worked. The reducer decides what it does. */
@@ -53,40 +54,33 @@ export function renderWorld(world: World, state: GameState, handlers: WorldHandl
   const standing = here.enemy && !run.cleared.includes(run.roomId) ? here.enemy : undefined
   if (standing) {
     const e = enemyById(standing)
-    // How far away it is, straight off the state. Nothing here remembers where
-    // it was a moment ago and nothing here moves it: a reload paints the reach
-    // the save records, which is the only reason the picture can be trusted to
-    // mean how many attacks are left.
+    const combat = run.combat?.enemyId === standing ? run.combat : undefined
+    // Which drawing of a thing painted three ways. Straight off `combat.round`
+    // and stored nowhere, so a reload on round three paints the near
+    // composition without a frame index in the save. Before the fight opens
+    // there is no round yet, and a thing that is painted approaching is
+    // standing where the fight will start it: at the far end.
     //
-    // Before the fight opens there is no reach in state yet — but a thing that
-    // closes is still standing somewhere, and it is standing where the fight
-    // will start it.
-    const fighting = run.combat?.enemyId === standing ? run.combat.approach : undefined
-    const reach = fighting ?? (e.approach ? REACHES[0] : undefined)
-    const stance = stanceAt(standing, reach)
-    // And how hurt it is, for a horror that has been painted deteriorating.
-    // Straight off the same state the enemy bar reads, recomputed here on every
-    // paint and stored nowhere — which is the whole reason a reload at 150 of
-    // 300 shows the middle plate without a frame index in the save.
+    // It is staging and nothing else. Being close costs the player nothing.
+    const stage = stageForRound(standing, combat?.round ?? 1) ?? (e.staging ? STAGES[0] : undefined)
+    const stance = stanceAt(standing, stage)
+    // And how much of its army is left, for a horror painted deteriorating.
+    // Recomputed here on every paint and stored nowhere — which is the whole
+    // reason a reload at four of eight shows the middle plate.
     //
     // The *first* plate of the band, always. The second is a beat of an idle
     // loop, the loop belongs to `app/app.ts`, and a settled picture is the one
     // every band is authored to rest on.
-    //
-    // Before the fight opens there is no health in state yet — and a thing
-    // standing at its own door is standing there whole, which is what the
-    // enemy's own `hp` says.
-    const combat = run.combat?.enemyId === standing ? run.combat : undefined
-    const pose =
-      idlePose(standing, combat?.enemyHp ?? e.hp, combat?.enemyMaxHp ?? e.hp) ?? reach
+    const start = combat?.enemyStartCount ?? armySize(standing)
+    const alive = combat?.enemyBones.length ?? start
+    const pose = idlePose(standing, alive, start) ?? stage
     const art = enemyArt(e.art, pose)
     placeEnemy(world, url(art), {
       width: stance.width,
       foot: stance.foot,
       ...(stance.at !== undefined ? { at: stance.at } : {}),
-      ...(reach ? { reach } : {}),
+      ...(stage ? { reach: stage } : {}),
       ...(isScenePlate(art) ? { scene: true } : {}),
-      ...(run.combat?.reached ? { contact: true } : {}),
     })
   } else {
     hideEnemy(world)
@@ -127,7 +121,7 @@ export function renderWorld(world: World, state: GameState, handlers: WorldHandl
   // the resting one is what a settled screen always lands on.
   holdWeapon(
     world,
-    standing && enemyById(standing).approach
+    standing && enemyById(standing).staging
       ? { rest: url(handArt('rest')), thrust: url(handArt('thrust')) }
       : undefined,
   )
@@ -219,33 +213,31 @@ function renderHud(world: World, state: GameState, handlers: WorldHandlers): voi
     const bar = el('div', 'enemy-bar')
     bar.id = 'enemy-bar'
 
+    // Its name and how many bones it has left. Not a meter: a count, because a
+    // count is what the fight is made of and a bar would be a health bar
+    // wearing a different label.
     const name = el('div', 'enemy-name')
     name.append(el('span', 'enemy-title', e.name))
-    const hp = el('span', 'enemy-hp', `${combat.enemyHp} / ${combat.enemyMaxHp}`)
-    hp.id = 'enemy-hp'
-    name.append(hp)
+    const bones = el('span', 'enemy-bones', `${combat.enemyBones.length} BONES`)
+    bones.id = 'enemy-bones'
+    bones.dataset['bones'] = String(combat.enemyBones.length)
+    bones.dataset['start'] = String(combat.enemyStartCount)
+    bones.setAttribute('aria-label', `${e.name}, ${combat.enemyBones.length} bones left`)
+    name.append(bones)
     bar.append(name)
 
-    const meter = el('div', 'meter')
-    const fill = el('i', 'meter-fill')
-    fill.style.width = `${(combat.enemyHp / combat.enemyMaxHp) * 100}%`
-    meter.append(fill)
-    bar.append(meter)
-
-    // The intent, before the first casting, and tappable so it explains itself.
-    // A dead thing declares nothing: what it was going to do next is no longer
-    // true, and leaving it up would be the bar promising a turn that will not
-    // happen over the top of the thing failing to take it.
-    if (!combat.defeated) {
-      const intent = intentAt(combat.enemyId, combat.turn)
+    // Its rule, in readable text, before anything can be committed. A boss
+    // rule the player only learns by losing a bone to it is not a rule.
+    // A finished thing declares nothing, so it goes with the fight.
+    if (e.rule && !combat.defeated) {
       const b = button({
-        act: 'intent',
-        label: intent.damage > 0 ? `${intent.verb} ${intent.damage}` : intent.verb,
-        describe: `Next: ${intent.explain}`,
-        onPress: handlers.onIntent,
-        className: `intent${intent.telegraph ? ' intent-telegraph' : ''}`,
+        act: 'rule',
+        label: e.tieRule === 'warden-holds' ? 'TIES HOLD.' : 'ITS RULE',
+        describe: e.rule,
+        onPress: handlers.onRule,
+        className: `enemy-rule${e.tieRule === 'warden-holds' ? ' enemy-rule-hard' : ''}`,
       })
-      b.id = 'intent'
+      b.id = 'enemy-rule'
       bar.append(b)
     }
     world.hud.append(bar)

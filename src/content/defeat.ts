@@ -128,9 +128,51 @@ const WARDEN: Defeat = {
   ],
 }
 
-/** Every horror whose death is played out. Keyed by enemy id. */
+/**
+ * The Marrow, coming apart.
+ *
+ * Staged rather than painted, exactly as the Gnawing's is, and for the same
+ * reason: the encounter ships one plate and no death family, so the collapse
+ * is made out of that plate by shrinking it, dropping it and taking the light
+ * out of it. A thing whose whole body is other people's bones should not
+ * simply vanish when the last of them breaks, and until there are drawings of
+ * it giving way this is the honest substitute — the fight visibly ends.
+ *
+ * Five frames rather than four, and the drop is larger than the Gnawing's: it
+ * is standing upright in the room rather than crawling along the floor of it,
+ * so it has further to go. The plates it wants are recorded under
+ * `## HUMAN ART REQUIRED` in `POLISH_PROGRESS.md`.
+ */
+const MARROW: Defeat = {
+  still: 130,
+  frames: [
+    // Struck, and still standing. No impact plate exists for it, so this beat
+    // is the sprite's own brightness — weaker than a painted one, which is
+    // exactly why the painted one is owed.
+    { hold: 110, scale: 1, drop: 0, dim: 1, lit: true },
+    // The first thing to go. Barely a movement, and the first time in the
+    // fight it has gone backwards.
+    { hold: 120, scale: 0.98, drop: 0.03, dim: 0.8 },
+    // It loses its height. The step is much larger than the one before it,
+    // which is what stops the sequence reading as an even fade.
+    { hold: 150, scale: 0.88, drop: 0.12, dim: 0.54 },
+    { hold: 150, scale: 0.72, drop: 0.22, dim: 0.34 },
+    // A heap, and dark. Held, and the last thing the fight has to say.
+    { hold: 300, scale: 0.6, drop: 0.3, dim: 0.2 },
+  ],
+}
+
+/**
+ * Every horror whose death is played out. Keyed by enemy id.
+ *
+ * All three of the slice's enemies are here. The sparse fallback in `defeatOf`
+ * remains as a defensive path — a save from a build that had an entry this one
+ * does not must still resolve — but no shipped fight may reach it, and
+ * `test/unit/defeat.test.ts` is what says so.
+ */
 export const DEFEATS: Readonly<Record<string, Defeat>> = {
   gnawing: GNAWING,
+  marrow: MARROW,
   warden: WARDEN,
 }
 

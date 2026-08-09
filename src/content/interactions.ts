@@ -269,7 +269,7 @@ export function beatsFor(
     at('vault-lever', 'lever', 'down', 220)
   } else if (id === 'vault-lever') {
     // It moved and came back. The pull happened — the reducer has already
-    // taken the health for it — and the lever is up again because nothing was
+    // taken the bone for it — and the lever is up again because nothing was
     // holding the plate. Two frames, and the second one is where it started:
     // the snap back is the feedback, and it has to be quicker than the pull
     // that earned it or it reads as a second deliberate press.

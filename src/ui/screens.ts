@@ -1,9 +1,10 @@
 /**
- * The four full screens: title, reward, death, and getting out.
+ * The four full screens: title, reward, death, and getting out — and the
+ * overlays behind MENU, the Pouch and a close look at one thing.
  *
- * Each one has exactly one required forward route and that route is a large,
- * always-present button. Nothing here depends on prose advancing, on a tab
- * being found, or on an animation finishing.
+ * Each screen has exactly one required forward route and that route is a
+ * large, always-present button. Nothing here depends on prose advancing, on a
+ * tab being found, or on an animation finishing.
  */
 
 import {
@@ -13,19 +14,24 @@ import {
   TITLE_LINE,
   TITLE_STALE,
   VERBS,
+  WAR_OF_BONES,
 } from '../content/text.js'
-import { isDieId, die as dieById } from '../content/dice.js'
-import { relic as relicById } from '../content/relics.js'
-import { HANDS, LADDER } from '../combat/scoring.js'
+import { BONE_CEILING, specialBone, totalBones } from '../content/bones.js'
+import type { BoneProfileId, SpecialBoneInstance } from '../content/bones.js'
+import { REWARDS, reward as rewardById } from '../content/rewards.js'
+import type { RewardId } from '../content/rewards.js'
+import { enemy as enemyById } from '../content/enemies.js'
+import { carriedNames } from '../game/reducer.js'
 import { roomArt, url } from '../render/assets.js'
 import type { GameState } from '../game/state.js'
-import { button, dieCard, el, relicCard } from './components.js'
+import { boneCard, boneFace, button, commonCard, el, pouchRow, rewardCard } from './components.js'
 
 export interface ScreenHandlers {
   readonly onStart: () => void
   readonly onContinue: () => void
   readonly onTitle: () => void
-  readonly onTake: (id: string) => void
+  readonly onTake: (id: RewardId) => void
+  readonly onSkip: () => void
 }
 
 export function renderScreen(
@@ -113,14 +119,14 @@ function title(state: GameState, on: ScreenHandlers, discarded?: string): HTMLEl
   return box
 }
 
-function offerCard(id: string, on: ScreenHandlers): HTMLElement {
+function offerCard(id: RewardId, on: ScreenHandlers): HTMLElement {
   const wrap = el('div', 'offer')
   wrap.dataset['offerId'] = id
-  wrap.append(isDieId(id) ? dieCard(dieById(id)) : relicCard(relicById(id)))
+  wrap.append(rewardCard(rewardById(id)))
   const b = button({
     act: 'take',
     label: VERBS.take,
-    describe: `Take the ${isDieId(id) ? dieById(id).name : relicById(id).name}`,
+    describe: `Take the ${rewardById(id).name}`,
     onPress: () => on.onTake(id),
     className: 'act act-take',
   })
@@ -129,15 +135,45 @@ function offerCard(id: string, on: ScreenHandlers): HTMLElement {
   return wrap
 }
 
+/**
+ * The reward screen.
+ *
+ * SKIP is a real button and it is not an afterthought: taking a named bone is
+ * a **physical change to the army** — at the ceiling it turns one of your
+ * common bones into something else — and a screen with no way out would be the
+ * game making that change for you.
+ */
 function reward(state: GameState, on: ScreenHandlers): HTMLElement {
   const box = el('section', 'screen screen-reward')
   const panel = el('div', 'screen-panel screen-scroll')
   panel.append(el('h2', 'screen-head', 'IT LEFT SOMETHING'))
   panel.append(el('p', 'screen-line', REWARD_PROMPT))
+
+  const run = state.run
+  if (run && totalBones(run) >= BONE_CEILING && run.commonBones > 0) {
+    panel.append(
+      el(
+        'p',
+        'screen-note',
+        `The pile is full at ${BONE_CEILING}. A bone taken now replaces a common one.`,
+      ),
+    )
+  }
+
   const list = el('div', 'offers')
   list.id = 'offers'
-  for (const id of state.run?.offer ?? []) list.append(offerCard(id, on))
+  for (const id of run?.offer ?? []) list.append(offerCard(id, on))
   panel.append(list)
+
+  panel.append(
+    button({
+      act: 'skip',
+      label: VERBS.skip,
+      describe: 'Leave it where it fell',
+      onPress: on.onSkip,
+      className: 'act act-big',
+    }),
+  )
   box.append(panel)
   return box
 }
@@ -149,20 +185,19 @@ function dead(state: GameState, on: ScreenHandlers): HTMLElement {
   panel.append(el('p', 'screen-line', DEATH_LINE))
   if (state.run?.cause) panel.append(el('p', 'screen-cause', state.run.cause))
 
+  // The run, in three facts. Not a graveyard and not a ledger — what is left,
+  // what was still being carried, and how far down it got.
   const run = state.run
   if (run) {
-    const carried = [...run.dice.filter((d) => d !== 'plain'), ...run.relics]
-    panel.append(
-      el(
-        'p',
-        'screen-note',
-        carried.length > 0
-          ? `Carried: ${carried
-              .map((id) => (isDieId(id) ? dieById(id).name : relicById(id).name))
-              .join(' · ')}`
-          : 'Carried nothing but the six bones.',
-      ),
+    const summary = el('div', 'run-summary')
+    summary.id = 'run-summary'
+    summary.append(el('p', 'screen-note', `${totalBones(run)} bones left`))
+    const carried = carriedNames(run)
+    if (carried.length > 0) summary.append(el('p', 'screen-note', `Carried: ${carried.join(' · ')}`))
+    summary.append(
+      el('p', 'screen-note', `${run.path.length} ${run.path.length === 1 ? 'room' : 'rooms'} down`),
     )
+    panel.append(summary)
   }
 
   // One press. It builds the new run synchronously and enters the first room;
@@ -198,7 +233,9 @@ function complete(state: GameState, on: ScreenHandlers): HTMLElement {
   panel.append(el('p', 'screen-line', COMPLETE_LINE))
   const run = state.run
   if (run) {
-    panel.append(el('p', 'screen-note', `${run.hp} health left · ${run.path.length} rooms`))
+    panel.append(
+      el('p', 'screen-note', `${totalBones(run)} bones left · ${run.path.length} rooms`),
+    )
   }
   const acts = el('div', 'screen-acts')
   acts.append(
@@ -219,24 +256,42 @@ function complete(state: GameState, on: ScreenHandlers): HTMLElement {
 /**
  * What the overlay is showing.
  *
- * `menu` is the whole loadout and the scoring reference — the global thing the
- * bottom-left bed opens. The other two are an **inspection**: one die, or one
- * relic, because that is the only thing the word inspect is allowed to mean.
+ * `menu` is the army, the satchel and the rules — the global thing the
+ * bottom-left bed opens. `pouch` is the named bones, and is the one overlay
+ * that can *change* something: during `thrown` each row carries a field
+ * control, and those presses edit the draft rather than the save. The other
+ * two are an **inspection**: one bone, or one utility, because that is the
+ * only thing the word inspect is allowed to mean.
  */
 export type Overlay =
   | { readonly kind: 'menu' }
-  | { readonly kind: 'die'; readonly id: string }
-  | { readonly kind: 'relic'; readonly id: string }
+  | { readonly kind: 'pouch' }
+  | { readonly kind: 'bone'; readonly profile: BoneProfileId; readonly specialId?: string }
+  | { readonly kind: 'reward'; readonly id: RewardId }
+
+/** What the pouch needs in order to be more than a list. */
+export interface PouchHandlers {
+  /** Whether a bone may be put in the line right now. */
+  readonly fieldable: (instance: SpecialBoneInstance) => boolean
+  readonly fielded: (instance: SpecialBoneInstance) => boolean
+  readonly onToggle: (instance: SpecialBoneInstance) => void
+}
 
 export function renderOverlay(
   host: HTMLElement,
   view: Overlay,
   state: GameState,
   onClose: () => void,
+  pouch?: PouchHandlers,
 ): void {
   host.replaceChildren()
   host.dataset['overlay'] = view.kind
-  const panel = view.kind === 'menu' ? menuPanel(state) : focusPanel(view)
+  const panel =
+    view.kind === 'menu'
+      ? menuPanel(state)
+      : view.kind === 'pouch'
+        ? pouchPanel(state, pouch)
+        : focusPanel(view)
   if (!panel) return
   panel.append(
     button({ act: 'close', label: VERBS.close, onPress: onClose, className: 'act act-big act-primary' }),
@@ -250,67 +305,111 @@ export function renderOverlay(
  * It is the same card the reward screen and the menu show, on its own, so a
  * player never has to reconcile two descriptions of one object.
  */
-function focusPanel(view: Overlay & { id: string }): HTMLElement {
+function focusPanel(view: Overlay & { kind: 'bone' | 'reward' }): HTMLElement {
   const panel = el('div', 'screen-panel screen-focus')
-  panel.dataset['focus'] = view.id
-  panel.append(
-    view.kind === 'die' ? dieCard(dieById(view.id)) : relicCard(relicById(view.id)),
-  )
+  if (view.kind === 'reward') {
+    panel.dataset['focus'] = view.id
+    panel.append(rewardCard(rewardById(view.id)))
+    return panel
+  }
+  panel.dataset['focus'] = view.specialId ?? view.profile
+  panel.append(view.specialId ? boneCard(specialBone(view.specialId)) : commonCard(1))
   return panel
 }
 
-/** The loadout overlay, behind MENU. Every die and relic, and the ladder. */
+/**
+ * The pouch: every named bone the run is carrying, and its six faces.
+ *
+ * It does not contain common bones. The pile count covers those, and a list of
+ * twenty-six identical rows would bury the two that matter.
+ */
+function pouchPanel(state: GameState, pouch?: PouchHandlers): HTMLElement | null {
+  const run = state.run
+  if (!run) return null
+  const panel = el('div', 'screen-panel screen-scroll')
+  panel.dataset['pouch'] = String(run.specials.length)
+  panel.append(el('h2', 'screen-head', 'POUCH'))
+
+  if (run.specials.length === 0) {
+    panel.append(
+      el('p', 'screen-line', 'No named bones yet. The pile is common bone, all the way down.'),
+    )
+    return panel
+  }
+
+  const rows = el('div', 'pouch-rows')
+  rows.id = 'pouch-rows'
+  for (const instance of run.specials) {
+    rows.append(
+      pouchRow(instance, {
+        fieldable: pouch?.fieldable(instance) ?? false,
+        fielded: pouch?.fielded(instance) ?? false,
+        onPress: () => pouch?.onToggle(instance),
+      }),
+    )
+  }
+  panel.append(rows)
+  return panel
+}
+
+/** MENU: the army, the satchel and the four lines the game runs on. */
 function menuPanel(state: GameState): HTMLElement | null {
   const run = state.run
   if (!run) return null
   const panel = el('div', 'screen-panel screen-scroll')
   panel.append(el('h2', 'screen-head', 'MENU'))
 
-  // Grouped, because six cards for five identical bones pushes everything
-  // worth reading — the special die, the ladder — below the fold.
+  panel.append(el('h2', 'screen-head', 'ARMY'))
+  const army = el('p', 'army-total', `${totalBones(run)} BONES`)
+  army.id = 'army-total'
+  army.dataset['bones'] = String(totalBones(run))
+  panel.append(army)
+
+  const bones = el('div', 'offers')
+  if (run.commonBones > 0) bones.append(commonCard(run.commonBones))
+  // Grouped in the copy, because two Cinderbones are two rows of identical
+  // text — and *not* grouped in identity, which is what the pouch is for.
   const counted = new Map<string, number>()
-  for (const id of run.dice) counted.set(id, (counted.get(id) ?? 0) + 1)
+  for (const s of run.specials) counted.set(s.specialId, (counted.get(s.specialId) ?? 0) + 1)
+  for (const [id, n] of counted) bones.append(boneCard(specialBone(id), n))
+  panel.append(bones)
 
-  panel.append(el('h2', 'screen-head', 'DICE'))
-  const dice = el('div', 'offers')
-  for (const [id, n] of counted) {
-    const card = dieCard(dieById(id))
-    if (n > 1) card.querySelector('.card-name')?.append(el('span', 'card-count', `×${n}`))
-    dice.append(card)
-  }
-  panel.append(dice)
-
-  panel.append(el('h2', 'screen-head', 'RELICS'))
-  if (run.relics.length > 0) {
-    const relics = el('div', 'offers')
-    for (const id of run.relics) relics.append(relicCard(relicById(id)))
-    panel.append(relics)
+  panel.append(el('h2', 'screen-head', 'SATCHEL'))
+  if (run.vials > 0 || run.charms > 0) {
+    const satchel = el('div', 'offers')
+    if (run.vials > 0) satchel.append(rewardCard(REWARDS.vial, run.vials))
+    if (run.charms > 0) satchel.append(rewardCard(REWARDS.charm, run.charms))
+    panel.append(satchel)
   } else {
-    panel.append(el('p', 'screen-line', 'None yet. Relics sit in the three bays on the right of the tray.'))
+    panel.append(
+      el('p', 'screen-line', 'Empty. Vials and Charms sit in the bays on the right of the tray.'),
+    )
   }
 
-  // The ladder, in the order it is worth learning. A player who cannot name
-  // the hand they just scored cannot plan the next one, and the ladder is the
-  // one piece of the game that is not visible on the combat screen.
-  panel.append(el('h2', 'screen-head', 'SCORING'))
-  const ladder = el('table', 'ladder')
-  for (const name of LADDER) {
-    const hand = HANDS[name]
-    const row = el('tr', 'ladder-row')
-    row.dataset['hand'] = name
-    row.append(el('td', 'ladder-name', hand.label))
-    row.append(el('td', 'ladder-need', hand.requirement))
-    row.append(el('td', 'ladder-mult', `×${hand.multiplier}`))
-    ladder.append(row)
+  // The whole game, in four lines. It is short enough to be worth reading and
+  // it is the only piece of the rules that is not visible on the fight screen.
+  panel.append(el('h2', 'screen-head', 'WAR OF BONES'))
+  const rules = el('ul', 'rules')
+  rules.id = 'rules'
+  for (const line of WAR_OF_BONES) rules.append(el('li', 'rule-line', line))
+  panel.append(rules)
+
+  // A boss rule belongs to its fight, not to the global card. It is printed
+  // here only while standing in front of the thing it applies to.
+  const combat = run.combat
+  const rule = combat ? enemyById(combat.enemyId).rule : undefined
+  if (rule) {
+    const note = el('p', 'rule-encounter', rule)
+    note.id = 'rule-encounter'
+    panel.append(note)
   }
-  panel.append(ladder)
-  panel.append(el('p', 'card-rule', 'DAMAGE = selected dice total × hand multiplier + relic bonuses'))
-  panel.append(
-    el(
-      'p',
-      'card-good',
-      'Red and green face effects are separate from damage. They resolve when that face is included in the hand you SCORE.',
-    ),
-  )
+
+  // The faces, so a seven and an eight are legible somewhere that is not a
+  // fight in progress.
+  const faces = el('div', 'face-key')
+  for (const value of [1, 2, 3, 4, 5, 6, 7, 8]) {
+    faces.append(boneFace(value > 6 ? 'heavy' : 'common', value))
+  }
+  panel.append(faces)
   return panel
 }

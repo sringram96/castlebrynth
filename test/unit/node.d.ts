@@ -11,3 +11,15 @@ declare module 'node:fs' {
   export function readFileSync(path: string | URL): Uint8Array
   export function statSync(path: string | URL): { size: number }
 }
+
+/**
+ * The one global the balance report touches.
+ *
+ * `npm run balance` has to be able to fail a build when an invariant breaks,
+ * and an exit code is how a script says so. Two properties, declared here for
+ * the same reason as the two functions above.
+ */
+declare const process: {
+  exitCode?: number
+  argv: string[]
+}

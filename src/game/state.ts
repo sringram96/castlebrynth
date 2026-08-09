@@ -9,83 +9,149 @@
  * session-ending bug this reset exists to fix — the death screen you could get
  * stuck on, the choosing screen with no way out, the tab that ate its own
  * press — was a mode the shell had to infer from four other fields.
+ *
+ * ## There is no health here
+ *
+ * A run's life is a physical army of bones. `hp`, `maxHp`, `enemyHp` and
+ * `enemyMaxHp` are gone, and are not to come back behind another name: a bone
+ * counter that behaves like a health bar is the old game wearing the new one's
+ * coat. See `docs/COMBAT.md`.
  */
 
-import type { Value } from '../content/dice.js'
-import type { Reach } from '../content/enemies.js'
-import type { HandName } from '../combat/scoring.js'
+import type { BoneProfileId, SpecialBoneInstance } from '../content/bones.js'
+import type { RewardId } from '../content/rewards.js'
 
 /** Bumped whenever the shape below changes. Old saves are not migrated. */
-export const SAVE_VERSION = 6
+export const SAVE_VERSION = 7
 
 export type Mode = 'title' | 'explore' | 'combat' | 'reward' | 'dead' | 'complete'
 
-/** The three model phases of a turn. See docs/COMBAT.md. */
-export type Phase = 'intent' | 'rolled' | 'rerolled'
+/**
+ * The four model phases of a round. See `docs/COMBAT.md`.
+ *
+ * The enemy has already thrown when a round begins, which is why the opening
+ * phase is called `thrown` rather than something that implies the player is
+ * waiting to be dealt to. The threat is public before any decision is made.
+ */
+export type CombatPhase = 'thrown' | 'fielded' | 'rolled' | 'smashed'
+
+/** How an enemy answers a lane whose two bones show the same number. */
+export type TieRule = 'mutual' | 'warden-holds'
 
 /**
- * One die on the table.
+ * One bone in an enemy's army.
  *
- * `slot` is its identity for the length of a fight — two Plain Bones are two
- * different dice and holding one must never hold the other. Nothing in the UI
- * is allowed to use a screen position as an identity.
+ * `priority` is the enemy's *authored* fielding order, and it is content
+ * rather than an opinion formed at runtime: "best first" must be a number
+ * somebody wrote down, not a heuristic that can quietly change what a fight
+ * feels like. It is also the stable tie-break when two enemy bones roll the
+ * same value, so no hidden rearrangement happens after the throw.
  */
-export interface RolledDie {
-  readonly slot: number
-  readonly dieId: string
-  /** Which face came up, so the value and its keyword travel together. */
+export interface EnemyBoneInstance {
+  readonly boneId: string
+  readonly profile: BoneProfileId
+  readonly priority: number
+}
+
+/**
+ * One bone that has been thrown and is standing in a line.
+ *
+ * `boneKey` is its identity for the length of the round — a Charm targets one,
+ * a smash breaks one — and it is never a screen position. For a common bone it
+ * is ephemeral (`common:r3:0`); for a special it carries the run-long
+ * `specialInstanceId` alongside, because that is the thing that dies.
+ *
+ * `faceIndex` travels with `value` so a bone that rolled the second of two
+ * sevens is distinguishable from one that rolled the first, even though the
+ * two resolve identically.
+ */
+export interface RolledBone {
+  readonly boneKey: string
+  readonly profile: BoneProfileId
   readonly faceIndex: number
-  readonly value: Value
+  readonly value: number
+  /** Set when this is a player special. Its death removes this instance. */
+  readonly specialInstanceId?: string
+  /** Set when this is an enemy bone. Its death removes this id from the army. */
+  readonly enemyBoneId?: string
+}
+
+/**
+ * What the player committed to risk this round.
+ *
+ * Recorded as *width plus named specials* rather than as a list of bones,
+ * because common bones are anonymous: there is no such thing as "that one".
+ * The remainder — `width - specialIds.length` — is drawn from the pile.
+ */
+export interface PlayerField {
+  readonly width: number
+  readonly specialIds: readonly string[]
+}
+
+/** What one high-to-low pairing did. */
+export type LaneOutcome =
+  | 'player'
+  | 'enemy'
+  | 'both'
+  | 'safe-player'
+  | 'safe-enemy'
+  | 'warden-hold'
+
+export interface LaneResult {
+  readonly lane: number
+  readonly player?: RolledBone
+  readonly enemy?: RolledBone
+  readonly result: LaneOutcome
+}
+
+/**
+ * What a smash cost, in full.
+ *
+ * The record is authoritative and is written by the reducer before a frame of
+ * it is shown. The presentation reads lanes off this in order; it never
+ * recomputes a casualty, and it never decides one.
+ *
+ * `stoppedAtLane` is the run ending mid-smash. Lanes after it did not resolve
+ * and are not retroactively anything — they simply never happened.
+ */
+export interface SmashRecord {
+  readonly lanes: readonly LaneResult[]
+  readonly playerCommonLost: number
+  readonly playerSpecialsLost: readonly string[]
+  readonly enemyBonesLost: readonly string[]
+  /** Lanes an enemy tie rule kept. The Warden's whole encounter, as a count. */
+  readonly heldTies: number
+  readonly stoppedAtLane?: number
 }
 
 export interface CombatState {
   readonly enemyId: string
-  readonly enemyHp: number
-  readonly enemyMaxHp: number
-  /** 0-based. The intent is `intentAt(enemyId, turn)`. */
-  readonly turn: number
-  readonly phase: Phase
-  /** Exactly `run.dice.length` entries, always. */
-  readonly roll: readonly RolledDie[]
-  /**
-   * The dice you have chosen.
-   *
-   * One mark, not two. A chosen die is kept across the reroll *and* is the
-   * hand you score — because those are the same thing a player means when
-   * they tap a die, and a tap that means one of two things depending on a
-   * phase they cannot see is a tap they will get wrong.
-   */
-  readonly selected: readonly number[]
-  /** Hand families already scored, read only by first-of-fight relics. */
-  readonly spentHands: readonly HandName[]
-  /**
-   * How far away the thing is standing, when it is a thing that closes.
-   *
-   * This is gameplay, not staging: it decides how many attacks are left before
-   * contact, so it lives here and the reducer is the only thing that moves it.
-   * Absent for an enemy with no approach ladder.
-   *
-   * Nothing in `render/` may own or advance it. A reload paints the reach the
-   * save records, which is why the composition on screen can never disagree
-   * with the number of turns the player has left.
-   */
-  readonly approach?: Reach
-  /** Set once, when it arrived. Terminal: the run ended on this. */
-  readonly reached?: boolean
+  /** 1-based. Round 1 is the fight opening, and its enemy line is already up. */
+  readonly round: number
+  readonly phase: CombatPhase
+
+  /** Its living army. Casualties are removed here and never return. */
+  readonly enemyBones: readonly EnemyBoneInstance[]
+  /** How many it started with, so a band can be computed without content. */
+  readonly enemyStartCount: number
+  /** Face-up and sorted, before the player commits anything. */
+  readonly enemyLine: readonly RolledBone[]
+
+  /** Set by FIELD. Absent until then, which is what `thrown` means. */
+  readonly field?: PlayerField
+  /** Set by THROW. Absent until then, which is what `fielded` means. */
+  readonly playerLine?: readonly RolledBone[]
+
+  /** One Charm per fight, spent or not. Carried across every round. */
+  readonly charmUsed: boolean
+  readonly lastSmash?: SmashRecord
   /**
    * It is dead, and the fight is being held open on the picture of that.
-   *
-   * Terminal for the fight in the other direction: the enemy has no health
-   * left, nothing further can be scored, and the only transition out is
-   * `DEFEAT_DONE`, which is the win. It exists because the alternative —
-   * clearing the room on the same tick the last point of health left — is a
-   * fight that ends before the player has seen it end.
    *
    * A flag, not a clock. There is no frame index and no start time here,
    * because a frame is not a fact about the run: the sequence in `app/app.ts`
    * owns which picture is up, `content/defeat.ts` owns how long each one is,
-   * and a reload lands on this flag and plays out from the settled frame. Any
-   * of those numbers in state would be rendering deciding something.
+   * and a reload lands on this flag and plays out from the settled frame.
    */
   readonly defeated?: boolean
   /** What just happened, for the word band and the beats. */
@@ -99,19 +165,17 @@ export type RitualRoll = 1 | 2 | 3 | 4 | 5 | 6
  * A ritual the run has already resolved.
  *
  * The authoritative record of one press: what it rolled, what that gave back,
- * and what was missing at the moment it was rolled. It exists so the answer
- * cannot be recomputed — a reload replays no draw, a second press finds the
- * room already answered, and the sequence on screen is reading this rather
+ * and how much room there was at the moment it was rolled. It exists so the
+ * answer cannot be recomputed — a reload replays no draw, a second press finds
+ * the room already answered, and the sequence on screen is reading this rather
  * than deciding anything.
- *
- * `missingBefore` is not needed to apply the heal; it is kept because it is
- * the only thing that makes the number legible after the fact, and because a
- * future ritual that recovers something other than health will want it.
  */
 export interface RitualState {
   readonly roomId: string
   readonly roll: RitualRoll
-  readonly healed: number
+  /** Common bones actually put back. Zero is a real answer, at the ceiling. */
+  readonly restored: number
+  /** How many bones short of the ceiling the pile was, before the press. */
   readonly missingBefore: number
 }
 
@@ -122,10 +186,6 @@ export interface RitualState {
  * These rooms are the other shape: several objects, each with its own settled
  * position, and an order between them that is the puzzle. So this records
  * **where everything is standing**, and nothing else.
- *
- * A discriminated union rather than a bag of optional fields, because the two
- * rooms share no object: a `brazier` on a vault would be a state the game
- * cannot reach, and `roomId` is what stops it being expressible.
  *
  * What is deliberately absent is any clock. No frame index, no elapsed time, no
  * "is animating" — the settled position is the whole truth, every picture is
@@ -149,7 +209,7 @@ export type RoomInteractionState =
        * agree. Absent when the chest was empty — `claimed` is what says the
        * press happened, and an empty chest is a real answer.
        */
-      readonly rewardId?: string
+      readonly rewardId?: RewardId
     }
   | {
       readonly roomId: 'chain-vault'
@@ -163,11 +223,19 @@ export type RoomInteractionState =
 export interface RunState {
   readonly seed: number
   readonly roomId: string
-  readonly hp: number
-  readonly maxHp: number
-  /** Six ids. Ordered; the order is the crown's order. */
-  readonly dice: readonly string[]
-  readonly relics: readonly string[]
+
+  // ── life ──────────────────────────────────────────────────────────────
+  /** Anonymous bones. There is no such thing as *that* common bone. */
+  readonly commonBones: number
+  /** Named bones, each a distinct object, because each one's death matters. */
+  readonly specials: readonly SpecialBoneInstance[]
+  /** So two Cinderbones can never share an instance id. Monotonic. */
+  readonly nextSpecialSerial: number
+
+  // ── satchel ───────────────────────────────────────────────────────────
+  readonly charms: number
+  readonly vials: number
+
   /** Which details have been looked at, per room instance. */
   readonly looked: readonly string[]
   /** Rooms whose enemy is already dead. */
@@ -188,8 +256,8 @@ export interface RunState {
    * position, and it is the one place it is stated.
    */
   readonly rooms?: Readonly<Record<string, RoomInteractionState>>
-  /** The three things on offer, when `mode === 'reward'`. */
-  readonly offer?: readonly string[]
+  /** The things on offer, when `mode === 'reward'`. */
+  readonly offer?: readonly RewardId[]
   /** Why the run ended. */
   readonly cause?: string
 }
@@ -198,8 +266,8 @@ export interface MetaState {
   readonly runs: number
   readonly wins: number
   /** Everything ever carried, so the title screen has something to say. */
-  readonly seenDice: readonly string[]
-  readonly seenRelics: readonly string[]
+  readonly seenBones: readonly string[]
+  readonly seenRewards: readonly string[]
 }
 
 export interface GameState {
@@ -218,6 +286,6 @@ export interface GameState {
   readonly resume?: Mode
 }
 
-export const EMPTY_META: MetaState = { runs: 0, wins: 0, seenDice: [], seenRelics: [] }
+export const EMPTY_META: MetaState = { runs: 0, wins: 0, seenBones: [], seenRewards: [] }
 
 export const TITLE: GameState = { version: SAVE_VERSION, mode: 'title', meta: EMPTY_META }

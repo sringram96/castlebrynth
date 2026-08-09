@@ -4,14 +4,17 @@
  * The frame is one authored picture and is `pointer-events: none`. Every
  * control on top of it is a real button placed in the tray's own fractions.
  *
- * Four regions never change meaning, in any mode:
- *   the orb        your health
- *   the crown      the six dice, and nothing else
- *   the right bays the relics you are carrying
- *   the three beds MENU · primary · secondary
+ * The geometry is unchanged and the meaning of every region is not:
  *
- * The well is the stage: the score formula in a fight, the room's line out of
- * one. A secondary action that does not exist is **absent**, never disabled.
+ *   the orb        the pile — how many bones are alive
+ *   the crown      your line, six lanes, and nothing else
+ *   the strip      the enemy's line, lane-aligned with the crown above it
+ *   the well       the field count, and the one instruction for the phase
+ *   the right bays the satchel: Vial, Charm, Pouch
+ *   the three beds MENU · the phase's one verb · a second route out of a room
+ *
+ * A secondary action that does not exist is **absent**, never disabled. And
+ * the four combat verbs never appear together: a phase has exactly one.
  */
 
 import {
@@ -24,30 +27,55 @@ import {
   RELIC_PITCH,
   WELL,
 } from '../content/tray.js'
-import { VERBS, WELL_IDLE } from '../content/text.js'
-import { die as dieById } from '../content/dice.js'
-import { faceOf } from '../combat/dice.js'
-import { preview } from '../combat/scoring.js'
-import { selectionOf } from '../combat/resolve.js'
-import { relic as relicById } from '../content/relics.js'
+import { PHASE_LINE, VERBS, WELL_IDLE } from '../content/text.js'
+import { BONE_CEILING, roomToRecover, specialBone, totalBones } from '../content/bones.js'
+import type { BoneProfileId } from '../content/bones.js'
+import { brokenPlayerKeys } from '../combat/clash.js'
+import { LINE_WIDTH } from '../combat/line.js'
 import { enemy as enemyById } from '../content/enemies.js'
 import { room as roomById } from '../content/rooms.js'
 import { exitsOpen, stateOf } from '../content/interactions.js'
-import type { GameState } from '../game/state.js'
-import { button, dieButton, el, faceGlyph, place, relicButton, seat, seatBed } from './components.js'
+import { fieldLegal, maxWidth } from '../game/reducer.js'
+import type { CombatState, GameState, RunState } from '../game/state.js'
+import { boneProfile } from '../content/bones.js'
+import { boneButton, boneFace, button, el, place, seat, seatBed } from './components.js'
+
+/**
+ * The draft the player is editing before FIELD.
+ *
+ * Presentation-local, and deliberately not in `GameState`: nudging a stepper
+ * is not a move. It reaches the reducer once, whole, as the FIELD action.
+ */
+export interface FieldDraft {
+  readonly width: number
+  readonly specialIds: readonly string[]
+}
 
 export interface TrayHandlers {
-  readonly onDie: (slot: number) => void
-  /** A close look at one die. What a crown tap means when nothing is in play. */
-  readonly onInspectDie: (dieId: string) => void
-  /** A close look at one carried relic. */
-  readonly onInspectRelic: (relicId: string) => void
   readonly onMenu: () => void
   readonly onFight: () => void
-  readonly onRoll: () => void
-  readonly onReroll: () => void
-  readonly onScore: () => void
+  readonly onWidth: (width: number) => void
+  readonly onField: () => void
+  readonly onThrow: () => void
+  readonly onSmash: () => void
+  readonly onRound: () => void
+  readonly onDrink: () => void
+  /** Arm the Charm, or put it away. Two steps, never one. */
+  readonly onArmCharm: () => void
+  /** Spend the armed Charm on one rolled bone. */
+  readonly onCharmBone: (boneKey: string) => void
+  readonly onPouch: () => void
+  /** A close look at one satchel utility. No state change. */
+  readonly onInspectReward: (id: string) => void
+  /** A close look at one bone in the line. No state change. */
+  readonly onInspectBone: (profile: BoneProfileId, specialId?: string) => void
   readonly onGo: (to: string) => void
+}
+
+/** What the tray needs to know that is not in the save. */
+export interface TrayView {
+  readonly draft: FieldDraft
+  readonly charmArmed: boolean
 }
 
 export interface Tray {
@@ -55,8 +83,9 @@ export interface Tray {
   readonly orb: HTMLElement
   readonly orbText: HTMLElement
   readonly crown: HTMLElement
+  readonly enemyLine: HTMLElement
   readonly well: HTMLElement
-  readonly relics: HTMLElement
+  readonly satchel: HTMLElement
   readonly beds: HTMLElement
 }
 
@@ -75,204 +104,391 @@ export function mountTray(root: HTMLElement, frameSrc: string): Tray {
   const orbFill = el('i', 'orb-fill')
   orb.append(orbFill)
 
-  const orbText = el('div', 'orb-text')
-  orbText.id = 'hp'
+  const orbText = el('div', 'pile-count')
+  orbText.id = 'pile'
   place(orbText, ORB_TEXT)
 
-  const crown = el('div', 'crown')
+  const crown = el('div', 'crown player-line')
   crown.id = 'crown'
+
+  // The enemy's line sits directly above the plate, in the plate's own
+  // coordinate space, so lane N of the enemy is over lane N of the crown at
+  // every viewport. It is above the tray rather than inside it because the
+  // painted frame has no bay for it — see `## HUMAN ART REQUIRED`.
+  const enemyLine = el('div', 'bone-line enemy-line')
+  enemyLine.id = 'enemy-line'
 
   const well = el('div', 'well')
   well.id = 'well'
   place(well, WELL)
 
-  const relics = el('div', 'relic-row')
-  relics.id = 'relics'
+  const satchel = el('div', 'satchel')
+  satchel.id = 'satchel'
 
   const beds = el('div', 'beds')
   beds.id = 'beds'
 
-  root.append(orb, orbText, crown, well, relics, beds)
-  return { root, orb, orbText, crown, well, relics, beds }
+  root.append(orb, orbText, enemyLine, crown, well, satchel, beds)
+  return { root, orb, orbText, crown, enemyLine, well, satchel, beds }
 }
 
-export function renderTray(tray: Tray, state: GameState, on: TrayHandlers): void {
+export function renderTray(tray: Tray, state: GameState, view: TrayView, on: TrayHandlers): void {
   const run = state.run
   tray.root.hidden = !(run && (state.mode === 'explore' || state.mode === 'combat'))
   if (!run || tray.root.hidden) return
 
-  renderHealth(tray, run.hp, run.maxHp)
-  renderCrown(tray, state, on)
-  renderRelics(tray, run.relics, on)
-  renderWell(tray, state, on)
-  renderBeds(tray, state, on)
-}
-
-function renderHealth(tray: Tray, hp: number, maxHp: number): void {
-  const fill = tray.orb.querySelector<HTMLElement>('.orb-fill')
-  if (fill) fill.style.height = `${Math.max(0, (hp / maxHp) * 100)}%`
-  tray.orbText.textContent = `${hp}`
-  tray.orbText.dataset['hp'] = String(hp)
-  tray.orbText.dataset['maxHp'] = String(maxHp)
-  tray.orb.dataset['low'] = hp <= maxHp * 0.3 ? 'yes' : 'no'
+  const combat = state.mode === 'combat' ? run.combat : undefined
+  renderPile(tray, run)
+  renderEnemyLine(tray, combat)
+  renderPlayerLine(tray, run, combat, view, on)
+  renderSatchel(tray, run, combat, view, on)
+  renderWell(tray, state, combat, view, on)
+  renderBeds(tray, state, combat, view, on)
 }
 
 /**
- * The crown.
+ * The pile.
  *
- * The count is `run.dice.length` in explore and `combat.roll.length` in a
- * fight, and both of those are the hand. No layout decides how many dice
- * exist; the crown draws what it is given and would draw five if the hand were
- * five.
+ * A count, and a level that reads as a heap rather than as a fluid. Nothing
+ * here divides by a maximum-life field, because there is not one: the fill is
+ * against the ceiling, which is a content constant and the same number the
+ * Font and a Vial measure against.
  */
-function renderCrown(tray: Tray, state: GameState, on: TrayHandlers): void {
-  const run = state.run!
-  const combat = run.combat
+function renderPile(tray: Tray, run: RunState): void {
+  const bones = totalBones(run)
+  const fill = tray.orb.querySelector<HTMLElement>('.orb-fill')
+  if (fill) fill.style.height = `${Math.max(0, Math.min(1, bones / BONE_CEILING)) * 100}%`
+  tray.orbText.textContent = `${bones}`
+  tray.orbText.dataset['bones'] = String(bones)
+  tray.orbText.dataset['common'] = String(run.commonBones)
+  tray.orbText.dataset['specials'] = String(run.specials.length)
+  tray.orbText.setAttribute('aria-label', `${bones} living bones`)
+  // Nine is a line and a half. Below it a smash can end the run outright, and
+  // that is the point at which the number should stop being decoration.
+  tray.orb.dataset['low'] = bones <= 9 ? 'yes' : 'no'
+}
+
+/**
+ * The enemy's line, face-up and public.
+ *
+ * It exists before the player commits anything, which is the first rule of the
+ * fight. Lane-aligned with the crown below it, in DOM order that matches the
+ * visible order, and every value is in the accessible name.
+ */
+function renderEnemyLine(tray: Tray, combat: CombatState | undefined): void {
+  tray.enemyLine.replaceChildren()
+  tray.enemyLine.hidden = !combat
+  if (!combat) return
+
+  const broken = combat.lastSmash ? brokenPlayerKeysOfEnemy(combat) : new Set<string>()
+  tray.enemyLine.dataset['count'] = String(combat.enemyLine.length)
+
+  combat.enemyLine.forEach((bone, lane) => {
+    const centre = DIE_CENTRES[lane] ?? DIE_CENTRES[DIE_CENTRES.length - 1]!
+    const node = el('div', 'bone bone-enemy')
+    node.dataset['lane'] = String(lane)
+    node.dataset['boneKey'] = bone.boneKey
+    node.dataset['value'] = String(bone.value)
+    node.dataset['profile'] = bone.profile
+    if (broken.has(bone.boneKey)) node.dataset['broken'] = 'yes'
+    node.setAttribute('role', 'img')
+    node.setAttribute(
+      'aria-label',
+      `Its bone, rolled ${bone.value}${broken.has(bone.boneKey) ? ', broken' : ''}`,
+    )
+    node.append(boneFace(bone.profile, bone.value))
+    seat(node, centre, DIE_PITCH)
+    tray.enemyLine.append(node)
+  })
+}
+
+/** Which of the enemy's bones the last smash broke. */
+function brokenPlayerKeysOfEnemy(combat: CombatState): ReadonlySet<string> {
+  const lanes = combat.lastSmash?.lanes ?? []
+  return new Set(
+    lanes
+      .filter((l) => l.enemy && (l.result === 'player' || l.result === 'both'))
+      .map((l) => l.enemy!.boneKey),
+  )
+}
+
+/**
+ * The crown: your line.
+ *
+ * Four different things across a round, and each of them is the truth of its
+ * phase — the draft you are building, the bones you committed with their backs
+ * showing, the throw, and the wreckage. Out of a fight it is empty: the pile
+ * is the loadout now, and six sockets pretending to be a hand would be the old
+ * game's furniture left standing.
+ */
+function renderPlayerLine(
+  tray: Tray,
+  run: RunState,
+  combat: CombatState | undefined,
+  view: TrayView,
+  on: TrayHandlers,
+): void {
   tray.crown.replaceChildren()
+  const phase = combat?.phase
+  tray.crown.dataset['phase'] = phase ?? 'none'
 
-  const showing =
-    state.mode === 'combat' && combat && combat.roll.length > 0
-      ? combat.roll.map((d) => ({
-          slot: d.slot,
-          dieId: d.dieId,
-          face: faceOf(d),
-          selected: combat.selected.includes(d.slot),
-        }))
-      : run.dice.map((dieId, slot) => ({
-          slot,
-          dieId,
-          // Out of a roll the crown shows each die's last face, so the
-          // loadout reads as itself rather than as a frozen throw.
-          face: dieById(dieId).faces[5],
-          selected: false,
-        }))
+  if (!combat || combat.defeated) {
+    tray.crown.dataset['count'] = '0'
+    return
+  }
 
-  tray.crown.dataset['count'] = String(showing.length)
-  // Dice are choosable only when there is a throw on the table. Exploring, in
-  // a fight before its roll, and over a thing that is already dying, a tap has
-  // nothing to choose — so it inspects that die instead of dispatching a
-  // SELECT the reducer would discard.
-  const inPlay = state.mode === 'combat' && !combat?.defeated && (combat?.roll.length ?? 0) > 0
+  // Before the throw the crown shows the *shape* of the commitment: which
+  // lanes are named bones and which are anonymous ones. Faces are absent
+  // because no face has been decided — showing one would be the view
+  // inventing a number the reducer has not drawn.
+  if (phase === 'thrown' || phase === 'fielded') {
+    const committed = phase === 'fielded' ? combat.field : undefined
+    const width = committed?.width ?? view.draft.width
+    const specialIds = committed?.specialIds ?? view.draft.specialIds
+    const byId = new Map(run.specials.map((s) => [s.instanceId, s]))
+    const lanes = [
+      ...specialIds.map((id) => ({ id, profile: profileFor(run, id) })),
+      ...Array.from({ length: Math.max(0, width - specialIds.length) }, () => ({
+        id: undefined,
+        profile: 'common' as BoneProfileId,
+      })),
+    ]
+    tray.crown.dataset['count'] = String(lanes.length)
+    lanes.forEach((lane, index) => {
+      const centre = DIE_CENTRES[index] ?? DIE_CENTRES[DIE_CENTRES.length - 1]!
+      const named = lane.id ? byId.get(lane.id)?.specialId : undefined
+      const b = boneButton(
+        {
+          boneKey: lane.id ?? `draft:${index}`,
+          profile: lane.profile,
+          lane: index,
+          ...(named ? { specialId: named } : {}),
+        },
+        {
+          act: 'inspect-bone',
+          describe: named
+            ? `Inspect ${specialBone(named).name}, lane ${index + 1}`
+            : `A common bone, lane ${index + 1}`,
+          onPress: () => on.onInspectBone(lane.profile, named),
+        },
+      )
+      if (phase === 'fielded') b.dataset['committed'] = 'yes'
+      seat(b, centre, DIE_PITCH)
+      tray.crown.append(b)
+    })
+    return
+  }
 
-  showing.forEach((d, index) => {
-    const centre = DIE_CENTRES[index] ?? DIE_CENTRES[DIE_CENTRES.length - 1]!
-    const view = { ...d, inPlay }
-    const b = dieButton(view, () => (inPlay ? on.onDie(d.slot) : on.onInspectDie(d.dieId)))
+  const line = combat.playerLine ?? []
+  const smash = phase === 'smashed' ? combat.lastSmash : undefined
+  const broken = smash ? brokenPlayerKeys(smash.lanes) : new Set<string>()
+  const safe = new Set(
+    (smash?.lanes ?? []).filter((l) => l.result === 'safe-player').map((l) => l.player!.boneKey),
+  )
+  tray.crown.dataset['count'] = String(line.length)
+
+  // In `rolled` with the Charm armed, a bone is a target. Otherwise a press on
+  // one takes a close look at it — the same rule the old crown had, and the
+  // reason a bone is a button in every phase rather than only sometimes.
+  const arming = phase === 'rolled' && view.charmArmed
+  tray.crown.dataset['charmArmed'] = arming ? 'yes' : 'no'
+
+  line.forEach((bone, lane) => {
+    const centre = DIE_CENTRES[lane] ?? DIE_CENTRES[DIE_CENTRES.length - 1]!
+    const named = specialIdOf(run, bone.specialInstanceId)
+    const b = boneButton(
+      {
+        boneKey: bone.boneKey,
+        profile: bone.profile,
+        value: bone.value,
+        lane,
+        ...(named ? { specialId: named } : {}),
+        ...(broken.has(bone.boneKey) ? { broken: true } : {}),
+        ...(safe.has(bone.boneKey) ? { safe: true } : {}),
+      },
+      arming
+        ? {
+            act: 'charm-bone',
+            describe: `Throw this ${bone.value} again`,
+            onPress: () => on.onCharmBone(bone.boneKey),
+          }
+        : {
+            act: 'inspect-bone',
+            onPress: () => on.onInspectBone(bone.profile, named),
+          },
+    )
+    if (arming) b.dataset['target'] = 'yes'
     seat(b, centre, DIE_PITCH)
-    if (!inPlay) b.dataset['idle'] = 'yes'
     tray.crown.append(b)
   })
 }
 
-/**
- * The face a die shows while it is in the air.
- *
- * Cosmetic only, and deterministic by construction: the slot and the step
- * choose which face flickers past, so a die in flight cannot show a value the
- * run did not produce and a replay cannot differ. `step === undefined` puts
- * back the exact face node the reducer chose — the node, not a lookup by
- * value, because the Runner has two 6s and only one of them costs health.
- */
-const settledFace = new WeakMap<HTMLElement, HTMLElement>()
+/** One hop through content, so the tray holds no opinion of its own. */
+function profileFor(run: RunState, instanceId: string): BoneProfileId {
+  const found = run.specials.find((s) => s.instanceId === instanceId)
+  return found ? specialBone(found.specialId).profile : 'common'
+}
 
-export function paintTumble(die: HTMLElement, step: number | undefined): void {
-  const dieId = die.dataset['dieId']
-  const current = die.querySelector<HTMLElement>('.die-face')
-  if (!dieId || !current) return
-
-  if (step === undefined) {
-    const settled = settledFace.get(die)
-    if (settled && settled !== current) current.replaceWith(settled)
-    settledFace.delete(die)
-    return
-  }
-
-  if (!settledFace.has(die)) settledFace.set(die, current)
-  const d = dieById(dieId)
-  const slot = Number(die.dataset['slot']) || 0
-  current.replaceWith(faceGlyph(d.faces[(slot * 2 + step * 3 + 1) % d.faces.length]!, d.material))
+function specialIdOf(run: RunState, instanceId?: string): string | undefined {
+  if (!instanceId) return undefined
+  return run.specials.find((s) => s.instanceId === instanceId)?.specialId
 }
 
 /**
- * The three bays on the right.
+ * The three bays on the right: the satchel.
  *
- * A carried relic is visible here, in acquisition order, without opening
- * anything — which is the whole point of the bays. Pressing one inspects it
- * and moves no state. There are three bays and no scrolling: a fourth relic
- * lives in MENU, and the third bay says how many are behind it.
+ * Vial, Charm, Pouch, in that order and always in that order — a control that
+ * moves bay depending on what is carried is a control the thumb has to look
+ * for. Each shows its count and each is pressable: DRINK and CHARM when they
+ * are legal, an inspection when they are not, and the Pouch always.
  */
-function renderRelics(tray: Tray, ids: readonly string[], on: TrayHandlers): void {
-  tray.relics.replaceChildren()
-  tray.relics.dataset['count'] = String(ids.length)
-  const shown = ids.slice(0, RELIC_CENTRES.length)
-  shown.forEach((id, index) => {
-    const b = relicButton(relicById(id), () => on.onInspectRelic(id))
+function renderSatchel(
+  tray: Tray,
+  run: RunState,
+  combat: CombatState | undefined,
+  view: TrayView,
+  on: TrayHandlers,
+): void {
+  tray.satchel.replaceChildren()
+
+  const canDrink =
+    run.vials > 0 &&
+    roomToRecover(run) > 0 &&
+    (!combat || (!combat.defeated && combat.phase !== 'smashed'))
+  const canCharm =
+    combat !== undefined &&
+    !combat.defeated &&
+    combat.phase === 'rolled' &&
+    !combat.charmUsed &&
+    run.charms > 0
+
+  const bays: readonly {
+    id: string
+    label: string
+    count?: number
+    act: string
+    describe: string
+    on: () => void
+    live: boolean
+  }[] = [
+    {
+      id: 'vial',
+      label: 'VIAL',
+      count: run.vials,
+      act: canDrink ? 'drink' : 'inspect-reward',
+      describe: canDrink
+        ? `Drink a Vial: 5 bones back, up to ${BONE_CEILING}`
+        : `Vials: ${run.vials}. Inspect`,
+      on: canDrink ? on.onDrink : () => on.onInspectReward('vial'),
+      live: canDrink,
+    },
+    {
+      id: 'charm',
+      label: view.charmArmed ? 'PICK' : 'CHARM',
+      count: run.charms,
+      act: canCharm ? 'charm' : 'inspect-reward',
+      describe: canCharm
+        ? view.charmArmed
+          ? 'Choose one rolled bone to reroll'
+          : 'Spend a Charm to throw one rolled bone again'
+        : `Charms: ${run.charms}. Inspect`,
+      on: canCharm ? on.onArmCharm : () => on.onInspectReward('charm'),
+      live: canCharm,
+    },
+    {
+      id: 'pouch',
+      label: 'POUCH',
+      count: run.specials.length,
+      act: 'pouch',
+      describe:
+        combat?.phase === 'thrown'
+          ? 'Open the pouch and choose named bones for the line'
+          : 'Open the pouch: every named bone and its faces',
+      on: on.onPouch,
+      live: true,
+    },
+  ]
+
+  bays.forEach((bay, index) => {
+    const b = button({
+      act: bay.act,
+      label: '',
+      describe: bay.describe,
+      onPress: bay.on,
+      className: 'satchel-slot',
+    })
+    b.dataset['slotId'] = bay.id
+    b.dataset['live'] = bay.live ? 'yes' : 'no'
+    if (bay.id === 'charm' && view.charmArmed) b.dataset['armed'] = 'yes'
+    b.append(el('span', 'satchel-label', bay.label))
+    if (bay.count !== undefined) {
+      const badge = el('b', 'satchel-count', String(bay.count))
+      badge.dataset['count'] = String(bay.count)
+      b.append(badge)
+    }
     seat(b, RELIC_CENTRES[index]!, RELIC_PITCH)
-    const hidden = index === shown.length - 1 ? ids.length - shown.length : 0
-    if (hidden > 0) b.append(el('span', 'relic-more', `+${hidden}`))
-    tray.relics.append(b)
+    tray.satchel.append(b)
   })
 }
 
 /** The stage. One reading at a time, and it is always the important one. */
-function renderWell(tray: Tray, state: GameState, on: TrayHandlers): void {
+function renderWell(
+  tray: Tray,
+  state: GameState,
+  combat: CombatState | undefined,
+  view: TrayView,
+  on: TrayHandlers,
+): void {
   const run = state.run!
   tray.well.replaceChildren()
 
-  if (state.mode === 'combat' && run.combat) {
-    const combat = run.combat
-    // It is dying. The hand that did it has already been read out — chosen,
-    // credited, landed — and what the well carries now is the last beat of the
-    // fight rather than a preview of a press that can no longer happen.
+  if (combat) {
+    // It is finished. What the well carries now is the last beat of the fight
+    // rather than an instruction for a press that can no longer happen.
     if (combat.defeated) {
       tray.well.append(el('p', 'well-line', combat.log.at(-1) ?? WELL_IDLE))
       return
     }
-    if (combat.phase === 'intent') {
-      tray.well.append(el('p', 'well-line', combat.log.at(-1) ?? WELL_IDLE))
-      return
-    }
-    if (combat.selected.length === 0) {
-      tray.well.append(el('p', 'well-line', WELL_IDLE))
-      return
-    }
-    const p = preview(selectionOf(combat), run.relics, combat.spentHands)
-    const box = el('div', 'score')
-    box.id = 'score'
-    box.dataset['damage'] = String(p.damage)
-    box.dataset['hand'] = p.hand.name
 
-    box.append(el('span', 'score-hand', p.hand.label))
-    const sum = el('span', 'score-formula')
-    sum.append(
-      el('b', 'term term-sum', String(p.sum)),
-      el('i', 'op', '×'),
-      el('b', 'term term-mult', String(p.multiplier)),
-    )
-    for (const bonus of p.bonuses) {
-      sum.append(el('i', 'op', '+'), el('b', 'term term-relic', String(bonus.amount)))
-    }
-    sum.append(el('i', 'op', '='), el('b', 'term term-damage', String(p.damage)))
-    box.append(sum)
+    const box = el('div', 'field-read')
+    box.id = 'field-read'
 
-    // Every extra number in the formula is then named. A row of unexplained
-    // `+8 +12` is not a preview, it is a puzzle — and the player is being
-    // asked to commit to it.
-    for (const bonus of p.bonuses) {
-      const line = el('p', 'score-credit', `${bonus.label} +${bonus.amount}`)
-      if (bonus.relicId) line.dataset['relicId'] = bonus.relicId
-      box.append(line)
+    // The count on both sides of a skull. Mine on the left, its on the right,
+    // and the two numbers are the whole tactical picture before FIELD.
+    const counts = el('div', 'field-pips')
+    const mine =
+      combat.phase === 'thrown'
+        ? view.draft.width
+        : (combat.field?.width ?? combat.playerLine?.length ?? 0)
+    counts.append(pipGroup('player', mine))
+    counts.append(el('span', 'field-skull', '☠'))
+    counts.append(pipGroup('enemy', combat.enemyLine.length))
+    box.dataset['playerCount'] = String(mine)
+    box.dataset['enemyCount'] = String(combat.enemyLine.length)
+    box.append(counts)
+
+    // The stepper, and only in the phase that can use it. Below it there is
+    // nothing to nudge and the control is absent rather than dead.
+    if (combat.phase === 'thrown') {
+      box.append(widthStepper(run, view, on))
     }
 
-    // What SCORE will do to *you*, with the verb. `−7 HP` next to a red die is
-    // a number; "Lose 7 HP" is the consequence.
-    if (p.cost > 0) box.append(el('p', 'score-toll toll-hurt', `Lose ${p.cost} HP`))
-    for (const gain of p.heals) {
-      const literal = gain.label === 'Green face' ? `Heal ${gain.amount} HP` : `${gain.label} heals ${gain.amount} HP`
-      const line = el('p', 'score-toll toll-heal', literal)
-      if (gain.relicId) line.dataset['relicId'] = gain.relicId
-      box.append(line)
+    if (combat.phase === 'smashed' && combat.lastSmash) {
+      const smash = combat.lastSmash
+      const lost = smash.playerCommonLost + smash.playerSpecialsLost.length
+      const summary = el(
+        'p',
+        'smash-summary',
+        `${lost} LOST / ${smash.enemyBonesLost.length} BROKEN`,
+      )
+      summary.id = 'smash-summary'
+      summary.dataset['lost'] = String(lost)
+      summary.dataset['broken'] = String(smash.enemyBonesLost.length)
+      summary.dataset['held'] = String(smash.heldTies)
+      box.append(summary)
     }
+
+    box.append(el('p', 'well-line', PHASE_LINE[combat.phase]))
     tray.well.append(box)
     return
   }
@@ -287,14 +503,13 @@ function renderWell(tray: Tray, state: GameState, on: TrayHandlers): void {
     const box = el('div', 'brief')
     box.append(el('span', 'brief-name', e.name))
     box.append(el('p', 'well-line', e.tell))
+    if (e.rule) box.append(el('p', 'well-rule', e.rule))
     tray.well.append(box)
     return
   }
 
   // A room whose ritual is unresolved reads exactly as a room whose enemy is
-  // still up: the thing in the middle of it, named, and what it will do. The
-  // press is on the object in the world, so the well never carries the verb —
-  // it carries the reason to want it.
+  // still up: the thing in the middle of it, named, and what it will do.
   if (here.ritual && run.ritual?.roomId !== run.roomId) {
     const box = el('div', 'brief')
     box.append(el('span', 'brief-name', here.ritual.name))
@@ -325,14 +540,80 @@ function renderWell(tray: Tray, state: GameState, on: TrayHandlers): void {
   tray.well.append(routes)
 }
 
+function pipGroup(side: 'player' | 'enemy', count: number): HTMLElement {
+  const group = el('span', `pip-group pip-${side}`)
+  group.dataset['count'] = String(count)
+  for (let n = 0; n < Math.min(count, LINE_WIDTH); n++) group.append(el('i', 'field-pip'))
+  return group
+}
+
+/**
+ * How many bones to risk.
+ *
+ * Minimum one, maximum whatever the pile allows, and it may never fall below
+ * the number of named bones already chosen — lowering the width past a fielded
+ * special would silently unfield it, and a control that undoes a decision the
+ * player did not revisit is a control that lies.
+ *
+ * The two buttons are absent at the ends of their range rather than dead, and
+ * the count announces itself with its legal range so the whole control is
+ * readable without seeing it.
+ */
+function widthStepper(run: RunState, view: TrayView, on: TrayHandlers): HTMLElement {
+  const box = el('div', 'width-stepper')
+  box.id = 'width'
+  const most = maxWidth(run)
+  const least = Math.max(1, view.draft.specialIds.length)
+  box.dataset['width'] = String(view.draft.width)
+  box.dataset['min'] = String(least)
+  box.dataset['max'] = String(most)
+
+  if (view.draft.width > least) {
+    box.append(
+      button({
+        act: 'width-down',
+        label: '−',
+        describe: `Risk one bone fewer: ${view.draft.width - 1}`,
+        onPress: () => on.onWidth(view.draft.width - 1),
+        className: 'act act-step',
+      }),
+    )
+  }
+  const read = el('b', 'width-count', String(view.draft.width))
+  read.setAttribute('role', 'status')
+  read.setAttribute('aria-label', `Fielding ${view.draft.width} of a possible ${most}`)
+  box.append(read)
+  if (view.draft.width < most) {
+    box.append(
+      button({
+        act: 'width-up',
+        label: '+',
+        describe: `Risk one bone more: ${view.draft.width + 1}`,
+        onPress: () => on.onWidth(view.draft.width + 1),
+        className: 'act act-step',
+      }),
+    )
+  }
+  return box
+}
+
 /**
  * The three beds.
  *
- * Left is MENU, always, in both modes. Centre is the primary action.
- * Right is the secondary, and is simply not rendered when there is not one —
- * a greyed button that explains nothing is the defect this replaces.
+ * Left is MENU, always, in both modes. Centre is the phase's one verb. Right
+ * is the secondary, and is simply not rendered when there is not one — a
+ * greyed button that explains nothing is the defect this replaces.
+ *
+ * FIELD, THROW, SMASH and ROUND are never on screen together. Each phase has
+ * exactly one thing to press, and the well says what it is for.
  */
-function renderBeds(tray: Tray, state: GameState, on: TrayHandlers): void {
+function renderBeds(
+  tray: Tray,
+  state: GameState,
+  combat: CombatState | undefined,
+  view: TrayView,
+  on: TrayHandlers,
+): void {
   const run = state.run!
   tray.beds.replaceChildren()
 
@@ -346,44 +627,70 @@ function renderBeds(tray: Tray, state: GameState, on: TrayHandlers): void {
     button({
       act: 'menu',
       label: VERBS.menu,
-      describe: 'Open dice, relics, and scoring reference',
+      describe: 'Open the army, the satchel and the rules',
       onPress: on.onMenu,
       className: 'act act-side',
     }),
   )
 
-  if (state.mode === 'combat' && run.combat) {
-    const combat = run.combat
+  if (combat) {
     // While the thing is dying there is no move to make, so none is offered —
-    // not greyed out, not shown waiting: absent. The reducer refuses all three
-    // of them anyway; this is the half of that rule the player can see.
+    // not greyed out, not shown waiting: absent. The reducer refuses all of
+    // them anyway; this is the half of that rule the player can see.
     if (combat.defeated) return
-    if (combat.phase === 'intent') {
-      bed(1, button({ act: 'roll', label: VERBS.roll, onPress: on.onRoll, className: 'act act-primary' }))
-      return
-    }
-    const canScore = combat.selected.length > 0
-    bed(
-      1,
-      button({
-        act: 'score',
-        label: VERBS.score,
-        describe: canScore ? 'Commit the previewed hand' : 'Choose dice to score',
-        onPress: on.onScore,
-        className: `act act-primary${canScore ? '' : ' act-waiting'}`,
-      }),
-    )
-    if (combat.phase === 'rolled') {
-      bed(
-        2,
-        button({
-          act: 'reroll',
-          label: VERBS.reroll,
-          describe: 'Throw every die you have not chosen',
-          onPress: on.onReroll,
-          className: 'act act-side',
-        }),
-      )
+
+    switch (combat.phase) {
+      case 'thrown': {
+        const legal = fieldLegal(run, view.draft.width, view.draft.specialIds)
+        if (!legal) return
+        bed(
+          1,
+          button({
+            act: 'field',
+            label: VERBS.field,
+            describe: `Commit ${view.draft.width} ${view.draft.width === 1 ? 'bone' : 'bones'}`,
+            onPress: on.onField,
+            className: 'act act-primary',
+          }),
+        )
+        return
+      }
+      case 'fielded':
+        bed(
+          1,
+          button({
+            act: 'throw',
+            label: VERBS.throw,
+            describe: 'Throw the bones you committed',
+            onPress: on.onThrow,
+            className: 'act act-primary',
+          }),
+        )
+        return
+      case 'rolled':
+        bed(
+          1,
+          button({
+            act: 'smash',
+            label: VERBS.smash,
+            describe: 'Line them up and break the losers',
+            onPress: on.onSmash,
+            className: 'act act-primary',
+          }),
+        )
+        return
+      case 'smashed':
+        bed(
+          1,
+          button({
+            act: 'round',
+            label: VERBS.round,
+            describe: 'It throws again',
+            onPress: on.onRound,
+            className: 'act act-primary',
+          }),
+        )
+        return
     }
     return
   }
@@ -396,14 +703,10 @@ function renderBeds(tray: Tray, state: GameState, on: TrayHandlers): void {
   }
 
   // The same for a font that has not been used. There is no way on yet — the
-  // reducer will not grant one — so no way on is offered. The one thing to do
-  // is the object in the world, which is where the press is.
+  // reducer will not grant one — so no way on is offered.
   if (here.ritual && run.ritual?.roomId !== run.roomId) return
 
-  // And the same again for a room whose machinery is still shut. The gate is
-  // not down as a matter of styling: the reducer rejects `GO` while it is, so
-  // offering the press would be offering a button that does nothing. One
-  // statement — `exitsOpen` — answers for both of them.
+  // And the same again for a room whose machinery is still shut.
   if (!exitsOpen(stateOf(run.rooms, run.roomId))) return
 
   const exits = here.exits
@@ -429,4 +732,32 @@ function renderBeds(tray: Tray, state: GameState, on: TrayHandlers): void {
     b.dataset['to'] = exits[1].to
     bed(2, b)
   }
+}
+
+/**
+ * The face a bone shows while it is in the air.
+ *
+ * Cosmetic only, and deterministic by construction: the lane and the step
+ * choose which face flickers past, so a bone in flight cannot show a value the
+ * run did not produce and a replay cannot differ. `step === undefined` puts
+ * back the exact face node the reducer chose.
+ */
+const settledFace = new WeakMap<HTMLElement, HTMLElement>()
+
+export function paintTumble(bone: HTMLElement, step: number | undefined): void {
+  const profile = bone.dataset['profile'] as BoneProfileId | undefined
+  const current = bone.querySelector<HTMLElement>('.bone-face')
+  if (!profile || !current) return
+
+  if (step === undefined) {
+    const settled = settledFace.get(bone)
+    if (settled && settled !== current) current.replaceWith(settled)
+    settledFace.delete(bone)
+    return
+  }
+
+  if (!settledFace.has(bone)) settledFace.set(bone, current)
+  const faces = boneProfile(profile).faces
+  const lane = Number(bone.dataset['lane']) || 0
+  current.replaceWith(boneFace(profile, faces[(lane * 2 + step * 3 + 1) % faces.length]!))
 }

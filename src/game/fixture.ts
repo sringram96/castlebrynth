@@ -2,45 +2,50 @@
  * Dev fixtures: reach any mode from a URL.
  *
  * Every mode must be reachable without playing to it, or the tests that cover
- * the ends of the game — dying, getting out, a fight on its last point of
- * health — become forty presses long and nobody writes them. That is how the
- * old build ended up with a death screen nobody had ever automated.
+ * the ends of the game — dying, getting out, a fight one lane from over —
+ * become forty presses long and nobody writes them. That is how the old build
+ * ended up with a death screen nobody had ever automated.
  *
- *   ?seed=7                  a known run
- *   ?room=gate               start standing somewhere else
- *   ?hp=4                    hurt
- *   ?enemyHp=1               a fight one blow from over
- *   ?turn=2                  the fight standing on a chosen turn of the script
- *   ?reach=close             a thing that closes, already on top of you
- *   ?dice=careful,leech      a chosen loadout (padded to six with plain bones)
- *   ?relics=nail,plate       carrying something
- *   ?mode=combat             open the room's fight, or jump to an ending
- *   ?dying=1                 the room's enemy killed, mid-death — what a save
- *                            written a third of a second before the win holds
- *   ?reliquary=solved        the chest open, its relic already taken
- *   ?reliquary=dark          bell rung and brazier out — the lever live
- *   ?vault=weighted          the cage down on the plate, gate still shut
- *   ?vault=open              the gate up, and the way on with it
+ *   ?seed=7                     a known run
+ *   ?room=gate                  start standing somewhere else
+ *   ?bones=12                   a thinner pile
+ *   ?specials=cinderbone,knuckle  named bones in the pile
+ *   ?vials=2                    a stocked satchel
+ *   ?charms=1
+ *   ?enemyBones=3               a fight with most of its army already broken
+ *   ?round=2                    the fight standing on a later round
+ *   ?phase=thrown|fielded|rolled|smashed
+ *   ?width=4                    what to field, when the phase needs one
+ *   ?mode=combat                open the room's fight, or jump to an ending
+ *   ?dying=1                    the room's enemy finished, mid-death — what a
+ *                               save written a third of a second before the
+ *                               win holds
+ *   ?reliquary=solved           the chest open, its reward already taken
+ *   ?reliquary=dark             bell rung and brazier out — the lever live
+ *   ?vault=weighted             the cage down on the plate, gate still shut
+ *   ?vault=open                 the gate up, and the way on with it
  *
- * A fixture builds a real run and hands it to the real reducer. It cannot
- * reach a state the game could not; it only skips the walk. Nothing here is a
- * cheat worth hiding — the whole game is client-side — and it is inert unless
- * a parameter is present.
+ * A fixture builds a real run and hands it to the real reducer. **Every phase
+ * below is reached by playing the actions that reach it** — FIELD, THROW,
+ * SMASH — so a fixture cannot stand the game in a position it could not reach
+ * on its own; it only skips the walk. Nothing here is a cheat worth hiding —
+ * the whole game is client-side — and it is inert unless a parameter is
+ * present.
  */
 
-import { HAND_SIZE } from '../content/dice.js'
-import { REACHES, turnAt } from '../content/enemies.js'
-import type { Reach } from '../content/enemies.js'
+import { BONE_CEILING, isSpecialBoneId, newSpecial } from '../content/bones.js'
+import type { SpecialBoneInstance } from '../content/bones.js'
 import { ROOMS, room } from '../content/rooms.js'
-import { MAX_HP, newRun, reduce } from './reducer.js'
+import { maxWidth, newRun, reduce } from './reducer.js'
 import type { Action } from './reducer.js'
 import { SAVE_VERSION } from './state.js'
-import type { GameState, Mode } from './state.js'
+import type { CombatPhase, GameState, Mode } from './state.js'
 
 const play = (state: GameState, ...actions: readonly Action[]): GameState =>
   actions.reduce((s, a) => reduce(s, a), state)
 
 const MODES: readonly Mode[] = ['title', 'explore', 'combat', 'reward', 'dead', 'complete']
+const PHASES: readonly CombatPhase[] = ['thrown', 'fielded', 'rolled', 'smashed']
 
 const list = (raw: string | null): string[] =>
   raw ? raw.split(',').map((s) => s.trim()).filter(Boolean) : []
@@ -51,22 +56,57 @@ const num = (raw: string | null): number | undefined => {
   return Number.isFinite(n) ? n : undefined
 }
 
+const KEYS: readonly string[] = [
+  'seed',
+  'room',
+  'bones',
+  'specials',
+  'vials',
+  'charms',
+  'enemyBones',
+  'round',
+  'phase',
+  'width',
+  'mode',
+  'dying',
+  'reliquary',
+  'vault',
+]
+
 export function hasFixture(search: string): boolean {
   const p = new URLSearchParams(search)
-  return [
-    'seed',
-    'room',
-    'hp',
-    'enemyHp',
-    'turn',
-    'reach',
-    'dice',
-    'relics',
-    'mode',
-    'dying',
-    'reliquary',
-    'vault',
-  ].some((k) => p.has(k))
+  return KEYS.some((k) => p.has(k))
+}
+
+/**
+ * Cut an enemy's army down to `keep` bones, army and line together.
+ *
+ * The army and the fielded line are two views of the same bones, and they have
+ * to be cut as one: slicing them independently keeps `gnawing:common:0` in the
+ * army while showing whichever bone happened to roll highest, and then killing
+ * what is on screen removes nothing. Which is exactly the bug this helper
+ * exists to make unwriteable.
+ *
+ * The bones kept are the ones at the **bottom** of the line, because a fixture
+ * that stands a fight one lane from over wants the weakest survivors — and
+ * `doomed` puts the last of them on a 1 so a wide line is certain to take it.
+ */
+function standArmyAt(state: GameState, keep: number, doomed = false): GameState {
+  const combat = state.run?.combat
+  if (!combat) return state
+  const kept = combat.enemyLine.slice(-Math.max(1, Math.min(keep, combat.enemyLine.length)))
+  const ids = new Set(kept.map((b) => b.enemyBoneId))
+  return {
+    ...state,
+    run: {
+      ...state.run!,
+      combat: {
+        ...combat,
+        enemyBones: combat.enemyBones.filter((b) => ids.has(b.boneId)),
+        enemyLine: doomed ? kept.map((b) => ({ ...b, value: 1, faceIndex: 0 })) : kept,
+      },
+    },
+  }
 }
 
 export function applyFixture(base: GameState, search: string): GameState {
@@ -82,18 +122,31 @@ export function applyFixture(base: GameState, search: string): GameState {
     run = { ...run, roomId, path: [...run.path, roomId], say: room(roomId).arrival, looked: [] }
   }
 
-  const dice = list(p.get('dice'))
-  if (dice.length > 0) {
-    const filled = [...dice]
-    while (filled.length < HAND_SIZE) filled.push('plain')
-    run = { ...run, dice: filled.slice(0, HAND_SIZE) }
+  // The pile. Specials are instantiated exactly as TAKE would instantiate
+  // them, serial and all, so a fixture's Cinderbone is the same object a found
+  // one is and dies the same way.
+  const specials: SpecialBoneInstance[] = []
+  for (const id of list(p.get('specials'))) {
+    if (isSpecialBoneId(id)) specials.push(newSpecial(id, specials.length))
+  }
+  if (specials.length > 0) {
+    run = { ...run, specials, nextSpecialSerial: specials.length }
   }
 
-  const relics = list(p.get('relics'))
-  if (relics.length > 0) run = { ...run, relics }
+  const bones = num(p.get('bones'))
+  if (bones !== undefined) {
+    const common = Math.max(0, Math.min(Math.floor(bones), BONE_CEILING) - run.specials.length)
+    run = { ...run, commonBones: Math.max(0, common) }
+  } else if (specials.length > 0) {
+    // Taking a bone at the ceiling transmutes a common one, so a fixture that
+    // adds specials without naming a total keeps the total where it was.
+    run = { ...run, commonBones: Math.max(0, run.commonBones - specials.length) }
+  }
 
-  const hp = num(p.get('hp'))
-  if (hp !== undefined) run = { ...run, hp: Math.max(0, Math.min(hp, MAX_HP)) }
+  const vials = num(p.get('vials'))
+  if (vials !== undefined) run = { ...run, vials: Math.max(0, Math.floor(vials)) }
+  const charms = num(p.get('charms'))
+  if (charms !== undefined) run = { ...run, charms: Math.max(0, Math.floor(charms)) }
 
   // Standing in a half-worked room.
   //
@@ -101,15 +154,16 @@ export function applyFixture(base: GameState, search: string): GameState {
   // reducer, so a fixture cannot reach a position the game could not — the
   // lever fixture below only opens the chest because the bell and the brazier
   // were genuinely dealt with first, in that order.
+  const press = (id: string): void => {
+    state = reduce({ version: SAVE_VERSION, mode: 'explore', meta: state.meta, run }, {
+      type: 'INTERACT',
+      interactionId: id,
+    })
+    run = state.run ?? run
+  }
+
   const stage = p.get('reliquary')
   if (stage && run.roomId === 'reliquary') {
-    const press = (id: string): void => {
-      state = reduce({ version: SAVE_VERSION, mode: 'explore', meta: state.meta, run }, {
-        type: 'INTERACT',
-        interactionId: id,
-      })
-      run = state.run ?? run
-    }
     press('reliquary-bell')
     press('reliquary-brazier')
     if (stage === 'solved' || stage === 'open') {
@@ -120,13 +174,6 @@ export function applyFixture(base: GameState, search: string): GameState {
 
   const vault = p.get('vault')
   if (vault && run.roomId === 'chain-vault') {
-    const press = (id: string): void => {
-      state = reduce({ version: SAVE_VERSION, mode: 'explore', meta: state.meta, run }, {
-        type: 'INTERACT',
-        interactionId: id,
-      })
-      run = state.run ?? run
-    }
     press('vault-chain')
     if (vault === 'open') press('vault-lever')
   }
@@ -138,68 +185,71 @@ export function applyFixture(base: GameState, search: string): GameState {
 
   // Standing inside a death.
   //
-  // Not assembled: *played*. The fight is opened, a die is chosen, the enemy is
-  // stood on its last point of health and the killing hand is scored through
-  // the real reducer — so this is the state a save holds if the tab is closed
-  // in the two-thirds of a second between the blow and the win, and there is
-  // no way for it to be a state the game could not produce.
+  // Not assembled: *played*. The fight is opened, the army is stood down to
+  // its last bone and a real round is fought through the reducer — so this is
+  // the state a save holds if the tab is closed in the two-thirds of a second
+  // between the last break and the win.
   if (p.has('dying') && room(run.roomId).enemy) {
-    const rolled = play(state, { type: 'FIGHT' }, { type: 'ROLL' }, { type: 'SELECT', slot: 0 })
-    const combat = rolled.run!.combat!
-    const doomed = { ...rolled, run: { ...rolled.run!, combat: { ...combat, enemyHp: 1 } } }
-    return reduce(doomed, { type: 'SCORE' })
+    const opened = reduce(state, { type: 'FIGHT' })
+    // One enemy bone left, standing on a 1. Both are positions the fight
+    // reaches on its own — a wide line against a single low bone is an
+    // ordinary last round — so this only skips the rounds that get there.
+    const doomed = standArmyAt(opened, 1, true)
+    return play(
+      doomed,
+      { type: 'FIELD', width: maxWidth(doomed.run!), specialIds: [] },
+      { type: 'THROW' },
+      { type: 'SMASH' },
+    )
   }
 
-  if (
-    (mode === 'combat' || p.has('enemyHp') || p.has('turn') || p.has('reach')) &&
-    room(run.roomId).enemy
-  ) {
+  const wantsFight =
+    mode === 'combat' || p.has('enemyBones') || p.has('round') || p.has('phase') || p.has('width')
+
+  if (wantsFight && room(run.roomId).enemy) {
     state = reduce(state, { type: 'FIGHT' })
-    const enemyHp = num(p.get('enemyHp'))
-    // Standing where the fight would have put it. Both the reach *and* the
-    // turn that goes with it, from the same content the reducer reads — a
-    // fixture that set one without the other would be a position the game
-    // cannot reach, and the turn is what decides when it steps again.
-    //
-    // It lands on the *first* turn at that reach, which is where the fight
-    // arrives. Getting it to move from there takes as many scores as the
-    // content says, exactly as playing to it would.
-    const wantedReach = p.get('reach')
-    const combat = state.run?.combat
-    const reach =
-      wantedReach && combat?.approach && (REACHES as readonly string[]).includes(wantedReach)
-        ? (wantedReach as Reach)
+
+    // Rounds are *fought*, not set: each one is a real FIELD/THROW/SMASH, so
+    // the enemy line a fixture lands on is the line those rounds produced and
+    // the round counter can never disagree with the army standing behind it.
+    const rounds = Math.max(1, Math.floor(num(p.get('round')) ?? 1))
+    for (let r = 1; r < rounds; r++) {
+      const here = state.run?.combat
+      if (!here || here.defeated || state.mode !== 'combat') break
+      state = play(
+        state,
+        { type: 'FIELD', width: maxWidth(state.run!), specialIds: [] },
+        { type: 'THROW' },
+        { type: 'SMASH' },
+        { type: 'ROUND' },
+      )
+    }
+
+    // How much of its army is left. Applied after the rounds, because it is the
+    // one thing a fixture cannot honestly play to in a bounded number of steps.
+    const enemyBones = num(p.get('enemyBones'))
+    if (enemyBones !== undefined && state.run?.combat && !state.run.combat.defeated) {
+      state = standArmyAt(state, Math.floor(enemyBones))
+    }
+
+    // And the phase, walked to by the actions that reach it.
+    const wantedPhase = p.get('phase')
+    const phase =
+      wantedPhase && (PHASES as readonly string[]).includes(wantedPhase)
+        ? (wantedPhase as CombatPhase)
         : undefined
-    const turn = reach ? turnAt(combat!.enemyId, reach) : -1
-    // Which turn of the script it is standing on.
-    //
-    // The other end of the same idea as `enemyHp`: a fight is a health and a
-    // position in a cycle, and standing it somewhere the walk would take three
-    // scores to reach is the whole reason this file exists. A boss whose
-    // telegraph is on turn 2 cannot otherwise be looked at without playing to
-    // it, which is how the old build ended up with beats nobody had automated.
-    //
-    // Refused for a thing that closes: its turn is not free — `reachAfter` ties
-    // it to where the thing is standing, and setting one without the other
-    // would be a position the game cannot reach. `reach` is that fixture.
-    const wantedTurn = num(p.get('turn'))
-    const onTurn =
-      wantedTurn !== undefined && combat && !combat.approach && wantedTurn >= 0
-        ? Math.floor(wantedTurn)
-        : undefined
-    if (combat && (enemyHp !== undefined || turn > 0 || onTurn !== undefined)) {
-      state = {
-        ...state,
-        run: {
-          ...state.run!,
-          combat: {
-            ...combat,
-            ...(enemyHp !== undefined ? { enemyHp: Math.max(1, enemyHp) } : {}),
-            ...(onTurn !== undefined ? { turn: onTurn } : {}),
-            ...(reach && turn > 0 ? { approach: reach, turn } : {}),
-          },
-        },
-      }
+    if (phase && phase !== 'thrown' && state.run?.combat && state.mode === 'combat') {
+      const width = Math.max(
+        1,
+        Math.min(Math.floor(num(p.get('width')) ?? maxWidth(state.run)), maxWidth(state.run)),
+      )
+      const specialIds = state.run.specials.slice(0, width).map((s) => s.instanceId)
+      state = reduce(state, { type: 'FIELD', width, specialIds })
+      if (phase === 'rolled' || phase === 'smashed') state = reduce(state, { type: 'THROW' })
+      if (phase === 'smashed') state = reduce(state, { type: 'SMASH' })
+    } else if (!phase && p.has('width') && state.run?.combat) {
+      const width = Math.max(1, Math.min(Math.floor(num(p.get('width'))!), maxWidth(state.run)))
+      state = reduce(state, { type: 'FIELD', width, specialIds: [] })
     }
     return state
   }
@@ -208,7 +258,12 @@ export function applyFixture(base: GameState, search: string): GameState {
     return {
       ...state,
       mode: 'dead',
-      run: { ...state.run!, hp: 0, cause: 'A fixture. Nothing killed me.' },
+      run: {
+        ...state.run!,
+        commonBones: 0,
+        specials: [],
+        cause: 'A fixture. Nothing killed me.',
+      },
     }
   }
   if (mode === 'complete') {
