@@ -1052,6 +1052,164 @@ function buildSanctuary() {
   return report
 }
 
+/**
+ * The two environmental rooms.
+ *
+ * Built the way the Font is and for the same reasons, with one difference that
+ * is the whole point of them: the Font is a room plus *one* family of frames,
+ * and these are a room plus *several independent objects*, each of which can be
+ * in a different position while the others hold still.
+ *
+ * That changes nothing about the pipeline and everything about the delivery
+ * contract. Every plate of every family must register to the same 1024 × 1536
+ * canvas as the room — not to its own silhouette, and not to a shared base the
+ * way the chalice's plinth is measured, because these objects do not share a
+ * base. A bell hanging in the left aisle and a chest on the floor under it have
+ * nothing in common to measure against, so the registration has to arrive
+ * already correct and the pipeline only resamples.
+ *
+ * Which is why there is no `standOn` here: nothing is staged, nothing is
+ * measured, nothing is moved. Master in, cover-crop, resample, key, posterise,
+ * out. If two frames are aligned at 1024 × 1536 they are aligned at 480 × 720,
+ * and no per-frame CSS offset exists anywhere to paper over it if they are not.
+ */
+const ROOMS = [
+  {
+    id: 'reliquary',
+    master: 'docs/art-reference/masters/reliquary/',
+    /** `<family>: [frames]`, and a family is built only if it is whole. */
+    props: {
+      bell: ['idle', 'ring-1', 'ring-2', 'settle'],
+      brazier: ['lit', 'dim', 'out', 'igniting'],
+      lever: ['up', 'pulling', 'down'],
+      chest: ['closed', 'opening', 'open'],
+    },
+    ambient: { candle: 3, chain: 3, drip: 3, embers: 4, window: 2 },
+  },
+  {
+    id: 'chain-vault',
+    master: 'docs/art-reference/masters/chain-vault/',
+    props: {
+      chain: ['off', 'pulling', 'on'],
+      cage: ['raised', 'lowering-1', 'lowering-2', 'lowered'],
+      plate: ['off', 'on'],
+      lever: ['up', 'pull-1', 'pull-2', 'down'],
+      gate: ['closed', 'opening-1', 'opening-2', 'open'],
+      panel: ['still'],
+    },
+    ambient: { fire: 3, chain: 3, smoke: 4, shaft: 2 },
+  },
+]
+
+/** The same two numbers, and the same reasons, as everything else keyed here. */
+const ROOM_KEY = { black: 2, close: 3 }
+
+/** Master → runtime for one whole-scene plate. The only path either kind takes. */
+function scenePlate(file, { opaque }) {
+  const src = read(file)
+  if (opaque) {
+    const scene = posterise(
+      resample(coverCrop(src, SCENE_WIDTH / SCENE_HEIGHT, 0.5), SCENE_WIDTH, SCENE_HEIGHT),
+      32,
+    )
+    for (let i = 3; i < scene.rgba.length; i += 4) scene.rgba[i] = 255
+    return scene
+  }
+  // Keyed at the master's own resolution, so the edge that gets averaged by the
+  // resample is the real one — and never trimmed, so the object stays where it
+  // was painted.
+  return posterise(
+    hardenAlpha(
+      resample(
+        coverCrop(keyBlack(src, ROOM_KEY.black, ROOM_KEY.close), SCENE_WIDTH / SCENE_HEIGHT, 0.5),
+        SCENE_WIDTH,
+        SCENE_HEIGHT,
+      ),
+    ),
+    32,
+  )
+}
+
+function buildRooms() {
+  const report = []
+  for (const room of ROOMS) {
+    const dir = join(ROOT, room.master)
+    const background = join(dir, 'background.png')
+    const missing = []
+
+    if (existsSync(background)) {
+      report.push({
+        id: `room.${room.id}`,
+        path: write(`rooms/${room.id}.png`, scenePlate(`${room.master}background.png`, { opaque: true })),
+        width: SCENE_WIDTH,
+        height: SCENE_HEIGHT,
+      })
+    } else {
+      missing.push('background.png')
+    }
+
+    // A family is built only if every frame of it is there. Half a family is
+    // worse than none: the absent frames fall back to whatever plate was up,
+    // so the object would freeze mid-swing on exactly the states that matter.
+    for (const [family, frames] of Object.entries(room.props)) {
+      const files = frames.map((f) => `${family}-${f}.png`)
+      const held = files.filter((f) => existsSync(join(dir, f)))
+      if (held.length === 0) {
+        missing.push(...files)
+        continue
+      }
+      if (held.length !== files.length) {
+        throw new Error(
+          `${room.id} has ${held.length} of ${files.length} ${family} frames — ` +
+            `missing ${files.filter((f) => !held.includes(f)).join(', ')}`,
+        )
+      }
+      for (const [i, file] of files.entries()) {
+        const plate = scenePlate(room.master + file, { opaque: false })
+        let opaque = 0
+        for (let j = 3; j < plate.rgba.length; j += 4) if (plate.rgba[j] === 255) opaque++
+        report.push({
+          id: `${room.id}.${family}.${frames[i]}`,
+          path: write(`props/${room.id}-${family}-${frames[i]}.png`, plate, { cutout: true }),
+          width: plate.width,
+          height: plate.height,
+          coverage: +(opaque / (plate.width * plate.height)).toFixed(3),
+        })
+      }
+    }
+
+    for (const [family, count] of Object.entries(room.ambient)) {
+      const files = Array.from({ length: count }, (_, i) => `ambient-${family}-${i + 1}.png`)
+      const held = files.filter((f) => existsSync(join(dir, f)))
+      if (held.length === 0) {
+        missing.push(...files)
+        continue
+      }
+      if (held.length !== files.length) {
+        throw new Error(`${room.id} has a partial ${family} ambience loop`)
+      }
+      for (const [i, file] of files.entries()) {
+        const plate = scenePlate(room.master + file, { opaque: false })
+        report.push({
+          id: `${room.id}.ambient.${family}.${i + 1}`,
+          path: write(`ambient/${room.id}-${family}-${i + 1}.png`, plate, { cutout: true }),
+          width: plate.width,
+          height: plate.height,
+        })
+      }
+    }
+
+    if (missing.length > 0) {
+      console.log(
+        `\n${room.id}: ${missing.length} master${missing.length === 1 ? '' : 's'} not painted yet — ` +
+          `${room.master}BRIEF.md is what they have to be.\n` +
+          `          the room runs without them. see '## HUMAN ART REQUIRED' in POLISH_PROGRESS.md.`,
+      )
+    }
+  }
+  return report
+}
+
 /** The tray frame: one authored plate, scaled to a phone-sensible width. */
 function buildUi() {
   const report = []
@@ -1070,6 +1228,7 @@ function main() {
     ...buildEnemies(),
     ...buildCrawling(),
     ...buildSanctuary(),
+    ...buildRooms(),
     ...buildUi(),
   ]
   let bytes = 0

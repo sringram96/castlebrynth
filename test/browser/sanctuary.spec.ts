@@ -161,10 +161,17 @@ test.describe('one press, and the room is spent', () => {
     await act(page, 'ritual').click()
     await act(page, 'go').click()
 
+    // The Reliquary sits between the two now. It is optional in every sense —
+    // the way on is offered on arrival — so the chapel still leads to the fork
+    // in one press from here.
+    await expect(page.locator('#say')).toContainText('A dead chapel')
+    await act(page, 'go').click()
+
     await expect(page.locator('#say')).toContainText('The passage splits')
-    // Both routes, untouched by any of this.
+    // Both routes, untouched by any of this. The deep way now has the Chain
+    // Vault in front of its fight; it is still the same decision at the fork.
     await expect(page.locator('[data-to="gate"]')).toBeVisible()
-    await expect(page.locator('[data-to="deep"]')).toBeVisible()
+    await expect(page.locator('[data-to="chain-vault"]')).toBeVisible()
   })
 
   test('gives a whole body nothing, and still lets it past', async ({ page }) => {

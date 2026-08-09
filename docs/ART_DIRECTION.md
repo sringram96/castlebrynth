@@ -33,8 +33,13 @@ there is no path where a backdrop ends up above an enemy.
 
 - Scene: **480 × 720**, portrait, `object-fit: cover` into the world zone.
 - Enemy sprites: at most 480 wide, binary alpha, trimmed to their silhouette.
-- Runtime payload budget: **4 MB**. It is measured by
-  `test/unit/assets.test.ts` and printed by `npm run art`.
+- Runtime payload budget: **4.5 MB**. It is measured by
+  `test/unit/assets.test.ts` and printed by `npm run art`. It was 4 MB for nine
+  rooms; the Reliquary and the Chain Vault cost 512 KB of backdrop between them
+  and there is no posterisation of two dark, gradient-heavy plates that reaches
+  4 MB without banding them visibly. The comment on the test carries the
+  measured before and after. **Raising it again is a product decision**, and
+  the headroom is deliberately smaller than one backdrop so that it has to be.
 
 Masters (1024×1536, 2–4 MB each) live in `docs/art-reference/masters/` and are
 never served.

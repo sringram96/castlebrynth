@@ -6,11 +6,12 @@
  * visible before any combat control appears.
  */
 
-import { hideEnemy, hideProp, holdWeapon, placeEnemy, showProp } from '../render/compositor.js'
+import { hideEnemy, hideProp, holdWeapon, placeEnemy, showProp, showProps } from '../render/compositor.js'
 import type { World } from '../render/compositor.js'
 import { enemyArt, handArt, propArt, roomArt, url } from '../render/assets.js'
 import { REACHES, enemy as enemyById, intentAt, stanceAt } from '../content/enemies.js'
 import { room as roomById } from '../content/rooms.js'
+import { actionFor, platesFor, stateOf } from '../content/interactions.js'
 import type { GameState } from '../game/state.js'
 import { button, el } from './components.js'
 
@@ -19,6 +20,8 @@ export interface WorldHandlers {
   readonly onIntent: () => void
   /** The room's focal object, pressed. The reducer decides what it gives. */
   readonly onRitual: () => void
+  /** One of the room's objects, worked. The reducer decides what it does. */
+  readonly onInteract: (interactionId: string) => void
 }
 
 /**
@@ -82,6 +85,21 @@ export function renderWorld(world: World, state: GameState, handlers: WorldHandl
   if (frame) showProp(world, url(frame))
   else hideProp(world)
 
+  // And a room whose objects each have a position of their own paints all of
+  // them, in content's order, off the same settled state. Nothing here
+  // remembers a frame: the picture is `platesFor` of the save and nothing
+  // else, so a reload mid-puzzle and never having left are the same room.
+  const worked = stateOf(run.rooms, run.roomId)
+  showProps(
+    world,
+    worked
+      ? platesFor(worked)
+          .map((p) => ({ plate: p, art: propArt(p.art, p.frame) }))
+          .filter((x): x is { plate: typeof x.plate; art: NonNullable<typeof x.art> } => x.art !== undefined)
+          .map(({ plate, art }) => ({ id: plate.id, src: url(art) }))
+      : [],
+  )
+
   // The knife comes out for the thing in the room, not for the room. Both
   // plates are mounted here; which one shows is the sequence's business, and
   // the resting one is what a settled screen always lands on.
@@ -121,6 +139,35 @@ function renderHits(world: World, state: GameState, handlers: WorldHandlers): vo
     b.style.left = `${here.ritual.at.x * 100}%`
     b.style.top = `${here.ritual.at.y * 100}%`
     world.hits.append(b)
+  }
+
+  // The room's worked objects, each carrying its verb where the thing itself
+  // is. A press dispatches an id and nothing else — the view never computes
+  // what an object will do, and `actionFor` is the same call the reducer makes
+  // to decide whether to accept it, so a button that would be rejected is a
+  // button that is never drawn.
+  //
+  // An object with nothing to offer gets **no element at all**, not a disabled
+  // one. A greyed PULL beside three carved clues is the interface refusing to
+  // say what it wants; an absent one leaves the clues to do their job.
+  const worked = stateOf(run.rooms, run.roomId)
+  if (worked) {
+    for (const thing of here.interactables ?? []) {
+      const action = actionFor(worked, thing.id)
+      if (!action) continue
+      const b = button({
+        act: 'interact',
+        label: action.label,
+        describe: action.describe,
+        onPress: () => handlers.onInteract(thing.id),
+        className: 'hit hit-focal hit-interact',
+      })
+      b.dataset['interact'] = thing.id
+      b.dataset['prop'] = thing.art
+      b.style.left = `${thing.at.x * 100}%`
+      b.style.top = `${thing.at.y * 100}%`
+      world.hits.append(b)
+    }
   }
 
   for (const detail of here.details) {

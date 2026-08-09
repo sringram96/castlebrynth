@@ -15,6 +15,7 @@ import { TITLE } from '../../src/game/state.js'
 import type { GameState } from '../../src/game/state.js'
 import { die } from '../../src/content/dice.js'
 import { room } from '../../src/content/rooms.js'
+import { exitsOpen, legal, stateOf } from '../../src/content/interactions.js'
 import { bestClaim, keepFor } from './policies.js'
 import type { Table, Tier } from './policies.js'
 
@@ -158,7 +159,7 @@ export function simulateRun(seed: number, tier: Tier, { deep = true } = {}): Run
     upgrades++
   }
 
-  for (let step = 0; step < 20; step++) {
+  for (let step = 0; step < 40; step++) {
     const here = room(state.run!.roomId)
 
     if (here.ending || state.mode === 'complete') {
@@ -207,8 +208,31 @@ export function simulateRun(seed: number, tier: Tier, { deep = true } = {}): Run
       continue
     }
 
+    // A room with machinery is worked on the way past, correctly.
+    //
+    // There is no decision here for a policy tier to disagree about, and
+    // deliberately no model of getting it wrong: the simulator does not
+    // misread an enemy intent either, and a report that quietly charged every
+    // run six health for a mistake the clues are written to prevent would be
+    // measuring the model's ignorance rather than the slice's difficulty. What
+    // it does measure is the real cost of the deep way — one more room, one
+    // more fight — which is the question the fork asks.
+    const machinery = stateOf(state.run!.rooms, here.id)
+    if (machinery && !exitsOpen(machinery)) {
+      for (const thing of here.interactables ?? []) {
+        if (legal(stateOf(state.run!.rooms, here.id)!, thing.id)) {
+          state = reduce(state, { type: 'INTERACT', interactionId: thing.id })
+        }
+      }
+      continue
+    }
+
     const exits = here.exits
-    const chosen = deep ? (exits.find((e) => e.to === 'deep') ?? exits[0]) : exits[0]
+    // By the label, not by the destination. The deep way is a *choice at the
+    // fork*, and what sits behind it is content's business — hardcoding the
+    // room it used to lead to is how this silently started measuring the stair
+    // twice when the Chain Vault was put in front of it.
+    const chosen = deep ? (exits.find((e) => e.label === 'DEEP') ?? exits[0]) : exits[0]
     if (!chosen) break
     state = play(state, { type: 'GO', to: chosen.to })
   }

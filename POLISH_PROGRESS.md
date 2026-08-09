@@ -472,3 +472,109 @@ plate it died standing in, staged down and out: 0.98 → 0.90 → 0.76 of its
 dying width, sunk 2% → 7% → 14% of the world's height, at 78% → 50% → 26%
 brightness. It reads as a thing going down in the dark, and it reads as a
 stand-in, which is the honest state of it.
+
+---
+
+## HUMAN ART REQUIRED — The Reliquary and The Chain Vault
+
+Two rooms of environmental play landed with their **backgrounds delivered and
+their objects not**. Fifty-nine master plates are outstanding. Both rooms are
+complete, playable and tested without them; what is missing is the part that
+makes them look like rooms rather than read like them.
+
+The full contract for each set is in the brief beside the masters:
+
+- `docs/art-reference/masters/reliquary/BRIEF.md`
+- `docs/art-reference/masters/chain-vault/BRIEF.md`
+
+Every file below is **1024 × 1536, portrait 2:3, PNG**, subject on flat
+`#000000`, no HUD, no text, no borders — and, the rule that breaks everything if
+it is missed, **registered to the same canvas as `background.png`**. Paint each
+object where it stands in the room. `buildRooms` in `tools/art.mjs` only
+cover-crops, keys and resamples; nothing is staged, measured or moved, so a
+frame that is out of register at 1024 × 1536 is out of register on the phone and
+there is no CSS offset anywhere to correct it.
+
+A family must be **whole or absent**. `npm run art` throws on a partial family
+rather than shipping an object that freezes mid-swing.
+
+### Delivered
+
+```
+docs/art-reference/masters/reliquary/background.png     ✅ 1024x1536
+docs/art-reference/masters/chain-vault/background.png   ✅ 1024x1536
+```
+
+### Missing — `docs/art-reference/masters/reliquary/` (29 files)
+
+```
+bell-idle.png          bell-ring-1.png        bell-ring-2.png       bell-settle.png
+brazier-lit.png        brazier-dim.png        brazier-out.png       brazier-igniting.png
+lever-up.png           lever-pulling.png      lever-down.png
+chest-closed.png       chest-opening.png      chest-open.png
+
+ambient-candle-1.png   ambient-candle-2.png   ambient-candle-3.png
+ambient-chain-1.png    ambient-chain-2.png    ambient-chain-3.png
+ambient-drip-1.png     ambient-drip-2.png     ambient-drip-3.png
+ambient-embers-1.png   ambient-embers-2.png   ambient-embers-3.png  ambient-embers-4.png
+ambient-window-1.png   ambient-window-2.png
+```
+
+### Missing — `docs/art-reference/masters/chain-vault/` (30 files)
+
+```
+chain-off.png          chain-pulling.png      chain-on.png
+cage-raised.png        cage-lowering-1.png    cage-lowering-2.png   cage-lowered.png
+plate-off.png          plate-on.png
+lever-up.png           lever-pull-1.png       lever-pull-2.png      lever-down.png
+gate-closed.png        gate-opening-1.png     gate-opening-2.png    gate-open.png
+panel-still.png        (delivered as `wall-panel.png`; see the brief)
+
+ambient-fire-1.png     ambient-fire-2.png     ambient-fire-3.png
+ambient-chain-1.png    ambient-chain-2.png    ambient-chain-3.png
+ambient-smoke-1.png    ambient-smoke-2.png    ambient-smoke-3.png   ambient-smoke-4.png
+ambient-shaft-1.png    ambient-shaft-2.png
+```
+
+### What lands when they arrive
+
+1. `npm run art` — it already knows about every file above and builds them into
+   `public/assets/props/` and `public/assets/ambient/`;
+2. rows in `PROP_ART` and `AMBIENT_ART` in `src/render/assets.ts`, keyed
+   `bell.idle`, `brazier.lit`, `chest.open`, `chain.on`, `cage.lowered`,
+   `plate.on`, `gate.open`, `panel.still`, `reliquary.candle.1`,
+   `chain-vault.smoke.3` and the rest;
+3. nothing else. No state, no reducer, no view, no timing and no test.
+
+The frame each plate is shown on is already decided by `platesFor` and
+`beatsFor` in `src/content/interactions.ts`, and both are already exercised —
+`test/browser/rooms.spec.ts` asserts that whatever the midground holds is a
+function of the save and never takes a press.
+
+### What is shipping in the meantime
+
+Both backgrounds, and **no props and no ambience at all**. `propArt` and
+`ambientArt` answer nothing, `showProps` is handed an empty list, and
+`RoomAmbience` builds no loops — a room's mood is the most optional thing in the
+game, and `ART_DIRECTION.md`'s rule is that scenery may degrade.
+
+What does *not* degrade is the play. Every object is a real 44 px `<button>`
+carrying its own verb, sited where the object will be painted; every unavailable
+action is absent rather than greyed; every outcome is in the word band and the
+health orb. The Reliquary can be solved and its relic taken, and the Chain Vault
+can be opened, lost six health to, and died in, exactly as they will play when
+the plates land. What a player is missing today is the picture of it.
+
+### Budget
+
+The payload was **3.748 MB** against a 4 MB cap. The two backgrounds cost
+**512 KB** and it now sits at **4.248 MB**, so the cap was raised once, to
+**4.5 MB** — see the comment on `test/unit/assets.test.ts`. That leaves roughly
+**250 KB** for all fifty-nine plates above, shared between the two rooms.
+
+That is tight but real: a plate costs almost exactly its **opaque area**, and
+`hands/rest.png` is a full keyed 480 × 720 scene shipping in 30 KB because 94%
+of it is empty. Keep the objects tight and mostly black. If the set will not
+fit, **drop ambient loops before dropping object frames** — the loops are
+decoration, and the frames are how the room tells the player what state it is
+in. Raising the cap a second time is a product decision, not an art one.

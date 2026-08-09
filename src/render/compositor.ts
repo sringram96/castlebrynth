@@ -32,15 +32,28 @@ export const LAYER_NAMES: readonly string[] = [
 export interface World {
   readonly root: HTMLElement
   readonly backdrop: HTMLImageElement
+  /**
+   * Every whole-scene plate the room is currently showing.
+   *
+   * One layer, many plates. A room with four objects in it needs four images
+   * that can change independently — the brazier goes out while the bell is
+   * mid-swing — and the wrong way to get that is a layer per object, which
+   * would put the compositor's fixed order back up for negotiation every time
+   * a room grew a thing in it. So the order inside the midground is the order
+   * content lists them in, and the layer enum is untouched.
+   *
+   * Cover-fitted exactly as the backdrop is, so a plate needs no coordinate and
+   * has none: the object is where it was painted, at every viewport, and a
+   * frame swap moves it by nothing. That is the property the font's die
+   * depends on and the one these rooms depend on four times over.
+   */
   readonly midground: HTMLElement
   /**
-   * The room's focal object, held on the midground as one whole scene frame.
+   * The font's basin, which is simply the first plate.
    *
-   * Cover-fitted exactly as the backdrop is, so it needs no coordinate and has
-   * none: the object is where it was painted, at every viewport, and a frame
-   * swap moves it by nothing. That is the one property the font's die depends
-   * on — a basin that shifted between the idle plate and the face it landed on
-   * would read as the whole room jumping.
+   * Kept as a named element because it is what `showProp` writes to and what
+   * the sanctuary's tests look for. It is an ordinary member of the midground
+   * and carries `data-prop="prop"`; `showProps` steps around it.
    */
   readonly prop: HTMLImageElement
   readonly enemy: HTMLImageElement
@@ -91,6 +104,7 @@ export function mountWorld(root: HTMLElement): World {
   prop.className = 'prop'
   prop.alt = ''
   prop.hidden = true
+  prop.dataset['prop'] = 'prop'
   midground.append(prop)
 
   const enemy = layer('img', 'enemy', Layer.Enemy)
@@ -139,6 +153,59 @@ export function hideProp(world: World): void {
   world.prop.hidden = true
   world.prop.removeAttribute('src')
 }
+
+/** One whole-scene plate on the midground, identified for reuse. */
+export interface PropPlate {
+  /** Stable across frames of the same object. It is what keeps one element. */
+  readonly id: string
+  readonly src: string
+}
+
+/**
+ * Show a room's plates, in the order given.
+ *
+ * Two properties, and the room's whole look rests on them:
+ *
+ *   - **one element per object, reused.** A plate is found by `data-prop` and
+ *     has its `src` rewritten, rather than being torn down and rebuilt. A new
+ *     `<img>` per frame would decode before it painted, so the object would
+ *     blink out of the room on every swap — which is exactly the flicker whole
+ *     scene plates exist to prevent.
+ *   - **absent means gone.** Anything on the layer that this call does not
+ *     name is removed, in both directions and on every call, so no plate can
+ *     outlive the state that put it up. That is the same rule `placeEnemy`
+ *     follows for `contact` and `defeat`.
+ *
+ * Nothing is placed. The plates are the scene, cover-fitted like the backdrop,
+ * so there is no geometry here to get wrong and none to drift.
+ */
+export function showProps(world: World, plates: readonly PropPlate[]): void {
+  const wanted = new Set(plates.map((p) => p.id))
+  for (const node of world.midground.querySelectorAll<HTMLImageElement>('img[data-prop]')) {
+    // The font's basin is `showProp`'s to own. A room that draws plates through
+    // here is not the room that draws one through there, so the two never
+    // contend for it — but leaving it alone keeps that true by construction.
+    if (node.dataset['prop'] === 'prop') continue
+    if (!wanted.has(node.dataset['prop'] ?? '')) node.remove()
+  }
+
+  for (const plate of plates) {
+    let node = world.midground.querySelector<HTMLImageElement>(`img[data-prop="${plate.id}"]`)
+    if (!node) {
+      node = document.createElement('img')
+      node.className = 'prop'
+      node.alt = ''
+      node.dataset['prop'] = plate.id
+      world.midground.append(node)
+    }
+    if (node.getAttribute('src') !== plate.src) node.src = plate.src
+    node.hidden = false
+    // Appending an existing node moves it, which is how the given order
+    // becomes the paint order without any z-index arithmetic.
+    world.midground.append(node)
+  }
+}
+
 
 export interface Grip {
   readonly rest: string

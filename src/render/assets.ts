@@ -36,6 +36,8 @@ export const ROOM_ART: Readonly<Record<string, Asset>> = {
   brazier: asset('brazier', 'rooms/brazier.png', 480, 720),
   threshold: asset('threshold', 'rooms/threshold.png', 480, 720),
   sanctuary: asset('sanctuary', 'rooms/sanctuary.png', 480, 720),
+  reliquary: asset('reliquary', 'rooms/reliquary.png', 480, 720),
+  'chain-vault': asset('chain-vault', 'rooms/chain-vault.png', 480, 720),
 }
 
 /**
@@ -64,7 +66,27 @@ export const PROP_ART: Readonly<Record<string, Asset>> = {
   'chalice.4': asset('chalice.4', 'props/chalice-4.png', 480, 720),
   'chalice.5': asset('chalice.5', 'props/chalice-5.png', 480, 720),
   'chalice.6': asset('chalice.6', 'props/chalice-6.png', 480, 720),
+  // The Reliquary's and the Chain Vault's objects go here, keyed the same way:
+  // `bell.idle`, `bell.ring-1`, `brazier.lit`, `cage.lowering-1`, `gate.open`
+  // and the rest. Their masters have not been painted — see `## HUMAN ART
+  // REQUIRED` in POLISH_PROGRESS.md — so there are no rows yet, `propArt`
+  // answers nothing, and both rooms run with an empty midground. Every verb is
+  // still a button on the object and every outcome is still in the word band,
+  // which is the degradation `ART_DIRECTION.md` allows for scenery.
+  //
+  // `tools/art.mjs` builds these the moment the masters land; adding the rows
+  // is then the whole of the swap, exactly as it was for the chalice.
 }
+
+/**
+ * Ambient overlay frames, keyed `<room>.<family>.<n>`.
+ *
+ * Whole scene plates like every other overlay in the game, and numbered from
+ * one. Empty for the same reason `PROP_ART` is: none of them has been painted.
+ * `RoomAmbience` builds a loop only when it can resolve *every* frame of it, so
+ * an empty table means the rooms are simply still.
+ */
+export const AMBIENT_ART: Readonly<Record<string, Asset>> = {}
 
 /**
  * Enemy sprites, keyed `<art>` or `<art>.<pose>`.
@@ -152,6 +174,17 @@ export function propArt(id: string, frame: string): Asset | undefined {
   return PROP_ART[`${id}.${frame}`]
 }
 
+/**
+ * One frame of a room's ambience, or nothing because it was never painted.
+ *
+ * Must be able to say no, and says it far more often than `propArt` does: a
+ * room's mood is the most optional thing in the game. A missing frame costs a
+ * loop; a missing loop costs nothing but stillness.
+ */
+export function ambientArt(roomId: string, family: string, frame: number): Asset | undefined {
+  return AMBIENT_ART[`${roomId}.${family}.${frame}`]
+}
+
 export function handArt(pose: string): Asset {
   const found = HAND_ART[pose]
   if (!found) throw new Error(`no hand art for pose "${pose}"`)
@@ -171,6 +204,7 @@ export function allAssets(): readonly Asset[] {
     ...Object.values(ROOM_ART),
     ...Object.values(ENEMY_ART),
     ...Object.values(PROP_ART),
+    ...Object.values(AMBIENT_ART),
     ...Object.values(HAND_ART),
     TRAY_ART,
   ].filter((a) => !seen.has(a.file) && seen.add(a.file))

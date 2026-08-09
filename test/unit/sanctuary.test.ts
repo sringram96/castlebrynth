@@ -70,9 +70,16 @@ function reloaded(state: GameState): GameState {
 describe('the route', () => {
   it('puts the chapel between the Gnawing and the fork', () => {
     expect(room('hollow').exits.map((e) => e.to)).toEqual(['sanctuary'])
-    expect(room('sanctuary').exits.map((e) => e.to)).toEqual(['fork'])
-    // And the fork is untouched: it is still the run's one route decision.
-    expect(room('fork').exits.map((e) => e.to)).toEqual(['gate', 'deep'])
+    // The Reliquary was inserted between the two. The chapel's job is
+    // unchanged — it is still the last thing before the run's one route
+    // decision — and the dead chapel it now opens onto is optional in every
+    // sense, so nothing about the font's placement moved.
+    expect(room('sanctuary').exits.map((e) => e.to)).toEqual(['reliquary'])
+    expect(room('reliquary').exits.map((e) => e.to)).toEqual(['fork'])
+    // And the fork is untouched as a *decision*: still two ways, still the
+    // stair straight to the door. The deep way now has the Chain Vault in
+    // front of its fight.
+    expect(room('fork').exits.map((e) => e.to)).toEqual(['gate', 'chain-vault'])
   })
 
   it('walks there by beating the Gnawing and pressing GO ON', () => {
@@ -87,9 +94,9 @@ describe('the route', () => {
     const held = inSanctuary()
     // Not a hidden exit and not a disabled button: the reducer refuses, so
     // there is no dispatch, fixture or reload that walks past it.
-    expect(reduce(held, { type: 'GO', to: 'fork' })).toBe(held)
+    expect(reduce(held, { type: 'GO', to: 'reliquary' })).toBe(held)
     const rolled = reduce(held, { type: 'RITUAL_ROLL' })
-    expect(reduce(rolled, { type: 'GO', to: 'fork' }).run?.roomId).toBe('fork')
+    expect(reduce(rolled, { type: 'GO', to: 'reliquary' }).run?.roomId).toBe('reliquary')
   })
 
   it('leaves exactly one ritual in the graph', () => {
@@ -236,7 +243,7 @@ describe('what a face gives back', () => {
     // not silently ignored.
     expect(full.run?.ritual?.roomId).toBe('sanctuary')
     expect(full.run?.say).toMatch(/nothing left for it to mend/i)
-    expect(reduce(full, { type: 'GO', to: 'fork' }).run?.roomId).toBe('fork')
+    expect(reduce(full, { type: 'GO', to: 'reliquary' }).run?.roomId).toBe('reliquary')
   })
 
   it('says the number it landed on, and the health, in the same line', () => {

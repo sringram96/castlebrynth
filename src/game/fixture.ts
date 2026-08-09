@@ -16,6 +16,10 @@
  *   ?mode=combat             open the room's fight, or jump to an ending
  *   ?dying=1                 the room's enemy killed, mid-death — what a save
  *                            written a third of a second before the win holds
+ *   ?reliquary=solved        the chest open, its relic already taken
+ *   ?reliquary=dark          bell rung and brazier out — the lever live
+ *   ?vault=weighted          the cage down on the plate, gate still shut
+ *   ?vault=open              the gate up, and the way on with it
  *
  * A fixture builds a real run and hands it to the real reducer. It cannot
  * reach a state the game could not; it only skips the walk. Nothing here is a
@@ -48,9 +52,19 @@ const num = (raw: string | null): number | undefined => {
 
 export function hasFixture(search: string): boolean {
   const p = new URLSearchParams(search)
-  return ['seed', 'room', 'hp', 'enemyHp', 'reach', 'dice', 'relics', 'mode', 'dying'].some((k) =>
-    p.has(k),
-  )
+  return [
+    'seed',
+    'room',
+    'hp',
+    'enemyHp',
+    'reach',
+    'dice',
+    'relics',
+    'mode',
+    'dying',
+    'reliquary',
+    'vault',
+  ].some((k) => p.has(k))
 }
 
 export function applyFixture(base: GameState, search: string): GameState {
@@ -78,6 +92,42 @@ export function applyFixture(base: GameState, search: string): GameState {
 
   const hp = num(p.get('hp'))
   if (hp !== undefined) run = { ...run, hp: Math.max(0, Math.min(hp, MAX_HP)) }
+
+  // Standing in a half-worked room.
+  //
+  // *Played*, not assembled: every one of these presses goes through the real
+  // reducer, so a fixture cannot reach a position the game could not — the
+  // lever fixture below only opens the chest because the bell and the brazier
+  // were genuinely dealt with first, in that order.
+  const stage = p.get('reliquary')
+  if (stage && run.roomId === 'reliquary') {
+    const press = (id: string): void => {
+      state = reduce({ version: SAVE_VERSION, mode: 'explore', meta: state.meta, run }, {
+        type: 'INTERACT',
+        interactionId: id,
+      })
+      run = state.run ?? run
+    }
+    press('reliquary-bell')
+    press('reliquary-brazier')
+    if (stage === 'solved' || stage === 'open') {
+      press('reliquary-lever')
+      if (stage === 'solved') press('reliquary-chest')
+    }
+  }
+
+  const vault = p.get('vault')
+  if (vault && run.roomId === 'chain-vault') {
+    const press = (id: string): void => {
+      state = reduce({ version: SAVE_VERSION, mode: 'explore', meta: state.meta, run }, {
+        type: 'INTERACT',
+        interactionId: id,
+      })
+      run = state.run ?? run
+    }
+    press('vault-chain')
+    if (vault === 'open') press('vault-lever')
+  }
 
   state = { version: SAVE_VERSION, mode: 'explore', meta: state.meta, run }
 

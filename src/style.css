@@ -111,6 +111,29 @@ button {
   display: none;
 }
 
+/*
+ * A room's ambient overlays.
+ *
+ * Cover-fitted identically to `.prop` and to the backdrop — the same four
+ * lines, deliberately not shared with a comma, because the two are separate
+ * ideas that happen to be laid out the same way and one of them is allowed to
+ * change. `object-position` has to match exactly or an overlay drifts against
+ * the room it is lighting.
+ *
+ * `pointer-events: none` is the half of the input contract that matters here:
+ * these sit above the backdrop and under the hit layer, and a candle that ate
+ * a tap would make the object beneath it unpressable.
+ */
+.ambient {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 45%;
+  pointer-events: none;
+}
+
 .layer-enemy {
   inset: auto auto 0 0;
   height: auto;

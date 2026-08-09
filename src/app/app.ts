@@ -30,8 +30,10 @@ import type { Action } from '../game/reducer.js'
 import { save } from '../game/save.js'
 import type { CombatState, GameState } from '../game/state.js'
 import { room as roomById } from '../content/rooms.js'
-import { mountWorld, placeEnemy, showProp } from '../render/compositor.js'
+import { mountWorld, placeEnemy, showProp, showProps } from '../render/compositor.js'
 import type { World } from '../render/compositor.js'
+import { RoomAmbience } from '../render/ambience.js'
+import { beatsDuration, beatsFor, platesFor, stateOf } from '../content/interactions.js'
 import { TRAY_ART, enemyArt, enemyPose, propArt, url } from '../render/assets.js'
 import { mountTray, paintTumble, renderTray } from '../ui/trayView.js'
 import type { Tray } from '../ui/trayView.js'
@@ -176,6 +178,7 @@ export interface AppOptions {
 export class App {
   private state: GameState
   private readonly world: World
+  private readonly ambience: RoomAmbience
   private readonly tray: Tray
   private readonly screen: HTMLElement
   private readonly overlay: HTMLElement
@@ -222,6 +225,7 @@ export class App {
     root.append(worldRoot, trayRoot, this.screen, this.overlay)
 
     this.world = mountWorld(worldRoot)
+    this.ambience = new RoomAmbience(this.world)
     this.tray = mountTray(trayRoot, url(TRAY_ART))
     this.render()
     // A boot that lands inside a death drives it to its end rather than
@@ -287,6 +291,8 @@ export class App {
         return this.playScore(before, after)
       case 'RITUAL_ROLL':
         return this.playRitual(before, after)
+      case 'INTERACT':
+        return this.playInteract(before, after, action.interactionId)
       default:
         this.render()
         // CONTINUE back into a fight that was killed and then reloaded lands
@@ -356,6 +362,93 @@ export class App {
     // way on exists. The face stays: it is painted from `run.ritual`, so it is
     // still there on the next visit and after a reload.
     sequence.at(RITUAL.next, () => this.finish())
+  }
+
+  /**
+   * An object in the room, moving to where it already is.
+   *
+   * The same shape as every other sequence in this file, and the same promise:
+   * the reducer decided the whole outcome, `dispatch` saved it, and every frame
+   * below is a picture of something already true. The chest is open in the save
+   * before the stone is shown grinding; the six health are gone before the
+   * lever is shown snapping back. Settling early — an impatient second tap,
+   * reduced motion, a test — runs the remainder at once and lands on exactly
+   * the same room.
+   *
+   * The plates are pushed straight at the compositor after each paint, the way
+   * the font's and the Gnawing's death are, and for the same reason: a paint
+   * reads the frame off state, and state during a transition already says the
+   * settled thing. Without this the first paint would show the finished room
+   * and the beats would play backwards out of it.
+   */
+  private playInteract(before: GameState, after: GameState, id: string): void {
+    const was = stateOf(before.run!.rooms, before.run!.roomId)
+    const now = stateOf(after.run!.rooms, after.run!.roomId)
+
+    // Health is the vault's other answer, and the only part of an interaction
+    // that is not a picture of a prop. Read off the two states, never computed.
+    const lost = before.run!.hp - after.run!.hp
+
+    this.presenting = { ...before, run: { ...before.run!, say: '' } }
+    this.render()
+
+    if (!this.animated || !was || !now) {
+      this.presenting = undefined
+      this.render()
+      if (lost > 0) {
+        orbChange(this.tray.orb, -lost)
+        shake(this.world, lost)
+      }
+      return
+    }
+
+    const beats = beatsFor(was, now, id)
+    const show = (): void => {
+      // Everything the settled room shows, with the transition's frames laid
+      // over the top of it — so an object that is not moving keeps its plate
+      // while its neighbour swings.
+      const plates = platesFor(was).map((p) => ({ ...p, frame: frames.get(p.id) ?? p.frame }))
+      showProps(
+        this.world,
+        plates
+          .map((p) => ({ id: p.id, art: propArt(p.art, p.frame) }))
+          .filter((x): x is { id: string; art: NonNullable<typeof x.art> } => x.art !== undefined)
+          .map(({ id: pid, art }) => ({ id: pid, src: url(art) })),
+      )
+    }
+    const frames = new Map<string, string>()
+
+    const sequence = this.start()
+    for (const beat of beats) {
+      sequence.at(beat.at, () => {
+        frames.set(beat.id, beat.frame)
+        show()
+      })
+    }
+
+    // The body answers on the frame the mechanism bites, not at the end. A
+    // shake that arrives after the lever is already back up is a shake nobody
+    // connects to anything.
+    if (lost > 0) {
+      sequence.at(90, () => {
+        this.presenting = { ...before, run: { ...before.run!, hp: after.run!.hp, say: '' } }
+        this.render()
+        show()
+        orbChange(this.tray.orb, -lost)
+        shake(this.world, lost)
+      })
+    }
+
+    // The word band, once the thing it describes has happened.
+    const said = beatsDuration(beats) + 80
+    sequence.at(said, () => {
+      this.presenting = { ...before, run: { ...after.run!, say: after.run!.say } }
+      this.render()
+      show()
+    })
+    // And the settled truth, which is the first frame in which a newly opened
+    // gate offers a way on.
+    sequence.at(said + 150, () => this.finish())
   }
 
   private playThrow(after: GameState, slots: readonly number[]): void {
@@ -690,8 +783,15 @@ export class App {
         if (combat) this.say(intentAt(combat.enemyId, combat.turn).explain)
       },
       onRitual: () => this.dispatch({ type: 'RITUAL_ROLL' }),
+      onInteract: (interactionId: string) => this.dispatch({ type: 'INTERACT', interactionId }),
     }
     renderWorld(this.world, state, on)
+
+    // The room keeps breathing under all of it. Idempotent for the same room,
+    // so the loops are not restarted by the several paints a sequence makes —
+    // and torn down the moment the room changes, so nothing is left guttering
+    // behind the next one.
+    this.ambience.show(state.run && state.mode !== 'title' ? state.run.roomId : undefined)
 
     renderTray(this.tray, state, {
       // One mark. Choosing a die keeps it across the reroll and puts it in the
