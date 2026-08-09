@@ -14,6 +14,7 @@
 import { HAND_SIZE, LOOT_DICE, STARTING_DICE, die, isDieId } from '../content/dice.js'
 import { LOOT_RELICS, relic } from '../content/relics.js'
 import { enemy, intentAt, reachAfter } from '../content/enemies.js'
+import { defeatOf } from '../content/defeat.js'
 import { FIRST_ROOM, room } from '../content/rooms.js'
 import { Rng, reroll, roll, toggle } from '../combat/dice.js'
 import { resolve } from '../combat/resolve.js'
@@ -42,6 +43,15 @@ export type Action =
   | { readonly type: 'SCORE' }
   | { readonly type: 'TAKE'; readonly id: string }
   | { readonly type: 'RITUAL_ROLL' }
+  /**
+   * The death has been shown. Pack the fight away.
+   *
+   * The only way out of `combat.defeated`, and the one place a win is granted
+   * for a horror whose death is played. It carries nothing: everything it
+   * needs was decided by the SCORE that killed the thing, so a second press,
+   * a stuck timer or a reload cannot make it pay twice.
+   */
+  | { readonly type: 'DEFEAT_DONE' }
 
 // ── the font ───────────────────────────────────────────────────────────
 
@@ -254,6 +264,35 @@ function equip(dice: readonly string[], id: string): readonly string[] {
   return next.slice(0, HAND_SIZE)
 }
 
+/**
+ * The fight is over and the room is yours.
+ *
+ * The one place a win is granted, called from exactly two: the SCORE that
+ * killed a horror with no death to show, and the `DEFEAT_DONE` that ends one
+ * that had. Both hand it the same `run` — health already settled — and both
+ * get the same answer, because everything it draws on comes from the run's own
+ * generator at a fixed position. A death that is watched and a death that is
+ * skipped pay identically, and neither can pay twice: `combat` is gone from
+ * the state it returns, so a second call has no fight left to win.
+ */
+function victory(state: GameState, run: RunState, combat: CombatState): GameState {
+  const rng = rngFor(run, combatSalt(run, combat, 7))
+  const offer = offerFor(run, combat.enemyId, rng)
+  const { combat: _gone, ...rest } = run
+  const cleared = { ...rest, cleared: [...run.cleared, run.roomId], say: '' }
+  // A fight with nothing left to give goes straight back to the room.
+  if (offer.length === 0) {
+    return {
+      ...state,
+      mode: 'explore',
+      // Said plainly, so an empty-handed win never reads as the reward
+      // screen having failed to open.
+      run: { ...cleared, say: `${enemy(combat.enemyId).name} is dead. Nothing useful on it.` },
+    }
+  }
+  return { ...state, mode: 'reward', run: { ...cleared, offer } }
+}
+
 // ── the reducer ────────────────────────────────────────────────────────
 
 export function reduce(state: GameState, action: Action): GameState {
@@ -340,7 +379,7 @@ export function reduce(state: GameState, action: Action): GameState {
     case 'ROLL': {
       const run = state.run
       const combat = run?.combat
-      if (!run || !combat || combat.phase !== 'intent') return state
+      if (!run || !combat || combat.phase !== 'intent' || combat.defeated) return state
       const rolled = roll(run.dice, rngFor(run, combatSalt(run, combat, 1)))
       return {
         ...state,
@@ -351,7 +390,7 @@ export function reduce(state: GameState, action: Action): GameState {
     case 'REROLL': {
       const run = state.run
       const combat = run?.combat
-      if (!run || !combat || combat.phase !== 'rolled') return state
+      if (!run || !combat || combat.phase !== 'rolled' || combat.defeated) return state
       // The chosen dice are kept, exactly as they lie, and stay chosen. Every
       // other die is thrown once.
       const thrown = reroll(combat.roll, combat.selected, rngFor(run, combatSalt(run, combat, 2)))
@@ -361,7 +400,7 @@ export function reduce(state: GameState, action: Action): GameState {
     case 'SELECT': {
       const run = state.run
       const combat = run?.combat
-      if (!run || !combat || combat.phase === 'intent') return state
+      if (!run || !combat || combat.phase === 'intent' || combat.defeated) return state
       if (!combat.roll.some((d) => d.slot === action.slot)) return state
       return {
         ...state,
@@ -373,6 +412,11 @@ export function reduce(state: GameState, action: Action): GameState {
       const run = state.run
       const combat = run?.combat
       if (!run || !combat || combat.phase === 'intent' || combat.selected.length === 0) return state
+      // A dead thing takes no more damage. This is what makes the death
+      // sequence safe to leave running: every press that reaches the reducer
+      // while it plays finds a fight with nothing left to resolve, so an
+      // impatient thumb cannot score the same hand twice into a corpse.
+      if (combat.defeated) return state
 
       const out = resolve(run, combat)
 
@@ -401,22 +445,25 @@ export function reduce(state: GameState, action: Action): GameState {
       }
 
       if (out.won) {
-        const rng = rngFor(run, combatSalt(run, combat, 7))
-        const offer = offerFor(run, combat.enemyId, rng)
-        const cleared = { ...run, hp: out.hp, cleared: [...run.cleared, run.roomId], say: '' }
-        // A fight with nothing left to give goes straight back to the room.
-        if (offer.length === 0) {
-          const { combat: _gone, ...rest } = cleared
+        // The face costs and heals of the killing hand still happened, so the
+        // health settles here whichever way the win is taken.
+        const settled = { ...run, hp: out.hp }
+
+        // A horror whose death has been authored keeps the fight open on it.
+        // The room is *not* cleared, no offer is drawn and no screen changes:
+        // the state says only that the thing is dead and is being watched
+        // dying, and `DEFEAT_DONE` is the single transition out.
+        if (defeatOf(combat.enemyId)) {
           return {
             ...state,
-            mode: 'explore',
-            // Said plainly, so an empty-handed win never reads as the reward
-            // screen having failed to open.
-            run: { ...rest, say: `${enemy(combat.enemyId).name} is dead. Nothing useful on it.` },
+            run: {
+              ...settled,
+              combat: { ...combat, enemyHp: out.enemyHp, ...moved, defeated: true, log: out.beats },
+            },
           }
         }
-        const { combat: _done, ...rest } = cleared
-        return { ...state, mode: 'reward', run: { ...rest, offer } }
+
+        return victory(state, settled, combat)
       }
 
       const nextTurn = combat.turn + 1
@@ -440,6 +487,16 @@ export function reduce(state: GameState, action: Action): GameState {
           },
         },
       }
+    }
+
+    case 'DEFEAT_DONE': {
+      const run = state.run
+      const combat = run?.combat
+      // Once. A fight that is not being held open on a death has nothing here
+      // to finish — which covers the second timer, the reload that fired one
+      // of its own, and the press that arrived after the win already landed.
+      if (!run || !combat || !combat.defeated || state.mode !== 'combat') return state
+      return victory(state, run, combat)
     }
 
     case 'RITUAL_ROLL': {

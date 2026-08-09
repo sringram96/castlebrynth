@@ -56,13 +56,35 @@ The order is fixed and the whole outcome is computed before a frame is drawn.
 1. Damage lands on the enemy.
 2. Marked faces in the selection resolve: hurt costs you HP, heal gives it.
 3. If the enemy is at 0, the fight is won and nothing else happens. **A dead
-   enemy never acts.**
+   enemy never acts.** If its death has been authored — `content/defeat.ts` —
+   the fight does not close here: it parks on `combat.defeated`, and see
+   *Deaths that are watched* below.
 4. Otherwise the enemy performs its declared intent. Armor (a relic effect)
    subtracts flat.
 5. An enemy that closes takes one step in — or arrives, and arriving is the
    run. See below.
 6. If you are at 0, you are dead.
 7. The next intent is chosen and the turn returns to `intent`.
+
+## Deaths that are watched
+
+A horror with an entry in `content/defeat.ts` does not vanish on the frame its
+last point of health leaves. The SCORE that kills it sets `combat.defeated`
+and stops there: health is settled, but the room is **not** cleared, no reward
+is drawn and no screen changes. The fight now has no move in it — ROLL,
+REROLL, SELECT and SCORE are all refused, and the tray offers nothing but
+MENU — and exactly one way out, `DEFEAT_DONE`, which grants the same win the
+killing press used to grant in one step.
+
+The sequence that plays over it is presentation and decides nothing: the kill
+was reduced and saved before its first frame, so settling it early — an
+impatient thumb, `prefers-reduced-motion`, a test with `motion=0` — lands on
+the identical win. A reload inside the death snaps to the final frame and
+finishes; `?dying=1` is the fixture that stands there.
+
+A horror with **no** entry wins on the killing press, exactly as before. That
+fallback is deliberate: a defeat sequence is authored art, and an enemy
+without one must not be held on a blank screen waiting for it.
 
 ## Things that close the distance
 

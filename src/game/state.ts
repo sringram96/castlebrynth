@@ -16,7 +16,7 @@ import type { Reach } from '../content/enemies.js'
 import type { HandName } from '../combat/scoring.js'
 
 /** Bumped whenever the shape below changes. Old saves are not migrated. */
-export const SAVE_VERSION = 4
+export const SAVE_VERSION = 5
 
 export type Mode = 'title' | 'explore' | 'combat' | 'reward' | 'dead' | 'complete'
 
@@ -72,6 +72,22 @@ export interface CombatState {
   readonly approach?: Reach
   /** Set once, when it arrived. Terminal: the run ended on this. */
   readonly reached?: boolean
+  /**
+   * It is dead, and the fight is being held open on the picture of that.
+   *
+   * Terminal for the fight in the other direction: the enemy has no health
+   * left, nothing further can be scored, and the only transition out is
+   * `DEFEAT_DONE`, which is the win. It exists because the alternative —
+   * clearing the room on the same tick the last point of health left — is a
+   * fight that ends before the player has seen it end.
+   *
+   * A flag, not a clock. There is no frame index and no start time here,
+   * because a frame is not a fact about the run: the sequence in `app/app.ts`
+   * owns which picture is up, `content/defeat.ts` owns how long each one is,
+   * and a reload lands on this flag and plays out from the settled frame. Any
+   * of those numbers in state would be rendering deciding something.
+   */
+  readonly defeated?: boolean
   /** What just happened, for the word band and the beats. */
   readonly log: readonly string[]
 }

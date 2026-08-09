@@ -83,6 +83,10 @@ export function simulateFight(
     current = reduce(current, { type: 'SCORE' })
 
     const after = current.run?.combat?.enemyHp ?? 0
+    // A killing blow parks the fight on the picture of the thing dying. There
+    // is no picture in a simulation, so the model presses through it in the
+    // same tick — the win it grants is the same win either way.
+    if (current.run?.combat?.defeated) current = reduce(current, { type: 'DEFEAT_DONE' })
     const hit = before - after
     dealt += hit
     if (hit <= 0) emptyTurns++

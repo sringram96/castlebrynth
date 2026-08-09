@@ -164,16 +164,21 @@ function renderHud(world: World, state: GameState, handlers: WorldHandlers): voi
     bar.append(meter)
 
     // The intent, before the first casting, and tappable so it explains itself.
-    const intent = intentAt(combat.enemyId, combat.turn)
-    const b = button({
-      act: 'intent',
-      label: intent.damage > 0 ? `${intent.verb} ${intent.damage}` : intent.verb,
-      describe: `Next: ${intent.explain}`,
-      onPress: handlers.onIntent,
-      className: `intent${intent.telegraph ? ' intent-telegraph' : ''}`,
-    })
-    b.id = 'intent'
-    bar.append(b)
+    // A dead thing declares nothing: what it was going to do next is no longer
+    // true, and leaving it up would be the bar promising a turn that will not
+    // happen over the top of the thing failing to take it.
+    if (!combat.defeated) {
+      const intent = intentAt(combat.enemyId, combat.turn)
+      const b = button({
+        act: 'intent',
+        label: intent.damage > 0 ? `${intent.verb} ${intent.damage}` : intent.verb,
+        describe: `Next: ${intent.explain}`,
+        onPress: handlers.onIntent,
+        className: `intent${intent.telegraph ? ' intent-telegraph' : ''}`,
+      })
+      b.id = 'intent'
+      bar.append(b)
+    }
     world.hud.append(bar)
   }
 

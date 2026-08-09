@@ -238,6 +238,18 @@ const fightAt = (enemyHp: number, hp: number, seed = 1): GameState => {
   }
 }
 
+/**
+ * That fight, won.
+ *
+ * Two presses rather than one, because the Gnawing's death is played: SCORE
+ * parks the fight on the picture of it dying and `DEFEAT_DONE` is what turns
+ * that into the win. Every assertion below is about the win, and the win is
+ * the same one either way — see `test/unit/defeat.test.ts` for the hold
+ * itself.
+ */
+const wonAt = (enemyHp: number, hp: number, seed = 1): GameState =>
+  play(fightAt(enemyHp, hp, seed), { type: 'SCORE' }, { type: 'DEFEAT_DONE' })
+
 /** The same, against something that answers with a blow rather than a step. */
 const tradingFightAt = (enemyHp: number, hp: number, seed = 1): GameState => {
   const rolled = reduce(intoTradingFight(seed), { type: 'ROLL' })
@@ -251,8 +263,7 @@ const tradingFightAt = (enemyHp: number, hp: number, seed = 1): GameState => {
 /** The first seed whose winning blow does, or does not, drop something. */
 const seedWhere = (dropped: boolean): number => {
   for (let seed = 1; seed < 400; seed++) {
-    const won = reduce(fightAt(1, MAX_HP, seed), { type: 'SCORE' })
-    if ((won.mode === 'reward') === dropped) return seed
+    if ((wonAt(1, MAX_HP, seed).mode === 'reward') === dropped) return seed
   }
   throw new Error(`no seed in 400 produces dropped=${dropped}`)
 }
@@ -268,7 +279,7 @@ describe('the outcome', () => {
   })
 
   it('goes to the reward screen when a win drops something, with combat gone', () => {
-    const after = reduce(fightAt(1, MAX_HP, seedWhere(true)), { type: 'SCORE' })
+    const after = wonAt(1, MAX_HP, seedWhere(true))
     expect(after.mode).toBe('reward')
     expect(after.run?.combat).toBeUndefined()
     expect(after.run?.offer?.length).toBe(2)
@@ -276,7 +287,7 @@ describe('the outcome', () => {
   })
 
   it('goes straight back to the room when a win drops nothing, and says so', () => {
-    const after = reduce(fightAt(1, MAX_HP, seedWhere(false)), { type: 'SCORE' })
+    const after = wonAt(1, MAX_HP, seedWhere(false))
     expect(after.mode).toBe('explore')
     expect(after.run?.offer).toBeUndefined()
     expect(after.run?.combat).toBeUndefined()
@@ -293,7 +304,7 @@ describe('the outcome', () => {
   })
 
   it('offers nothing already carried', () => {
-    const won = reduce(fightAt(1, MAX_HP, seedWhere(true)), { type: 'SCORE' })
+    const won = wonAt(1, MAX_HP, seedWhere(true))
     const withRelic = {
       ...won,
       run: { ...won.run!, relics: ['knuckle'], offer: won.run!.offer! },
@@ -304,7 +315,7 @@ describe('the outcome', () => {
   })
 
   it('equips a taken die into the six and keeps the hand at six', () => {
-    const won = reduce(fightAt(1, MAX_HP, seedWhere(true)), { type: 'SCORE' })
+    const won = wonAt(1, MAX_HP, seedWhere(true))
     const dieOffer = won.run!.offer!.find((id) => id === 'careful' || id === 'leech' || id === 'pusher' || id === 'runner')
     const id = dieOffer ?? won.run!.offer![0]!
     const taken = reduce(won, { type: 'TAKE', id })
@@ -409,14 +420,14 @@ describe('the enemies', () => {
 describe('how often a fight pays', () => {
   /** Whether the winning blow on this seed dropped anything. */
   const dropped = (seed: number): boolean =>
-    reduce(fightAt(1, MAX_HP, seed), { type: 'SCORE' }).mode === 'reward'
+    wonAt(1, MAX_HP, seed).mode === 'reward'
 
   const SEEDS = Array.from({ length: 300 }, (_, i) => i + 1)
 
   it('is a pure function of the run: the same seed drops the same thing', () => {
     for (const seed of SEEDS.slice(0, 40)) {
-      const a = reduce(fightAt(1, MAX_HP, seed), { type: 'SCORE' })
-      const b = reduce(fightAt(1, MAX_HP, seed), { type: 'SCORE' })
+      const a = wonAt(1, MAX_HP, seed)
+      const b = wonAt(1, MAX_HP, seed)
       expect(a.mode).toBe(b.mode)
       expect(a.run?.offer).toEqual(b.run?.offer)
     }
@@ -434,7 +445,7 @@ describe('how often a fight pays', () => {
 
   it('never offers more than the enemy declares', () => {
     for (const seed of SEEDS) {
-      const won = reduce(fightAt(1, MAX_HP, seed), { type: 'SCORE' })
+      const won = wonAt(1, MAX_HP, seed)
       if (won.mode !== 'reward') continue
       expect(won.run!.offer!.length).toBeLessThanOrEqual(enemy('gnawing').rewardChoices)
       expect(won.run!.offer!.length).toBeGreaterThan(0)
