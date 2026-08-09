@@ -72,6 +72,15 @@ export interface RolledBone {
   readonly value: number
   /** Set when this is a player special. Its death removes this instance. */
   readonly specialInstanceId?: string
+  /**
+   * Which named bone it is, carried on the bone rather than looked up.
+   *
+   * A dead special is removed from the pile the instant it breaks, so a view
+   * that resolved the name through `run.specials` would find nothing exactly
+   * when the name matters most — on the frame the Cinderbone is lying broken
+   * in its lane. The bone knows what it is.
+   */
+  readonly specialId?: string
   /** Set when this is an enemy bone. Its death removes this id from the army. */
   readonly enemyBoneId?: string
 }

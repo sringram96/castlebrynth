@@ -2,11 +2,14 @@
 
 A portrait pixel-horror roguelike for the phone.
 
-You go down. The rooms are hand-authored and hostile. When something is
-standing in one of them, you fight it by throwing six dice, keeping the ones
-you want, throwing the rest once more, and spending the best combination you
-can make. What you take off the things you kill changes what you hope to roll
-next time.
+You go down with thirty bones.
+
+When something blocks the room, it throws its bones first. You see the line,
+choose how many of your own bones to risk, throw once, and smash the two lines
+together from highest to lowest. High kills low. Ties kill both. Anything that
+dies stays dead.
+
+Then you decide how much of yourself to risk on the next round.
 
 Then you die, and go down again.
 
@@ -20,20 +23,21 @@ npm run dev
 Open the URL it prints. It is best on a phone, or in a browser window the shape
 of one — 390×844 is what everything is laid out against.
 
-## How a turn goes
+## How a round goes
 
-1. The thing in front of you says what it will do next, before you touch
+1. **The enemy throws first.** Its line is face-up and sorted before you touch
    anything.
-2. **ROLL** — six dice.
-3. Tap the dice you want. They rise.
-4. **REROLL** — everything you did not choose is thrown again, once. Skippable.
-5. Tap more dice, or fewer.
-6. **SCORE** — the tray shows `sum × hand = damage` before you press it, and
-   pressing it deals exactly that.
+2. Choose **1–6** bones and **FIELD** them. Fewer bones risked is fewer bones
+   lost, and fewer of its broken.
+3. **THROW** once. There is no reroll.
+4. Optionally spend a **CHARM** to throw one bone again — once in a fight.
+5. **SMASH.** The two lines meet lane by lane, highest against highest.
+6. **ROUND**, if both sides still have bones.
 
-Seven hands: **Any** ×1, **Pair** ×2, **Triple** ×3, **Straight 3** ×3, **Full
-House** ×5, **Quad** ×6, **Straight 5** ×6. INSPECT has the table, and every
-die you carry, and what each one does.
+High kills low. Ties kill both — except the Warden, who keeps his. Bones with
+nothing opposite them are safe. Whatever breaks is gone for the rest of the run.
+
+MENU has your army, your satchel, and those four lines.
 
 ## Build and test
 

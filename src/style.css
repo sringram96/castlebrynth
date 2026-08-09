@@ -1062,6 +1062,15 @@ button {
   text-shadow: 0 1px 0 rgb(255 255 255 / 0.45);
 }
 
+/* The painted face is the button's content, not a control of its own. It is
+   inert so a press lands on the button rather than on the drawing inside it —
+   the same rule the tray plate and the enemy are held to. */
+.bone-face,
+.pip,
+.bone-numeral {
+  pointer-events: none;
+}
+
 .pip {
   position: absolute;
   width: 18%;
@@ -1341,7 +1350,9 @@ button {
   gap: 8px;
 }
 
-.act-step {
+/* Specific enough to beat `.act`, which is declared later and is absolute.
+   A stepper button sits in the well's flow, next to its count. */
+.width-stepper .act-step {
   position: static;
   min-width: var(--touch);
   min-height: var(--touch);

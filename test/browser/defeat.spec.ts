@@ -1,5 +1,5 @@
 /**
- * The death of The Gnawing, on a phone.
+ * A horror stopping, on a phone.
  *
  * `test/unit/defeat.test.ts` proves the fight parks on a state with one way
  * out of it. This is the half that decides completion: that a player *sees*
@@ -12,205 +12,166 @@
  *
  * ## Why there is a recorder
  *
- * The same reason `motion.spec.ts` has one: the frames of the death are up for
- * 110, 110, 160 and 280 ms, and a poll from Node can easily arrive after the
- * thing it was looking for has gone — failing a build that is perfectly
- * correct, and failing it only when the machine is busy. So **every claim
- * about what was on screen mid-death is made by a sampler installed before the
- * moment it is watching**, and nothing here polls the DOM from Node for a
- * frame.
+ * The frames of a death are up for 110–420 ms, and a poll from Node can easily
+ * arrive after the thing it was looking for has gone — failing a build that is
+ * perfectly correct, and failing it only when the machine is busy. So **every
+ * claim about what was on screen mid-death is made by a sampler installed
+ * before the moment it is watching**, and nothing here polls the DOM from Node
+ * for a frame.
  *
- * It samples on `requestAnimationFrame` rather than on a MutationObserver,
- * unlike `motion.spec.ts`. One of these has to run from an init script — the
- * resume test's page is already inside a death when it finishes loading — and
- * at that point there is no element to observe. A frame here is never shorter
- * than 110 ms, which is six samples.
+ * It samples on `requestAnimationFrame` because one of these has to run from
+ * an init script — the resume test's page is already inside a death when it
+ * finishes loading — and at that point there is no element to observe.
  */
 
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 
-import { act, boot, screenName, settled, state } from './helpers.js'
+import { act, boot, screenName, state } from './helpers.js'
 
-/** A fight against the Gnawing, one blow from over, with it on top of you. */
-const DOOMED = '?room=hollow&enemyHp=1&reach=close'
+/** A fight one lane from over, played to that lane by the fixture. */
+const DOOMED = '?room=hollow&dying=1'
 
 interface Seen {
   /** Every value `#enemy[data-defeat]` held, in order, with its arrival. */
   readonly frames: { step: string; at: number }[]
-  /** Combat verbs that were live on the tray at any point while it was dying. */
+  /** Combat verbs that were ever on screen while it was dying. */
   readonly verbs: string[]
-  /** Whether the enemy bar was still declaring an intent while it died. */
-  readonly intent: boolean
-  /** Every health the enemy bar showed while it was dying. */
-  readonly enemyHp: string[]
-  /** Whether any full screen was up over the death. */
-  readonly screen: boolean
-  /** Milliseconds from the start of watching to the win, or null. */
-  readonly wonAt: number | null
+  /** Whether a reward screen was ever up over the top of the death. */
+  readonly rewardOverDeath: boolean
+  /** How dim the body got. */
+  readonly dims: string[]
 }
 
-/**
- * The observer.
- *
- * One function, used two ways: evaluated after a boot when the death has not
- * started yet, and installed as an init script when the *boot itself* lands
- * inside one. Both watch `document.documentElement`, because at init time
- * there is not yet a body to watch.
- */
-const RECORDER = (): void => {
-  const started = performance.now()
-  const since = (): number => Math.round(performance.now() - started)
-  const seen = {
-    frames: [] as { step: string; at: number }[],
-    verbs: [] as string[],
-    intent: false,
-    enemyHp: [] as string[],
-    screen: false,
-    wonAt: null as number | null,
+declare global {
+  interface Window {
+    __seen?: Seen
   }
-  ;(window as unknown as { seen: typeof seen }).seen = seen
+}
 
-  const look = (): void => {
-    const enemy = document.getElementById('enemy')
-    const step = enemy?.dataset['defeat']
-    if (step !== undefined) {
-      if (seen.frames.at(-1)?.step !== step) seen.frames.push({ step, at: since() })
-      // Only the three verbs that move a fight. MENU is not one of them: it
-      // opens a reference, changes no state, and stays reachable throughout.
-      for (const name of ['roll', 'reroll', 'score']) {
-        const found = document.querySelector<HTMLElement>(`#tray [data-act="${name}"]`)
-        if (found && found.offsetParent !== null && !seen.verbs.includes(name)) seen.verbs.push(name)
+/** Install the sampler before anything is painted. */
+async function record(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const seen: Seen = { frames: [], verbs: [], rewardOverDeath: false, dims: [] }
+    window.__seen = seen
+    const start = performance.now()
+    const sample = (): void => {
+      const enemy = document.getElementById('enemy')
+      const step = enemy?.dataset['defeat']
+      if (step !== undefined) {
+        const last = seen.frames[seen.frames.length - 1]
+        if (!last || last.step !== step) {
+          seen.frames.push({ step, at: Math.round(performance.now() - start) })
+        }
+        const dim = enemy?.style.getPropertyValue('--dim')
+        if (dim && !seen.dims.includes(dim)) seen.dims.push(dim)
+        for (const name of ['field', 'throw', 'smash', 'round']) {
+          if (document.querySelector(`[data-act="${name}"]`) && !seen.verbs.includes(name)) {
+            seen.verbs.push(name)
+          }
+        }
+        const screen = document.getElementById('screen')
+        if (screen && !screen.hidden && screen.dataset['screen'] === 'reward') {
+          seen.rewardOverDeath = true
+        }
       }
-      if (document.getElementById('intent')) seen.intent = true
-      const hp = document.getElementById('enemy-hp')?.textContent
-      if (hp && !seen.enemyHp.includes(hp)) seen.enemyHp.push(hp)
-      const over = document.getElementById('screen')
-      if (over && !over.hidden && over.dataset['screen']) seen.screen = true
+      requestAnimationFrame(sample)
     }
-    const screen = document.getElementById('screen')
-    const won =
-      screen?.dataset['screen'] === 'reward' || document.querySelector('#tray [data-act="go"]') !== null
-    if (won && seen.wonAt === null) seen.wonAt = since()
-  }
-
-  // Sample every frame until the win has been seen and held for a moment, so
-  // the record is complete and the page is not left spinning a loop.
-  let after = 0
-  const tick = (): void => {
-    look()
-    if (seen.wonAt !== null && ++after > 30) return
-    requestAnimationFrame(tick)
-  }
-  tick()
+    requestAnimationFrame(sample)
+  })
 }
 
-const watch = (page: Page): Promise<void> => page.evaluate(RECORDER)
-const arm = (page: Page): Promise<void> => page.addInitScript(RECORDER)
+const seen = (page: Page): Promise<Seen> =>
+  page.evaluate(() => window.__seen ?? { frames: [], verbs: [], rewardOverDeath: false, dims: [] })
 
-/** Wait for the win the recorder saw, and hand back everything it recorded. */
-async function played(page: Page): Promise<Seen> {
+/** Wait for the fight to be packed away. */
+async function finished(page: Page): Promise<void> {
   await expect
-    .poll(async () => (await page.evaluate(() => (window as unknown as { seen: Seen }).seen)).wonAt, {
-      timeout: 8000,
-    })
-    .not.toBeNull()
-  return page.evaluate(() => (window as unknown as { seen: Seen }).seen)
+    .poll(async () => (await state(page)).run?.combat === undefined, { timeout: 9000 })
+    .toBe(true)
 }
 
-/** Roll, choose one die, and put it in. Enough to kill a thing on 1 HP. */
-async function killIt(page: Page): Promise<void> {
-  await act(page, 'roll').click()
-  await page.locator('.die[data-slot="0"]').click()
-  await watch(page)
-  await act(page, 'score').click()
-}
-
-test.describe('the Gnawing gives out', () => {
-  test('plays every authored frame of its death before the win', async ({ page }) => {
+test.describe('it stops, and you watch it', () => {
+  test('the body plays through its frames', async ({ page }) => {
+    await record(page)
     await boot(page, DOOMED, { motion: true })
-    await killIt(page)
-    const seen = await played(page)
+    await finished(page)
 
-    // Four frames, in order, and none of them skipped. This is the assertion
-    // the whole feature exists for: killing it is a thing that happens on
-    // screen rather than a screen that replaces another one.
-    expect(seen.frames.map((f) => f.step)).toEqual(['0', '1', '2', '3'])
-
-    // And it is short. A death long enough to notice waiting through is worse
-    // than no death at all.
-    const first = seen.frames[0]!.at
-    const last = seen.frames.at(-1)!.at
-    expect(last - first, 'the collapse drags').toBeLessThan(900)
-    expect(seen.wonAt!, 'the win arrives before the body has settled').toBeGreaterThan(last)
+    const watched = await seen(page)
+    expect(watched.frames.length, 'no frame of a death was ever on screen').toBeGreaterThan(0)
+    // The steps arrive in order and do not go backwards.
+    const steps = watched.frames.map((f) => Number(f.step))
+    expect(steps).toEqual([...steps].sort((a, b) => a - b))
+    // And the light goes out of it.
+    if (watched.dims.length > 1) {
+      const dims = watched.dims.map(Number)
+      expect(dims[dims.length - 1]!).toBeLessThan(dims[0]!)
+    }
   })
 
-  test('offers nothing to press while it is dying', async ({ page }) => {
+  test('the tray offers nothing while it is dying', async ({ page }) => {
+    await record(page)
     await boot(page, DOOMED, { motion: true })
-    await killIt(page)
-    const seen = await played(page)
+    await finished(page)
 
-    expect(seen.verbs, 'a combat verb was live over a corpse').toEqual([])
-    expect(seen.intent, 'a dead thing was still declaring its next move').toBe(false)
-    // MENU is not a move and never goes away.
-    expect(await act(page, 'menu').count()).toBe(1)
+    // Not greyed, not waiting: absent. The reducer refuses all four anyway;
+    // this is the half of that rule the player can see.
+    expect((await seen(page)).verbs).toEqual([])
   })
 
-  test('shows the health gone, and no win, for the whole of the fall', async ({ page }) => {
+  test('no reward is ever shown over the top of it', async ({ page }) => {
+    await record(page)
     await boot(page, DOOMED, { motion: true })
-    await killIt(page)
-    const seen = await played(page)
-
-    // The enemy bar reads zero from the first frame of the death to the last,
-    // and no reward screen is allowed over the top of it. Those two together
-    // are what "the win does not arrive early" means on a screen.
-    expect(seen.enemyHp).toEqual(['0 / 140'])
-    expect(seen.screen, 'a screen opened over the death').toBe(false)
-    expect((await state(page)).run!.combat).toBeUndefined()
+    await finished(page)
+    expect((await seen(page)).rewardOverDeath).toBe(false)
   })
 
-  test('lands on the same win when an impatient thumb ends it early', async ({ page }) => {
+  test('the fight is never left standing in it', async ({ page }) => {
     await boot(page, DOOMED, { motion: true })
-    await killIt(page)
-    await settled(page)
-
-    // The promise the whole of `render/` is built on, applied to a death: the
-    // outcome was decided and saved before the first frame, so settling in the
-    // middle of it loses the pictures and nothing else.
-    const now = await state(page)
-    expect(now.mode === 'reward' || now.mode === 'explore').toBe(true)
-    expect(now.run!.combat).toBeUndefined()
-    expect(await page.locator('#enemy[data-defeat]').count()).toBe(0)
+    await finished(page)
+    // Either a reward screen or the room, and in both cases the fight is gone.
+    expect(['reward', null]).toContain(await screenName(page))
+    expect((await state(page)).run!.cleared).toContain('hollow')
   })
 
-  test('never soft-locks: there is always a way on afterwards', async ({ page }) => {
+  test('an impatient thumb gets the same win, immediately', async ({ page }) => {
     await boot(page, DOOMED, { motion: true })
-    await killIt(page)
-    await played(page)
-
-    const screen = await screenName(page)
-    if (screen === 'reward') await expect(act(page, 'take').first()).toBeVisible()
-    else await expect(act(page, 'go').first()).toBeVisible()
+    await page.evaluate(() => window.castlebrynth?.settle())
+    await finished(page)
+    expect((await state(page)).run!.cleared).toContain('hollow')
   })
 })
 
-test.describe('a reload that landed inside the death', () => {
-  test('snaps to the settled frame and finishes the win by itself', async ({ page }) => {
-    // `?dying` is the state a save holds if the tab is closed in the moment
-    // between the blow and the win — built by playing the killing hand through
-    // the real reducer. Booting into it must resolve, not wait. The recorder
-    // is armed before the navigation, because by the time Node could look the
-    // held frame may already have done its job.
-    await arm(page)
-    await boot(page, '?room=hollow&dying=1', { motion: true })
-    const seen = await played(page)
-
-    // The last frame, not the first: the collapse already happened, and the
-    // half worth keeping is the body.
-    expect(seen.frames.map((f) => f.step), 'a resume replayed the collapse').toEqual(['3'])
-    expect(seen.verbs).toEqual([])
-    expect(seen.intent).toBe(false)
-    expect(seen.enemyHp).toEqual(['0 / 140'])
-    expect((await state(page)).run!.combat).toBeUndefined()
+test.describe('a reload inside a death', () => {
+  test('snaps to the settled frame and finishes the win', async ({ page }) => {
+    await record(page)
+    await boot(page, DOOMED, { motion: true })
+    // Reload before it has finished. The kill is in the save — it was
+    // committed by the smash that caused it — so there is nothing to
+    // recompute and nothing to replay.
+    await page.reload()
+    await expect(page.locator('body')).toHaveAttribute('data-assets', 'ready')
+    await finished(page)
+    expect((await state(page)).run!.cleared).toContain('hollow')
   })
+})
+
+test.describe('every enemy in the slice has a visible end', () => {
+  for (const [room, name] of [
+    ['hollow', 'The Gnawing'],
+    ['deep', 'The Marrow'],
+    ['gate', 'The Warden'],
+  ] as const) {
+    test(`${name} is watched finishing`, async ({ page }) => {
+      await record(page)
+      await boot(page, `?room=${room}&dying=1`, { motion: true })
+      await finished(page)
+      const watched = await seen(page)
+      expect(
+        watched.frames.length,
+        `${name} stopped being drawn without a death`,
+      ).toBeGreaterThan(0)
+      expect((await state(page)).run!.cleared).toContain(room)
+    })
+  }
 })

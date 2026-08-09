@@ -104,7 +104,12 @@ export function materialiseField(
   field: PlayerField,
   pile: FieldedPile,
   round: number,
-): readonly { boneKey: string; profile: BoneProfileId; specialInstanceId?: string }[] {
+): readonly {
+  boneKey: string
+  profile: BoneProfileId
+  specialInstanceId?: string
+  specialId?: string
+}[] {
   const byId = new Map(pile.specials.map((s) => [s.instanceId, s]))
   const chosen = field.specialIds.map((id) => {
     const found = byId.get(id)
@@ -120,6 +125,7 @@ export function materialiseField(
       boneKey: s.instanceId,
       profile: profileOfSpecial(s),
       specialInstanceId: s.instanceId,
+      specialId: s.specialId,
     })),
     ...Array.from({ length: commons }, (_, i) => ({
       boneKey: commonKey(round, i),
@@ -143,6 +149,7 @@ export function rollPlayerLine(
       faceIndex,
       value,
       ...(bone.specialInstanceId ? { specialInstanceId: bone.specialInstanceId } : {}),
+      ...(bone.specialId ? { specialId: bone.specialId } : {}),
     }
   })
   return sortPlayerLine(thrown)

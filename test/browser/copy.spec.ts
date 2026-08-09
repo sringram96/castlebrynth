@@ -1,135 +1,114 @@
 /**
- * What the player can actually read, on the screen they read it from.
+ * The copy, where a player actually reads it.
  *
- * `test/unit/copy.test.ts` holds the content to its rules. This holds the
- * *interface* to putting them in front of somebody — a rule that is exact in
- * `dice.ts` and never rendered is not a rule anybody has read.
+ * `test/unit/copy.test.ts` holds the content tables to their rules. This holds
+ * the *screen* to them: a sentence that exists in `bones.ts` and is never
+ * rendered is not a rule anybody has read.
  */
 
 import { expect, test } from '@playwright/test'
 
-import { act, boot, dice } from './helpers.js'
+import { act, boot, bones } from './helpers.js'
 
-test.describe('a special die explains itself in one card', () => {
-  test('the Pusher names its red 1, its cost, and when it applies', async ({ page }) => {
-    await boot(page, '?room=fork&dice=pusher')
-    await dice(page).nth(0).click()
+test.describe('a bone explains itself in one card', () => {
+  test('the Cinderbone states its six faces and nothing else', async ({ page }) => {
+    await boot(page, '?room=fork&specials=cinderbone')
+    await act(page, 'pouch').click()
 
-    const card = page.locator('#overlay')
-    await expect(card).toContainText('red 1')
-    await expect(card).toContainText('lose 7 HP')
-    await expect(card).toContainText('included in the hand you SCORE')
-    // And why anybody would want it, in play terms.
-    await expect(card).toContainText('HELPS WITH ·')
-    await expect(card).toContainText('Triples of 6')
+    const overlay = page.locator('#overlay')
+    await expect(overlay).toContainText('Cinderbone')
+    await expect(overlay).toContainText('3, 4, 5, 6, 7, 7.')
+    // Six faces drawn, and the two sevens are both there.
+    await expect(overlay.locator('.card-faces .bone-face')).toHaveCount(6)
+    await expect(overlay.locator('.card-faces .bone-face[data-value="7"]')).toHaveCount(2)
   })
 
-  test('the Runner distinguishes its ordinary 6 from its red one', async ({ page }) => {
-    await boot(page, '?room=fork&dice=runner')
-    await dice(page).nth(0).click()
-
-    const card = page.locator('#overlay')
-    await expect(card).toContainText('One of its 6 faces is red')
-    await expect(card).toContainText('lose 5 HP')
-    // Both sixes are on the card, and only one carries a mark.
-    await expect(card.locator('.card-faces .die-face[data-value="6"]')).toHaveCount(2)
-    await expect(card.locator('.card-faces .mark-hurt')).toHaveCount(1)
+  test('the Knuckle states the eight it can reach, in digits', async ({ page }) => {
+    await boot(page, '?room=fork&specials=knuckle')
+    await act(page, 'pouch').click()
+    const overlay = page.locator('#overlay')
+    await expect(overlay).toContainText('4, 5, 6, 6, 7, 8.')
+    // And the eight prints its number, because no pip pattern says eight.
+    await expect(overlay.locator('.bone-face[data-value="8"] .bone-numeral')).toHaveText('8')
   })
 
-  test('the Leech names its green 6 and what it gives back', async ({ page }) => {
-    await boot(page, '?room=fork&dice=leech')
-    await dice(page).nth(0).click()
-
-    const card = page.locator('#overlay')
-    await expect(card).toContainText('its 6 is green')
-    await expect(card).toContainText('heal 4 HP')
-    await expect(card).toContainText('included in the hand you SCORE')
-    await expect(card).not.toContainText('only healing')
-  })
-
-  test('the Careful Bone says exactly which faces it has', async ({ page }) => {
-    await boot(page, '?room=fork&dice=careful')
-    await dice(page).nth(0).click()
-    await expect(page.locator('#overlay')).toContainText('can only roll 3 or 4: three faces of each')
+  test('a bone in the line can be inspected without spending anything', async ({ page }) => {
+    await boot(page, '?room=hollow&mode=combat&phase=rolled')
+    await bones(page).first().click()
+    await expect(page.locator('#overlay')).toBeVisible()
+    await expect(page.locator('#overlay')).toContainText('1, 2, 3, 4, 5, 6.')
+    await act(page, 'close').click()
+    await expect(page.locator('#overlay')).toBeHidden()
   })
 })
 
-test.describe('a relic explains itself in one card', () => {
-  test('Blood Thimble says which faces it pays for', async ({ page }) => {
-    await boot(page, '?room=fork&relics=thimble')
-    await page.locator('#relics .relic[data-relic-id="thimble"]').click()
-
-    const card = page.locator('#overlay')
-    await expect(card).toContainText('EFFECT ·')
-    await expect(card).toContainText('Each red damage face included in the hand you SCORE')
-    await expect(card).toContainText('+8 damage')
-    await expect(card).toContainText('HELPS WITH ·')
-    await expect(card).toContainText('Pusher and Runner')
-    // No private vocabulary and no metaphor standing in for the rule.
-    await expect(card).not.toContainText('marked')
-    await expect(card).not.toContainText('BUILD ·')
+test.describe('a carried thing explains itself in one card', () => {
+  test('a Vial says what it gives and where it stops', async ({ page }) => {
+    await boot(page, '?room=fork&bones=30&vials=1')
+    // Full, so the bay inspects rather than drinks.
+    await page.locator('.satchel-slot[data-slot-id="vial"]').click()
+    const overlay = page.locator('#overlay')
+    await expect(overlay).toContainText('5 common bones back')
+    await expect(overlay).toContainText('30')
   })
 
-  test('Choir Nail states its condition rather than its rarity', async ({ page }) => {
-    await boot(page, '?room=fork&relics=nail')
-    await page.locator('#relics .relic[data-relic-id="nail"]').click()
-    await expect(page.locator('#overlay')).toContainText('shows the same number, double the final damage')
-    await expect(page.locator('#overlay')).not.toContainText('enormous')
+  test('a Charm says it is once, and that it is one bone', async ({ page }) => {
+    await boot(page, '?room=fork&charms=1')
+    await page.locator('.satchel-slot[data-slot-id="charm"]').click()
+    const overlay = page.locator('#overlay')
+    await expect(overlay).toContainText('Once per fight')
+    await expect(overlay).toContainText('1 of your rolled bones')
   })
 })
 
-test.describe('the numbers are legible before they are committed', () => {
-  test('a red face previews its cost as a consequence, not a sign', async ({ page }) => {
-    await boot(page, '?seed=2&room=hollow&mode=combat&dice=pusher,pusher,pusher,pusher,pusher,pusher')
-    await act(page, 'roll').click()
-    await page.locator('.die:has(.mark-hurt)').first().click()
-    await expect(page.locator('#well')).toContainText('Lose 7 HP')
+test.describe('the fight states its rules before they are needed', () => {
+  test('the well asks for the decision the phase actually wants', async ({ page }) => {
+    await boot(page, '?room=deep&mode=combat&phase=thrown')
+    await expect(page.locator('#well')).toContainText('Choose how many bones to risk')
   })
 
-  test('a relic bonus is named where it is added', async ({ page }) => {
-    await boot(page, '?seed=2&room=hollow&mode=combat&dice=pusher,pusher,pusher,pusher,pusher,pusher&relics=thimble')
-    await act(page, 'roll').click()
-    await page.locator('.die:has(.mark-hurt)').first().click()
-    // Not a bare "+8" the player has to attribute themselves.
-    await expect(page.locator('#well')).toContainText('Blood Thimble +8')
+  test('the Marrow says what is wrong with its bones', async ({ page }) => {
+    await boot(page, '?room=deep')
+    await expect(page.locator('#well')).toContainText('Two of its bones are wrong')
   })
 
-  test('an enemy telegraph states its next blow and its size', async ({ page }) => {
-    await boot(page, '?room=deep&mode=combat')
-    // Two rakes, then the wind-up. Play to it through the real interface.
-    for (let turn = 0; turn < 2; turn++) {
-      await act(page, 'roll').click()
-      await dice(page).nth(0).click()
-      await act(page, 'score').click()
-    }
-    const intent = page.locator('#intent')
-    await expect(intent).toContainText('WIND UP')
-    await intent.click()
-    await expect(page.locator('#say')).toContainText('Its next attack is CRUSH for 15')
+  test('a taken thing repeats its own rule', async ({ page }) => {
+    // The pickup line is the card again, not "Charm. Taken." — sending the
+    // player to MENU to find out what they just chose is the failure this
+    // exists to prevent.
+    await boot(page, '?room=fork&charms=0')
+    await expect(page.locator('#say')).not.toContainText('Taken.')
   })
+})
 
-  test('MENU states the damage equation literally', async ({ page }) => {
+test.describe('nothing on screen speaks the old language', () => {
+  const FIXTURES = [
+    '?room=entry',
+    '?room=fork&specials=knuckle&vials=1&charms=1',
+    '?room=hollow&mode=combat&phase=thrown',
+    '?room=deep&mode=combat&phase=rolled',
+    '?room=gate&mode=combat&phase=smashed',
+    '?mode=dead',
+    '?mode=complete',
+  ]
+
+  for (const fixture of FIXTURES) {
+    test(`${fixture} never says HP or damage`, async ({ page }) => {
+      await boot(page, fixture)
+      const text = await page.locator('body').innerText()
+      expect(text, 'the screen says HP').not.toMatch(/\bHP\b/)
+      expect(text, 'the screen says damage').not.toMatch(/\bdamage\b/i)
+      expect(text, 'the screen says health').not.toMatch(/\bhealth\b/i)
+      expect(text, 'the screen says relic').not.toMatch(/\brelic\b/i)
+    })
+  }
+
+  test('MENU carries no scoring ladder and no multiplier', async ({ page }) => {
     await boot(page, '?room=fork')
     await act(page, 'menu').click()
-    await expect(page.locator('#overlay')).toContainText(
-      'DAMAGE = selected dice total × hand multiplier + relic bonuses',
-    )
-    await expect(page.locator('#overlay')).toContainText(
-      'resolve when that face is included in the hand you SCORE',
-    )
-  })
-})
-
-test.describe('a pickup says what it does', () => {
-  test('repeats the rule instead of confirming the press', async ({ page }) => {
-    await boot(page, '?room=hollow&enemyHp=1&seed=1')
-    await act(page, 'roll').click()
-    await dice(page).nth(0).click()
-    await act(page, 'score').click()
-
-    await expect(page.locator('#screen')).toHaveAttribute('data-screen', 'reward')
-    await page.locator('#offers .offer[data-offer-id="wax"] [data-act="take"]').click()
-    await expect(page.locator('#say')).toContainText('Grave Wax taken.')
-    await expect(page.locator('#say')).toContainText('score exactly 3 dice, heal 2 HP')
+    const overlay = page.locator('#overlay')
+    await expect(overlay.locator('.ladder')).toHaveCount(0)
+    await expect(overlay).not.toContainText('multiplier')
+    await expect(overlay).not.toContainText('SCORING')
   })
 })

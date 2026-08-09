@@ -295,7 +295,9 @@ function renderPlayerLine(
 
   line.forEach((bone, lane) => {
     const centre = DIE_CENTRES[lane] ?? DIE_CENTRES[DIE_CENTRES.length - 1]!
-    const named = specialIdOf(run, bone.specialInstanceId)
+    // Off the bone, not out of the pile: a bone that just broke is no longer
+    // in `run.specials`, and it still has to be able to say its own name.
+    const named = bone.specialId
     const b = boneButton(
       {
         boneKey: bone.boneKey,
@@ -327,11 +329,6 @@ function renderPlayerLine(
 function profileFor(run: RunState, instanceId: string): BoneProfileId {
   const found = run.specials.find((s) => s.instanceId === instanceId)
   return found ? specialBone(found.specialId).profile : 'common'
-}
-
-function specialIdOf(run: RunState, instanceId?: string): string | undefined {
-  if (!instanceId) return undefined
-  return run.specials.find((s) => s.instanceId === instanceId)?.specialId
 }
 
 /**
@@ -695,10 +692,15 @@ function renderBeds(
     return
   }
 
-  // Exploring. The room's enemy, if it is still up, is the only way on.
+  // Exploring. The room's enemy, if it is still up, is the only way on —
+  // and only while there is something left to field. An empty pile is not a
+  // fight the reducer will open, so it is not a press the tray offers: the
+  // view and the reducer answer the same question with the same call.
   const here = roomById(run.roomId)
   if (here.enemy && !run.cleared.includes(run.roomId)) {
-    bed(1, button({ act: 'fight', label: VERBS.fight, onPress: on.onFight, className: 'act act-primary' }))
+    if (totalBones(run) > 0) {
+      bed(1, button({ act: 'fight', label: VERBS.fight, onPress: on.onFight, className: 'act act-primary' }))
+    }
     return
   }
 

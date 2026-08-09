@@ -630,3 +630,104 @@ opaque. Keep the objects tight and mostly black. If a set will not fit, **drop
 ambient loops before dropping object frames** — the loops are decoration and the
 frames are how a room says what state it is in. Raising the cap a third time is
 a product decision, not an art one.
+
+---
+
+## HUMAN ART REQUIRED — The War of Bones
+
+The combat system was replaced end to end. **No art was authored for it**, per
+`CLAUDE.md` § *No art in the polish sweep*: `git diff --stat main` touches
+nothing under `public/`, and no new image file exists. What the new system
+needs, and what it is running on until those files land, is written out here.
+
+### What it is running on now
+
+Bones are drawn from the **pip geometry in `src/ui/components.ts`** — the same
+mechanism the game has always drawn a die face with, extended to seven and
+eight. That is not a new stand-in; it is the existing face renderer being given
+two more values. Every bone states its number as text as well as as a pattern
+(`aria-label`, `data-value`, and a printed numeral above six), so nothing about
+the fight is unreadable while the plates are outstanding.
+
+`BONE_ART` and `SATCHEL_ART` in `src/render/assets.ts` are **deliberately
+empty**. A manifest row names a file, and `test/unit/assets.test.ts` holds every
+row to a real file of the declared size — so a table that promised art nobody
+had drawn would fail the build rather than ship a broken `<img>` into the middle
+of a smash. The gates for those families are written and **armed**: they pass
+vacuously on an empty table and bite the moment a row is added, which is what
+stops a family landing half-delivered.
+
+### The bone families
+
+Four profiles, and each one ships whole or not at all:
+
+| profile | faces needed | material note |
+| --- | --- | --- |
+| `common` | back, 1–6, broken | the anonymous pile. It should look like nothing. |
+| `wrong` | back, 2–7, broken | pale, cold, one step off |
+| `cruel` | back, 3–7, broken | the Cinderbone. Visible sigil. |
+| `heavy` | back, 4–8, broken | the Knuckle. Visible sigil. |
+
+Duplicate numeric faces may reuse one plate — `cruel` has two sevens and they
+resolve identically — but **the family is back + every distinct value + broken**,
+and a `heavy.8` that ships while `heavy.7` does not silently falls back to a
+drawn face, putting two different kinds of object in one line.
+
+**Seven and eight must be readable at arm's length without a tooltip.** No die
+anybody has held has those faces, so there is no pattern to recognise. The
+current renderer prints the numeral over the pips; a painted plate has to solve
+the same problem, not assume it away.
+
+The **back** is its own state and matters more than it sounds: it is the phase
+between FIELD and THROW, the one moment in a round when the player has committed
+and does not yet know to what. It has to be unmistakably *not a face*.
+
+### The satchel
+
+Three icons, and all three or none: `vial`, `charm`, `pouch`. They sit in the
+three bays on the right of the tray at roughly 32 × 44 CSS px on a phone, so
+they are read as silhouettes. The count badge is drawn over them.
+
+### Clash FX
+
+One authored collision/shatter family that can be staged over a bone body, or
+per-material shatter states if the art direction wants them. **A CSS fracture is
+not the final broken-bone state** — what ships now is a darkened, dropped face
+with a hard diagonal across it, which reads and is not what a bone breaking
+looks like.
+
+### The tray
+
+The plate has **no bay for the enemy's line**. That line is six lane-aligned
+bones sitting directly above the crown, and today it is positioned in the tray's
+own coordinate space at `top: -54px` — over the bottom of the world rather than
+in a recess painted for it. It works and it is legible; it is also the one place
+in the interface where a control is floating on nothing.
+
+A repaint would want: a top rail deep enough to hold the enemy's six, an orb
+that reads as a **heap of bone** rather than a glass of liquid, and the three
+right bays re-cut for Vial / Charm / Pouch rather than for relic icons. Every
+coordinate in `src/content/tray.ts` was measured off the current 730 × 364 file
+by luminance profile; if the plate is repainted, that table is the only thing
+that needs measuring again.
+
+### The Marrow
+
+Its death is **staged, not painted**: `content/defeat.ts` makes the collapse out
+of the one plate the encounter ships by shrinking it, dropping it and taking the
+light out of it — the same treatment the Gnawing gets. The fight visibly ends,
+which is the completion gate, but a thing whose whole body is other people's
+bones deserves drawings of it coming apart. A five-frame family and an impact
+plate (`marrow.hit`) would replace the staging with the identity, exactly as the
+Warden's two painted frames already do.
+
+### Bytes
+
+**There is no payload cap any more**, and the § *Budget* note above is history.
+The runtime art is 5.54 MB across 41 files and `npm run art` prints it per
+family; nothing fails on that number. Authored state coverage comes first,
+delivery architecture second, byte minimisation third — see
+`docs/ART_DIRECTION.md`. Loading is staged (`src/render/loader.ts`), so a family
+costs the fight that uses it rather than the title screen: **the bone plates and
+a Marrow death family can land without anybody having a conversation about
+megabytes.**

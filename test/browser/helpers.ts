@@ -4,7 +4,18 @@ import { expect } from '@playwright/test'
 /** Actions are found by intent, never by position on the screen. */
 export const act = (page: Page, name: string): Locator => page.locator(`[data-act="${name}"]`)
 
-export const dice = (page: Page): Locator => page.locator('#crown .die')
+/** Your line: the six lanes of the crown. */
+export const bones = (page: Page): Locator => page.locator('#crown .bone')
+
+/** Its line: the strip above the tray, lane-aligned with yours. */
+export const enemyBones = (page: Page): Locator => page.locator('#enemy-line .bone-enemy')
+
+/** The values of a line, in the order they are standing. */
+export async function valuesOf(line: Locator): Promise<number[]> {
+  return (await line.evaluateAll((nodes) =>
+    nodes.map((n) => Number((n as HTMLElement).dataset['value'])),
+  )) as number[]
+}
 
 /**
  * Open the page.
@@ -18,7 +29,7 @@ export const dice = (page: Page): Locator => page.locator('#crown .die')
  */
 export async function boot(page: Page, fixture = '', { motion = false } = {}): Promise<void> {
   // Motion is off unless a test asks for it. These specs are about what the
-  // game does, and waiting out a 950 ms score sequence on every turn of every
+  // game does, and waiting out a smash sequence on every round of every
   // journey buys nothing — `test/browser/motion.spec.ts` is where the beats
   // themselves are asserted, and it opts in.
   const query = motion ? fixture : `${fixture ? `${fixture}&` : '?'}motion=0`
@@ -43,33 +54,66 @@ export async function toFirstFight(page: Page): Promise<void> {
 export async function state(page: Page): Promise<{
   mode: string
   run?: {
-    hp: number
     roomId: string
-    dice: string[]
-    relics: string[]
-    combat?: { enemyHp: number; phase: string; roll: unknown[]; selected: number[] }
+    commonBones: number
+    specials: { instanceId: string; specialId: string }[]
+    charms: number
+    vials: number
+    cleared: string[]
+    offer?: string[]
+    combat?: {
+      enemyId: string
+      round: number
+      phase: string
+      charmUsed: boolean
+      enemyBones: { boneId: string }[]
+      enemyLine: { boneKey: string; value: number }[]
+      playerLine?: { boneKey: string; value: number; specialInstanceId?: string }[]
+      field?: { width: number; specialIds: string[] }
+      lastSmash?: {
+        playerCommonLost: number
+        playerSpecialsLost: string[]
+        enemyBonesLost: string[]
+        heldTies: number
+        stoppedAtLane?: number
+      }
+      defeated?: boolean
+    }
   }
 }> {
   return (await page.evaluate(() => window.castlebrynth?.state())) as never
+}
+
+/** How many bones are alive, off the pile the player is looking at. */
+export async function livingBones(page: Page): Promise<number> {
+  return Number(await page.locator('#pile').getAttribute('data-bones'))
+}
+
+/** Which files the loader has actually decoded. The loading spec reads it. */
+export async function decoded(page: Page): Promise<string[]> {
+  return (await page.evaluate(() => window.castlebrynth?.loaded() ?? [])) as string[]
 }
 
 /**
  * How wide a control's target may be, by kind.
  *
  * Everything is at least 44px tall. Width is the honest exception: the six
- * crown bays are painted 66⅔ of 730 apart and the three relic bays 55 apart,
+ * crown bays are painted 66⅔ of 730 apart and the three satchel bays 55 apart,
  * so on a phone the pitch is 39px and 32px. Targets grown to 44px wide would
- * have to overlap each other, and a tap landing on the neighbouring die is a
+ * have to overlap each other, and a tap landing on the neighbouring bone is a
  * worse failure than a slightly narrow one. The floor is the painted pitch,
  * they are the full 44px in the other axis, and they never overlap.
  *
- * See POLISH_PROGRESS.md § P2 — this is the sweep's one accepted deviation
- * from the 44 × 44 rule, and it is a property of the plate, not of the code.
+ * See POLISH_PROGRESS.md § P2 — this is the one accepted deviation from the
+ * 44 × 44 rule, and it is a property of the plate, not of the code.
  */
 const MIN_WIDTH: Readonly<Record<string, number>> = {
-  die: 34,
-  'inspect-die': 34,
-  'inspect-relic': 28,
+  'inspect-bone': 34,
+  'charm-bone': 34,
+  drink: 28,
+  charm: 28,
+  pouch: 28,
+  'inspect-reward': 28,
 }
 
 /**
