@@ -112,7 +112,7 @@ describe('the Reliquary', () => {
     const open = roomStateOf(solved)
     expect(open.roomId === 'reliquary' && open.lever).toBe('down')
     expect(open.roomId === 'reliquary' && open.chest).toBe('open')
-    expect(solved.run?.say).toMatch(/The jaw drops/)
+    expect(solved.run?.say).toMatch(/Something moves inside the altar/)
     // And the lever is spent — the chest cannot be opened a second time.
     expect(actionFor(open, 'reliquary-lever')).toBeUndefined()
   })

@@ -34,7 +34,14 @@ import { room as roomById } from '../content/rooms.js'
 import { mountWorld, placeEnemy, showProp, showProps } from '../render/compositor.js'
 import type { World } from '../render/compositor.js'
 import { RoomAmbience } from '../render/ambience.js'
-import { beatsDuration, beatsFor, platesFor, stateOf } from '../content/interactions.js'
+import {
+  beatsDuration,
+  beatsFor,
+  movesDuration,
+  movesFor,
+  platesFor,
+  stateOf,
+} from '../content/interactions.js'
 import { TRAY_ART, enemyArt, enemyPose, isScenePlate, propArt, url } from '../render/assets.js'
 import { mountTray, paintTumble, renderTray } from '../ui/trayView.js'
 import type { Tray } from '../ui/trayView.js'
@@ -420,6 +427,15 @@ export class App {
    * reads the frame off state, and state during a transition already says the
    * settled thing. Without this the first paint would show the finished room
    * and the beats would play backwards out of it.
+   *
+   * Two kinds of thing are scheduled here, because the two rooms were delivered
+   * differently. A **beat** swaps one drawing for another, which is what a room
+   * painted as a family of positions wants. A **move** names something the
+   * stylesheet does to a plate that is already up, which is what a room painted
+   * as one portrait per object wants — a bell hanging on a chain swings, and it
+   * swings on the plate it was delivered as. Neither decides anything: both are
+   * read off the two settled states, and the room lands on the same picture
+   * with every one of them skipped.
    */
   private playInteract(before: GameState, after: GameState, id: string): void {
     const was = stateOf(before.run!.rooms, before.run!.roomId)
@@ -443,22 +459,45 @@ export class App {
     }
 
     const beats = beatsFor(was, now, id)
+    const moves = movesFor(was, now, id)
+    const frames = new Map<string, string>()
+    const moving = new Map(moves.map((m) => [m.id, m.move]))
+    // Which of the two settled rooms the plates are drawn from. It is the one
+    // before the press until the word band says otherwise, which is the same
+    // instant the rest of the screen changes over.
+    let room = was
     const show = (): void => {
       // Everything the settled room shows, with the transition's frames laid
       // over the top of it — so an object that is not moving keeps its plate
       // while its neighbour swings.
-      const plates = platesFor(was).map((p) => ({ ...p, frame: frames.get(p.id) ?? p.frame }))
       showProps(
         this.world,
-        plates
-          .map((p) => ({ id: p.id, art: propArt(p.art, p.frame) }))
-          .filter((x): x is { id: string; art: NonNullable<typeof x.art> } => x.art !== undefined)
-          .map(({ id: pid, art }) => ({ id: pid, src: url(art) })),
+        platesFor(room)
+          .map((p) => ({ plate: p, art: propArt(p.art, frames.get(p.id) ?? p.frame) }))
+          .filter(
+            (x): x is { plate: typeof x.plate; art: NonNullable<typeof x.art> } =>
+              x.art !== undefined,
+          )
+          .map(({ plate, art }) => ({
+            id: plate.id,
+            src: url(art),
+            ...(plate.look !== undefined ? { look: plate.look } : {}),
+            ...(moving.has(plate.id) ? { move: moving.get(plate.id)! } : {}),
+          })),
       )
     }
-    const frames = new Map<string, string>()
 
     const sequence = this.start()
+    // The moves start on the frame of the press, before any beat: the bell is
+    // already swinging while the word band is still empty.
+    show()
+    for (const move of moves) {
+      sequence.at(move.ms, () => {
+        // Taken off again the moment it is over, so the next press can play it.
+        moving.delete(move.id)
+        show()
+      })
+    }
     for (const beat of beats) {
       sequence.at(beat.at, () => {
         frames.set(beat.id, beat.frame)
@@ -479,10 +518,12 @@ export class App {
       })
     }
 
-    // The word band, once the thing it describes has happened.
-    const said = beatsDuration(beats) + 80
+    // The word band, once the thing it describes has happened — whichever of
+    // the two kinds of thing this room does.
+    const said = Math.max(beatsDuration(beats), movesDuration(moves)) + 80
     sequence.at(said, () => {
       this.presenting = { ...before, run: { ...after.run!, say: after.run!.say } }
+      room = now
       this.render()
       show()
     })

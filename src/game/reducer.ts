@@ -219,10 +219,10 @@ function interactionSay(after: RoomInteractionState, id: string, reward?: string
     if (id === 'reliquary-bell') return 'The bell answers once. Something shifts behind the altar.'
     if (id === 'reliquary-brazier') {
       return after.brazier === 'out'
-        ? 'The flame folds into the wick. In the dark, the skull lever catches the red window-light.'
+        ? 'The flame folds into the wick. In the dark, the handle under the basin catches the red window-light.'
         : 'The flame returns.'
     }
-    if (id === 'reliquary-lever') return 'The jaw drops. Stone grinds under the chest.'
+    if (id === 'reliquary-lever') return 'Something moves inside the altar. The chest answers.'
     return reward ? `Inside: ${relic(reward).name}.` : 'The chest is empty.'
   }
   if (id === 'vault-chain') {

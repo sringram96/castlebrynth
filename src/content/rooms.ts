@@ -224,54 +224,82 @@ export const ROOMS: Readonly<Record<string, Room>> = {
    * to do — it is a thing they may choose to work out. GO ON is on screen from
    * the first frame and never leaves.
    *
-   * The order is bell, dark, lever, and it is learnable without a guess: the
-   * three cuts beside the lever say it in the order they have to happen, and
-   * the brazier's own line says what putting it out reveals.
+   * The order is bell, dark, mechanism, and it is learnable without a guess:
+   * the three marks cut beside the altar's handle say it in the order they have
+   * to happen, and the brazier's own line says what putting it out reveals.
+   *
+   * **Every coordinate below is measured off the art**, not chosen. The four
+   * objects were painted as portraits and `tools/art.mjs` seats each of them in
+   * the room at a stance declared there; these are where those stances put them,
+   * converted from the scene's fractions into the world box's — a 480 × 720
+   * scene cover-fitted into a 390 × 844 phone loses about 7% of its width, so a
+   * fraction of the painting is not yet a fraction of the screen. Move a stance
+   * and these move with it or the button comes off the object.
    */
   reliquary: {
     id: 'reliquary',
     name: 'The Reliquary',
     art: 'reliquary',
-    arrival: 'A dead chapel. A bell, a brazier, and a chest have been left around the altar.',
+    arrival: 'A dead chapel. A bell hangs over an altar. Candles burn beside a locked chest.',
     details: [
       {
         id: 'bell',
-        at: { x: 0.2, y: 0.42 },
-        says: 'A bronze bell. The clapper has been wrapped in old red thread.',
+        at: { x: 0.214, y: 0.31 },
+        says: 'A bronze bell. Old red thread is knotted around the clapper.',
       },
       {
         id: 'brazier',
-        at: { x: 0.79, y: 0.6 },
-        says: 'A shallow brazier. Its flame is the only warm light touching the altar.',
+        at: { x: 0.16, y: 0.79 },
+        says: 'Five candles melted almost to the stone. They are the only warm light in the room.',
+      },
+      {
+        id: 'altar',
+        at: { x: 0.5, y: 0.585 },
+        says: 'An altar built around a basin. The blood in it is old enough to be black.',
       },
       {
         id: 'lever',
-        at: { x: 0.5, y: 0.53 },
+        at: { x: 0.5, y: 0.815 },
         focal: true,
-        says: 'A lever through a stone skull. Three cuts beside it: a bell, a black flame, a lowered jaw.',
+        says: 'The altar has a recessed iron handle beneath the basin. Three marks have been cut beside it: a bell, a dead flame, a lowered skull.',
       },
       {
         id: 'chest',
-        at: { x: 0.29, y: 0.75 },
-        says: 'A chest with no keyhole. The skull clasp is connected to something inside the wall.',
+        at: { x: 0.823, y: 0.815 },
+        says: 'A chest with no keyhole. The skull clasp is joined to something inside the wall.',
       },
     ],
     // Deliberately seated off the details they belong to, so a LOOK and an act
     // are never the same 44px of screen. The action sits on the object; the
     // detail sits beside it.
+    //
+    // `reliquary-lever` sits on the altar, because the altar *is* the
+    // mechanism: no lever was ever painted, and a handle recessed under the
+    // basin is the thing the three marks are cut beside. The id is the
+    // reducer's and the save's, and renaming it would migrate every save that
+    // ever pulled it for no gain the player could see.
     interactables: [
-      { id: 'reliquary-bell', art: 'bell', at: { x: 0.2, y: 0.3 }, describe: 'Ring the ritual bell' },
+      { id: 'reliquary-bell', art: 'bell', at: { x: 0.214, y: 0.19 }, describe: 'Ring the ritual bell' },
       {
         id: 'reliquary-brazier',
         art: 'brazier',
-        at: { x: 0.79, y: 0.48 },
-        describe: 'Extinguish the brazier',
+        // Just above the flames rather than across them. This verb is a pill
+        // wide enough to hold two words, and the two words are exactly as wide
+        // as the candle stand — put it on the object's centre and it covers the
+        // five flames it is asking you to put out.
+        at: { x: 0.16, y: 0.6 },
+        describe: 'Put out the candles',
       },
-      { id: 'reliquary-lever', art: 'lever', at: { x: 0.5, y: 0.41 }, describe: 'Pull the skull lever' },
+      {
+        id: 'reliquary-lever',
+        art: 'altar',
+        at: { x: 0.5, y: 0.7 },
+        describe: 'Pull the handle under the basin',
+      },
       {
         id: 'reliquary-chest',
         art: 'chest',
-        at: { x: 0.29, y: 0.63 },
+        at: { x: 0.823, y: 0.7 },
         describe: 'Take what is inside the reliquary',
       },
     ],

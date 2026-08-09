@@ -37,6 +37,43 @@ export interface Plate {
   readonly id: string
   readonly art: string
   readonly frame: string
+  /**
+   * Where the object is standing, when that is not the frame it is drawn at.
+   *
+   * The two are the same thing whenever a room's art was delivered a plate per
+   * position — the Font's basin is drawn at the face it landed on — and then
+   * this is absent. The Reliquary is the other case: it was delivered **one
+   * portrait per object**, so a lit brazier and a dead one are the same plate,
+   * and what tells them apart is a treatment the stylesheet puts on it.
+   *
+   * So this is a fact about state, not a decision about pixels. It is written
+   * to the element as `data-look`, nothing here knows what CSS does with it,
+   * and a room that never sets it looks exactly as it did before.
+   */
+  readonly look?: string
+}
+
+/**
+ * One object moving, for as long as the move takes.
+ *
+ * The other half of `beatsFor`, for objects that were delivered one plate
+ * rather than a family. A beat is *this drawing, now*; a move is **this object
+ * is doing this, for this long** — and what "doing this" looks like is a named
+ * animation in the stylesheet, because a bell swinging on its chain is a
+ * rotation of a plate that has already been painted rather than four more
+ * paintings of it.
+ *
+ * It obeys every rule a beat does. It is read off the two settled states the
+ * reducer already produced, it contains no logic and no randomness, it reveals
+ * a fact that is in the save before it is scheduled, and with motion off it
+ * simply never runs — the room lands on the same picture either way.
+ */
+export interface Move {
+  readonly id: string
+  /** The stylesheet's name for it. Written to the element as `data-move`. */
+  readonly move: string
+  /** How long it runs, so the sequence knows when the room is settled. */
+  readonly ms: number
 }
 
 /** One beat of a transition: put this frame up at this many ms from the press. */
@@ -91,14 +128,14 @@ export function actionFor(state: RoomInteractionState, id: string): InteractionA
         return state.bellRung ? undefined : { label: 'RING', describe: 'Ring the ritual bell' }
       case 'reliquary-brazier':
         return state.brazier === 'lit'
-          ? { label: 'PUT OUT', describe: 'Extinguish the brazier' }
-          : { label: 'LIGHT', describe: 'Light the brazier' }
+          ? { label: 'PUT OUT', describe: 'Put out the candles' }
+          : { label: 'LIGHT', describe: 'Light the candles' }
       case 'reliquary-lever':
         // The condition *is* the puzzle, so it is never shown half-met. Until
-        // the bell has rung and the flame is out, the lever is a thing you can
-        // look at and read the three cuts beside.
+        // the bell has rung and the flame is out, the altar is a thing you can
+        // look at and read the three marks cut beside its handle.
         return state.bellRung && state.brazier === 'out' && state.chest === 'closed'
-          ? { label: 'PULL', describe: 'Pull the skull lever' }
+          ? { label: 'PULL', describe: 'Pull the handle under the basin' }
           : undefined
       case 'reliquary-chest':
         return state.chest === 'open' && !state.claimed
@@ -155,11 +192,21 @@ export function exitsOpen(state: RoomInteractionState | undefined): boolean {
  */
 export function platesFor(state: RoomInteractionState): readonly Plate[] {
   if (state.roomId === 'reliquary') {
+    // Four objects, four portraits, and the order is back to front: the altar
+    // is the hero on the floor, the bell hangs over it, and the candles and the
+    // chest sit low on either side. None of them overlaps another, so the order
+    // is composition rather than occlusion — but it is stated, because the
+    // midground paints in the order it is given.
+    //
+    // Every frame below is the one plate that exists for that object. The
+    // position is in `look`, which is why putting the flame out, ringing the
+    // bell and opening the chest all leave the object **on screen** instead of
+    // asking for a plate nobody painted and vanishing.
     return [
-      { id: 'reliquary-bell', art: 'bell', frame: state.bellRung ? 'settle' : 'idle' },
-      { id: 'reliquary-brazier', art: 'brazier', frame: state.brazier },
-      { id: 'reliquary-lever', art: 'lever', frame: state.lever },
-      { id: 'reliquary-chest', art: 'chest', frame: state.chest },
+      { id: 'reliquary-altar', art: 'altar', frame: 'still', look: state.lever },
+      { id: 'reliquary-bell', art: 'bell', frame: 'idle', look: state.bellRung ? 'rung' : 'still' },
+      { id: 'reliquary-brazier', art: 'brazier', frame: 'lit', look: state.brazier },
+      { id: 'reliquary-chest', art: 'chest', frame: 'closed', look: state.chest },
     ]
   }
   return [
@@ -195,31 +242,8 @@ export function beatsFor(
     beats.push({ id, art, frame, at: ms })
   }
 
-  if (before.roomId === 'reliquary' && after.roomId === 'reliquary') {
-    if (!before.bellRung && after.bellRung) {
-      at('reliquary-bell', 'bell', 'ring-1', 0)
-      at('reliquary-bell', 'bell', 'ring-2', 90)
-      at('reliquary-bell', 'bell', 'settle', 190)
-    }
-    if (before.brazier !== after.brazier) {
-      if (after.brazier === 'out') {
-        at('reliquary-brazier', 'brazier', 'dim', 90)
-        at('reliquary-brazier', 'brazier', 'out', 260)
-      } else {
-        at('reliquary-brazier', 'brazier', 'igniting', 90)
-        at('reliquary-brazier', 'brazier', 'lit', 260)
-      }
-    }
-    if (before.lever !== after.lever) {
-      at('reliquary-lever', 'lever', 'pulling', 0)
-      at('reliquary-lever', 'lever', 'down', 150)
-      // The chest is already open in state; this is only the stone moving.
-      at('reliquary-chest', 'chest', 'opening', 150)
-      at('reliquary-chest', 'chest', 'open', 330)
-    }
-    return beats
-  }
-
+  // The Reliquary's objects were delivered one plate each, so nothing in that
+  // room changes drawing and it has no beats at all. What it has is `movesFor`.
   if (before.roomId !== 'chain-vault' || after.roomId !== 'chain-vault') return beats
 
   if (before.cage !== after.cage) {
@@ -262,7 +286,45 @@ export function beatsFor(
   return beats
 }
 
+/**
+ * What is moving, and for how long.
+ *
+ * The same contract as `beatsFor` and read off the same two settled states: an
+ * object moves because the save already says it moved, never because a press
+ * was made. A room whose art is a family of positions wants beats; a room whose
+ * art is one portrait per object wants these.
+ *
+ * The Reliquary is the second kind, and there are exactly three things in it
+ * that move. The bell swings on its chain because it was rung. The chest is
+ * knocked by the mechanism under it. The altar takes the shock of the mechanism
+ * it contains — which is the whole of what "something moves inside the altar"
+ * can be shown as, until a lever is painted.
+ *
+ * Putting the flame out is deliberately not here. It is not a movement, it is a
+ * change of what the object *is*: the plate goes cold and stays cold, `look`
+ * carries it, and the stylesheet crosses between them. A move would have to end.
+ */
+export function movesFor(
+  before: RoomInteractionState,
+  after: RoomInteractionState,
+  _id: string,
+): readonly Move[] {
+  if (before.roomId !== 'reliquary' || after.roomId !== 'reliquary') return []
+  const moves: Move[] = []
+  if (!before.bellRung && after.bellRung) moves.push({ id: 'reliquary-bell', move: 'swing', ms: 380 })
+  if (before.lever !== after.lever) {
+    moves.push({ id: 'reliquary-altar', move: 'work', ms: 240 })
+    moves.push({ id: 'reliquary-chest', move: 'knock', ms: 330 })
+  }
+  return moves
+}
+
 /** How long a transition runs, so the caller knows when the room is settled. */
 export function beatsDuration(beats: readonly Beat[]): number {
   return beats.reduce((last, b) => Math.max(last, b.at), 0)
+}
+
+/** The same question for the objects that move rather than change drawing. */
+export function movesDuration(moves: readonly Move[]): number {
+  return moves.reduce((last, m) => Math.max(last, m.ms), 0)
 }

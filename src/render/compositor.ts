@@ -159,6 +159,24 @@ export interface PropPlate {
   /** Stable across frames of the same object. It is what keeps one element. */
   readonly id: string
   readonly src: string
+  /**
+   * Where the object is standing, for a room whose art is one plate per object.
+   *
+   * Written to the element as `data-look` and read by nothing but the
+   * stylesheet and the tests, exactly as `data-reach` is on the enemy. It is a
+   * copy of authoritative state and never a source of it — every call writes it
+   * in both directions, so a look cannot outlive the state that put it there.
+   */
+  readonly look?: string
+  /**
+   * What the object is doing right now, if a sequence is showing it doing it.
+   *
+   * `data-move`, and the same rule again: written in both directions on every
+   * call, so a swing cannot survive the sequence that scheduled it. Nothing
+   * here knows how long a move lasts or what it looks like — the stylesheet
+   * owns the drawing and `content/interactions.ts` owns the clock.
+   */
+  readonly move?: string
 }
 
 /**
@@ -199,6 +217,15 @@ export function showProps(world: World, plates: readonly PropPlate[]): void {
       world.midground.append(node)
     }
     if (node.getAttribute('src') !== plate.src) node.src = plate.src
+    // Both in both directions, and both compared before they are written: an
+    // attribute set to the value it already holds is not a change, but removing
+    // and re-adding one inside a single paint would restart the animation that
+    // is keyed off it — and a paint happens several times during a sequence.
+    if (plate.look !== undefined) node.dataset['look'] = plate.look
+    else delete node.dataset['look']
+    if (plate.move !== undefined) {
+      if (node.dataset['move'] !== plate.move) node.dataset['move'] = plate.move
+    } else delete node.dataset['move']
     node.hidden = false
     // Appending an existing node moves it, which is how the given order
     // becomes the paint order without any z-index arithmetic.
