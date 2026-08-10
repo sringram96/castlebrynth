@@ -58,13 +58,12 @@ export class Rng {
  * Which stream a draw belongs to.
  *
  * The exact numbers are not magical. What matters is that no two of them
- * collide for the same run position, so a Charm spent on round three cannot
- * change what the enemy throws on round four.
+ * collide for the same run position, so what the player throws on round three
+ * cannot change what the enemy throws on round four.
  */
 export const RNG_CHANNEL = {
   enemyThrow: 11,
   playerThrow: 23,
-  charm: 37,
   reward: 53,
 } as const
 

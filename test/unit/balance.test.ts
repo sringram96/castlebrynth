@@ -12,7 +12,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { fightIn, simulateFight, simulateRun } from '../balance/simulate.js'
-import { charmFor, drinkFor, fieldFor } from '../balance/policies.js'
+import { drinkFor, fieldFor } from '../balance/policies.js'
 import type { Table } from '../balance/policies.js'
 import { ENEMIES, armySize } from '../../src/content/enemies.js'
 import { BONE_CEILING, newSpecial } from '../../src/content/bones.js'
@@ -26,9 +26,7 @@ const table = (over: Partial<Table> = {}): Table => ({
   tieRule: 'mutual',
   commonBones: 30,
   specials: [],
-  charms: 0,
   vials: 0,
-  charmUsed: false,
   ...over,
 })
 
@@ -109,23 +107,19 @@ describe('the slice is finishable', () => {
 })
 
 describe('the naive policy', () => {
-  it('fields everything it legally can', () => {
+  it('throws as wide as the pile allows', () => {
     expect(fieldFor(table(), 'naive').width).toBe(LINE_WIDTH)
     expect(fieldFor(table({ commonBones: 3 }), 'naive').width).toBe(3)
     expect(fieldFor(table({ commonBones: 0 }), 'naive').width).toBe(0)
   })
 
-  it('puts its best named bones in the line', () => {
+  it('stands every named bone it owns, whatever it is facing', () => {
     const specials = [newSpecial('cinderbone', 0), newSpecial('knuckle', 1)]
-    const decision = fieldFor(table({ specials, commonBones: 10 }), 'naive')
-    // The Knuckle rolls higher than the Cinderbone, so it goes in first.
+    const brutal = table({ specials, commonBones: 10, enemyLine: [8, 8, 8, 8, 8, 8].map(bone) })
+    const decision = fieldFor(brutal, 'naive')
+    // The Knuckle rolls higher than the Cinderbone, so it takes the top lane.
     expect(decision.specialIds[0]).toBe('knuckle#1')
     expect(decision.specialIds).toHaveLength(2)
-  })
-
-  it('never spends a Charm', () => {
-    const t = table({ charms: 2, enemyLine: [bone(6)] })
-    expect(charmFor(t, [{ boneKey: 'p', profile: 'common', faceIndex: 0, value: 1 }], 'naive')).toBeUndefined()
   })
 
   it('drinks only when a bad round could end the run', () => {
@@ -136,65 +130,53 @@ describe('the naive policy', () => {
 })
 
 describe('the heuristic policy', () => {
-  it('narrows against a line it cannot beat', () => {
-    // Six sevens, and every one of my lanes is a losing lane. Risking six bones
-    // to break maybe one is the mistake the width control exists to let a
-    // player avoid.
-    const brutal = table({ enemyLine: [7, 7, 7, 7, 7, 7].map(bone) })
-    expect(fieldFor(brutal, 'heuristic').width).toBeLessThan(LINE_WIDTH)
+  const knuckle = [newSpecial('knuckle', 0)]
+
+  it('holds a named bone back against a line that will break it', () => {
+    // Eights across. A Knuckle reaches eight on one face in six, so the lane
+    // it lands in is a losing lane nearly always — and losing it costs a bone
+    // that nothing in the game brings back.
+    const brutal = table({ specials: knuckle, commonBones: 10, enemyLine: [8, 8].map(bone) })
+    expect(fieldFor(brutal, 'heuristic').specialIds).toEqual([])
   })
 
-  it('widens against a line it beats', () => {
-    const soft = table({ enemyLine: [2, 1, 1, 1, 1, 1].map(bone) })
-    expect(fieldFor(soft, 'heuristic').width).toBe(LINE_WIDTH)
+  it('stands it against a line it beats', () => {
+    const soft = table({ specials: knuckle, commonBones: 10, enemyLine: [3, 1].map(bone) })
+    expect(fieldFor(soft, 'heuristic').specialIds).toEqual(['knuckle#0'])
   })
 
-  it('narrows harder when ties are held', () => {
-    const line = [5, 5, 5, 5, 5, 5].map(bone)
-    const mutual = fieldFor(table({ enemyLine: line }), 'heuristic').width
-    const warden = fieldFor(table({ enemyLine: line, tieRule: 'warden-holds' }), 'heuristic').width
+  it('holds harder when ties are held', () => {
+    // A tie is an even trade against anything else and a pure loss against the
+    // Warden, so the same line is a worse bet for a named bone.
+    const line = [6, 6].map(bone)
+    const mutual = fieldFor(
+      table({ specials: knuckle, commonBones: 10, enemyLine: line }),
+      'heuristic',
+    ).specialIds.length
+    const warden = fieldFor(
+      table({ specials: knuckle, commonBones: 10, enemyLine: line, tieRule: 'warden-holds' }),
+      'heuristic',
+    ).specialIds.length
     expect(warden).toBeLessThanOrEqual(mutual)
   })
 
-  it('never stalls: it always fields at least one bone', () => {
+  it('never throws a line narrower than the pile can pay for', () => {
+    // Holding a bone back is free when there is a common to take its place and
+    // costly when there is not. It must never cost a lane.
+    for (const value of [1, 4, 6, 7, 8]) {
+      const enemyLine = Array.from({ length: 6 }, () => bone(value))
+      const thin = table({ specials: knuckle, commonBones: 2, enemyLine })
+      const decision = fieldFor(thin, 'heuristic')
+      expect(decision.width).toBe(3)
+      expect(decision.specialIds).toEqual(['knuckle#0'])
+    }
+  })
+
+  it('never stalls: it always throws at least one bone', () => {
     for (const value of [1, 4, 6, 7, 8]) {
       const t = table({ enemyLine: Array.from({ length: 6 }, () => bone(value)) })
       expect(fieldFor(t, 'heuristic').width).toBeGreaterThanOrEqual(1)
     }
-  })
-
-  it('spends a Charm on a losing lane it could actually win', () => {
-    const t = table({ charms: 1, enemyLine: [bone(3), bone(1)] })
-    const line = [
-      { boneKey: 'losing', profile: 'common' as const, faceIndex: 0, value: 1 },
-      { boneKey: 'winning', profile: 'common' as const, faceIndex: 0, value: 5 },
-    ]
-    expect(charmFor(t, line, 'heuristic')).toBe('losing')
-  })
-
-  it('keeps the Charm when a reroll would barely help', () => {
-    // A common bone against a 7 loses on every face. Throwing it again buys
-    // nothing, and a Charm spent on a lane that cannot be won is a Charm
-    // thrown away — which is a decision, not an oversight.
-    const t = table({ charms: 1, enemyLine: [bone(7)] })
-    const line = [{ boneKey: 'doomed', profile: 'common' as const, faceIndex: 0, value: 1 }]
-    expect(charmFor(t, line, 'heuristic')).toBeUndefined()
-  })
-
-  it('keeps a Charm when every lane is already won', () => {
-    const t = table({ charms: 1, enemyLine: [bone(1), bone(1)] })
-    const line = [
-      { boneKey: 'a', profile: 'common' as const, faceIndex: 0, value: 6 },
-      { boneKey: 'b', profile: 'common' as const, faceIndex: 0, value: 5 },
-    ]
-    expect(charmFor(t, line, 'heuristic')).toBeUndefined()
-  })
-
-  it('never spends a Charm it does not have, or a second one', () => {
-    const line = [{ boneKey: 'a', profile: 'common' as const, faceIndex: 0, value: 1 }]
-    const enemyLine = [bone(6)]
-    expect(charmFor(table({ charms: 0, enemyLine }), line, 'heuristic')).toBeUndefined()
-    expect(charmFor(table({ charms: 2, charmUsed: true, enemyLine }), line, 'heuristic')).toBeUndefined()
   })
 
   it('never spills a Vial', () => {

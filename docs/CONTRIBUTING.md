@@ -47,8 +47,10 @@ npm run balance      # deterministic fight simulation
   what happens to it is that objects break.
 - **No damage number.** A lane is won by breaking one of its bones, and that
   bone is on screen breaking. There is no figure to raise off the enemy.
-- **One player throw.** No HOLD, no general REROLL. A Charm is the only rethrow
-  in the game and it is once per fight.
+- **One player throw, and no rethrow at all.** No HOLD, no REROLL, no Charm.
+  Throwing and finding out is one press.
+- **No width control.** The line is as wide as the pile allows, capped at six.
+  What the player chooses is which named bones stand in it.
 - **No manual lane order.** Both lines sort themselves, and the sort is a rule
   that lives in `combat/line.ts` — not in DOM order, and not in array order.
 - **Art completeness is a feature-completion gate.** Every enemy has a visible

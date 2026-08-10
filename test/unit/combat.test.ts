@@ -9,19 +9,23 @@
  * object. That is asserted by identity (`toBe`) rather than by equality,
  * because a new object with the same contents would still be a repaint the
  * player did not ask for.
+ *
+ * ## Two phases, one press
+ *
+ * A round is `thrown → smashed`. There is no committed field to assert and no
+ * half-thrown state to catch a policy in: THROW fields, rolls, sorts and
+ * resolves in a single tick, so most of what used to be a state-machine test
+ * is now a test of what one action produces.
  */
 
 import { describe, expect, it } from 'vitest'
-import { maxWidth, newRun, reduce } from '../../src/game/reducer.js'
+import { fieldFor, maxWidth, newRun, reduce } from '../../src/game/reducer.js'
 import type { Action } from '../../src/game/reducer.js'
 import { SAVE_VERSION, EMPTY_META } from '../../src/game/state.js'
 import type { GameState } from '../../src/game/state.js'
-import { totalBones } from '../../src/content/bones.js'
+import { newSpecial, totalBones } from '../../src/content/bones.js'
 import { armySize } from '../../src/content/enemies.js'
 import { standIn } from './where.js'
-
-const play = (state: GameState, ...actions: readonly Action[]): GameState =>
-  actions.reduce((s, a) => reduce(s, a), state)
 
 /**
  * A run standing in front of the Gnawing, with a chosen seed.
@@ -45,7 +49,6 @@ describe('a fresh run', () => {
     expect(run.commonBones).toBe(30)
     expect(run.specials).toEqual([])
     expect(totalBones(run)).toBe(30)
-    expect(run.charms).toBe(0)
     expect(run.vials).toBe(0)
   })
 
@@ -55,23 +58,29 @@ describe('a fresh run', () => {
     expect(newRun(1)).not.toHaveProperty('hp')
     expect(newRun(1)).not.toHaveProperty('maxHp')
   })
+
+  it('carries no Charm, under any name', () => {
+    // Cut with the phase it was spent in. A reroll needs a moment between
+    // seeing your throw and living with it, and the round no longer has one.
+    expect(newRun(1)).not.toHaveProperty('charms')
+    expect(newRun(1)).not.toHaveProperty('charmUsed')
+  })
 })
 
 describe('FIGHT', () => {
   it('opens at thrown, with the enemy line already up', () => {
-    const combat = fighting().run!.combat!
-    expect(combat.phase).toBe('thrown')
-    expect(combat.round).toBe(1)
-    expect(combat.enemyLine.length).toBeGreaterThan(0)
-    // The first rule of the fight: the threat is public before the decision.
-    expect(combat.field).toBeUndefined()
-    expect(combat.playerLine).toBeUndefined()
+    const combat = fighting().run?.combat
+    expect(combat?.phase).toBe('thrown')
+    expect(combat!.enemyLine.length).toBeGreaterThan(0)
+    // It threw. You have not — which is the whole of what `thrown` names.
+    expect(combat?.playerLine).toBeUndefined()
+    expect(combat?.field).toBeUndefined()
   })
 
   it('stands the whole army up', () => {
-    const combat = fighting().run!.combat!
-    expect(combat.enemyBones).toHaveLength(armySize('gnawing'))
-    expect(combat.enemyStartCount).toBe(armySize('gnawing'))
+    const combat = fighting().run?.combat
+    expect(combat!.enemyBones).toHaveLength(armySize('gnawing'))
+    expect(combat!.enemyStartCount).toBe(armySize('gnawing'))
   })
 
   it('sorts the enemy line high to low', () => {
@@ -81,261 +90,160 @@ describe('FIGHT', () => {
     }
   })
 
-  it('carries no charm spent', () => {
-    expect(fighting().run!.combat!.charmUsed).toBe(false)
-  })
-
   it('is refused twice', () => {
     const open = fighting()
     expect(reduce(open, { type: 'FIGHT' })).toBe(open)
   })
 })
 
-describe('FIELD', () => {
-  it('commits a legal width', () => {
-    const after = reduce(fighting(), { type: 'FIELD', width: 3, specialIds: [] })
-    expect(after.run!.combat!.phase).toBe('fielded')
-    expect(after.run!.combat!.field).toEqual({ width: 3, specialIds: [] })
+describe('the line the pile puts up', () => {
+  // `fieldFor` is the composition rule, and it is exported because the tray
+  // draws the line before it is thrown. The reducer and the view must agree
+  // about what is going in, so they call the same function.
+
+  it('is as wide as the pile allows, capped at six', () => {
+    const run = newRun(1)
+    expect(fieldFor(run).width).toBe(6)
+    expect(fieldFor({ ...run, commonBones: 4 }).width).toBe(4)
+    expect(fieldFor({ ...run, commonBones: 0 }).width).toBe(0)
   })
 
-  it('rolls nothing', () => {
-    const after = reduce(fighting(), { type: 'FIELD', width: 3, specialIds: [] })
-    expect(after.run!.combat!.playerLine).toBeUndefined()
+  it('is never a choice: no width is asked for and none is honoured', () => {
+    const run = newRun(1)
+    // There is no argument to pass. The only input is which named bones stand.
+    expect(fieldFor(run).width).toBe(fieldFor(run, []).width)
+    expect(maxWidth(run)).toBe(6)
   })
 
-  it('refuses a width below one', () => {
-    const open = fighting()
-    expect(reduce(open, { type: 'FIELD', width: 0, specialIds: [] })).toBe(open)
-    expect(reduce(open, { type: 'FIELD', width: -1, specialIds: [] })).toBe(open)
+  it('stands named bones inside the width, never on top of it', () => {
+    const run = { ...newRun(1), specials: [newSpecial('knuckle', 0)], commonBones: 29 }
+    const field = fieldFor(run, ['knuckle#0'])
+    expect(field.width).toBe(6)
+    expect(field.specialIds).toEqual(['knuckle#0'])
   })
 
-  it('refuses a width above six', () => {
-    const open = fighting()
-    expect(reduce(open, { type: 'FIELD', width: 7, specialIds: [] })).toBe(open)
+  it('refuses a named bone that is not alive', () => {
+    const run = newRun(1)
+    expect(fieldFor(run, ['ghost#9']).specialIds).toEqual([])
   })
 
-  it('refuses a width the pile cannot pay for', () => {
-    const thin = fighting()
-    const poor: GameState = { ...thin, run: { ...thin.run!, commonBones: 2 } }
-    expect(maxWidth(poor.run!)).toBe(2)
-    expect(reduce(poor, { type: 'FIELD', width: 3, specialIds: [] })).toBe(poor)
-    expect(reduce(poor, { type: 'FIELD', width: 2, specialIds: [] })).not.toBe(poor)
+  it('drops a duplicate rather than throwing the same bone twice', () => {
+    const run = { ...newRun(1), specials: [newSpecial('knuckle', 0)], commonBones: 29 }
+    expect(fieldFor(run, ['knuckle#0', 'knuckle#0']).specialIds).toEqual(['knuckle#0'])
   })
 
-  it('refuses a special that is not alive', () => {
-    const open = fighting()
-    expect(reduce(open, { type: 'FIELD', width: 2, specialIds: ['knuckle#0'] })).toBe(open)
-  })
-
-  it('refuses a duplicated special', () => {
-    const open = fighting()
-    const armed: GameState = {
-      ...open,
-      run: { ...open.run!, specials: [{ instanceId: 'knuckle#0', specialId: 'knuckle' }] },
+  it('sorts the named bones, so two thumbs reach the same throw', () => {
+    const run = {
+      ...newRun(1),
+      specials: [newSpecial('knuckle', 0), newSpecial('cinderbone', 1)],
+      commonBones: 28,
     }
-    expect(
-      reduce(armed, { type: 'FIELD', width: 2, specialIds: ['knuckle#0', 'knuckle#0'] }),
-    ).toBe(armed)
+    const forward = fieldFor(run, ['knuckle#0', 'cinderbone#1']).specialIds
+    const backward = fieldFor(run, ['cinderbone#1', 'knuckle#0']).specialIds
+    expect(forward).toEqual(backward)
   })
 
-  it('refuses more specials than the field is wide', () => {
-    const open = fighting()
-    const armed: GameState = {
-      ...open,
-      run: {
-        ...open.run!,
-        specials: [
-          { instanceId: 'knuckle#0', specialId: 'knuckle' },
-          { instanceId: 'knuckle#1', specialId: 'knuckle' },
-        ],
-      },
-    }
-    expect(
-      reduce(armed, { type: 'FIELD', width: 1, specialIds: ['knuckle#0', 'knuckle#1'] }),
-    ).toBe(armed)
-  })
-
-  it('records specials in a stable order however they were tapped', () => {
-    const open = fighting()
-    const armed: GameState = {
-      ...open,
-      run: {
-        ...open.run!,
-        specials: [
-          { instanceId: 'cinderbone#0', specialId: 'cinderbone' },
-          { instanceId: 'knuckle#1', specialId: 'knuckle' },
-        ],
-      },
-    }
-    const a = reduce(armed, { type: 'FIELD', width: 2, specialIds: ['knuckle#1', 'cinderbone#0'] })
-    const b = reduce(armed, { type: 'FIELD', width: 2, specialIds: ['cinderbone#0', 'knuckle#1'] })
-    expect(a.run!.combat!.field).toEqual(b.run!.combat!.field)
-  })
-
-  it('is refused outside thrown', () => {
-    const fielded = reduce(fighting(), { type: 'FIELD', width: 3, specialIds: [] })
-    expect(reduce(fielded, { type: 'FIELD', width: 2, specialIds: [] })).toBe(fielded)
+  it('narrows when a held-back bone has no common to replace it', () => {
+    // Three bones in all: two commons and a Knuckle. Holding the Knuckle back
+    // is a line of two, not a line of three with a bone invented to fill it.
+    const run = { ...newRun(1), specials: [newSpecial('knuckle', 0)], commonBones: 2 }
+    expect(fieldFor(run, ['knuckle#0']).width).toBe(3)
+    expect(fieldFor(run, []).width).toBe(2)
   })
 })
 
 describe('THROW', () => {
-  it('throws exactly the committed width', () => {
-    const after = play(fighting(), { type: 'FIELD', width: 4, specialIds: [] }, { type: 'THROW' })
-    expect(after.run!.combat!.phase).toBe('rolled')
-    expect(after.run!.combat!.playerLine).toHaveLength(4)
+  it('is the whole round: it throws and it resolves, in one tick', () => {
+    const after = reduce(fighting(), { type: 'THROW' })
+    const combat = after.run?.combat
+    expect(combat?.phase).toBe('smashed')
+    expect(combat?.playerLine?.length).toBeGreaterThan(0)
+    expect(combat?.lastSmash).toBeDefined()
+    expect(combat!.lastSmash!.lanes.length).toBeGreaterThan(0)
+  })
+
+  it('records what went in alongside what it rolled', () => {
+    const combat = reduce(fighting(), { type: 'THROW' }).run?.combat
+    expect(combat?.field?.width).toBe(combat?.playerLine?.length)
+  })
+
+  it('throws as wide as the pile allows without being asked', () => {
+    const open = fighting()
+    const after = reduce(open, { type: 'THROW' })
+    expect(after.run!.combat!.playerLine!.length).toBe(maxWidth(open.run!))
   })
 
   it('sorts the line high to low', () => {
-    const line = play(fighting(), { type: 'FIELD', width: 6, specialIds: [] }, { type: 'THROW' })
-      .run!.combat!.playerLine!
+    const line = reduce(fighting(), { type: 'THROW' }).run!.combat!.playerLine ?? []
     for (let i = 1; i < line.length; i++) {
       expect(line[i]!.value).toBeLessThanOrEqual(line[i - 1]!.value)
     }
   })
 
-  it('is refused before FIELD', () => {
+  it('stands the named bones it was asked for', () => {
     const open = fighting()
-    expect(reduce(open, { type: 'THROW' })).toBe(open)
-  })
-
-  it('cannot be thrown twice', () => {
-    // The one throw. There is no HOLD and no general reroll; the Charm is the
-    // only rethrow in the game and it takes an item.
-    const rolled = play(fighting(), { type: 'FIELD', width: 4, specialIds: [] }, { type: 'THROW' })
-    expect(reduce(rolled, { type: 'THROW' })).toBe(rolled)
-  })
-
-  it('is the same throw after a reload at fielded', () => {
-    const fielded = reduce(fighting(7), { type: 'FIELD', width: 5, specialIds: [] })
-    const once = reduce(fielded, { type: 'THROW' }).run!.combat!.playerLine
-    const twice = reduce(fielded, { type: 'THROW' }).run!.combat!.playerLine
-    expect(once).toEqual(twice)
-  })
-})
-
-describe('CHARM', () => {
-  const withCharm = (): GameState => {
-    const rolled = play(fighting(3), { type: 'FIELD', width: 4, specialIds: [] }, { type: 'THROW' })
-    return { ...rolled, run: { ...rolled.run!, charms: 2 } }
-  }
-
-  it('spends one charge and rethrows one bone', () => {
-    const armed = withCharm()
-    const key = armed.run!.combat!.playerLine![0]!.boneKey
-    const after = reduce(armed, { type: 'CHARM', boneKey: key })
-    expect(after.run!.charms).toBe(1)
-    expect(after.run!.combat!.charmUsed).toBe(true)
-    expect(after.run!.combat!.phase).toBe('rolled')
-  })
-
-  it('leaves every other bone byte-identical', () => {
-    const armed = withCharm()
-    const line = armed.run!.combat!.playerLine!
-    const key = line[line.length - 1]!.boneKey
-    const after = reduce(armed, { type: 'CHARM', boneKey: key })
-    const others = after.run!.combat!.playerLine!.filter((b) => b.boneKey !== key)
-    expect(others).toEqual(line.filter((b) => b.boneKey !== key))
-  })
-
-  it('stands the line up again', () => {
-    const armed = withCharm()
-    const key = armed.run!.combat!.playerLine![3]!.boneKey
-    const line = reduce(armed, { type: 'CHARM', boneKey: key }).run!.combat!.playerLine!
-    for (let i = 1; i < line.length; i++) {
-      expect(line[i]!.value).toBeLessThanOrEqual(line[i - 1]!.value)
+    const armed: GameState = {
+      ...open,
+      run: { ...open.run!, specials: [newSpecial('knuckle', 0)], commonBones: 20 },
     }
-  })
-
-  it('is once a fight, however many are carried', () => {
-    const armed = withCharm()
-    expect(armed.run!.charms).toBe(2)
-    const once = reduce(armed, { type: 'CHARM', boneKey: armed.run!.combat!.playerLine![0]!.boneKey })
-    const twice = reduce(once, {
-      type: 'CHARM',
-      boneKey: once.run!.combat!.playerLine![1]!.boneKey,
-    })
-    expect(twice).toBe(once)
-    expect(once.run!.charms).toBe(1)
-  })
-
-  it('survives the round: still spent after ROUND', () => {
-    const armed = withCharm()
-    const used = reduce(armed, { type: 'CHARM', boneKey: armed.run!.combat!.playerLine![0]!.boneKey })
-    const next = play(used, { type: 'SMASH' }, { type: 'ROUND' })
-    if (next.run?.combat) expect(next.run.combat.charmUsed).toBe(true)
-  })
-
-  it('is refused with no charge', () => {
-    const rolled = play(fighting(3), { type: 'FIELD', width: 4, specialIds: [] }, { type: 'THROW' })
-    expect(rolled.run!.charms).toBe(0)
+    const after = reduce(armed, { type: 'THROW', specialIds: ['knuckle#0'] })
+    expect(after.run!.combat!.field!.specialIds).toEqual(['knuckle#0'])
     expect(
-      reduce(rolled, { type: 'CHARM', boneKey: rolled.run!.combat!.playerLine![0]!.boneKey }),
-    ).toBe(rolled)
+      after.run!.combat!.playerLine!.some((b) => b.specialInstanceId === 'knuckle#0'),
+    ).toBe(true)
   })
 
-  it('is refused outside rolled', () => {
-    const fielded = reduce(fighting(3), { type: 'FIELD', width: 4, specialIds: [] })
-    const armed: GameState = { ...fielded, run: { ...fielded.run!, charms: 1 } }
-    expect(reduce(armed, { type: 'CHARM', boneKey: 'anything' })).toBe(armed)
-  })
-
-  it('is refused for a bone that is not in the line', () => {
-    const armed = withCharm()
-    expect(reduce(armed, { type: 'CHARM', boneKey: 'not-here' })).toBe(armed)
-  })
-})
-
-describe('SMASH', () => {
-  const rolled = (seed = 5): GameState =>
-    play(fighting(seed), { type: 'FIELD', width: 6, specialIds: [] }, { type: 'THROW' })
-
-  it('records what happened', () => {
-    const after = reduce(rolled(), { type: 'SMASH' })
-    const combat = after.run?.combat
-    if (!combat) return
-    expect(combat.lastSmash).toBeDefined()
-    expect(combat.lastSmash!.lanes.length).toBeGreaterThan(0)
-  })
-
-  it('leaves the phase at smashed when both sides live', () => {
-    const after = reduce(rolled(2), { type: 'SMASH' })
-    if (after.mode === 'combat' && after.run?.combat && !after.run.combat.defeated) {
-      expect(after.run.combat.phase).toBe('smashed')
-    }
-  })
-
-  it('is refused outside rolled', () => {
+  it('holds back a named bone it was not asked for', () => {
     const open = fighting()
-    expect(reduce(open, { type: 'SMASH' })).toBe(open)
-    const fielded = reduce(open, { type: 'FIELD', width: 2, specialIds: [] })
-    expect(reduce(fielded, { type: 'SMASH' })).toBe(fielded)
+    const armed: GameState = {
+      ...open,
+      run: { ...open.run!, specials: [newSpecial('knuckle', 0)], commonBones: 20 },
+    }
+    const after = reduce(armed, { type: 'THROW', specialIds: [] })
+    expect(after.run!.combat!.field!.specialIds).toEqual([])
+    expect(after.run!.combat!.playerLine!.every((b) => b.specialInstanceId === undefined)).toBe(
+      true,
+    )
+    // Held back is *safe*: it cannot break in a lane it never stood in.
+    expect(after.run!.specials.map((s) => s.instanceId)).toEqual(['knuckle#0'])
   })
 
-  it('cannot be smashed twice', () => {
-    const smashed = reduce(rolled(2), { type: 'SMASH' })
+  it('cannot be thrown twice in a round', () => {
+    const smashed = reduce(fighting(2), { type: 'THROW' })
     if (smashed.mode === 'combat' && smashed.run?.combat?.phase === 'smashed') {
-      expect(reduce(smashed, { type: 'SMASH' })).toBe(smashed)
+      expect(reduce(smashed, { type: 'THROW' })).toBe(smashed)
     }
+  })
+
+  it('is refused with nothing to throw', () => {
+    const open = fighting()
+    const empty: GameState = {
+      ...open,
+      run: { ...open.run!, commonBones: 0, specials: [] },
+    }
+    expect(reduce(empty, { type: 'THROW' })).toBe(empty)
   })
 
   it('never leaves the pile below zero', () => {
     for (let seed = 1; seed <= 40; seed++) {
-      let state = rolled(seed)
-      const thin: GameState = { ...state, run: { ...state.run!, commonBones: 3 } }
-      state = reduce(thin, { type: 'SMASH' })
+      const open = fighting(seed)
+      const thin: GameState = { ...open, run: { ...open.run!, commonBones: 3 } }
+      const state = reduce(thin, { type: 'THROW' })
       expect(totalBones(state.run!)).toBeGreaterThanOrEqual(0)
     }
+  })
+
+  it('is the same throw after a reload before it', () => {
+    const open = fighting(31)
+    const reloaded: GameState = JSON.parse(JSON.stringify(open))
+    expect(reduce(reloaded, { type: 'THROW' }).run!.combat!.playerLine).toEqual(
+      reduce(open, { type: 'THROW' }).run!.combat!.playerLine,
+    )
   })
 })
 
 describe('ROUND', () => {
-  const smashed = (seed: number): GameState =>
-    play(
-      fighting(seed),
-      { type: 'FIELD', width: 1, specialIds: [] },
-      { type: 'THROW' },
-      { type: 'SMASH' },
-    )
+  const smashed = (seed: number): GameState => reduce(fighting(seed), { type: 'THROW' })
 
   it('increments the round exactly once and throws again', () => {
     const after = smashed(4)
@@ -365,11 +273,9 @@ describe('ROUND', () => {
     }
   })
 
-  it('is refused outside a settled smash', () => {
+  it('is refused before the throw', () => {
     const open = fighting()
     expect(reduce(open, { type: 'ROUND' })).toBe(open)
-    const fielded = reduce(open, { type: 'FIELD', width: 2, specialIds: [] })
-    expect(reduce(fielded, { type: 'ROUND' })).toBe(fielded)
   })
 
   it('never comes after a dead army', () => {
@@ -381,12 +287,7 @@ describe('ROUND', () => {
         combat: { ...open.run!.combat!, enemyBones: open.run!.combat!.enemyBones.slice(0, 1) },
       },
     }
-    let state = play(
-      doomed,
-      { type: 'FIELD', width: 6, specialIds: [] },
-      { type: 'THROW' },
-      { type: 'SMASH' },
-    )
+    const state = reduce(doomed, { type: 'THROW' })
     // Either it died (and there is a defeat being held open, or the room is
     // cleared) or it survived. In no case may a ROUND be accepted against an
     // empty army.
@@ -397,11 +298,12 @@ describe('ROUND', () => {
 })
 
 describe('the old verbs are gone', () => {
-  it('does not answer ROLL, SELECT, REROLL or SCORE', () => {
+  it('does not answer ROLL, SELECT, REROLL, SCORE, FIELD, SMASH or CHARM', () => {
     // Not wrapped, not aliased, not translated: absent. The reducer's switch
-    // has no case for them, so a stale dispatch changes nothing.
+    // has no case for them, so a stale dispatch changes nothing. FIELD, SMASH
+    // and CHARM join the list — three presses that became one.
     const open = fighting()
-    for (const type of ['ROLL', 'SELECT', 'REROLL', 'SCORE']) {
+    for (const type of ['ROLL', 'SELECT', 'REROLL', 'SCORE', 'FIELD', 'SMASH', 'CHARM']) {
       expect(reduce(open, { type } as unknown as Action)).toBe(open)
     }
   })

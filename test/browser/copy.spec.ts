@@ -33,7 +33,7 @@ test.describe('a bone explains itself in one card', () => {
   })
 
   test('a bone in the line can be inspected without spending anything', async ({ page }) => {
-    await boot(page, '?room=hollow&mode=combat&phase=rolled')
+    await boot(page, '?room=gate&mode=combat&phase=smashed')
     await bones(page).first().click()
     await expect(page.locator('#overlay')).toBeVisible()
     await expect(page.locator('#overlay')).toContainText('1, 2, 3, 4, 5, 6.')
@@ -52,19 +52,9 @@ test.describe('a carried thing explains itself in one card', () => {
     await expect(overlay).toContainText('30')
   })
 
-  test('a Charm says it is once, and that it is one bone', async ({ page }) => {
-    await boot(page, '?room=fork&charms=1')
-    await page.locator('.satchel-slot[data-slot-id="charm"]').click()
-    const overlay = page.locator('#overlay')
-    await expect(overlay).toContainText('Once per fight')
-    await expect(overlay).toContainText('1 of your rolled bones')
-  })
-})
-
-test.describe('the fight states its rules before they are needed', () => {
   test('the well asks for the decision the phase actually wants', async ({ page }) => {
     await boot(page, '?room=deep&mode=combat&phase=thrown')
-    await expect(page.locator('#well')).toContainText('Choose how many bones to risk')
+    await expect(page.locator('#well')).toContainText('Its line is up')
   })
 
   test('the Marrow says what is wrong with its bones', async ({ page }) => {
@@ -73,10 +63,10 @@ test.describe('the fight states its rules before they are needed', () => {
   })
 
   test('a taken thing repeats its own rule', async ({ page }) => {
-    // The pickup line is the card again, not "Charm. Taken." — sending the
+    // The pickup line is the card again, not "Vial. Taken." — sending the
     // player to MENU to find out what they just chose is the failure this
     // exists to prevent.
-    await boot(page, '?room=fork&charms=0')
+    await boot(page, '?room=fork')
     await expect(page.locator('#say')).not.toContainText('Taken.')
   })
 })
@@ -84,9 +74,9 @@ test.describe('the fight states its rules before they are needed', () => {
 test.describe('nothing on screen speaks the old language', () => {
   const FIXTURES = [
     '?room=entry',
-    '?room=fork&specials=knuckle&vials=1&charms=1',
+    '?room=fork&specials=knuckle&vials=1',
     '?room=hollow&mode=combat&phase=thrown',
-    '?room=deep&mode=combat&phase=rolled',
+    '?room=deep&mode=combat&phase=smashed',
     '?room=gate&mode=combat&phase=smashed',
     '?mode=dead',
     '?mode=complete',

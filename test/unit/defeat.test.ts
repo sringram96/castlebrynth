@@ -58,9 +58,7 @@ function poised(templateId: string, seed = 1): GameState {
 function kill(state: GameState): GameState {
   return play(
     state,
-    { type: 'FIELD', width: 6, specialIds: [] },
     { type: 'THROW' },
-    { type: 'SMASH' },
   )
 }
 
@@ -140,9 +138,7 @@ describe('the last bone', () => {
   it('leaves no move in the fight', () => {
     const dying = kill(poised('hollow'))
     for (const action of [
-      { type: 'FIELD', width: 2, specialIds: [] },
       { type: 'THROW' },
-      { type: 'SMASH' },
       { type: 'ROUND' },
       { type: 'CHARM', boneKey: 'anything' },
     ] as Action[]) {

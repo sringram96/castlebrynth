@@ -73,7 +73,7 @@ test.describe('a room decodes its own art', () => {
   })
 
   test('no broken image is ever on screen', async ({ page }) => {
-    await boot(page, '?room=gate&mode=combat&phase=rolled')
+    await boot(page, '?room=gate&mode=combat&phase=smashed')
     const broken = await page.evaluate(() =>
       [...document.querySelectorAll('img')]
         .filter((img) => img.getAttribute('src') && !img.hidden)
@@ -101,7 +101,7 @@ test.describe('nothing is fetched twice', () => {
     // A room with an opponent, so every layer the compositor owns is in play
     // at once. The Reliquary has no enemy and its enemy layer is correctly
     // absent, which is a different claim.
-    await boot(page, '?room=hollow&mode=combat&phase=rolled')
+    await boot(page, '?room=hollow&mode=combat&phase=smashed')
     for (const id of ['#backdrop', '#enemy', '[data-layer="foreground"]', '#weapon', '#tray-frame']) {
       await expect(page.locator(id)).toHaveCount(1)
     }
@@ -125,8 +125,8 @@ test.describe('a fight does not begin before its art does', () => {
   })
 
   test('a smash never flashes an undecoded frame', async ({ page }) => {
-    await boot(page, '?room=gate&mode=combat&phase=rolled', { motion: true })
-    await act(page, 'smash').click()
+    await boot(page, '?room=gate&mode=combat&phase=thrown', { motion: true })
+    await act(page, 'throw').click()
     // Sampled across the sequence rather than at its end, which is where a
     // frame that starts by fetching its own source would show.
     for (let i = 0; i < 6; i++) {

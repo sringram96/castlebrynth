@@ -57,7 +57,6 @@ function carried(state: GameState): readonly string[] {
   const run = state.run!
   return [
     ...run.specials.map((s) => s.specialId),
-    ...Array.from({ length: run.charms }, () => 'charm'),
     ...Array.from({ length: run.vials }, () => 'vial'),
   ]
 }

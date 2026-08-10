@@ -15,10 +15,18 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env['CI'],
   retries: process.env['CI'] ? 1 : 0,
-  workers: process.env['CI'] ? 2 : undefined,
+  // Half the cores by default, which on a four-core box is two — and this
+  // suite is I/O-bound on a dev server rather than CPU-bound, so it takes the
+  // lot. A full run is a gate that gets run often; minutes here are minutes
+  // every time.
+  workers: process.env['CI'] ? 2 : '100%',
   reporter: process.env['CI'] ? [['github'], ['list']] : [['list']],
-  timeout: 30_000,
-  expect: { timeout: 7_000 },
+  // Short, deliberately. Every test in this suite is a handful of presses
+  // against a local dev server; nothing here legitimately takes ten seconds,
+  // so a test that hangs is a test that is wrong, and it should say so fast
+  // rather than spending half a minute proving it.
+  timeout: 12_000,
+  expect: { timeout: 5_000 },
   use: {
     baseURL: 'http://127.0.0.1:5173',
     trace: 'retain-on-failure',

@@ -178,7 +178,7 @@ const GNAWING: Enemy = {
   foot: MAW.far.foot,
   staging: MAW,
   stageEvery: 1,
-  rewards: ['vial', 'charm', 'cinderbone', 'knuckle'],
+  rewards: ['vial', 'cinderbone', 'knuckle'],
   rewardChance: 0.6,
   rewardChoices: 2,
 }
@@ -208,7 +208,7 @@ const MARROW: Enemy = {
   width: 0.62,
   foot: 0.94,
   // The optional route, so it pays better than the mandatory first fight.
-  rewards: ['vial', 'charm', 'cinderbone', 'knuckle'],
+  rewards: ['vial', 'cinderbone', 'knuckle'],
   rewardChance: 0.7,
   rewardChoices: 2,
   drop: 'vial',

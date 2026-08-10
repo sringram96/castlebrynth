@@ -39,11 +39,10 @@ function payRate(enemyId: string, trials = 600): number {
 }
 
 describe('the reward pool', () => {
-  it('is three nouns and no fourth', () => {
+  it('is two nouns and no third', () => {
     // No new collectible category without a product decision. See CLAUDE.md.
-    expect(new Set(LOOT_REWARDS.map((id) => reward(id).kind))).toEqual(
-      new Set(['bone', 'charm', 'vial']),
-    )
+    // Relics went first, and the Charm followed the phase it was spent in.
+    expect(new Set(LOOT_REWARDS.map((id) => reward(id).kind))).toEqual(new Set(['bone', 'vial']))
   })
 
   it('states an exact mechanic on every card', () => {
@@ -135,18 +134,12 @@ function winAgainstMarrow(seed: number): GameState | undefined {
       },
     },
   }
-  state = play(state, { type: 'FIELD', width: 6, specialIds: [] }, { type: 'THROW' }, { type: 'SMASH' })
+  state = play(state, { type: 'THROW' })
   if (state.run?.combat?.defeated) state = reduce(state, { type: 'DEFEAT_DONE' })
   return state.mode === 'reward' || state.mode === 'explore' ? state : undefined
 }
 
 describe('TAKE', () => {
-  it('a Charm goes in the satchel', () => {
-    const after = play(offering(['charm']), { type: 'TAKE', id: 'charm' })
-    expect(after.run!.charms).toBe(1)
-    expect(after.mode).toBe('explore')
-  })
-
   it('a Vial goes in the satchel', () => {
     const after = play(offering(['vial']), { type: 'TAKE', id: 'vial' })
     expect(after.run!.vials).toBe(1)
@@ -181,12 +174,12 @@ describe('TAKE', () => {
   })
 
   it('repeats the rule it just gave you', () => {
-    const after = play(offering(['charm']), { type: 'TAKE', id: 'charm' })
-    expect(after.run!.say).toContain(reward('charm').rule)
+    const after = play(offering(['vial']), { type: 'TAKE', id: 'vial' })
+    expect(after.run!.say).toContain(reward('vial').rule)
   })
 
   it('refuses something that was not offered', () => {
-    const before = offering(['charm'])
+    const before = offering(['knuckle'])
     expect(reduce(before, { type: 'TAKE', id: 'vial' })).toBe(before)
   })
 })
@@ -225,13 +218,13 @@ describe('the ceiling and the pool', () => {
 
 describe('SKIP', () => {
   it('returns to the room having changed nothing', () => {
-    const before = offering(['knuckle', 'charm'], { commonBones: 30 })
+    const before = offering(['knuckle', 'vial'], { commonBones: 30 })
     const after = play(before, { type: 'SKIP' })
     expect(after.mode).toBe('explore')
     expect(after.run!.offer).toBeUndefined()
     expect(after.run!.commonBones).toBe(30)
     expect(after.run!.specials).toEqual([])
-    expect(after.run!.charms).toBe(0)
+    expect(after.run!.vials).toBe(0)
   })
 
   it('is refused outside the reward screen', () => {

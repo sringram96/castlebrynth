@@ -375,15 +375,12 @@ function menuPanel(state: GameState): HTMLElement | null {
   panel.append(bones)
 
   panel.append(el('h2', 'screen-head', 'SATCHEL'))
-  if (run.vials > 0 || run.charms > 0) {
+  if (run.vials > 0) {
     const satchel = el('div', 'offers')
-    if (run.vials > 0) satchel.append(rewardCard(REWARDS.vial, run.vials))
-    if (run.charms > 0) satchel.append(rewardCard(REWARDS.charm, run.charms))
+    satchel.append(rewardCard(REWARDS.vial, run.vials))
     panel.append(satchel)
   } else {
-    panel.append(
-      el('p', 'screen-line', 'Empty. Vials and Charms sit in the bays on the right of the tray.'),
-    )
+    panel.append(el('p', 'screen-line', 'Empty. A Vial sits in the bay on the right of the tray.'))
   }
 
   // The whole game, in four lines. It is short enough to be worth reading and

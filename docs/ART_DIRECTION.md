@@ -166,8 +166,10 @@ and nothing is lost.
 - At 390×844, every combat screenshot shows the enemy without tapping.
 - Each room in the slice is distinguishable as a thumbnail.
 - No gameplay text sits on a busy focal region without a scrim.
-- Enemy line, player line, field width, special sigils, casualty state and the
-  living-bone count are readable at arm's length.
+- Enemy line, player line, special sigils, casualty state and the living-bone
+  count are readable at arm's length. Both lines are on the plate, in column —
+  lane N against lane N is the whole smash rule, so the column has to read as
+  a pairing before anything animates.
 - **A seven and an eight are readable without a tooltip.** No die anybody has
   held has those faces, so there is no pattern to recognise: they print their
   numeral over the pips, and the numeral is the truth.

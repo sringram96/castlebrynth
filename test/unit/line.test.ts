@@ -13,7 +13,6 @@ import {
   commonKey,
   enemyField,
   materialiseField,
-  recharmLine,
   rollEnemyLine,
   rollPlayerLine,
   sortEnemyLine,
@@ -187,31 +186,5 @@ describe('sorting', () => {
       fielded,
     )
     expect(sorted[0]!.boneKey).toBe('x:wrong:0')
-  })
-})
-
-describe('the Charm', () => {
-  const line = sortPlayerLine([bone('a', 6), bone('b', 3), bone('c', 1)])
-
-  it('throws only the bone it names', () => {
-    const after = recharmLine(line, 'c', new Rng(5))
-    const untouched = after.filter((b) => b.boneKey !== 'c')
-    expect(untouched).toEqual(line.filter((b) => b.boneKey !== 'c'))
-  })
-
-  it('stands the line up again around the new value', () => {
-    const after = recharmLine(line, 'c', new Rng(5))
-    for (let i = 1; i < after.length; i++) {
-      expect(after[i]!.value).toBeLessThanOrEqual(after[i - 1]!.value)
-    }
-  })
-
-  it('keeps the same bones, however they end up standing', () => {
-    const after = recharmLine(line, 'b', new Rng(13))
-    expect(after.map((b) => b.boneKey).sort()).toEqual(['a', 'b', 'c'])
-  })
-
-  it('changes nothing when the key is not in the line', () => {
-    expect(recharmLine(line, 'nope', new Rng(1))).toEqual(line)
   })
 })

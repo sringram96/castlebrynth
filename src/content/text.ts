@@ -31,10 +31,7 @@ export const VERBS = {
    */
   menu: 'MENU',
   fight: 'FIGHT',
-  field: 'FIELD',
   throw: 'THROW',
-  charm: 'CHARM',
-  smash: 'SMASH',
   round: 'ROUND',
   drink: 'DRINK',
   pouch: 'POUCH',
@@ -50,9 +47,7 @@ export const VERBS = {
  * being asked for a decision and the well is the one region that can ask.
  */
 export const PHASE_LINE = {
-  thrown: 'Choose how many bones to risk.',
-  fielded: 'Throw them.',
-  rolled: 'Line them up and smash.',
+  thrown: 'Its line is up. Throw yours against it.',
   smashed: 'What is broken is broken.',
 } as const
 

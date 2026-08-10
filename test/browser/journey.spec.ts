@@ -124,7 +124,6 @@ test.describe('the reward screen', () => {
 
     const run = (await state(page)).run!
     if (id === 'vial') expect(run.vials).toBe(1)
-    if (id === 'charm') expect(run.charms).toBe(1)
     if (id === 'knuckle' || id === 'cinderbone') expect(run.specials).toHaveLength(1)
   })
 
@@ -145,7 +144,6 @@ test.describe('the reward screen', () => {
     const after = (await state(page)).run!
     expect(after.commonBones).toBe(before.commonBones)
     expect(after.specials).toHaveLength(before.specials.length)
-    expect(after.charms).toBe(before.charms)
     expect(after.vials).toBe(before.vials)
     expect(after.offer).toBeUndefined()
     await expect(page.locator('#say')).toContainText('leave it')
