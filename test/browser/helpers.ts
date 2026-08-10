@@ -55,6 +55,7 @@ export async function state(page: Page): Promise<{
   mode: string
   run?: {
     roomId: string
+    map: { start: string; nodes: Record<string, { id: string; templateId: string }> }
     commonBones: number
     specials: { instanceId: string; specialId: string }[]
     charms: number
@@ -92,6 +93,39 @@ export async function livingBones(page: Page): Promise<number> {
 /** Which files the loader has actually decoded. The loading spec reads it. */
 export async function decoded(page: Page): Promise<string[]> {
   return (await page.evaluate(() => window.castlebrynth?.loaded() ?? [])) as string[]
+}
+
+/**
+ * Which authored room the run is standing in.
+ *
+ * `run.roomId` is a node of the generated map, and a node id is not something
+ * a test should ever be written against — it is the director's, and it changes
+ * when the plan does. What a spec means is *the vault*, *the gate*, so this is
+ * the one place the join is made, and the state the assertion reads is the
+ * state the game is actually holding.
+ */
+export async function where(page: Page): Promise<string | undefined> {
+  const now = await state(page)
+  return now.run ? now.run.map.nodes[now.run.roomId]?.templateId : undefined
+}
+
+/** The node of this run that used a named authored template. */
+export async function nodeFor(page: Page, templateId: string): Promise<string> {
+  const now = await state(page)
+  const found = Object.values(now.run!.map.nodes).find((n) => n.templateId === templateId)
+  if (!found) throw new Error(`this run has no ${templateId} in it`)
+  return found.id
+}
+
+/**
+ * The GO button that leads to a named authored room.
+ *
+ * Selected through the map rather than by reading a template id off the DOM,
+ * because the button carries a destination and nothing else — the view is not
+ * allowed to know which authored place is on the other side of it.
+ */
+export async function wayTo(page: Page, templateId: string): Promise<Locator> {
+  return page.locator(`[data-act="go"][data-to="${await nodeFor(page, templateId)}"]`)
 }
 
 /**

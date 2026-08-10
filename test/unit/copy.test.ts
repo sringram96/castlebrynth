@@ -15,7 +15,8 @@ import { describe, expect, it } from 'vitest'
 import { BONE_PROFILES, SPECIAL_BONES } from '../../src/content/bones.js'
 import { REWARDS, reward } from '../../src/content/rewards.js'
 import { ENEMIES } from '../../src/content/enemies.js'
-import { ROOMS, room } from '../../src/content/rooms.js'
+import { ROOM_LIBRARY } from '../../src/content/rooms.js'
+import { WAYS, way } from '../../src/content/runPlans.js'
 import { PHASE_LINE, VERBS, WAR_OF_BONES } from '../../src/content/text.js'
 
 /** Everything the player can read, so a banned word cannot hide in a corner. */
@@ -25,12 +26,15 @@ function everySentence(): string[] {
   for (const b of Object.values(SPECIAL_BONES)) out.push(b.rule, b.flavour ?? '')
   for (const r of Object.values(REWARDS)) out.push(r.rule, r.flavour ?? '')
   for (const e of Object.values(ENEMIES)) out.push(e.tell, e.rule ?? '')
-  for (const r of Object.values(ROOMS)) {
+  for (const r of ROOM_LIBRARY) {
     out.push(r.arrival)
     for (const d of r.details) out.push(d.says)
-    for (const x of r.exits) out.push(x.label, x.sense)
-    if (r.ritual) out.push(r.ritual.prompt, r.ritual.label, r.ritual.describe)
+    if (r.ritual) out.push(r.ritual.name, r.ritual.label, r.ritual.describe, r.ritual.prompt)
   }
+  // The ways on are copy too, and they moved out of the rooms with the
+  // topology. They are still sentences a player reads, so they are still held
+  // to every rule below.
+  for (const w of Object.values(WAYS)) out.push(w.label, w.sense)
   out.push(...WAR_OF_BONES, ...Object.values(PHASE_LINE), ...Object.values(VERBS))
   return out.filter(Boolean)
 }
@@ -143,27 +147,36 @@ describe('the controls are plain verbs', () => {
 })
 
 describe('the rooms say what changed', () => {
-  it('tells the player the way on is open once the enemy is down', () => {
-    for (const r of Object.values(ROOMS)) {
-      if (!r.enemy) continue
-      for (const exit of r.exits) {
-        expect(exit.sense, `${r.name}'s way on says nothing about the way on`).toMatch(
-          /corridor|passage|tunnel|door|path|open/i,
-        )
-      }
+  it('tells the player the way on is open once a fight is behind them', () => {
+    // The ways out of an encounter. They are authored on the plan's edges now
+    // rather than on the room, which is what lets a different fight sit in
+    // front of the same line — but the line still has to say where you are
+    // going, or the button is a shrug.
+    for (const id of ['past-the-body', 'gate-up', 'rejoin', 'through']) {
+      expect(way(id).sense, `${id} says nothing about the way on`).toMatch(
+        /corridor|passage|tunnel|door|path|open/i,
+      )
     }
   })
 
   it('makes the fork a decision rather than a riddle', () => {
-    const [safe, risky] = room('fork').exits
-    expect(safe?.sense, 'the short route does not say it is shorter').toMatch(/short/i)
+    const safe = way('stair')
+    const risky = way('deep')
+    expect(safe.sense, 'the short route does not say it is shorter').toMatch(/short/i)
     // The player is making a game decision. Say so before the tap.
-    expect(risky?.sense, 'the deep route does not state its risk').toMatch(/fight|danger/i)
-    expect(risky?.sense, 'the deep route does not state its reward').toMatch(/upgrade|chance/i)
+    expect(risky.sense, 'the deep route does not state its risk').toMatch(/fight|danger/i)
+    expect(risky.sense, 'the deep route does not state its reward').toMatch(/upgrade|chance/i)
+  })
+
+  it('keeps every way on to two words, because it goes on a button', () => {
+    for (const [id, w] of Object.entries(WAYS)) {
+      expect(w.label.split(/\s+/).length, `${id} is too long for a button`).toBeLessThanOrEqual(2)
+      expect(w.sense.length, `${id} gives no reason to press it`).toBeGreaterThan(0)
+    }
   })
 
   it('says what a font gives back before it is pressed, and what it does not', () => {
-    for (const r of Object.values(ROOMS)) {
+    for (const r of ROOM_LIBRARY) {
       if (!r.ritual) continue
       // The rule, in the well, before the press — the same contract every bone
       // and every carried thing is held to. It gives bones, it says how many,
@@ -183,7 +196,7 @@ describe('the rooms say what changed', () => {
   })
 
   it('lays nothing out on a step: an upgrade is beaten out of something', () => {
-    for (const r of Object.values(ROOMS)) {
+    for (const r of ROOM_LIBRARY) {
       expect(r.arrival, `${r.name} claims items are waiting`).not.toMatch(/two things|carry one/i)
     }
   })

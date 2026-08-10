@@ -26,7 +26,7 @@ there is no path where a backdrop ends up above an enemy.
 | 1 | `midground` | the room's **props**: every object that is pressed |
 | 2 | `enemy` | **mandatory in combat** |
 | 3 | `foreground` | the player's own arm, and occluders |
-| 4 | `fx` | hit flash, shake, damage numbers, vignette |
+| 4 | `fx` | break flash, shake, dust, vignette |
 | 5 | `hud` | the word band, the intent, the tray — never world art |
 
 ## Sizes
@@ -66,7 +66,11 @@ there is no path where a backdrop ends up above an enemy.
   - no input is lost to loading.
 
   Do not reintroduce a total-MB ceiling under another name, and do not compress
-  or delete authored pose coverage to hit an arbitrary total.
+  or delete authored pose coverage to hit an arbitrary total. A room or an
+  encounter is never rejected for having more frames than its neighbours, and
+  the generated map may not decline an authored place because of what it
+  weighs — `validateRunMap` asks whether the art can hold the fight, never what
+  the art costs.
 
 Masters (1024×1536, 2–4 MB each) live in `docs/art-reference/masters/` and are
 never served.
@@ -107,7 +111,7 @@ midground cover-fits them exactly as the backdrop is cover-fitted, so the
 object sits where it was painted at every viewport with no coordinate anywhere.
 That is what lets eight frames pass through one element during a throw without
 the object moving by a pixel; a trimmed plate is registered by its own
-silhouette, and a die climbing out of a basin changes that silhouette every
+silhouette, and a bone climbing out of a basin changes that silhouette every
 frame.
 
 A room may hold **several** props, and then each is its own plate on the same

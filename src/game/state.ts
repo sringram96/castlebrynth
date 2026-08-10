@@ -20,9 +20,18 @@
 
 import type { BoneProfileId, SpecialBoneInstance } from '../content/bones.js'
 import type { RewardId } from '../content/rewards.js'
+import type { RunMap } from './map.js'
 
-/** Bumped whenever the shape below changes. Old saves are not migrated. */
-export const SAVE_VERSION = 7
+/**
+ * Bumped whenever the shape below changes. Old saves are not migrated.
+ *
+ * **8, and it skipped nothing.** Two changes reached 7 independently — the
+ * generated map, and the War of Bones — and a save written by either of them
+ * has a shape this build cannot read. A version that two different schemas
+ * both claim is worse than no version at all: it is the one number whose whole
+ * job is to say *I know what this is*.
+ */
+export const SAVE_VERSION = 8
 
 export type Mode = 'title' | 'explore' | 'combat' | 'reward' | 'dead' | 'complete'
 
@@ -180,6 +189,7 @@ export type RitualRoll = 1 | 2 | 3 | 4 | 5 | 6
  * than deciding anything.
  */
 export interface RitualState {
+  /** The **node** it was rolled in, so two fonts in one run are two fonts. */
   readonly roomId: string
   readonly roll: RitualRoll
   /** Common bones actually put back. Zero is a real answer, at the ceiling. */
@@ -196,6 +206,16 @@ export interface RitualState {
  * position, and an order between them that is the puzzle. So this records
  * **where everything is standing**, and nothing else.
  *
+ * A discriminated union rather than a bag of optional fields, because the two
+ * rooms share no object: a `brazier` on a vault would be a state the game
+ * cannot reach, and `templateId` is what stops it being expressible.
+ *
+ * `templateId` is the one place in the whole of state where a *template* id
+ * appears, and it is here because it is answering "what kind of machinery is
+ * this", not "which room". Which room is the key these are stored under in
+ * `run.rooms`, and that key is a **node** id — so two runs through the same
+ * Reliquary template are two chests, two levers and two relics.
+ *
  * What is deliberately absent is any clock. No frame index, no elapsed time, no
  * "is animating" — the settled position is the whole truth, every picture is
  * derived from it, and a reload paints the room from this and nothing else.
@@ -203,7 +223,7 @@ export interface RitualState {
  */
 export type RoomInteractionState =
   | {
-      readonly roomId: 'reliquary'
+      readonly templateId: 'reliquary'
       readonly bellRung: boolean
       readonly brazier: 'lit' | 'out'
       readonly lever: 'up' | 'down'
@@ -221,7 +241,7 @@ export type RoomInteractionState =
       readonly rewardId?: RewardId
     }
   | {
-      readonly roomId: 'chain-vault'
+      readonly templateId: 'chain-vault'
       readonly chain: 'off' | 'on'
       readonly cage: 'raised' | 'lowered'
       readonly pressurePlate: 'off' | 'on'
@@ -231,6 +251,22 @@ export type RoomInteractionState =
 
 export interface RunState {
   readonly seed: number
+  /**
+   * The descent, settled.
+   *
+   * Generated once by `START_RUN` and never again — not on a render, a
+   * navigation, a reload, a CONTINUE or a fixture. The seed is what makes
+   * generation reproducible; this is what makes the run *true*, and after the
+   * press of START it is the only authority on where anything leads.
+   */
+  readonly map: RunMap
+  /**
+   * Which room of the map. A **node** id, not a template id.
+   *
+   * Everything below that names a room names one of these, for the reason
+   * `game/map.ts` gives at length: a template used twice is two rooms, and
+   * every scrap of per-room state has to be able to tell them apart.
+   */
   readonly roomId: string
 
   // ── life ──────────────────────────────────────────────────────────────
@@ -245,11 +281,11 @@ export interface RunState {
   readonly charms: number
   readonly vials: number
 
-  /** Which details have been looked at, per room instance. */
+  /** Which details have been looked at, in the node being stood in. */
   readonly looked: readonly string[]
-  /** Rooms whose enemy is already dead. */
+  /** Nodes whose enemy is already dead. */
   readonly cleared: readonly string[]
-  /** Rooms visited, in order. */
+  /** Nodes visited, in order. */
   readonly path: readonly string[]
   /** What the last press said. The word band reads this. */
   readonly say: string
@@ -257,7 +293,11 @@ export interface RunState {
   /** The ritual this run has resolved, and what it gave. */
   readonly ritual?: RitualState
   /**
-   * Where each room's objects have been left, keyed by room id.
+   * Where each room's objects have been left, keyed by **node** id.
+   *
+   * Node, not template — so the same authored room used twice in one descent
+   * has two independent chests. `stateOf` is where the two ids meet: the key
+   * says which room, and the template says how that kind of room opens.
    *
    * Sparse on purpose: a room that has not been touched has no entry, and its
    * opening position is content rather than something a new run has to write

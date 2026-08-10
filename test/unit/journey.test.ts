@@ -19,7 +19,10 @@ import type { Action } from '../../src/game/reducer.js'
 import { SAVE_VERSION, TITLE } from '../../src/game/state.js'
 import type { GameState } from '../../src/game/state.js'
 import { BONE_CEILING, totalBones } from '../../src/content/bones.js'
-import { FIRST_ROOM, ROOMS, room } from '../../src/content/rooms.js'
+import { ROOM_LIBRARY } from '../../src/content/rooms.js'
+import { roomAt } from '../../src/game/map.js'
+import { validateRun } from '../../src/game/mapValidation.js'
+import { nodeOf } from './where.js'
 import { load, save, wipe } from '../../src/game/save.js'
 
 const play = (state: GameState, ...actions: readonly Action[]): GameState =>
@@ -60,6 +63,32 @@ function fightItOut(state: GameState, guard = 60): GameState {
   throw new Error('a fight ran past its guard')
 }
 
+/**
+ * Walk one room on, by the label the map put on the button.
+ *
+ * The route is generated now, so a test cannot name the room it is going to —
+ * only the way it is taking. That is exactly what a player can do, which makes
+ * it the honest thing for a journey to assert against.
+ */
+function walk(state: GameState, label?: string): GameState {
+  const exits = roomAt(state.run!).exits
+  const chosen = label ? exits.find((e) => e.label === label) : exits[0]
+  if (!chosen) throw new Error(`no way on${label ? ` labelled ${label}` : ''}`)
+  return reduce(state, { type: 'GO', to: chosen.to })
+}
+
+/** Walk until the run is standing in a room built from a named template. */
+function walkTo(state: GameState, templateId: string, guard = 12): GameState {
+  let now = state
+  for (let step = 0; step < guard; step++) {
+    if (roomAt(now.run!).id === templateId) return now
+    const before = now.run!.roomId
+    now = walk(now)
+    if (now.run!.roomId === before) break
+  }
+  throw new Error(`never reached ${templateId}`)
+}
+
 /** Take whatever is offered, or leave it, and get back to the room. */
 function clearReward(state: GameState, take = true): GameState {
   if (state.mode !== 'reward') return state
@@ -77,7 +106,7 @@ describe('the door', () => {
   it('starts a run in one press, standing in the first room', () => {
     const started = reduce(TITLE, { type: 'START_RUN', seed: 1 })
     expect(started.mode).toBe('explore')
-    expect(started.run!.roomId).toBe(FIRST_ROOM)
+    expect(started.run!.roomId).toBe(started.run!.map.start)
     expect(totalBones(started.run!)).toBe(BONE_CEILING)
     expect(started.meta.runs).toBe(1)
   })
@@ -110,28 +139,32 @@ describe('the door', () => {
 describe('the short route', () => {
   it('goes door to exit on real presses', () => {
     let state = reduce(TITLE, { type: 'START_RUN', seed: 6 })
-    state = play(state, { type: 'GO', to: 'passage' }, { type: 'GO', to: 'hollow' })
+    state = walkTo(state, 'hollow')
 
-    // The Gnawing. A room with a living enemy has no exits.
-    expect(reduce(state, { type: 'GO', to: 'sanctuary' })).toBe(state)
+    // The Gnawing. A room with a living enemy has no exits, whatever the map
+    // put behind it.
+    const onward = roomAt(state.run!).exits[0]!
+    expect(reduce(state, { type: 'GO', to: onward.to })).toBe(state)
+    const cleared = state.run!.roomId
     state = clearReward(fightItOut(reduce(state, { type: 'FIGHT' })))
     if (state.mode === 'dead') return
-    expect(state.run!.cleared).toContain('hollow')
+    // Cleared is keyed by **node**, because two hollows in one descent would
+    // be two fights.
+    expect(state.run!.cleared).toContain(cleared)
 
     // The Font. Its exit is withheld until it has answered.
-    state = reduce(state, { type: 'GO', to: 'sanctuary' })
-    expect(state.run!.roomId).toBe('sanctuary')
-    expect(reduce(state, { type: 'GO', to: 'reliquary' })).toBe(state)
-    state = play(state, { type: 'RITUAL_ROLL' }, { type: 'GO', to: 'reliquary' })
+    state = walkTo(state, 'sanctuary')
+    const past = roomAt(state.run!).exits[0]!
+    expect(reduce(state, { type: 'GO', to: past.to })).toBe(state)
+    state = reduce(state, { type: 'RITUAL_ROLL' })
 
-    // The Reliquary is entirely optional.
-    state = play(state, { type: 'GO', to: 'fork' }, { type: 'GO', to: 'gate' })
-    expect(state.run!.roomId).toBe('gate')
+    // On to the boss, whichever way the director laid the middle out.
+    state = walkTo(state, 'gate')
 
     // The Warden, and the door behind it.
     state = clearReward(fightItOut(reduce(state, { type: 'FIGHT' })))
     if (state.mode === 'dead') return
-    state = reduce(state, { type: 'GO', to: 'exit' })
+    state = walk(state)
     expect(state.mode).toBe('complete')
     expect(state.meta.wins).toBe(1)
   })
@@ -140,28 +173,27 @@ describe('the short route', () => {
 describe('the deep route', () => {
   it('goes through the vault and the Marrow', () => {
     let state = reduce(TITLE, { type: 'START_RUN', seed: 21 })
-    state = play(state, { type: 'GO', to: 'passage' }, { type: 'GO', to: 'hollow' })
+    state = walkTo(state, 'hollow')
     state = clearReward(fightItOut(reduce(state, { type: 'FIGHT' })))
     if (state.mode === 'dead') return
-    state = play(
-      state,
-      { type: 'GO', to: 'sanctuary' },
-      { type: 'RITUAL_ROLL' },
-      { type: 'GO', to: 'reliquary' },
-      { type: 'GO', to: 'fork' },
-      { type: 'GO', to: 'chain-vault' },
-    )
-    expect(state.run!.roomId).toBe('chain-vault')
+    state = walkTo(state, 'sanctuary')
+    state = reduce(state, { type: 'RITUAL_ROLL' })
+
+    // The fork, and the way the director labelled DEEP.
+    state = walkTo(state, 'fork')
+    state = walk(state, 'DEEP')
+    expect(roomAt(state.run!).id).toBe('chain-vault')
 
     // A shut gate holds the exits, in state, so no dispatch can walk past it.
-    expect(reduce(state, { type: 'GO', to: 'deep' })).toBe(state)
+    const out = roomAt(state.run!).exits[0]!
+    expect(reduce(state, { type: 'GO', to: out.to })).toBe(state)
     state = play(
       state,
       { type: 'INTERACT', interactionId: 'vault-chain' },
       { type: 'INTERACT', interactionId: 'vault-lever' },
-      { type: 'GO', to: 'deep' },
     )
-    expect(state.run!.roomId).toBe('deep')
+    state = walk(state)
+    expect(roomAt(state.run!).id).toBe('deep')
 
     const before = state.run!.vials
     state = fightItOut(reduce(state, { type: 'FIGHT' }))
@@ -172,30 +204,55 @@ describe('the deep route', () => {
 })
 
 describe('every room can be left', () => {
-  it('has a way on, or is the ending', () => {
-    for (const r of Object.values(ROOMS)) {
-      expect(r.exits.length > 0 || r.ending !== undefined, `${r.id} is a dead end`).toBe(true)
+  it('gives every generated node a way on, or an ending', () => {
+    // The claim moved with the topology: a *template* has no exits at all
+    // any more, so the thing that must not be a dead end is a node of the
+    // generated map.
+    for (const seed of [1, 2, 3, 44, 900]) {
+      const run = reduce(TITLE, { type: 'START_RUN', seed }).run!
+      for (const node of Object.values(run.map.nodes)) {
+        const here = roomAt(run, node.id)
+        expect(
+          here.exits.length > 0 || here.ending !== undefined,
+          `seed ${seed}: ${node.id} (${node.templateId}) is a dead end`,
+        ).toBe(true)
+      }
     }
   })
 
-  it('names only rooms that exist', () => {
-    for (const r of Object.values(ROOMS)) {
-      for (const exit of r.exits) {
-        expect(() => room(exit.to), `${r.id} → ${exit.to}`).not.toThrow()
+  it('never generates a map the validator rejects', () => {
+    for (const seed of [1, 2, 3, 44, 900, 12345]) {
+      const run = reduce(TITLE, { type: 'START_RUN', seed }).run!
+      expect(validateRun(run.map), `seed ${seed}`).toEqual([])
+    }
+  })
+
+  it('leads only to nodes that exist', () => {
+    const run = reduce(TITLE, { type: 'START_RUN', seed: 7 }).run!
+    for (const node of Object.values(run.map.nodes)) {
+      for (const exit of roomAt(run, node.id).exits) {
+        expect(run.map.nodes[exit.to], `${node.id} → ${exit.to}`).toBeDefined()
       }
     }
   })
 
   it('refuses an exit the room does not have', () => {
     const state = reduce(TITLE, { type: 'START_RUN', seed: 1 })
-    expect(reduce(state, { type: 'GO', to: 'gate' })).toBe(state)
+    expect(reduce(state, { type: 'GO', to: nodeOf(state.run!, 'gate') })).toBe(state)
+  })
+
+  it('gives every authored template a backdrop and an arrival', () => {
+    for (const r of ROOM_LIBRARY) {
+      expect(r.art, `${r.id} has no backdrop`).toBeTruthy()
+      expect(r.arrival.length, `${r.id} says nothing on arrival`).toBeGreaterThan(10)
+    }
   })
 })
 
 describe('the run can end', () => {
   it('dies when the last bone breaks, and says what took it', () => {
     let state = reduce(TITLE, { type: 'START_RUN', seed: 3 })
-    state = play(state, { type: 'GO', to: 'passage' }, { type: 'GO', to: 'hollow' })
+    state = walkTo(state, 'hollow')
     // One bone, one round. Whatever happens, the run cannot survive losing it.
     state = { ...state, run: { ...state.run!, commonBones: 1 } }
     state = fightItOut(reduce(state, { type: 'FIGHT' }))
@@ -211,7 +268,12 @@ describe('the run can end', () => {
     const state = reduce(TITLE, { type: 'START_RUN', seed: 1 })
     const empty: GameState = {
       ...state,
-      run: { ...state.run!, roomId: 'hollow', commonBones: 0, specials: [] },
+      run: {
+        ...state.run!,
+        roomId: nodeOf(state.run!, 'hollow'),
+        commonBones: 0,
+        specials: [],
+      },
     }
     expect(reduce(empty, { type: 'FIGHT' })).toBe(empty)
   })
@@ -235,11 +297,7 @@ describe('the save', () => {
   it('boots to the title, whatever it was doing', () => {
     const store = storage()
     const fighting = reduce(
-      play(
-        reduce(TITLE, { type: 'START_RUN', seed: 1 }),
-        { type: 'GO', to: 'passage' },
-        { type: 'GO', to: 'hollow' },
-      ),
+      walkTo(reduce(TITLE, { type: 'START_RUN', seed: 1 }), 'hollow'),
       { type: 'FIGHT' },
     )
     save(fighting, store)
@@ -252,11 +310,16 @@ describe('the save', () => {
 
   it('discards a save from the game this replaced', () => {
     const store = storage()
-    store.setItem('castlebrynth', JSON.stringify({ version: 6, mode: 'combat', meta: {} }))
-    const { state, discarded } = load(store)
-    expect(discarded).toBe('incompatible')
-    expect(state.run).toBeUndefined()
-    expect(SAVE_VERSION).toBe(7)
+    // **Both** of the shapes that reached 7 are discarded: the generated map
+    // and the War of Bones arrived at that number independently, so a save
+    // claiming 7 could be either and this build can read neither.
+    for (const version of [6, 7]) {
+      store.setItem('castlebrynth', JSON.stringify({ version, mode: 'combat', meta: {} }))
+      const { state, discarded } = load(store)
+      expect(discarded, `version ${version}`).toBe('incompatible')
+      expect(state.run).toBeUndefined()
+    }
+    expect(SAVE_VERSION).toBe(8)
   })
 
   it('survives an empty and a corrupt store', () => {
@@ -274,11 +337,7 @@ describe('the save', () => {
     const store = storage()
     const smashed = play(
       reduce(
-        play(
-          reduce(TITLE, { type: 'START_RUN', seed: 8 }),
-          { type: 'GO', to: 'passage' },
-          { type: 'GO', to: 'hollow' },
-        ),
+        walkTo(reduce(TITLE, { type: 'START_RUN', seed: 8 }), 'hollow'),
         { type: 'FIGHT' },
       ),
       { type: 'FIELD', width: 4, specialIds: [] },
@@ -297,21 +356,13 @@ describe('determinism', () => {
   it('a seed replays exactly', () => {
     const once = fightItOut(
       reduce(
-        play(
-          reduce(TITLE, { type: 'START_RUN', seed: 44 }),
-          { type: 'GO', to: 'passage' },
-          { type: 'GO', to: 'hollow' },
-        ),
+        walkTo(reduce(TITLE, { type: 'START_RUN', seed: 44 }), 'hollow'),
         { type: 'FIGHT' },
       ),
     )
     const twice = fightItOut(
       reduce(
-        play(
-          reduce(TITLE, { type: 'START_RUN', seed: 44 }),
-          { type: 'GO', to: 'passage' },
-          { type: 'GO', to: 'hollow' },
-        ),
+        walkTo(reduce(TITLE, { type: 'START_RUN', seed: 44 }), 'hollow'),
         { type: 'FIGHT' },
       ),
     )
@@ -321,11 +372,7 @@ describe('determinism', () => {
   it('two seeds do not', () => {
     const runOf = (seed: number): GameState =>
       reduce(
-        play(
-          reduce(TITLE, { type: 'START_RUN', seed }),
-          { type: 'GO', to: 'passage' },
-          { type: 'GO', to: 'hollow' },
-        ),
+        walkTo(reduce(TITLE, { type: 'START_RUN', seed }), 'hollow'),
         { type: 'FIGHT' },
       )
     expect(runOf(1).run!.combat!.enemyLine).not.toEqual(runOf(2).run!.combat!.enemyLine)

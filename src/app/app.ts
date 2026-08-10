@@ -41,7 +41,7 @@ import { fieldLegal, maxWidth, reduce } from '../game/reducer.js'
 import type { Action } from '../game/reducer.js'
 import { save } from '../game/save.js'
 import type { CombatState, GameState, SmashRecord } from '../game/state.js'
-import { room as roomById } from '../content/rooms.js'
+import { roomAt } from '../game/map.js'
 import { mountWorld, placeEnemy, showProp, showProps } from '../render/compositor.js'
 import type { World } from '../render/compositor.js'
 import { RoomAmbience } from '../render/ambience.js'
@@ -700,7 +700,7 @@ export class App {
   private playRitual(before: GameState, after: GameState): void {
     const run = before.run!
     const ritual = after.run!.ritual!
-    const family = roomById(run.roomId).ritual!.art
+    const family = roomAt(run).ritual!.art
     const restored = ritual.restored
 
     // A frame, if it was ever painted. A room whose plates have not landed
@@ -765,8 +765,9 @@ export class App {
    * motion, a test — runs the remainder at once and lands on the same room.
    */
   private playInteract(before: GameState, after: GameState, id: string): void {
-    const was = stateOf(before.run!.rooms, before.run!.roomId)
-    const now = stateOf(after.run!.rooms, after.run!.roomId)
+    const template = roomAt(before.run!).id
+    const was = stateOf(before.run!.rooms, before.run!.roomId, template)
+    const now = stateOf(after.run!.rooms, after.run!.roomId, template)
 
     // The pile is the vault's other answer, and the only part of an
     // interaction that is not a picture of a prop. Read off the two states.
@@ -973,7 +974,7 @@ export class App {
    */
   private idle(): void {
     const run = this.state.run
-    const here = run && this.state.mode !== 'title' ? roomById(run.roomId) : undefined
+    const here = run && this.state.mode !== 'title' ? roomAt(run) : undefined
     const standing =
       run && here?.enemy && !run.cleared.includes(run.roomId) && !run.combat?.defeated
         ? here.enemy
@@ -1075,8 +1076,13 @@ export class App {
     })
 
     // The room keeps breathing under all of it. Idempotent for the same room,
-    // so the loops are not restarted by the several paints a sequence makes.
-    this.ambience.show(run && state.mode !== 'title' ? run.roomId : undefined)
+    // so the loops are not restarted by the several paints a sequence makes —
+    // and torn down the moment the room changes, so nothing is left guttering
+    // behind the next one.
+    //
+    // Keyed by the authored template, because a room's mood is a property of
+    // the place rather than of which instance of it the run is standing in.
+    this.ambience.show(run && state.mode !== 'title' ? roomAt(run).id : undefined)
 
     renderTray(
       this.tray,

@@ -7,7 +7,10 @@
  * ended up with a death screen nobody had ever automated.
  *
  *   ?seed=7                     a known run
- *   ?room=gate                  start standing somewhere else
+ *   ?room=gate                  stand in the first room of the run built from
+ *                               that authored template
+ *   ?node=n8                    stand in one exact room of the generated map,
+ *                               for when a template is used more than once
  *   ?bones=12                   a thinner pile
  *   ?specials=cinderbone,knuckle  named bones in the pile
  *   ?vials=2                    a stocked satchel
@@ -35,7 +38,7 @@
 
 import { BONE_CEILING, isSpecialBoneId, newSpecial } from '../content/bones.js'
 import type { SpecialBoneInstance } from '../content/bones.js'
-import { ROOMS, room } from '../content/rooms.js'
+import { firstNodeOf, roomAt } from './map.js'
 import { maxWidth, newRun, reduce } from './reducer.js'
 import type { Action } from './reducer.js'
 import { SAVE_VERSION } from './state.js'
@@ -59,6 +62,7 @@ const num = (raw: string | null): number | undefined => {
 const KEYS: readonly string[] = [
   'seed',
   'room',
+  'node',
   'bones',
   'specials',
   'vials',
@@ -117,9 +121,23 @@ export function applyFixture(base: GameState, search: string): GameState {
   let state: GameState = reduce({ ...base, mode: 'title' }, { type: 'START_RUN', seed })
   let run = state.run ?? newRun(seed)
 
-  const roomId = p.get('room')
-  if (roomId && ROOMS[roomId]) {
-    run = { ...run, roomId, path: [...run.path, roomId], say: room(roomId).arrival, looked: [] }
+  // Standing somewhere else in *this run's map*.
+  //
+  // `?room=` names an authored template and lands on the first node of the
+  // descent that used it — which is the convenience that has always been
+  // wanted, and stays unambiguous while a template appears once. `?node=`
+  // names one exact room, and is the answer when it does not: a fixture that
+  // silently picked one of two Reliquaries would be worse than no fixture.
+  const wantedNode = p.get('node')
+  const wantedTemplate = p.get('room')
+  const node = wantedNode
+    ? run.map.nodes[wantedNode]
+    : wantedTemplate
+      ? firstNodeOf(run.map, wantedTemplate)
+      : undefined
+  if (node) {
+    run = { ...run, roomId: node.id, path: [...run.path, node.id], looked: [] }
+    run = { ...run, say: roomAt(run).arrival }
   }
 
   // The pile. Specials are instantiated exactly as TAKE would instantiate
@@ -163,7 +181,7 @@ export function applyFixture(base: GameState, search: string): GameState {
   }
 
   const stage = p.get('reliquary')
-  if (stage && run.roomId === 'reliquary') {
+  if (stage && roomAt(run).id === 'reliquary') {
     press('reliquary-bell')
     press('reliquary-brazier')
     if (stage === 'solved' || stage === 'open') {
@@ -173,7 +191,7 @@ export function applyFixture(base: GameState, search: string): GameState {
   }
 
   const vault = p.get('vault')
-  if (vault && run.roomId === 'chain-vault') {
+  if (vault && roomAt(run).id === 'chain-vault') {
     press('vault-chain')
     if (vault === 'open') press('vault-lever')
   }
@@ -189,7 +207,7 @@ export function applyFixture(base: GameState, search: string): GameState {
   // its last bone and a real round is fought through the reducer — so this is
   // the state a save holds if the tab is closed in the two-thirds of a second
   // between the last break and the win.
-  if (p.has('dying') && room(run.roomId).enemy) {
+  if (p.has('dying') && roomAt(run).enemy) {
     const opened = reduce(state, { type: 'FIGHT' })
     // One enemy bone left, standing on a 1. Both are positions the fight
     // reaches on its own — a wide line against a single low bone is an
@@ -206,7 +224,7 @@ export function applyFixture(base: GameState, search: string): GameState {
   const wantsFight =
     mode === 'combat' || p.has('enemyBones') || p.has('round') || p.has('phase') || p.has('width')
 
-  if (wantsFight && room(run.roomId).enemy) {
+  if (wantsFight && roomAt(run).enemy) {
     state = reduce(state, { type: 'FIGHT' })
 
     // Rounds are *fought*, not set: each one is a real FIELD/THROW/SMASH, so

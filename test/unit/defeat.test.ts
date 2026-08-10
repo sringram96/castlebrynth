@@ -18,6 +18,7 @@ import type { Action } from '../../src/game/reducer.js'
 import { TITLE } from '../../src/game/state.js'
 import type { GameState } from '../../src/game/state.js'
 import { ENEMIES, armySize } from '../../src/content/enemies.js'
+import { standIn } from './where.js'
 import { DEFEATS, defeatDuration, defeatOf, defeatStance } from '../../src/content/defeat.js'
 import { totalBones } from '../../src/content/bones.js'
 
@@ -32,13 +33,9 @@ const play = (state: GameState, ...actions: Action[]): GameState =>
  * its own — a six-wide line against a single low bone is an ordinary last
  * round — so this only skips the rounds that get there.
  */
-function poised(roomId: string, seed = 1): GameState {
+function poised(templateId: string, seed = 1): GameState {
   const started = reduce(TITLE, { type: 'START_RUN', seed })
-  const run = started.run!
-  const opened = reduce(
-    { ...started, run: { ...run, roomId, path: [...run.path, roomId] } },
-    { type: 'FIGHT' },
-  )
+  const opened = reduce(standIn(started, templateId), { type: 'FIGHT' })
   const combat = opened.run!.combat!
   // The army and the line are two views of the same bones, so they are cut as
   // one: keeping a bone the line does not show would leave a fight that cannot
@@ -136,7 +133,7 @@ describe('the last bone', () => {
     expect(combat.enemyBones).toHaveLength(0)
     // Not cleared, no offer drawn, no screen changed. The state says only that
     // the thing is finished and is being watched finishing.
-    expect(after.run!.cleared).not.toContain('hollow')
+    expect(after.run!.cleared).not.toContain(after.run!.roomId)
     expect(after.run!.offer).toBeUndefined()
   })
 
@@ -165,8 +162,10 @@ describe('the last bone', () => {
 
 describe('DEFEAT_DONE', () => {
   it('is the one way out, and it grants the win', () => {
-    const done = reduce(kill(poised('hollow')), { type: 'DEFEAT_DONE' })
-    expect(done.run!.cleared).toContain('hollow')
+    const fight = kill(poised('hollow'))
+    const done = reduce(fight, { type: 'DEFEAT_DONE' })
+    // Keyed by **node**: two hollows in one descent would be two fights.
+    expect(done.run!.cleared).toContain(fight.run!.roomId)
     expect(done.run!.combat).toBeUndefined()
     expect(['explore', 'reward']).toContain(done.mode)
   })
@@ -197,14 +196,14 @@ describe('DEFEAT_DONE', () => {
 
 describe('the three fights', () => {
   it('every one of them can be finished, and every one is held open', () => {
-    for (const [roomId, enemyId] of [
+    for (const [templateId, enemyId] of [
       ['hollow', 'gnawing'],
       ['deep', 'marrow'],
       ['gate', 'warden'],
     ] as const) {
-      const after = kill(poised(roomId, 3))
-      expect(after.run!.combat?.enemyId, roomId).toBe(enemyId)
-      expect(after.run!.combat?.defeated, roomId).toBe(true)
+      const after = kill(poised(templateId, 3))
+      expect(after.run!.combat?.enemyId, templateId).toBe(enemyId)
+      expect(after.run!.combat?.defeated, templateId).toBe(true)
       expect(armySize(enemyId)).toBeGreaterThan(0)
     }
   })

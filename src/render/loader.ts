@@ -35,8 +35,9 @@ import {
 } from './assets.js'
 import type { Asset } from './assets.js'
 import { enemy } from '../content/enemies.js'
-import { room as roomById } from '../content/rooms.js'
-import type { GameState } from '../game/state.js'
+import { template } from '../content/rooms.js'
+import { roomAt } from '../game/map.js'
+import type { GameState, RunState } from '../game/state.js'
 
 /**
  * Decodes images, once each, and remembers what it has.
@@ -100,9 +101,15 @@ export class AssetLoader {
   }
 }
 
-/** Everything a room's own picture is made of. */
-export function roomAssets(roomId: string): readonly Asset[] {
-  const here = roomById(roomId)
+/**
+ * Everything a room's own picture is made of.
+ *
+ * By **template**, because art is a property of the place rather than of which
+ * instance of it a run is standing in: two Reliquaries in one descent are two
+ * rooms and one set of plates, decoded once.
+ */
+export function roomAssets(templateId: string): readonly Asset[] {
+  const here = template(templateId)
   const out: Asset[] = [roomArt(here.art)]
   if (here.ritual) {
     for (const [key, asset] of Object.entries(PROP_ART)) {
@@ -115,7 +122,7 @@ export function roomAssets(roomId: string): readonly Asset[] {
     }
   }
   for (const [key, asset] of Object.entries(AMBIENT_ART)) {
-    if (key.startsWith(`${roomId}.`)) out.push(asset)
+    if (key.startsWith(`${templateId}.`)) out.push(asset)
   }
   return dedupe(out)
 }
@@ -157,8 +164,8 @@ export function criticalAssetsForState(state: GameState): readonly Asset[] {
   if (!run || state.mode === 'title') {
     return dedupe([roomArt('threshold'), TRAY_ART])
   }
-  const here = roomById(run.roomId)
-  const out: Asset[] = [TRAY_ART, ...roomAssets(run.roomId)]
+  const here = roomAt(run)
+  const out: Asset[] = [TRAY_ART, ...roomAssets(here.id)]
   if (here.enemy && !run.cleared.includes(run.roomId)) {
     out.push(...encounterCriticalAssets(here.enemy))
   }
@@ -177,15 +184,32 @@ export function criticalAssetsForState(state: GameState): readonly Asset[] {
 export function likelyNextAssets(state: GameState): readonly Asset[] {
   const run = state.run
   if (!run || state.mode === 'title') return dedupe(Object.values(ROOM_ART).slice(0, 2))
-  const here = roomById(run.roomId)
+  const here = roomAt(run)
   const out: Asset[] = []
   if (here.enemy && !run.cleared.includes(run.roomId)) out.push(...encounterAssets(here.enemy))
+  // The map's exits, resolved node by node. A generated descent means the room
+  // ahead is not knowable from content — only the run knows where it leads.
   for (const exit of here.exits) {
-    const next = roomById(exit.to)
+    const next = nextRoom(run, exit.to)
+    if (!next) continue
     out.push(roomArt(next.art))
     if (next.enemy) out.push(enemyArt(enemy(next.enemy).art))
   }
   return dedupe(out)
+}
+
+/**
+ * The room one exit away, or nothing because the map does not go there.
+ *
+ * Defensive rather than throwing: prefetching is best-effort, and a missing
+ * node is a reason to fetch less art rather than to fail a paint.
+ */
+function nextRoom(run: RunState, nodeId: string): ReturnType<typeof roomAt> | undefined {
+  try {
+    return roomAt(run, nodeId)
+  } catch {
+    return undefined
+  }
 }
 
 function dedupe(assets: readonly Asset[]): readonly Asset[] {

@@ -11,7 +11,7 @@ import type { World } from '../render/compositor.js'
 import { enemyArt, handArt, isScenePlate, propArt, roomArt, url } from '../render/assets.js'
 import { STAGES, armySize, enemy as enemyById, stageForRound, stanceAt } from '../content/enemies.js'
 import { idlePose } from '../content/enemyPresentation.js'
-import { room as roomById } from '../content/rooms.js'
+import { roomAt } from '../game/map.js'
 import { actionFor, platesFor, stateOf } from '../content/interactions.js'
 import type { GameState } from '../game/state.js'
 import { button, el } from './components.js'
@@ -46,7 +46,9 @@ export function renderWorld(world: World, state: GameState, handlers: WorldHandl
     return
   }
 
-  const here = roomById(run.roomId)
+  // The room, resolved: authored place joined to generated topology, in one
+  // call. Nothing in this file knows a map exists, which is the point.
+  const here = roomAt(run)
   const backdrop = url(roomArt(here.art))
   if (world.backdrop.getAttribute('src') !== backdrop) world.backdrop.src = backdrop
 
@@ -101,7 +103,7 @@ export function renderWorld(world: World, state: GameState, handlers: WorldHandl
   // them, in content's order, off the same settled state. Nothing here
   // remembers a frame: the picture is `platesFor` of the save and nothing
   // else, so a reload mid-puzzle and never having left are the same room.
-  const worked = stateOf(run.rooms, run.roomId)
+  const worked = stateOf(run.rooms, run.roomId, here.id)
   showProps(
     world,
     worked
@@ -132,7 +134,7 @@ export function renderWorld(world: World, state: GameState, handlers: WorldHandl
 
 function renderHits(world: World, state: GameState, handlers: WorldHandlers): void {
   const run = state.run!
-  const here = roomById(run.roomId)
+  const here = roomAt(run)
   world.hits.replaceChildren()
 
   // Nothing in the world is tappable while a fight is on: the fight is the
@@ -166,7 +168,7 @@ function renderHits(world: World, state: GameState, handlers: WorldHandlers): vo
   // An object with nothing to offer gets **no element at all**, not a disabled
   // one. A greyed PULL beside three carved clues is the interface refusing to
   // say what it wants; an absent one leaves the clues to do their job.
-  const worked = stateOf(run.rooms, run.roomId)
+  const worked = stateOf(run.rooms, run.roomId, here.id)
   if (worked) {
     for (const thing of here.interactables ?? []) {
       const action = actionFor(worked, thing.id)

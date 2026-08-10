@@ -9,7 +9,7 @@
 
 import { expect, test } from '@playwright/test'
 
-import { act, boot, livingBones, screenName, state } from './helpers.js'
+import { act, boot, livingBones, screenName, state, wayTo, where } from './helpers.js'
 import { clearReward, fight, fightItOut } from './play.js'
 
 test.describe('the short route', () => {
@@ -41,10 +41,10 @@ test.describe('the short route', () => {
     await expect(act(page, 'go')).toBeVisible()
     await act(page, 'go').click()
 
-    // The fork. Take the stair.
-    expect((await state(page)).run!.roomId).toBe('fork')
-    await act(page, 'go').first().click()
-    expect((await state(page)).run!.roomId).toBe('gate')
+    // The fork. Take the stair, by the label the map put on the button.
+    expect(await where(page)).toBe('fork')
+    await page.locator('[data-act="go"]').filter({ hasText: 'STAIR' }).click()
+    expect(await where(page)).toBe('gate')
 
     // The Warden, and the door behind it.
     if ((await fightItOut(page)) === 'died') return
@@ -69,13 +69,14 @@ test.describe('the deep route', () => {
     await act(page, 'ritual').click()
     await act(page, 'go').click()
     await act(page, 'go').click()
-    expect((await state(page)).run!.roomId).toBe('fork')
+    expect(await where(page)).toBe('fork')
 
-    // DEEP is the second bed, and it says what it costs before the tap.
-    const deep = page.locator('[data-act="go"][data-to="chain-vault"]')
+    // DEEP is the second bed, and it says what it costs before the tap. The
+    // button carries a **node** id, so it is found through the map.
+    const deep = await wayTo(page, 'chain-vault')
     await expect(deep).toBeVisible()
     await deep.click()
-    expect((await state(page)).run!.roomId).toBe('chain-vault')
+    expect(await where(page)).toBe('chain-vault')
 
     // A shut gate holds the exits. The lever pulled against nothing costs a
     // bone; worked in the right order it costs none.
@@ -87,7 +88,7 @@ test.describe('the deep route', () => {
     await expect(act(page, 'go')).toBeVisible()
 
     await act(page, 'go').click()
-    expect((await state(page)).run!.roomId).toBe('deep')
+    expect(await where(page)).toBe('deep')
 
     const vials = (await state(page)).run!.vials
     const report = await fight(page)

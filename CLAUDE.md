@@ -41,10 +41,12 @@ set `CHROMIUM_PATH` to one already on the machine.
 src/
   main.ts        boot and mount, and nothing else
   app/           the root controller and the one dispatcher
-  game/          GameState, the reducer, saves, dev fixtures
+  game/          GameState, the reducer, saves, dev fixtures,
+                 the dungeon director, the generated map
   combat/        fielding, throwing, sorting, the smash
   exploration/   (folded into game/reducer while the slice is this small)
-  content/       bones, rewards, enemies, rooms, copy, tray geometry
+  content/       bones, rewards, enemies, room templates, run plans,
+                 copy, tray geometry
   render/        the fixed-order compositor, the asset manifest, animation
   ui/            views and components
 test/
@@ -70,6 +72,9 @@ that produces a `GameState`.
 - **Enemy art is a build requirement.** A missing enemy asset fails the tests,
   not the player.
 - **Prefer deleting an obsolete abstraction to adapting it.** Git remembers.
+- **A room template names no destination.** `content/rooms.ts` owns what
+  happens in a place; the generated `RunMap` owns where it leads. A room
+  instance is a map node, never a template id — `roomAt(run)` is the only join.
 - **No new gameplay noun** — collectible species, status family, screen mode,
   UI panel — without a product decision.
 - **No hit points and no damage number, under any name.** Life is a pile of
@@ -92,6 +97,8 @@ that does not need it continues.
 ## Dev fixtures
 
 Any mode is reachable from a URL, which is what keeps the ends of the game
-testable: `?room=gate&bones=1&mode=combat`, `?mode=dead`, `?specials=cinderbone,knuckle`,
-`?phase=rolled&width=3`.
+testable: `?room=gate&bones=1&mode=combat`, `?mode=dead`,
+`?specials=cinderbone,knuckle`, `?phase=rolled&width=3`. `?room=` names an
+authored template and stands you in the first room of the run that used it;
+`?node=n8` names one exact room.
 See `src/game/fixture.ts`.

@@ -79,22 +79,22 @@ and the lowered jaw, in the order they have to happen; a wall panel in the vault
 draws a weight falling and then a gate lifting.
 
 Neither adds a noun. No key, no puzzle currency, no new stat, no new find, no
-new die, no new screen mode — both rooms are `explore`, and the chest pays out
-of the reward pool that already exists.
+new bone species, no new screen mode — both rooms are `explore`, and the chest
+pays out of the reward pool that already exists.
 
 The fork is the whole of the expedition pressure: the deep way is another
 fight and another reward before the boss, and bones do not come back on their
 own — the Font answers once, and a Vial has to be found. That is enough to make
 *do I keep going?* a real question without a second subsystem.
 
-**The font is what makes that question answerable.** One press, one die, and a
-share of the health you are *missing* comes back — 19% of it on a one, all of
-it on a six. It sits immediately before the fork on purpose: the deep way is a
-gamble about how much body you have left, and a gamble is only a decision if
-you know the number. A share of the wound rather than a flat gift is what keeps
-it honest at both ends — it is worth most to a player who is nearly dead, and
-worth literally nothing to a player who is whole, so there is no version of it
-that can be farmed.
+**The font is what makes that question answerable.** One press, one throw, and
+common bones come back onto the pile — `d6 + 2` of them, three at worst and
+eight at best, and never past thirty. It sits immediately before the fork on
+purpose: the deep way is a gamble about how much body you have left, and a
+gamble is only a decision if you know the number. Capping at the ceiling rather
+than paying flat is what keeps it honest at both ends — it is worth most to a
+player who has been ground down, and worth literally nothing to a player who is
+whole, so there is no version of it that can be farmed.
 
 It is deliberately the smallest room in the game: no shop, no currency, no
 second shrine, no reroll. One object, one press, one number.

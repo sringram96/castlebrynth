@@ -57,6 +57,13 @@ export function load(storage: Storage = localStorage): Loaded {
   if (typeof saved.mode !== 'string' || !saved.meta) {
     return { state: TITLE, discarded: 'corrupt' }
   }
+  // A run without its map is not a run. The descent is generated once and
+  // stored, and nothing anywhere will rebuild it — so a save that lost it would
+  // boot to a room the game cannot resolve. Discarded and reported, which is
+  // the one thing this file has always done with a save it cannot use.
+  if (saved.run && !saved.run.map?.nodes?.[saved.run.roomId]) {
+    return { state: TITLE, discarded: 'corrupt' }
+  }
 
   const meta = { ...EMPTY_META, ...saved.meta }
   const resume = LIVE.includes(saved.mode) ? saved.mode : saved.resume

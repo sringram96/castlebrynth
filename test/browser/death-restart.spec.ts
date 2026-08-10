@@ -8,7 +8,7 @@
 
 import { expect, test } from '@playwright/test'
 
-import { act, boot, bones, screenName, state } from './helpers.js'
+import { act, boot, bones, screenName, state, where } from './helpers.js'
 
 test.describe('a run that ends', () => {
   test('dies on the lane it happens, and says what took it', async ({ page }) => {
@@ -40,7 +40,8 @@ test.describe('a run that ends', () => {
     expect(await screenName(page)).toBeNull()
     await expect(page.locator('#pile')).toHaveText('30')
     const run = (await state(page)).run!
-    expect(run.roomId).toBe('entry')
+    expect(await where(page)).toBe('entry')
+    expect(run.roomId).toBe(run.map.start)
     expect(run.combat).toBeUndefined()
     expect(run.offer).toBeUndefined()
     // The old run's cause is gone with it.

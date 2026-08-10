@@ -18,14 +18,21 @@ import { SAVE_VERSION, EMPTY_META } from '../../src/game/state.js'
 import type { GameState } from '../../src/game/state.js'
 import { totalBones } from '../../src/content/bones.js'
 import { armySize } from '../../src/content/enemies.js'
+import { standIn } from './where.js'
 
 const play = (state: GameState, ...actions: readonly Action[]): GameState =>
   actions.reduce((s, a) => reduce(s, a), state)
 
-/** A run standing in front of the Gnawing, with a chosen seed. */
+/**
+ * A run standing in front of the Gnawing, with a chosen seed.
+ *
+ * Stood rather than walked: the route is generated, so the room this wants is
+ * named by its authored template and resolved to whichever node of this run's
+ * map used it. `standIn` is the one place a test joins the two.
+ */
 function atGnawing(seed = 5): GameState {
   const base: GameState = { version: SAVE_VERSION, mode: 'title', meta: EMPTY_META }
-  return play(base, { type: 'START_RUN', seed }, { type: 'GO', to: 'passage' }, { type: 'GO', to: 'hollow' })
+  return standIn(reduce(base, { type: 'START_RUN', seed }), 'hollow')
 }
 
 function fighting(seed = 5): GameState {

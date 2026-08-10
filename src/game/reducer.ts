@@ -25,7 +25,6 @@ import { LOOT_REWARDS, isBoneReward, reward } from '../content/rewards.js'
 import type { RewardId } from '../content/rewards.js'
 import { armyOf, armySize, enemy } from '../content/enemies.js'
 import { defeatOf } from '../content/defeat.js'
-import { FIRST_ROOM, room } from '../content/rooms.js'
 import { exitsOpen, legal, stateOf } from '../content/interactions.js'
 import {
   LINE_WIDTH,
@@ -35,6 +34,8 @@ import {
   rollPlayerLine,
 } from '../combat/line.js'
 import { resolveSmash } from '../combat/clash.js'
+import { roomAt } from './map.js'
+import { generateRun } from './runGenerator.js'
 import { RELIQUARY_CHANNEL, RITUAL_CHANNEL, RNG_CHANNEL, combatSalt, rngAt } from './rng.js'
 import type { Rng } from './rng.js'
 import { SAVE_VERSION } from './state.js'
@@ -217,7 +218,7 @@ function chestReward(run: RunState, rng: Rng): RewardId | undefined {
 
 /** What the room says about a press that changed something. */
 function interactionSay(after: RoomInteractionState, id: string, found?: RewardId): string {
-  if (after.roomId === 'reliquary') {
+  if (after.templateId === 'reliquary') {
     if (id === 'reliquary-bell') return 'The bell answers once. Something shifts behind the altar.'
     if (id === 'reliquary-brazier') {
       return after.brazier === 'out'
@@ -303,9 +304,13 @@ function addSpecial(run: RunState, id: string): RunState {
  * the stuck-on-death bug turned on.
  */
 export function newRun(seed: number): RunState {
-  return {
+  // The descent is generated here, once, and stored. Everything after this
+  // point reads the map; nothing anywhere rebuilds it. See `runGenerator.ts`.
+  const map = generateRun(seed >>> 0)
+  const run: RunState = {
     seed: seed >>> 0,
-    roomId: FIRST_ROOM,
+    map,
+    roomId: map.start,
     commonBones: STARTING_BONES,
     specials: [],
     nextSpecialSerial: 0,
@@ -313,9 +318,10 @@ export function newRun(seed: number): RunState {
     vials: 0,
     looked: [],
     cleared: [],
-    path: [FIRST_ROOM],
-    say: room(FIRST_ROOM).arrival,
+    path: [map.start],
+    say: '',
   }
+  return { ...run, say: roomAt(run).arrival }
 }
 
 // ── the fight ──────────────────────────────────────────────────────────
@@ -331,7 +337,7 @@ function throwEnemy(
 
 /** Open a fight against the room's enemy. Its line is up before FIELD is. */
 function beginCombat(run: RunState): CombatState {
-  const id = room(run.roomId).enemy
+  const id = roomAt(run).enemy
   if (!id) throw new Error(`${run.roomId} has no enemy`)
   const e = enemy(id)
   const bones = armyOf(id)
@@ -518,7 +524,7 @@ export function reduce(state: GameState, action: Action): GameState {
     case 'LOOK': {
       const run = state.run
       if (!run) return state
-      const detail = room(run.roomId).details.find((d) => d.id === action.detailId)
+      const detail = roomAt(run).details.find((d) => d.id === action.detailId)
       if (!detail) return state
       return {
         ...state,
@@ -533,7 +539,7 @@ export function reduce(state: GameState, action: Action): GameState {
     case 'GO': {
       const run = state.run
       if (!run || state.mode !== 'explore') return state
-      const here = room(run.roomId)
+      const here = roomAt(run)
       // A room with a living enemy has no exits. The fight is the way out.
       if (here.enemy && !run.cleared.includes(run.roomId)) return state
       // A room with an unresolved ritual has none either, for the same reason:
@@ -541,11 +547,17 @@ export function reduce(state: GameState, action: Action): GameState {
       // in state, rather than hidden by a view — so no dispatch, no fixture and
       // no reload can walk past it.
       if (here.ritual && run.ritual?.roomId !== run.roomId) return state
-      // And a room whose machinery is still shut holds its exits the same way.
-      if (!exitsOpen(stateOf(run.rooms, run.roomId))) return state
+      // And a room whose machinery is still shut holds its exits the same way,
+      // for the same reason. The check is here, in state, rather than in the
+      // view that draws the button — so no dispatch, no fixture and no reload
+      // can walk through a gate that is down.
+      if (!exitsOpen(stateOf(run.rooms, run.roomId, here.id))) return state
+      // The **generated** exits, not the template's — a template has none. The
+      // reducer is the authority on where a press may go, and the map is the
+      // authority it reads.
       if (!here.exits.some((e) => e.to === action.to)) return state
 
-      const next = room(action.to)
+      const next = roomAt(run, action.to)
       const moved: RunState = {
         ...run,
         roomId: action.to,
@@ -567,7 +579,7 @@ export function reduce(state: GameState, action: Action): GameState {
     case 'FIGHT': {
       const run = state.run
       if (!run || state.mode !== 'explore' || run.combat) return state
-      if (!room(run.roomId).enemy || run.cleared.includes(run.roomId)) return state
+      if (!roomAt(run).enemy || run.cleared.includes(run.roomId)) return state
       if (totalBones(run) === 0) return state
       return { ...state, mode: 'combat', run: { ...run, combat: beginCombat(run), say: '' } }
     }
@@ -756,7 +768,7 @@ export function reduce(state: GameState, action: Action): GameState {
     case 'RITUAL_ROLL': {
       const run = state.run
       if (!run || state.mode !== 'explore') return state
-      const here = room(run.roomId)
+      const here = roomAt(run)
       if (!here.ritual) return state
       // Once. The room has already answered, so a second press has nothing
       // left to decide — which is the same sentence that makes a reload
@@ -779,12 +791,12 @@ export function reduce(state: GameState, action: Action): GameState {
     case 'INTERACT': {
       const run = state.run
       if (!run || state.mode !== 'explore') return state
-      const here = room(run.roomId)
+      const here = roomAt(run)
       // The room has to declare it. An id that belongs to another room — a
       // stale press, a hand-made dispatch — is not a thing you are standing in
       // front of.
       if (!here.interactables?.some((i) => i.id === action.interactionId)) return state
-      const before = stateOf(run.rooms, run.roomId)
+      const before = stateOf(run.rooms, run.roomId, here.id)
       if (!before) return state
       // And it has to be offered *now*. This is the same call the view makes to
       // decide whether to draw a button at all, so a press that reaches here
@@ -802,7 +814,7 @@ export function reduce(state: GameState, action: Action): GameState {
         },
       })
 
-      if (before.roomId === 'reliquary') {
+      if (before.templateId === 'reliquary') {
         switch (id) {
           case 'reliquary-bell':
             return put({ ...before, bellRung: true })

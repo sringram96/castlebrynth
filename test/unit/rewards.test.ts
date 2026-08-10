@@ -16,6 +16,7 @@ import { BONE_CEILING, newSpecial, totalBones } from '../../src/content/bones.js
 import { LOOT_REWARDS, isBoneReward, reward } from '../../src/content/rewards.js'
 import { enemy } from '../../src/content/enemies.js'
 import { Rng } from '../../src/game/rng.js'
+import { nodeOf, standIn } from './where.js'
 
 const play = (state: GameState, ...actions: readonly Action[]): GameState =>
   actions.reduce((s, a) => reduce(s, a), state)
@@ -24,7 +25,7 @@ const offering = (offer: string[], run: Partial<RunState> = {}): GameState => ({
   version: SAVE_VERSION,
   mode: 'reward',
   meta: EMPTY_META,
-  run: { ...newRun(1), roomId: 'hollow', offer: offer as never, ...run },
+  run: { ...newRun(1), roomId: nodeOf(newRun(1), 'hollow'), offer: offer as never, ...run },
 })
 
 /** How often an enemy pays anything at all, over many seeds. */
@@ -114,12 +115,10 @@ describe('the guaranteed drop', () => {
 
 /** Fight the Marrow to the end with a fixture-thin army, or give up. */
 function winAgainstMarrow(seed: number): GameState | undefined {
-  let state: GameState = {
-    version: SAVE_VERSION,
-    mode: 'explore',
-    meta: EMPTY_META,
-    run: { ...newRun(seed), roomId: 'deep', path: ['entry', 'deep'] },
-  }
+  let state: GameState = standIn(
+    { version: SAVE_VERSION, mode: 'explore', meta: EMPTY_META, run: newRun(seed) },
+    'deep',
+  )
   state = reduce(state, { type: 'FIGHT' })
   // Stand its army at one bone, then take that bone. Both are positions the
   // fight reaches on its own; this only skips the rounds that get there.

@@ -10,6 +10,7 @@ import {
   state,
   toFirstFight,
   valuesOf,
+  where,
 } from './helpers.js'
 import { fightItOut } from './play.js'
 
@@ -69,7 +70,7 @@ test.describe('the first run', () => {
     }
 
     expect(await livingBones(page)).toBe(before)
-    expect((await state(page)).run!.roomId).toBe('entry')
+    expect(await where(page)).toBe('entry')
   })
 
   test('MENU states the army, the satchel and the four rules', async ({ page }) => {

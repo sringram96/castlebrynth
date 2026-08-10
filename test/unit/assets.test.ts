@@ -31,7 +31,7 @@ import {
 import { BONE_PROFILES } from '../../src/content/bones.js'
 import { defeatOf } from '../../src/content/defeat.js'
 import { ENEMIES, STAGES } from '../../src/content/enemies.js'
-import { ROOMS, room } from '../../src/content/rooms.js'
+import { ROOM_LIBRARY, template } from '../../src/content/rooms.js'
 import { platesFor } from '../../src/content/interactions.js'
 import type { RoomInteractionState } from '../../src/game/state.js'
 import { decode } from '../../tools/png.mjs'
@@ -58,7 +58,7 @@ const EVERY_WORKED_STATE: readonly RoomInteractionState[] = [
       ] as const).flatMap(([lever, chest]) =>
         [false, true].map(
           (claimed): RoomInteractionState => ({
-            roomId: 'reliquary',
+            templateId: 'reliquary',
             bellRung,
             brazier,
             lever,
@@ -75,7 +75,7 @@ const EVERY_WORKED_STATE: readonly RoomInteractionState[] = [
         (['up', 'down'] as const).flatMap((lever) =>
           (['closed', 'open'] as const).map(
             (gate): RoomInteractionState => ({
-              roomId: 'chain-vault',
+              templateId: 'chain-vault',
               chain,
               cage,
               pressurePlate,
@@ -483,14 +483,14 @@ describe('every enemy has a death', () => {
 
 describe('every room has a backdrop', () => {
   it('has a manifest entry and a file for each room', () => {
-    for (const r of Object.values(ROOMS)) {
+    for (const r of ROOM_LIBRARY) {
       expect(() => roomArt(r.art)).not.toThrow()
       expect(png(roomArt(r.art).file).bytes).toBeGreaterThan(0)
     }
   })
 
   it('gives every room its own backdrop, so no two rooms are one place', () => {
-    const arts = Object.values(ROOMS).map((r) => r.art)
+    const arts = ROOM_LIBRARY.map((r) => r.art)
     expect(new Set(arts).size).toBe(arts.length)
   })
 
@@ -509,7 +509,7 @@ describe('every room has a backdrop', () => {
     // the ossuary plates — see `## HUMAN ART REQUIRED` — and what has to be
     // true of it is what has to be true of every room: it exists, it is the
     // scene size, and it is not another room's picture.
-    const art = roomArt(room('sanctuary').art)
+    const art = roomArt(template('sanctuary').art)
     expect(png(art.file).bytes).toBeGreaterThan(0)
     expect([art.width, art.height]).toEqual([480, 720])
   })
@@ -534,7 +534,7 @@ describe('a room prop is whole, registered, and does not move', () => {
   ].map((frame) => `${art}.${frame}`)
 
   it('has a frame for every face, or no frames at all', () => {
-    for (const r of Object.values(ROOMS)) {
+    for (const r of ROOM_LIBRARY) {
       if (!r.ritual) continue
       const keys = wanted(r.ritual.art)
       const held = keys.filter((key) => PROP_ART[key])
@@ -546,7 +546,7 @@ describe('a room prop is whole, registered, and does not move', () => {
   })
 
   it('holds every frame at one box, so the object cannot move between them', () => {
-    for (const r of Object.values(ROOMS)) {
+    for (const r of ROOM_LIBRARY) {
       if (!r.ritual) continue
       const frames = wanted(r.ritual.art)
         .map((key) => PROP_ART[key])
@@ -567,7 +567,7 @@ describe('a room prop is whole, registered, and does not move', () => {
     // position its objects can be standing in. A key that neither asks for is a
     // file the loader downloads on every boot and nothing ever shows.
     const asked = new Set([
-      ...Object.values(ROOMS)
+      ...ROOM_LIBRARY
         .filter((r) => r.ritual)
         .flatMap((r) => wanted(r.ritual!.art)),
       ...EVERY_WORKED_STATE.flatMap((state) =>
@@ -626,7 +626,7 @@ describe('the Reliquary is four objects, and all four stay in the room', () => {
 
   it('paints every object in every position the room can be in', () => {
     for (const state of EVERY_WORKED_STATE) {
-      if (state.roomId !== 'reliquary') continue
+      if (state.templateId !== 'reliquary') continue
       const up = platesFor(state)
       expect(up).toHaveLength(4)
       for (const plate of up) {
@@ -643,7 +643,7 @@ describe('the Reliquary is four objects, and all four stay in the room', () => {
     // is lit are one drawing, so the *state* has to reach the stylesheet — and
     // it has to come off the save, or a reload would light the candles again.
     const lit = platesFor({
-      roomId: 'reliquary',
+      templateId: 'reliquary',
       bellRung: false,
       brazier: 'lit',
       lever: 'up',
@@ -651,7 +651,7 @@ describe('the Reliquary is four objects, and all four stay in the room', () => {
       claimed: false,
     })
     const dark = platesFor({
-      roomId: 'reliquary',
+      templateId: 'reliquary',
       bellRung: true,
       brazier: 'out',
       lever: 'down',

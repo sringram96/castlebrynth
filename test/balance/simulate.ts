@@ -18,7 +18,7 @@ import type { GameState, RunState } from '../../src/game/state.js'
 import { newSpecial, totalBones } from '../../src/content/bones.js'
 import type { SpecialBoneId } from '../../src/content/bones.js'
 import { enemy } from '../../src/content/enemies.js'
-import { room } from '../../src/content/rooms.js'
+import { firstNodeOf, roomAt } from '../../src/game/map.js'
 import { exitsOpen, legal, stateOf } from '../../src/content/interactions.js'
 import { charmFor, drinkFor, fieldFor } from './policies.js'
 import type { Table, Tier } from './policies.js'
@@ -162,16 +162,25 @@ export interface Loadout {
   readonly vials?: number
 }
 
-/** Open a fight in a named room, with a chosen pile and satchel. */
-export function fightIn(roomId: string, seed: number, loadout: Loadout = {}): GameState {
+/**
+ * Open a fight in a named room, with a chosen pile and satchel.
+ *
+ * Named by its **authored template** — `hollow`, `deep`, `gate` — because that
+ * is what the report's rows are about, and resolved to whichever node of this
+ * run's map used it. The model never invents a room: it stands the run in one
+ * the director actually built.
+ */
+export function fightIn(templateId: string, seed: number, loadout: Loadout = {}): GameState {
   const started = reduce(TITLE, { type: 'START_RUN', seed })
   const run = started.run!
+  const node = firstNodeOf(run.map, templateId)
+  if (!node) throw new Error(`this run has no ${templateId} in it`)
   const specials = (loadout.specials ?? []).map((id, i) => newSpecial(id, i))
   const total = loadout.bones ?? totalBones(run)
   const next: RunState = {
     ...run,
-    roomId,
-    path: [...run.path, roomId],
+    roomId: node.id,
+    path: [...run.path, node.id],
     specials,
     nextSpecialSerial: specials.length,
     commonBones: Math.max(0, total - specials.length),
@@ -183,6 +192,8 @@ export function fightIn(roomId: string, seed: number, loadout: Loadout = {}): Ga
 
 export interface RunResult {
   readonly reachedExit: boolean
+  /** Which authored room the run ended in. Template, not node: the report is
+   *  about which *fight* kills people, not which instance of it. */
   readonly diedIn?: string
   readonly rooms: number
   readonly bonesLeft: number
@@ -221,7 +232,12 @@ export function simulateRun(seed: number, tier: Tier, { deep = true } = {}): Run
   }
 
   for (let step = 0; step < 60; step++) {
-    if (state.mode === 'complete') {
+    // The room the run is standing in, joined from the generated map. There is
+    // no second map here and there could not be one: the model walks the exits
+    // the reducer would accept, or it walks nothing.
+    const here = roomAt(state.run!)
+
+    if (here.ending || state.mode === 'complete') {
       return {
         reachedExit: true,
         rooms: state.run!.path.length,
@@ -233,7 +249,7 @@ export function simulateRun(seed: number, tier: Tier, { deep = true } = {}): Run
     if (state.mode === 'dead') {
       return {
         reachedExit: false,
-        diedIn: state.run!.roomId,
+        diedIn: roomAt(state.run!).id,
         rooms: state.run!.path.length,
         bonesLeft: 0,
         fights,
@@ -246,9 +262,7 @@ export function simulateRun(seed: number, tier: Tier, { deep = true } = {}): Run
       continue
     }
 
-    const here = room(state.run!.roomId)
-
-    if (here.enemy && !state.run!.cleared.includes(here.id)) {
+    if (here.enemy && !state.run!.cleared.includes(here.instanceId)) {
       const fight = simulateFight(state, tier)
       fights.push(fight.result)
       state = fight.state
@@ -269,7 +283,7 @@ export function simulateRun(seed: number, tier: Tier, { deep = true } = {}): Run
     // A room with a font is used on the way past. There is no decision in it —
     // the press costs nothing and the exits do not open until it is made — so
     // the policy tiers have nothing to disagree about here.
-    if (here.ritual && state.run!.ritual?.roomId !== here.id) {
+    if (here.ritual && state.run!.ritual?.roomId !== here.instanceId) {
       state = reduce(state, { type: 'RITUAL_ROLL' })
       continue
     }
@@ -280,10 +294,10 @@ export function simulateRun(seed: number, tier: Tier, { deep = true } = {}): Run
     // an enemy line either, and a report that quietly charged every run a bone
     // for a mistake the clues are written to prevent would be measuring the
     // model's ignorance rather than the slice's difficulty.
-    const machinery = stateOf(state.run!.rooms, here.id)
+    const machinery = stateOf(state.run!.rooms, here.instanceId, here.id)
     if (machinery && !exitsOpen(machinery)) {
       for (const thing of here.interactables ?? []) {
-        if (legal(stateOf(state.run!.rooms, here.id)!, thing.id)) {
+        if (legal(stateOf(state.run!.rooms, here.instanceId, here.id)!, thing.id)) {
           state = reduce(state, { type: 'INTERACT', interactionId: thing.id })
         }
       }

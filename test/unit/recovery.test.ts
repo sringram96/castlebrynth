@@ -14,12 +14,22 @@ import type { Action } from '../../src/game/reducer.js'
 import { EMPTY_META, SAVE_VERSION } from '../../src/game/state.js'
 import type { GameState, RitualRoll, RunState } from '../../src/game/state.js'
 import { BONE_CEILING, newSpecial, totalBones } from '../../src/content/bones.js'
+import { roomAt } from '../../src/game/map.js'
+import { nodeOf } from './where.js'
 
 const play = (state: GameState, ...actions: readonly Action[]): GameState =>
   actions.reduce((s, a) => reduce(s, a), state)
 
-const at = (roomId: string, run: Partial<RunState> = {}, seed = 4): GameState => {
+/**
+ * Standing in a room, named by its authored template.
+ *
+ * The route is generated, so the template has to be resolved to whichever node
+ * of this run's map used it — a test may not invent a room the director did
+ * not build.
+ */
+const at = (templateId: string, run: Partial<RunState> = {}, seed = 4): GameState => {
   const base = newRun(seed)
+  const roomId = nodeOf(base, templateId)
   return {
     version: SAVE_VERSION,
     mode: 'explore',
@@ -27,6 +37,9 @@ const at = (roomId: string, run: Partial<RunState> = {}, seed = 4): GameState =>
     run: { ...base, roomId, path: [...base.path, roomId], ...run },
   }
 }
+
+/** The node one way on from here. A press carries these, not template ids. */
+const onward = (state: GameState): string => roomAt(state.run!).exits[0]!.to
 
 describe('the font', () => {
   it('gives the face plus two', () => {
@@ -86,9 +99,10 @@ describe('the font', () => {
 
   it('withholds the exits until it has been pressed', () => {
     const unpressed = at('sanctuary', { commonBones: 10 })
-    expect(reduce(unpressed, { type: 'GO', to: 'reliquary' })).toBe(unpressed)
+    const on = onward(unpressed)
+    expect(reduce(unpressed, { type: 'GO', to: on })).toBe(unpressed)
     const pressed = play(unpressed, { type: 'RITUAL_ROLL' })
-    expect(reduce(pressed, { type: 'GO', to: 'reliquary' })).not.toBe(pressed)
+    expect(reduce(pressed, { type: 'GO', to: on })).not.toBe(pressed)
   })
 })
 

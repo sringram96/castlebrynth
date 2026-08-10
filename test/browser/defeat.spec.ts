@@ -27,10 +27,22 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 
-import { act, boot, screenName, state } from './helpers.js'
+import { act, boot, screenName, state, where } from './helpers.js'
 
 /** A fight one lane from over, played to that lane by the fixture. */
 const DOOMED = '?room=hollow&dying=1'
+
+/**
+ * Whether the room the player is standing in has its fight filed as done.
+ *
+ * `run.cleared` holds **node** ids, so a spec may not name a template here. It
+ * asks about *this* room rather than about a name, which is also the stronger
+ * question: the same authored place used twice is two fights.
+ */
+async function clearedHere(page: Page): Promise<boolean> {
+  const run = (await state(page)).run!
+  return run.cleared.includes(run.roomId)
+}
 
 interface Seen {
   /** Every value `#enemy[data-defeat]` held, in order, with its arrival. */
@@ -131,14 +143,14 @@ test.describe('it stops, and you watch it', () => {
     await finished(page)
     // Either a reward screen or the room, and in both cases the fight is gone.
     expect(['reward', null]).toContain(await screenName(page))
-    expect((await state(page)).run!.cleared).toContain('hollow')
+    expect(await clearedHere(page)).toBe(true)
   })
 
   test('an impatient thumb gets the same win, immediately', async ({ page }) => {
     await boot(page, DOOMED, { motion: true })
     await page.evaluate(() => window.castlebrynth?.settle())
     await finished(page)
-    expect((await state(page)).run!.cleared).toContain('hollow')
+    expect(await clearedHere(page)).toBe(true)
   })
 })
 
@@ -152,7 +164,7 @@ test.describe('a reload inside a death', () => {
     await page.reload()
     await expect(page.locator('body')).toHaveAttribute('data-assets', 'ready')
     await finished(page)
-    expect((await state(page)).run!.cleared).toContain('hollow')
+    expect(await clearedHere(page)).toBe(true)
   })
 })
 
@@ -171,7 +183,8 @@ test.describe('every enemy in the slice has a visible end', () => {
         watched.frames.length,
         `${name} stopped being drawn without a death`,
       ).toBeGreaterThan(0)
-      expect((await state(page)).run!.cleared).toContain(room)
+      expect(await where(page), `${name} was not in the ${room}`).toBe(room)
+      expect(await clearedHere(page)).toBe(true)
     })
   }
 })

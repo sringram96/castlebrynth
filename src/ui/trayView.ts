@@ -33,7 +33,7 @@ import type { BoneProfileId } from '../content/bones.js'
 import { brokenPlayerKeys } from '../combat/clash.js'
 import { LINE_WIDTH } from '../combat/line.js'
 import { enemy as enemyById } from '../content/enemies.js'
-import { room as roomById } from '../content/rooms.js'
+import { roomAt } from '../game/map.js'
 import { exitsOpen, stateOf } from '../content/interactions.js'
 import { fieldLegal, maxWidth } from '../game/reducer.js'
 import type { CombatState, GameState, RunState } from '../game/state.js'
@@ -493,7 +493,7 @@ function renderWell(
   // Out of a fight the well carries the decision, not the prose. What was
   // looked at is already in the word band over the world; repeating it here
   // would spend the one region that can make a fork legible.
-  const here = roomById(run.roomId)
+  const here = roomAt(run)
 
   if (here.enemy && !run.cleared.includes(run.roomId)) {
     const e = enemyById(here.enemy)
@@ -517,7 +517,7 @@ function renderWell(
 
   // A shut room says what it is waiting for, exactly as an unresolved font
   // does — the exits are not offered, so the well has to carry the reason.
-  if (!exitsOpen(stateOf(run.rooms, run.roomId))) {
+  if (!exitsOpen(stateOf(run.rooms, run.roomId, here.id))) {
     const box = el('div', 'brief')
     box.append(el('span', 'brief-name', here.name))
     box.append(el('p', 'well-line', run.say))
@@ -696,7 +696,7 @@ function renderBeds(
   // and only while there is something left to field. An empty pile is not a
   // fight the reducer will open, so it is not a press the tray offers: the
   // view and the reducer answer the same question with the same call.
-  const here = roomById(run.roomId)
+  const here = roomAt(run)
   if (here.enemy && !run.cleared.includes(run.roomId)) {
     if (totalBones(run) > 0) {
       bed(1, button({ act: 'fight', label: VERBS.fight, onPress: on.onFight, className: 'act act-primary' }))
@@ -708,9 +708,15 @@ function renderBeds(
   // reducer will not grant one — so no way on is offered.
   if (here.ritual && run.ritual?.roomId !== run.roomId) return
 
-  // And the same again for a room whose machinery is still shut.
-  if (!exitsOpen(stateOf(run.rooms, run.roomId))) return
+  // And the same again for a room whose machinery is still shut. The gate is
+  // not down as a matter of styling: the reducer rejects `GO` while it is, so
+  // offering the press would be offering a button that does nothing. One
+  // statement — `exitsOpen` — answers for both of them.
+  if (!exitsOpen(stateOf(run.rooms, run.roomId, here.id))) return
 
+  // The map's exits, resolved through `roomAt`. The view renders what the
+  // reducer would accept and never constructs a destination of its own — a
+  // `to` here is a node id the map already holds.
   const exits = here.exits
   if (exits[0]) {
     const b = button({

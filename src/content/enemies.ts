@@ -17,6 +17,7 @@
  */
 
 import type { BoneProfileId } from './bones.js'
+import type { ThreatBand } from './roomTypes.js'
 import type { EnemyBoneInstance, TieRule } from '../game/state.js'
 import type { RewardId } from './rewards.js'
 
@@ -71,6 +72,32 @@ export interface Enemy {
   readonly army: readonly EnemyBoneSpec[]
   /** What an equal lane does. One flag, and only the boss changes it. */
   readonly tieRule: TieRule
+  /**
+   * What the picture it stands in has to be able to do.
+   *
+   * The art's veto over generation, from the other side: a room declares the
+   * kinds of encounter its composition can hold, an enemy declares the kind it
+   * is, and `canHost` in `content/roomResolver.ts` is the one place the two
+   * meet. Three words for three encounters — this is a compatibility key, not
+   * a taxonomy, and it should stay one.
+   *
+   * It is about **composition**, not combat: where a thing stands in a drawing
+   * has nothing to do with how many bones it throws, which is why the War of
+   * Bones left it untouched.
+   */
+  readonly encounterTags: readonly string[]
+  /**
+   * How heavy a fight this is, as one of three words.
+   *
+   * What a plan asks for, and it survived the combat overhaul unchanged
+   * because it never described hit points: it is an **ordinal weight**, and
+   * the director's business is only *which weight of thing belongs at this
+   * point in the descent*. The numbers are the enemy's own, and they are the
+   * army above rather than a health total — `low` is five common bones,
+   * `medium` is nine with two Wrong at the front, `keeper` is eight with a
+   * Heavy, a Cruel and a tie rule that reverses.
+   */
+  readonly threat: ThreatBand
   /** The one sentence the player sees on first sight. */
   readonly tell: string
   /**
@@ -142,6 +169,8 @@ const GNAWING: Enemy = {
   name: 'The Gnawing',
   army: [{ profile: 'common', count: 5, priority: 0 }],
   tieRule: 'mutual',
+  encounterTags: ['closing-horror'],
+  threat: 'low',
   tell: 'Too many eyes. All of them found me. It is a long hall, and it has started down it.',
   art: 'gnawing',
   // Its still pose is where it stands before the fight opens: far away.
@@ -171,6 +200,8 @@ const MARROW: Enemy = {
     { profile: 'common', count: 7, priority: 1 },
   ],
   tieRule: 'mutual',
+  encounterTags: ['standing-horror'],
+  threat: 'medium',
   tell: 'The bones of it are somebody. Several somebodies.',
   rule: 'Two of its bones are wrong. It has more than it can field.',
   art: 'marrow',
@@ -204,6 +235,8 @@ const WARDEN: Enemy = {
     { profile: 'common', count: 6, priority: 2 },
   ],
   tieRule: 'warden-holds',
+  encounterTags: ['duel-stander'],
+  threat: 'keeper',
   tell: 'It was waiting at this door. It has been waiting a long time.',
   rule: 'THE WARDEN HOLDS TIES. An equal lane breaks my bone and not its own.',
   art: 'warden',
@@ -225,6 +258,9 @@ export const ENEMIES: Readonly<Record<string, Enemy>> = {
   marrow: MARROW,
   warden: WARDEN,
 }
+
+/** Every authored encounter, in declaration order. The resolver's whole world. */
+export const ENEMY_LIST: readonly Enemy[] = Object.values(ENEMIES)
 
 export function enemy(id: string): Enemy {
   const found = ENEMIES[id]

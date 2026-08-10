@@ -92,7 +92,7 @@ export const PROP_ART: Readonly<Record<string, Asset>> = {
 }
 
 /**
- * Ambient overlay frames, keyed `<room>.<family>.<n>`.
+ * Ambient overlay frames, keyed `<room template>.<family>.<n>`.
  *
  * Whole scene plates like every other overlay in the game, and numbered from
  * one. Empty for the same reason `PROP_ART` is: none of them has been painted.
@@ -274,8 +274,8 @@ export function propArt(id: string, frame: string): Asset | undefined {
  * room's mood is the most optional thing in the game. A missing frame costs a
  * loop; a missing loop costs nothing but stillness.
  */
-export function ambientArt(roomId: string, family: string, frame: number): Asset | undefined {
-  return AMBIENT_ART[`${roomId}.${family}.${frame}`]
+export function ambientArt(templateId: string, family: string, frame: number): Asset | undefined {
+  return AMBIENT_ART[`${templateId}.${family}.${frame}`]
 }
 
 export function handArt(pose: string): Asset {

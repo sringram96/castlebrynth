@@ -40,6 +40,11 @@ interface Loop {
  * would make the picture a thing the run could not reproduce, which is the one
  * rule every file in `render/` is held to.
  */
+/*
+ * Keyed by the **authored template**, not by a node of the generated map: a
+ * room's mood is a property of the place, so two uses of one template gutter
+ * the same way. `app.ts` passes `roomAt(run).id`.
+ */
 const AMBIENCE: Readonly<Record<string, readonly Loop[]>> = {
   reliquary: [
     { family: 'candle', frames: 3, hold: 180 },
@@ -56,8 +61,8 @@ const AMBIENCE: Readonly<Record<string, readonly Loop[]>> = {
   ],
 }
 
-export function hasAmbience(roomId: string): boolean {
-  return AMBIENCE[roomId] !== undefined
+export function hasAmbience(templateId: string): boolean {
+  return AMBIENCE[templateId] !== undefined
 }
 
 /**
@@ -84,17 +89,17 @@ export class RoomAmbience {
    * score. It rebuilds only when the room — or whether motion is on at all —
    * actually changes.
    */
-  show(roomId: string | undefined): void {
+  show(templateId: string | undefined): void {
     const animated = !reducedMotion()
-    if (roomId === this.showing && animated === this.animated) return
+    if (templateId === this.showing && animated === this.animated) return
     this.stop()
-    this.showing = roomId
+    this.showing = templateId
     this.animated = animated
-    if (!roomId) return
+    if (!templateId) return
 
-    for (const loop of AMBIENCE[roomId] ?? []) {
+    for (const loop of AMBIENCE[templateId] ?? []) {
       const frames = Array.from({ length: loop.frames }, (_, i) =>
-        ambientArt(roomId, loop.family, i + 1),
+        ambientArt(templateId, loop.family, i + 1),
       ).filter((a): a is NonNullable<typeof a> => a !== undefined)
       // Half a loop is worse than none: the missing frames would fall back to
       // whatever was up and the overlay would stutter. All or nothing.
