@@ -8,7 +8,7 @@
 import { App } from './app/app.js'
 import { applyFixture, hasFixture } from './game/fixture.js'
 import { load } from './game/save.js'
-import { preload } from './render/assets.js'
+import { AssetLoader, criticalAssetsForState } from './render/loader.js'
 
 const root = document.getElementById('app')
 if (!root) throw new Error('#app is missing from the document')
@@ -25,13 +25,18 @@ const initial = hasFixture(search) ? applyFixture(state, search) : state
 // care about flow rather than feel use it; the motion spec does not.
 const motion = new URLSearchParams(search).get('motion') !== '0'
 
-const app = new App({ root, initial, discarded, persist: !hasFixture(search), motion })
+const loader = new AssetLoader()
+const app = new App({ root, initial, discarded, persist: !hasFixture(search), motion, loader })
 
-// Art is a content requirement. A missing backdrop or a missing enemy is a
-// build fault, so it is reported loudly here rather than showing an empty room
-// or an absent opponent. The game still runs — a player mid-session is not
-// helped by a white screen — but nobody can miss it.
-void preload().then((failures) => {
+// **Only what the first screen needs.** The rest of the game's art is fetched
+// as the player walks towards it — see `render/loader.ts` — so a fifth
+// authored pose for an enemy three rooms away costs that fight rather than
+// this boot. Art is still a content requirement: a missing file is a build
+// fault and is reported loudly here rather than showing an empty room or an
+// absent opponent, and the game keeps running because a player mid-session is
+// not helped by a white screen.
+void loader.loadAll(criticalAssetsForState(app.current)).then(() => {
+  const failures = loader.failures
   document.body.dataset['assets'] = failures.length === 0 ? 'ready' : 'missing'
   if (failures.length > 0) {
     document.body.dataset['missingAssets'] = failures.join(',')
@@ -49,6 +54,8 @@ declare global {
       dispatch: App['dispatch']
       settle: () => void
       animating: () => boolean
+      /** Which files have been decoded so far. The loading tests read it. */
+      loaded: () => readonly string[]
     }
   }
 }
@@ -61,4 +68,5 @@ window.castlebrynth = {
   // first frame of any sequence.
   settle: () => app.settle(),
   animating: () => app.animating,
+  loaded: () => app.assets.decoded,
 }

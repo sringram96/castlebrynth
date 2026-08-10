@@ -2,8 +2,8 @@
  * The copy invariants.
  *
  * Deliberately **not** a snapshot of every sentence: the writing should stay
- * free to improve. These are the specific clarity failures the polish sweep
- * exists to fix, stated as rules, so that re-introducing one fails a test
+ * free to improve. These are the specific clarity failures the game keeps
+ * being tempted into, stated as rules, so that re-introducing one fails a test
  * rather than surviving to a playtest.
  *
  * The law: mechanical text states the literal truth first, and atmosphere
@@ -12,21 +12,20 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { DICE, die } from '../../src/content/dice.js'
-import { RELICS, relic } from '../../src/content/relics.js'
+import { BONE_PROFILES, SPECIAL_BONES } from '../../src/content/bones.js'
+import { REWARDS, reward } from '../../src/content/rewards.js'
 import { ENEMIES } from '../../src/content/enemies.js'
 import { ROOM_LIBRARY } from '../../src/content/rooms.js'
 import { WAYS, way } from '../../src/content/runPlans.js'
+import { PHASE_LINE, VERBS, WAR_OF_BONES } from '../../src/content/text.js'
 
 /** Everything the player can read, so a banned word cannot hide in a corner. */
 function everySentence(): string[] {
   const out: string[] = []
-  for (const d of Object.values(DICE)) out.push(d.rule, d.helpsWith, d.flavour ?? '')
-  for (const r of Object.values(RELICS)) out.push(r.rule, r.helpsWith)
-  for (const e of Object.values(ENEMIES)) {
-    out.push(e.tell)
-    for (const i of e.script) out.push(i.explain)
-  }
+  for (const p of Object.values(BONE_PROFILES)) out.push(p.rule)
+  for (const b of Object.values(SPECIAL_BONES)) out.push(b.rule, b.flavour ?? '')
+  for (const r of Object.values(REWARDS)) out.push(r.rule, r.flavour ?? '')
+  for (const e of Object.values(ENEMIES)) out.push(e.tell, e.rule ?? '')
   for (const r of ROOM_LIBRARY) {
     out.push(r.arrival)
     for (const d of r.details) out.push(d.says)
@@ -36,97 +35,114 @@ function everySentence(): string[] {
   // topology. They are still sentences a player reads, so they are still held
   // to every rule below.
   for (const w of Object.values(WAYS)) out.push(w.label, w.sense)
-  return out
+  out.push(...WAR_OF_BONES, ...Object.values(PHASE_LINE), ...Object.values(VERBS))
+  return out.filter(Boolean)
 }
 
-describe('the dice say what they do', () => {
-  it('states the faces before anything else', () => {
-    // Question one of the copy law: what can this die roll? Every rule opens
-    // by answering it, in numbers.
-    for (const d of Object.values(DICE)) {
-      expect(d.rule, `${d.name} never says what it rolls`).toMatch(/\d/)
-      expect(d.helpsWith.length, `${d.name} has no help line`).toBeGreaterThan(0)
-    }
-  })
-
-  it('names the colour and the condition for every special face', () => {
-    for (const d of Object.values(DICE)) {
-      const kinds = new Set(d.faces.flatMap((f) => (f.effect ? [f.effect.kind] : [])))
-      if (kinds.size === 0) continue
-      const colour = kinds.has('hurt') ? /\bred\b/i : /\bgreen\b/i
-      expect(d.rule, `${d.name} does not name the colour of its special face`).toMatch(colour)
-      // The condition in full. A die whose cost you can dodge by not choosing
-      // it is a different die from one whose cost you cannot.
-      expect(d.rule, `${d.name} does not say when its effect happens`).toMatch(
-        /included in the hand you SCORE/,
-      )
-      // And the amount, in health, in words the orb uses.
-      expect(d.rule, `${d.name} does not say what its effect costs or gives`).toMatch(
-        /(lose|heal) \d+ HP/i,
-      )
-    }
-  })
-
-  it('tells the Runner apart from a die with one 6', () => {
-    // Two sixes and only one is red. "Scoring its marked 6" describes a die
-    // this is not, and the difference is five health.
-    const runner = die('runner')
-    expect(runner.faces.filter((f) => f.value === 6)).toHaveLength(2)
-    expect(runner.rule).toMatch(/One of its 6 faces is red/)
-  })
-
-  it('does not claim the Leech is the only healing', () => {
-    // Grave Wax heals too, so it never was.
-    expect(die('leech').helpsWith).not.toMatch(/only healing/i)
-    expect(relic('wax').rule).toMatch(/heal/i)
-  })
-})
-
-describe('the relics say what they do', () => {
-  it('gives every relic an exact rule and a concrete help line', () => {
-    for (const r of Object.values(RELICS)) {
-      expect(r.rule.length, `${r.name} has no rule`).toBeGreaterThan(0)
-      expect(r.helpsWith.length, `${r.name} has no help line`).toBeGreaterThan(0)
-      // A rule with no number and no named hand is a mood, not a mechanic.
-      expect(r.rule, `${r.name}'s rule states no quantity`).toMatch(/\d|double/i)
-    }
-  })
-
-  it('makes Blood Thimble name the same faces its implementation counts', () => {
-    const thimble = relic('thimble')
-    expect(thimble.effect.kind).toBe('perRedFace')
-    expect(thimble.rule).toMatch(/red/i)
-    expect(thimble.rule).not.toMatch(/green/i)
-    expect(thimble.rule).toMatch(/included in the hand you SCORE/)
-  })
-})
-
-describe('the enemies say what they are about to do', () => {
-  it('states the damage and the order on every intent', () => {
-    for (const e of Object.values(ENEMIES)) {
-      for (const intent of e.script) {
-        expect(intent.explain, `${e.name} ${intent.verb} does not name itself`).toContain(intent.verb)
-        if (intent.damage > 0) {
-          expect(intent.explain).toContain(String(intent.damage))
-          // The order is the whole of the first fight's lesson.
-          expect(intent.explain, `${e.name} ${intent.verb} does not say when it lands`).toMatch(
-            /after you score/,
-          )
-        }
+describe('a bone card is its numbers', () => {
+  it('states every distinct face it can roll, in digits', () => {
+    for (const bone of Object.values(SPECIAL_BONES)) {
+      const faces = BONE_PROFILES[bone.profile].faces
+      for (const value of new Set(faces)) {
+        expect(bone.rule, `${bone.name} does not state its ${value}`).toContain(String(value))
       }
     }
   })
 
-  it('makes a telegraph state its next attack and its size', () => {
-    for (const e of Object.values(ENEMIES)) {
-      e.script.forEach((intent, turn) => {
-        if (!intent.telegraph) return
-        const next = e.script[(turn + 1) % e.script.length]!
-        expect(intent.explain).toMatch(/no damage this turn/i)
-        expect(intent.explain, `${e.name} does not name its next blow`).toContain(next.verb)
-        expect(intent.explain, `${e.name} does not size its next blow`).toContain(String(next.damage))
-      })
+  it('keeps flavour out of the rule and below a divider', () => {
+    for (const bone of Object.values(SPECIAL_BONES)) {
+      // The rule is digits and separators. Nothing else, so a player who has
+      // read it knows everything the game knows.
+      expect(bone.rule, `${bone.name}'s rule carries prose`).toMatch(/^[\d,\s.]+$/)
     }
+  })
+})
+
+describe('a reward card states its exact mechanic', () => {
+  it('carries a number before TAKE is pressed', () => {
+    for (const r of Object.values(REWARDS)) {
+      expect(r.rule, `${r.name} does not state a quantity`).toMatch(/\d/)
+    }
+  })
+
+  it('says what a Vial gives and where it stops', () => {
+    expect(reward('vial').rule).toContain('5')
+    expect(reward('vial').rule).toContain('30')
+  })
+
+  it('says a Charm is once and is one bone', () => {
+    expect(reward('charm').rule).toMatch(/once/i)
+    expect(reward('charm').rule).toContain('1')
+  })
+})
+
+describe('the enemies say what they are about to do', () => {
+  it('gives every enemy one sentence on first sight', () => {
+    for (const e of Object.values(ENEMIES)) {
+      expect(e.tell.length, `${e.name} has no tell`).toBeGreaterThan(10)
+    }
+  })
+
+  it('prints an encounter rule for every enemy that has one', () => {
+    // A rule the player only learns by losing a bone to it is not a rule, it
+    // is a trick. The Warden's is the loudest thing in its brief.
+    for (const e of Object.values(ENEMIES)) {
+      if (e.tieRule === 'mutual' && !e.rule) continue
+      expect(e.rule, `${e.name} has a rule nobody can read`).toBeDefined()
+    }
+    expect(ENEMIES.warden!.rule).toMatch(/tie/i)
+    expect(ENEMIES.warden!.rule).toMatch(/HOLDS/)
+  })
+
+  it('never promises damage, which does not exist', () => {
+    for (const line of everySentence()) {
+      expect(line, `"${line}" talks about damage`).not.toMatch(/\bdamage\b/i)
+    }
+  })
+})
+
+describe('the rules card is the whole game', () => {
+  it('states the four sentences the fight runs on', () => {
+    const all = WAR_OF_BONES.join(' ')
+    expect(all).toMatch(/throws first/i)
+    expect(all).toMatch(/1[–-]6/)
+    expect(all).toMatch(/high kills low/i)
+    expect(all).toMatch(/ties kill both/i)
+    expect(all).toMatch(/safe/i)
+    expect(all).toMatch(/dead/i)
+  })
+
+  it('is short enough to be read', () => {
+    expect(WAR_OF_BONES.length).toBeLessThanOrEqual(5)
+    for (const line of WAR_OF_BONES) expect(line.length).toBeLessThan(70)
+  })
+
+  it('asks for a decision at every phase, in one line', () => {
+    for (const [phase, line] of Object.entries(PHASE_LINE)) {
+      expect(line.length, phase).toBeLessThan(48)
+      expect(line, phase).toMatch(/[.!]$/)
+    }
+  })
+})
+
+describe('the controls are plain verbs', () => {
+  it('never runs past two words', () => {
+    for (const [name, verb] of Object.entries(VERBS)) {
+      expect(verb.split(/\s+/).length, `${name} is a sentence`).toBeLessThanOrEqual(2)
+      expect(verb, `${name} is not a control label`).toBe(verb.toUpperCase())
+    }
+  })
+
+  it('has one verb per phase of a round, and no scoring verb', () => {
+    expect(VERBS).toMatchObject({
+      field: 'FIELD',
+      throw: 'THROW',
+      smash: 'SMASH',
+      round: 'ROUND',
+    })
+    expect(VERBS).not.toHaveProperty('roll')
+    expect(VERBS).not.toHaveProperty('reroll')
+    expect(VERBS).not.toHaveProperty('score')
   })
 })
 
@@ -162,17 +178,17 @@ describe('the rooms say what changed', () => {
   it('says what a font gives back before it is pressed, and what it does not', () => {
     for (const r of ROOM_LIBRARY) {
       if (!r.ritual) continue
-      // The rule, in the well, before the press — the same contract every die
-      // and every relic is held to. What it gives is a share of the damage
-      // already taken, so the copy has to say *lost* rather than promise a
-      // number, and it has to say that a higher face is worth more.
-      expect(r.ritual.prompt, `${r.name} does not say what its font gives back`).toMatch(
-        /lost|missing/i,
-      )
-      expect(r.ritual.prompt, `${r.name} does not say the face matters`).toMatch(/higher|share/i)
-      // And it must not read as a flat gift, which is the misreading this
-      // design is most likely to attract.
-      expect(r.ritual.prompt, `${r.name}'s font promises a flat amount`).not.toMatch(/\d+ HP/)
+      // The rule, in the well, before the press — the same contract every bone
+      // and every carried thing is held to. It gives bones, it says how many,
+      // it says where it stops, and it says what it will not do.
+      expect(r.ritual.prompt, `${r.name} does not say what its font gives back`).toMatch(/bones/i)
+      expect(r.ritual.prompt, `${r.name} does not say the face matters`).toMatch(/lands on|two more/i)
+      expect(r.ritual.prompt, `${r.name} does not state the ceiling`).toContain('thirty')
+      // And the one thing it cannot do, said out loud — because a player who
+      // has just lost a Cinderbone will come here hoping.
+      expect(r.ritual.prompt, `${r.name} does not rule out a named bone`).toMatch(/name/i)
+      // No health, ever.
+      expect(r.ritual.prompt).not.toMatch(/\bHP\b|health/i)
       // The verb is a control: a plain imperative, two words or fewer.
       expect(r.ritual.label.split(/\s+/).length).toBeLessThanOrEqual(2)
       expect(r.ritual.describe.length).toBeGreaterThan(0)
@@ -186,16 +202,34 @@ describe('the rooms say what changed', () => {
   })
 })
 
-describe('nothing player-facing uses private vocabulary', () => {
-  it('never says "marked" where it means a red or green face', () => {
+describe('nothing player-facing uses the old vocabulary', () => {
+  const banned: readonly [RegExp, string][] = [
+    [/\bHP\b/, 'HP'],
+    [/\bhealth\b/i, 'health'],
+    [/\bmarked\b/i, 'marked'],
+    [/\bbuild\b/i, 'build'],
+    [/\bloadout\b/i, 'loadout'],
+    [/\brelic\b/i, 'relic'],
+    [/\bmultiplier\b/i, 'multiplier'],
+    [/\bfull house\b/i, 'full house'],
+    // "Straight" is deliberately absent from this list. It was a hand class in
+    // the old game and it is also an ordinary English word — the stair goes
+    // straight to the door — so banning it would be banning the language
+    // rather than the mechanic. `HANDS`, `LADDER` and `recognise` are gone
+    // from the codebase, which is the check that actually matters.
+  ]
+
+  it('never uses a word from the game this replaced', () => {
     for (const line of everySentence()) {
-      expect(line, `"${line}" uses the word marked`).not.toMatch(/\bmarked\b/i)
+      for (const [pattern, word] of banned) {
+        expect(line, `"${line}" uses the word ${word}`).not.toMatch(pattern)
+      }
     }
   })
 
-  it('never calls a rule a build', () => {
+  it('never calls the player pile a hand', () => {
     for (const line of everySentence()) {
-      expect(line, `"${line}" describes a build instead of a rule`).not.toMatch(/\bbuild\b/i)
+      expect(line, `"${line}" calls the bones a hand`).not.toMatch(/\bthe hand\b/i)
     }
   })
 })

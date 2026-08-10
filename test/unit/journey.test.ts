@@ -1,542 +1,384 @@
 /**
- * The invariants of the state machine.
+ * The whole run, as state transitions.
  *
- * These are the model-level half of the reset's promises. The half that
- * matters more — that a real thumb on a real phone can reach all of it — is in
- * `test/browser`, and a green run here is explicitly not completion.
+ * Not a unit test of any one function: a test of the *journey*. Every screen
+ * the game can be on has to be reachable, every one of them has to have a way
+ * out, and a run has to be able to get from the door to the exit by pressing
+ * things the reducer actually accepts.
+ *
+ * The browser suite is what decides completion — a green unit suite is not
+ * completion; see `CLAUDE.md`. What this covers is the shape of the machine
+ * underneath it, where a hundred rounds cost a millisecond and a browser
+ * journey costs a minute.
  */
 
 import { describe, expect, it } from 'vitest'
 
-import { MAX_HP, newRun, offerFor, reduce } from '../../src/game/reducer.js'
+import { maxWidth, newRun, reduce } from '../../src/game/reducer.js'
 import type { Action } from '../../src/game/reducer.js'
 import { SAVE_VERSION, TITLE } from '../../src/game/state.js'
 import type { GameState } from '../../src/game/state.js'
-import { HAND_SIZE } from '../../src/content/dice.js'
-import { ENEMIES, enemy, intentAt } from '../../src/content/enemies.js'
+import { BONE_CEILING, totalBones } from '../../src/content/bones.js'
 import { ROOM_LIBRARY } from '../../src/content/rooms.js'
-import { firstNodeOf, roomAt } from '../../src/game/map.js'
+import { roomAt } from '../../src/game/map.js'
 import { validateRun } from '../../src/game/mapValidation.js'
-import { initialRoomState } from '../../src/content/interactions.js'
-import { Rng } from '../../src/combat/dice.js'
-import { preview } from '../../src/combat/scoring.js'
-import { resolve, selectionOf } from '../../src/combat/resolve.js'
+import { nodeOf } from './where.js'
+import { load, save, wipe } from '../../src/game/save.js'
 
-const play = (state: GameState, ...actions: Action[]): GameState =>
+const play = (state: GameState, ...actions: readonly Action[]): GameState =>
   actions.reduce((s, a) => reduce(s, a), state)
 
-const start = (seed = 1): GameState => reduce(TITLE, { type: 'START_RUN', seed })
-
 /**
- * The node of this run that used a named authored template.
+ * Fight whatever is in the room until it or the run is finished.
  *
- * Every test below names rooms the way a person does — *the hollow*, *the
- * gate* — and the map is what turns that into the id a press carries. Which is
- * the whole architecture in one helper: a template is a place, a node is a
- * room, and nothing may confuse the two.
+ * Real presses only: FIELD, THROW, SMASH, ROUND, and DEFEAT_DONE when a death
+ * is being held open. The width is always the widest legal one, which is the
+ * naive policy and the one a first-time player uses.
  */
-const nodeOf = (state: GameState, templateId: string): string => {
-  const found = firstNodeOf(state.run!.map, templateId)
-  if (!found) throw new Error(`this run has no ${templateId}`)
-  return found.id
-}
-
-const goTo = (state: GameState, templateId: string): GameState =>
-  reduce(state, { type: 'GO', to: nodeOf(state, templateId) })
-
-/** Walk as far as the first fight's room. Nothing is handed out on the way. */
-function toPassage(seed = 1): GameState {
-  return goTo(start(seed), 'passage')
-}
-
-function intoFirstFight(seed = 1): GameState {
-  return reduce(goTo(toPassage(seed), 'hollow'), { type: 'FIGHT' })
-}
-
-/**
- * A fight against something that stands still and hits you.
- *
- * The first fight no longer does either — the Gnawing closes the distance
- * instead, and deals nothing on the way — so anything about *taking a blow*
- * has to be asked of an enemy that throws one. See `test/unit/approach.test.ts`
- * for the encounter that replaced it.
- */
-function intoTradingFight(seed = 1): GameState {
-  const started = start(seed)
-  const run = started.run!
-  const deep = nodeOf(started, 'deep')
-  return reduce(
-    { ...started, run: { ...run, roomId: deep, path: [...run.path, deep] } },
-    { type: 'FIGHT' },
-  )
-}
-
-describe('a new run', () => {
-  it('starts with six dice, full health, and no stale combat', () => {
-    const state = start()
-    expect(state.mode).toBe('explore')
-    expect(state.run?.dice).toHaveLength(HAND_SIZE)
-    expect(state.run?.hp).toBe(MAX_HP)
-    expect(state.run?.combat).toBeUndefined()
-    expect(state.run?.offer).toBeUndefined()
-    expect(state.run?.cause).toBeUndefined()
-  })
-
-  it('carries nothing over from the run before it', () => {
-    const dead = play(
-      intoFirstFight(),
-      { type: 'ROLL' },
-      { type: 'SELECT', slot: 0 },
-      { type: 'SCORE' },
-    )
-    const next = reduce(dead, { type: 'START_RUN', seed: 2 })
-    expect(next.run?.combat).toBeUndefined()
-    expect(next.run?.relics).toEqual([])
-    expect(next.run?.roomId).toBe(next.run?.map.start)
-    expect(roomAt(next.run!).id).toBe('entry')
-    expect(next.run?.hp).toBe(MAX_HP)
-  })
-
-  it('is a pure function of its seed', () => {
-    expect(newRun(4)).toEqual(newRun(4))
-  })
-})
-
-describe('the passage', () => {
-  it('hands out nothing: walking into a room never opens an offer', () => {
-    // The guaranteed gift before the first fight is gone. A run that finds
-    // something has beaten something for it. See POLISH_PROGRESS.md § P5.
-    const fresh = start()
-    for (const id of Object.keys(fresh.run!.map.nodes)) {
-      const arrived = reduce({ ...fresh, run: { ...fresh.run!, roomId: fresh.run!.map.start } }, { type: 'GO', to: id })
-      if (arrived.mode === 'complete') continue
-      expect(arrived.run?.offer, `${id} laid something out`).toBeUndefined()
+function fightItOut(state: GameState, guard = 60): GameState {
+  let now = state
+  for (let round = 0; round < guard; round++) {
+    const combat = now.run?.combat
+    if (!combat) return now
+    if (combat.defeated) {
+      now = reduce(now, { type: 'DEFEAT_DONE' })
+      continue
     }
-    const arrived = goTo(fresh, 'passage')
-    expect(arrived.mode).toBe('explore')
-  })
-})
-
-describe('the generated map', () => {
-  it('is what a press walks, and every destination is a room of it', () => {
-    // The authored library names no destination at all any more — that is the
-    // whole refactor — so the only thing left that can name one is the map, and
-    // this is the statement that it names them truthfully.
-    const map = start().run!.map
-    for (const node of Object.values(map.nodes)) {
-      for (const exit of node.exits) expect(map.nodes[exit.to], `${node.id} → ${exit.to}`).toBeDefined()
-      const here = roomAt(start().run!, node.id)
-      if (!here.ending) expect(node.exits.length).toBeGreaterThan(0)
+    if (now.mode !== 'combat') return now
+    switch (combat.phase) {
+      case 'thrown':
+        now = reduce(now, { type: 'FIELD', width: maxWidth(now.run!), specialIds: [] })
+        break
+      case 'fielded':
+        now = reduce(now, { type: 'THROW' })
+        break
+      case 'rolled':
+        now = reduce(now, { type: 'SMASH' })
+        break
+      case 'smashed':
+        now = reduce(now, { type: 'ROUND' })
+        break
     }
-  })
-
-  it('holds no destination in any authored room template', () => {
-    // A grep in test form. If a `to` ever comes back into the library, the
-    // graph is back inside the content and this fails before a player finds it.
-    for (const t of ROOM_LIBRARY) {
-      for (const key of Object.keys(t)) {
-        expect(key, `${t.id} names a destination`).not.toMatch(/^(to|exits|leadsTo)$/)
-      }
-      expect(JSON.stringify(t)).not.toContain('"to":')
-    }
-  })
-
-  it('passes its own validator, on every seed the game can start from', () => {
-    for (const seed of [1, 2, 7, 99, 4242, 0]) {
-      expect(validateRun(start(seed).run!.map), `seed ${seed}`).toEqual([])
-    }
-  })
-
-  it('reaches the ending from the first room down every branch', () => {
-    const state = start()
-    const map = state.run!.map
-    const seen = new Set<string>()
-    const walk = (id: string, depth: number): boolean => {
-      if (depth > 20) return false
-      seen.add(id)
-      const here = roomAt(state.run!, id)
-      if (here.ending) return true
-      return here.exits.every((e) => walk(e.to, depth + 1))
-    }
-    expect(walk(map.start, 0)).toBe(true)
-    expect(seen.size).toBe(Object.keys(map.nodes).length)
-  })
-
-  it('never requires a hidden thing to leave a room', () => {
-    // Every exit is reachable from arrival: no *detail* has to be found first.
-    // A room's enemy and a room's font are both plainly in front of you and
-    // both hold the exits shut, so both are resolved here — what this test
-    // forbids is a way on that depends on having looked at something.
-    const state = start()
-    for (const node of Object.values(state.run!.map.nodes)) {
-      const here = roomAt(state.run!, node.id)
-      // A room's machinery is the third thing of this kind, and it is resolved
-      // here for the same reason the other two are: the cage, the plate and
-      // the lever are all plainly in front of you, they are all LOOK-able, and
-      // the wall panel draws the rule. What this test forbids is a way on that
-      // depends on having *found* something, not one that depends on having
-      // worked something you can see.
-      const worked = initialRoomState(here.id)
-      const opened =
-        worked?.templateId === 'chain-vault'
-          ? { ...worked, chain: 'on' as const, cage: 'lowered' as const, pressurePlate: 'on' as const, lever: 'down' as const, gate: 'open' as const }
-          : worked
-      const arrived = {
-        ...newRun(1),
-        map: state.run!.map,
-        roomId: node.id,
-        cleared: here.enemy ? [node.id] : [],
-        ...(opened ? { rooms: { [node.id]: opened } } : {}),
-        ...(here.ritual
-          ? { ritual: { roomId: node.id, roll: 3 as const, healed: 0, missingBefore: 0 } }
-          : {}),
-      }
-      for (const exit of here.exits) {
-        const moved = reduce({ ...TITLE, mode: 'explore', run: arrived }, { type: 'GO', to: exit.to })
-        expect(moved.run?.roomId).toBe(exit.to)
-      }
-    }
-  })
-
-  it('gives a repeated template independent rooms, if it is ever repeated', () => {
-    // The property that makes instance identity worth having. Today no
-    // template appears twice, so what is asserted is the thing that makes the
-    // day it does safe: every node id is unique and every one of them is
-    // distinct from the template it holds.
-    const map = start().run!.map
-    const ids = Object.keys(map.nodes)
-    expect(new Set(ids).size).toBe(ids.length)
-    for (const node of Object.values(map.nodes)) {
-      expect(node.id).not.toBe(node.templateId)
-    }
-  })
-
-  it('holds you in a fight room until the enemy is down', () => {
-    const held = goTo(toPassage(), 'hollow')
-    expect(reduce(held, { type: 'GO', to: nodeOf(held, 'sanctuary') })).toBe(held)
-  })
-})
-
-describe('a turn', () => {
-  it('rolls exactly the hand', () => {
-    const rolled = reduce(intoFirstFight(), { type: 'ROLL' })
-    expect(rolled.run?.combat?.roll).toHaveLength(HAND_SIZE)
-    expect(rolled.run?.combat?.phase).toBe('rolled')
-  })
-
-  it('lets a chosen die be unchosen, and never repeats a slot', () => {
-    let state = reduce(intoFirstFight(), { type: 'ROLL' })
-    state = play(state, { type: 'SELECT', slot: 2 }, { type: 'SELECT', slot: 4 })
-    expect(state.run?.combat?.selected).toEqual([2, 4])
-    state = reduce(state, { type: 'SELECT', slot: 2 })
-    expect(state.run?.combat?.selected).toEqual([4])
-    const slots = state.run!.combat!.selected
-    expect(new Set(slots).size).toBe(slots.length)
-  })
-
-  it('keeps chosen dice across the reroll and throws the rest', () => {
-    const rolled = reduce(intoFirstFight(), { type: 'ROLL' })
-    const chosen = play(rolled, { type: 'SELECT', slot: 0 }, { type: 'SELECT', slot: 3 })
-    const after = reduce(chosen, { type: 'REROLL' })
-    expect(after.run?.combat?.phase).toBe('rerolled')
-    expect(after.run?.combat?.roll).toHaveLength(HAND_SIZE)
-    for (const slot of [0, 3]) {
-      expect(after.run!.combat!.roll.find((d) => d.slot === slot)).toEqual(
-        chosen.run!.combat!.roll.find((d) => d.slot === slot),
-      )
-    }
-    // And a chosen die stays chosen: the mark is one thing, not two.
-    expect(after.run?.combat?.selected).toEqual([0, 3])
-  })
-
-  it('offers only one reroll', () => {
-    const twice = play(intoFirstFight(), { type: 'ROLL' }, { type: 'REROLL' })
-    expect(reduce(twice, { type: 'REROLL' })).toBe(twice)
-  })
-
-  it('will not score nothing', () => {
-    const rolled = reduce(intoFirstFight(), { type: 'ROLL' })
-    expect(reduce(rolled, { type: 'SCORE' })).toBe(rolled)
-  })
-
-  it('lands the damage the preview showed', () => {
-    const chosen = play(
-      intoFirstFight(),
-      { type: 'ROLL' },
-      { type: 'SELECT', slot: 0 },
-      { type: 'SELECT', slot: 1 },
-      { type: 'SELECT', slot: 2 },
-    )
-    const combat = chosen.run!.combat!
-    const shown = preview(selectionOf(combat), chosen.run!.relics, combat.spentHands)
-    const after = reduce(chosen, { type: 'SCORE' })
-    expect(after.run!.combat!.enemyHp).toBe(combat.enemyHp - shown.damage)
-  })
-
-  it('returns to the top of the next turn with a clean table', () => {
-    const after = play(
-      intoFirstFight(),
-      { type: 'ROLL' },
-      { type: 'SELECT', slot: 0 },
-      { type: 'SCORE' },
-    )
-    const combat = after.run!.combat!
-    expect(combat.phase).toBe('intent')
-    expect(combat.turn).toBe(1)
-    expect(combat.roll).toEqual([])
-    expect(combat.selected).toEqual([])
-  })
-
-  it('takes the enemy blow, less armour', () => {
-    const bare = play(intoTradingFight(), { type: 'ROLL' }, { type: 'SELECT', slot: 0 }, { type: 'SCORE' })
-    const rake = intentAt('marrow', 0).damage
-    expect(rake).toBeGreaterThan(0)
-    expect(bare.run!.hp).toBe(MAX_HP - rake)
-
-    const armoured = play(
-      { ...intoTradingFight(), run: { ...intoTradingFight().run!, relics: ['plate'] } },
-      { type: 'ROLL' },
-      { type: 'SELECT', slot: 0 },
-      { type: 'SCORE' },
-    )
-    expect(armoured.run!.hp).toBe(MAX_HP - (rake - 2))
-  })
-})
-
-/** A fight one blow from over, on a chosen seed. */
-const fightAt = (enemyHp: number, hp: number, seed = 1): GameState => {
-  const rolled = reduce(intoFirstFight(seed), { type: 'ROLL' })
-  const combat = rolled.run!.combat!
-  return {
-    ...rolled,
-    run: { ...rolled.run!, hp, combat: { ...combat, enemyHp, selected: [0, 1, 2, 3, 4, 5] } },
   }
+  throw new Error('a fight ran past its guard')
 }
 
 /**
- * That fight, won.
+ * Walk one room on, by the label the map put on the button.
  *
- * Two presses rather than one, because the Gnawing's death is played: SCORE
- * parks the fight on the picture of it dying and `DEFEAT_DONE` is what turns
- * that into the win. Every assertion below is about the win, and the win is
- * the same one either way — see `test/unit/defeat.test.ts` for the hold
- * itself.
+ * The route is generated now, so a test cannot name the room it is going to —
+ * only the way it is taking. That is exactly what a player can do, which makes
+ * it the honest thing for a journey to assert against.
  */
-const wonAt = (enemyHp: number, hp: number, seed = 1): GameState =>
-  play(fightAt(enemyHp, hp, seed), { type: 'SCORE' }, { type: 'DEFEAT_DONE' })
-
-/** The same, against something that answers with a blow rather than a step. */
-const tradingFightAt = (enemyHp: number, hp: number, seed = 1): GameState => {
-  const rolled = reduce(intoTradingFight(seed), { type: 'ROLL' })
-  const combat = rolled.run!.combat!
-  return {
-    ...rolled,
-    run: { ...rolled.run!, hp, combat: { ...combat, enemyHp, selected: [0, 1, 2, 3, 4, 5] } },
-  }
+function walk(state: GameState, label?: string): GameState {
+  const exits = roomAt(state.run!).exits
+  const chosen = label ? exits.find((e) => e.label === label) : exits[0]
+  if (!chosen) throw new Error(`no way on${label ? ` labelled ${label}` : ''}`)
+  return reduce(state, { type: 'GO', to: chosen.to })
 }
 
-/** The first seed whose winning blow does, or does not, drop something. */
-const seedWhere = (dropped: boolean): number => {
-  for (let seed = 1; seed < 400; seed++) {
-    if ((wonAt(1, MAX_HP, seed).mode === 'reward') === dropped) return seed
+/** Walk until the run is standing in a room built from a named template. */
+function walkTo(state: GameState, templateId: string, guard = 12): GameState {
+  let now = state
+  for (let step = 0; step < guard; step++) {
+    if (roomAt(now.run!).id === templateId) return now
+    const before = now.run!.roomId
+    now = walk(now)
+    if (now.run!.roomId === before) break
   }
-  throw new Error(`no seed in 400 produces dropped=${dropped}`)
+  throw new Error(`never reached ${templateId}`)
 }
 
-describe('the outcome', () => {
+/** Take whatever is offered, or leave it, and get back to the room. */
+function clearReward(state: GameState, take = true): GameState {
+  if (state.mode !== 'reward') return state
+  const first = state.run!.offer![0]!
+  return reduce(state, take ? { type: 'TAKE', id: first } : { type: 'SKIP' })
+}
 
-  it('never lets a dead enemy act', () => {
-    const nearly = fightAt(1, MAX_HP)
-    const out = resolve(nearly.run!, nearly.run!.combat!)
-    expect(out.won).toBe(true)
-    expect(out.blow).toBeUndefined()
-    expect(out.hp).toBe(MAX_HP)
-  })
-
-  it('goes to the reward screen when a win drops something, with combat gone', () => {
-    const after = wonAt(1, MAX_HP, seedWhere(true))
-    expect(after.mode).toBe('reward')
-    expect(after.run?.combat).toBeUndefined()
-    expect(after.run?.offer?.length).toBe(2)
-    expect(new Set(after.run!.offer).size).toBe(2)
-  })
-
-  it('goes straight back to the room when a win drops nothing, and says so', () => {
-    const after = wonAt(1, MAX_HP, seedWhere(false))
-    expect(after.mode).toBe('explore')
-    expect(after.run?.offer).toBeUndefined()
-    expect(after.run?.combat).toBeUndefined()
-    expect(after.run?.cleared).toContain(after.run!.roomId)
-    // Not a vague sentence that could mean the reward screen failed to open.
-    expect(after.run?.say).toContain('Nothing useful on it')
-  })
-
-  it('always sets mode dead when health reaches zero, and says why', () => {
-    const after = reduce(tradingFightAt(9999, 3), { type: 'SCORE' })
-    expect(after.mode).toBe('dead')
-    expect(after.run?.hp).toBe(0)
-    expect(after.run?.cause).toBeTruthy()
-  })
-
-  it('offers nothing already carried', () => {
-    const won = wonAt(1, MAX_HP, seedWhere(true))
-    const withRelic = {
-      ...won,
-      run: { ...won.run!, relics: ['knuckle'], offer: won.run!.offer! },
-    }
-    const taken = reduce(withRelic, { type: 'TAKE', id: withRelic.run!.offer![0]! })
-    expect(taken.mode).toBe('explore')
-    expect(taken.run?.offer).toBeUndefined()
-  })
-
-  it('equips a taken die into the six and keeps the hand at six', () => {
-    const won = wonAt(1, MAX_HP, seedWhere(true))
-    const dieOffer = won.run!.offer!.find((id) => id === 'careful' || id === 'leech' || id === 'pusher' || id === 'runner')
-    const id = dieOffer ?? won.run!.offer![0]!
-    const taken = reduce(won, { type: 'TAKE', id })
-    expect(taken.run?.dice).toHaveLength(HAND_SIZE)
-    if (dieOffer) expect(taken.run?.dice).toContain(dieOffer)
-  })
-})
-
-describe('the doors of the machine', () => {
-  it('boots to the title with no run', () => {
+describe('the door', () => {
+  it('opens on the title with nothing behind it', () => {
     expect(TITLE.mode).toBe('title')
     expect(TITLE.run).toBeUndefined()
     expect(TITLE.version).toBe(SAVE_VERSION)
   })
 
-  it('will not continue into nothing', () => {
-    expect(reduce(TITLE, { type: 'CONTINUE' })).toBe(TITLE)
+  it('starts a run in one press, standing in the first room', () => {
+    const started = reduce(TITLE, { type: 'START_RUN', seed: 1 })
+    expect(started.mode).toBe('explore')
+    expect(started.run!.roomId).toBe(started.run!.map.start)
+    expect(totalBones(started.run!)).toBe(BONE_CEILING)
+    expect(started.meta.runs).toBe(1)
   })
 
-  it('continues back to exactly the mode it left', () => {
-    const fighting = intoFirstFight()
-    const parked = reduce(fighting, { type: 'TITLE' })
-    expect(parked.mode).toBe('title')
-    expect(reduce(parked, { type: 'CONTINUE' }).mode).toBe('combat')
+  it('offers CONTINUE only when there is somewhere live to go back to', () => {
+    const running = reduce(TITLE, { type: 'START_RUN', seed: 1 })
+    const back = reduce(running, { type: 'TITLE' })
+    expect(back.resume).toBe('explore')
+    expect(reduce(back, { type: 'CONTINUE' }).mode).toBe('explore')
+
+    // A run that has ended is not somewhere the door may send you.
+    const dead: GameState = { ...running, mode: 'dead' }
+    expect(reduce(dead, { type: 'TITLE' }).resume).toBeUndefined()
   })
 
-  it('does not continue back into a run that ended', () => {
-    const state = intoTradingFight()
-    const rolled = reduce(state, { type: 'ROLL' })
-    const doomed = {
-      ...rolled,
-      run: { ...rolled.run!, hp: 1, combat: { ...rolled.run!.combat!, enemyHp: 9999, selected: [0] } },
+  it('leaves nothing of the old run behind', () => {
+    // The invariant the stuck-on-death bug turned on.
+    const dead: GameState = {
+      ...reduce(TITLE, { type: 'START_RUN', seed: 1 }),
+      mode: 'dead',
     }
-    const dead = reduce(doomed, { type: 'SCORE' })
-    expect(dead.mode).toBe('dead')
-    // The door does not offer to send you back into a run that is over, so
-    // CONTINUE has nowhere to go and the title stays up.
-    const parked = reduce(dead, { type: 'TITLE' })
-    expect(parked.resume).toBeUndefined()
-    expect(reduce(parked, { type: 'CONTINUE' }).mode).toBe('title')
-  })
-
-  it('reaches complete by walking out', () => {
-    const out = goTo(toPassage(), 'hollow')
-    const hollow = nodeOf(out, 'hollow')
-    const cleared = { ...out, run: { ...out.run!, cleared: [hollow] } }
-    let done = goTo(cleared, 'sanctuary')
-    // The chapel is on the way out, and it is used on the way past.
-    done = reduce(done, { type: 'RITUAL_ROLL' })
-    // The Reliquary is on the way out too — and is walked straight through
-    // without a single one of its objects being touched, which is the whole
-    // claim the room makes about itself.
-    done = goTo(done, 'reliquary')
-    done = goTo(done, 'fork')
-    done = goTo(done, 'gate')
-    const gate = nodeOf(done, 'gate')
-    const past = { ...done, run: { ...done.run!, cleared: [hollow, gate] } }
-    const finished = goTo(past, 'exit')
-    expect(finished.mode).toBe('complete')
-    expect(finished.meta.wins).toBe(1)
-  })
-
-  it('looks for free, and answers every time', () => {
-    const state = start()
-    for (const detail of roomAt(state.run!).details) {
-      const looked = reduce(state, { type: 'LOOK', detailId: detail.id })
-      expect(looked.run?.say).toBe(detail.says)
-      expect(looked.run?.hp).toBe(state.run?.hp)
-    }
+    const again = reduce(dead, { type: 'START_RUN', seed: 2 })
+    expect(again.run!.combat).toBeUndefined()
+    expect(again.run!.offer).toBeUndefined()
+    expect(again.run!.cause).toBeUndefined()
+    expect(again.resume).toBeUndefined()
   })
 })
 
-describe('the enemies', () => {
-  it('declares an intent for every turn of every fight', () => {
-    for (const e of Object.values(ENEMIES)) {
-      expect(e.script.length).toBeGreaterThan(0)
-      for (let turn = 0; turn < 40; turn++) {
-        const intent = intentAt(e.id, turn)
-        expect(intent.verb.length).toBeGreaterThan(0)
-        expect(intent.explain.length).toBeGreaterThan(0)
-        expect(intent.damage).toBeGreaterThanOrEqual(0)
+describe('the short route', () => {
+  it('goes door to exit on real presses', () => {
+    let state = reduce(TITLE, { type: 'START_RUN', seed: 6 })
+    state = walkTo(state, 'hollow')
+
+    // The Gnawing. A room with a living enemy has no exits, whatever the map
+    // put behind it.
+    const onward = roomAt(state.run!).exits[0]!
+    expect(reduce(state, { type: 'GO', to: onward.to })).toBe(state)
+    const cleared = state.run!.roomId
+    state = clearReward(fightItOut(reduce(state, { type: 'FIGHT' })))
+    if (state.mode === 'dead') return
+    // Cleared is keyed by **node**, because two hollows in one descent would
+    // be two fights.
+    expect(state.run!.cleared).toContain(cleared)
+
+    // The Font. Its exit is withheld until it has answered.
+    state = walkTo(state, 'sanctuary')
+    const past = roomAt(state.run!).exits[0]!
+    expect(reduce(state, { type: 'GO', to: past.to })).toBe(state)
+    state = reduce(state, { type: 'RITUAL_ROLL' })
+
+    // On to the boss, whichever way the director laid the middle out.
+    state = walkTo(state, 'gate')
+
+    // The Warden, and the door behind it.
+    state = clearReward(fightItOut(reduce(state, { type: 'FIGHT' })))
+    if (state.mode === 'dead') return
+    state = walk(state)
+    expect(state.mode).toBe('complete')
+    expect(state.meta.wins).toBe(1)
+  })
+})
+
+describe('the deep route', () => {
+  it('goes through the vault and the Marrow', () => {
+    let state = reduce(TITLE, { type: 'START_RUN', seed: 21 })
+    state = walkTo(state, 'hollow')
+    state = clearReward(fightItOut(reduce(state, { type: 'FIGHT' })))
+    if (state.mode === 'dead') return
+    state = walkTo(state, 'sanctuary')
+    state = reduce(state, { type: 'RITUAL_ROLL' })
+
+    // The fork, and the way the director labelled DEEP.
+    state = walkTo(state, 'fork')
+    state = walk(state, 'DEEP')
+    expect(roomAt(state.run!).id).toBe('chain-vault')
+
+    // A shut gate holds the exits, in state, so no dispatch can walk past it.
+    const out = roomAt(state.run!).exits[0]!
+    expect(reduce(state, { type: 'GO', to: out.to })).toBe(state)
+    state = play(
+      state,
+      { type: 'INTERACT', interactionId: 'vault-chain' },
+      { type: 'INTERACT', interactionId: 'vault-lever' },
+    )
+    state = walk(state)
+    expect(roomAt(state.run!).id).toBe('deep')
+
+    const before = state.run!.vials
+    state = fightItOut(reduce(state, { type: 'FIGHT' }))
+    if (state.mode === 'dead') return
+    // The Marrow always leaves a Vial, offer or no offer.
+    expect(state.run!.vials).toBe(before + 1)
+  })
+})
+
+describe('every room can be left', () => {
+  it('gives every generated node a way on, or an ending', () => {
+    // The claim moved with the topology: a *template* has no exits at all
+    // any more, so the thing that must not be a dead end is a node of the
+    // generated map.
+    for (const seed of [1, 2, 3, 44, 900]) {
+      const run = reduce(TITLE, { type: 'START_RUN', seed }).run!
+      for (const node of Object.values(run.map.nodes)) {
+        const here = roomAt(run, node.id)
+        expect(
+          here.exits.length > 0 || here.ending !== undefined,
+          `seed ${seed}: ${node.id} (${node.templateId}) is a dead end`,
+        ).toBe(true)
       }
     }
   })
 
-  it('teaches one thing at a time', () => {
-    // The first enemy has no special rule at all; the boss introduces none.
-    expect(ENEMIES['gnawing']!.script.some((i) => i.telegraph)).toBe(false)
-    const taught = new Set<string>()
-    for (const i of ENEMIES['marrow']!.script) if (i.telegraph) taught.add('telegraph')
-    for (const i of ENEMIES['warden']!.script) if (i.telegraph) expect(taught.has('telegraph')).toBe(true)
+  it('never generates a map the validator rejects', () => {
+    for (const seed of [1, 2, 3, 44, 900, 12345]) {
+      const run = reduce(TITLE, { type: 'START_RUN', seed }).run!
+      expect(validateRun(run.map), `seed ${seed}`).toEqual([])
+    }
   })
 
-  it('states the number a telegraphed blow will land for', () => {
-    for (const e of Object.values(ENEMIES)) {
-      e.script.forEach((intent, index) => {
-        if (!intent.telegraph) return
-        const next = e.script[(index + 1) % e.script.length]!
-        expect(intent.explain).toContain(String(next.damage))
-      })
+  it('leads only to nodes that exist', () => {
+    const run = reduce(TITLE, { type: 'START_RUN', seed: 7 }).run!
+    for (const node of Object.values(run.map.nodes)) {
+      for (const exit of roomAt(run, node.id).exits) {
+        expect(run.map.nodes[exit.to], `${node.id} → ${exit.to}`).toBeDefined()
+      }
+    }
+  })
+
+  it('refuses an exit the room does not have', () => {
+    const state = reduce(TITLE, { type: 'START_RUN', seed: 1 })
+    expect(reduce(state, { type: 'GO', to: nodeOf(state.run!, 'gate') })).toBe(state)
+  })
+
+  it('gives every authored template a backdrop and an arrival', () => {
+    for (const r of ROOM_LIBRARY) {
+      expect(r.art, `${r.id} has no backdrop`).toBeTruthy()
+      expect(r.arrival.length, `${r.id} says nothing on arrival`).toBeGreaterThan(10)
     }
   })
 })
 
-describe('how often a fight pays', () => {
-  /** Whether the winning blow on this seed dropped anything. */
-  const dropped = (seed: number): boolean =>
-    wonAt(1, MAX_HP, seed).mode === 'reward'
+describe('the run can end', () => {
+  it('dies when the last bone breaks, and says what took it', () => {
+    let state = reduce(TITLE, { type: 'START_RUN', seed: 3 })
+    state = walkTo(state, 'hollow')
+    // One bone, one round. Whatever happens, the run cannot survive losing it.
+    state = { ...state, run: { ...state.run!, commonBones: 1 } }
+    state = fightItOut(reduce(state, { type: 'FIGHT' }))
+    if (state.mode !== 'dead') return
+    expect(totalBones(state.run!)).toBe(0)
+    expect(state.run!.cause).toBeTruthy()
+    // And the death screen has a way out that is not a reload.
+    expect(reduce(state, { type: 'START_RUN', seed: 4 }).mode).toBe('explore')
+    expect(reduce(state, { type: 'TITLE' }).mode).toBe('title')
+  })
 
-  const SEEDS = Array.from({ length: 300 }, (_, i) => i + 1)
+  it('never fights with nothing left to field', () => {
+    const state = reduce(TITLE, { type: 'START_RUN', seed: 1 })
+    const empty: GameState = {
+      ...state,
+      run: {
+        ...state.run!,
+        roomId: nodeOf(state.run!, 'hollow'),
+        commonBones: 0,
+        specials: [],
+      },
+    }
+    expect(reduce(empty, { type: 'FIGHT' })).toBe(empty)
+  })
+})
 
-  it('is a pure function of the run: the same seed drops the same thing', () => {
-    for (const seed of SEEDS.slice(0, 40)) {
-      const a = wonAt(1, MAX_HP, seed)
-      const b = wonAt(1, MAX_HP, seed)
-      expect(a.mode).toBe(b.mode)
-      expect(a.run?.offer).toEqual(b.run?.offer)
+describe('the save', () => {
+  const storage = (): Storage => {
+    const map = new Map<string, string>()
+    return {
+      getItem: (k) => map.get(k) ?? null,
+      setItem: (k, v) => void map.set(k, v),
+      removeItem: (k) => void map.delete(k),
+      clear: () => map.clear(),
+      key: () => null,
+      get length() {
+        return map.size
+      },
+    } as Storage
+  }
+
+  it('boots to the title, whatever it was doing', () => {
+    const store = storage()
+    const fighting = reduce(
+      walkTo(reduce(TITLE, { type: 'START_RUN', seed: 1 }), 'hollow'),
+      { type: 'FIGHT' },
+    )
+    save(fighting, store)
+    const { state } = load(store)
+    expect(state.mode).toBe('title')
+    expect(state.resume).toBe('combat')
+    // And one press is back where the run stood, mid-round.
+    expect(reduce(state, { type: 'CONTINUE' }).run!.combat!.phase).toBe('thrown')
+  })
+
+  it('discards a save from the game this replaced', () => {
+    const store = storage()
+    // **Both** of the shapes that reached 7 are discarded: the generated map
+    // and the War of Bones arrived at that number independently, so a save
+    // claiming 7 could be either and this build can read neither.
+    for (const version of [6, 7]) {
+      store.setItem('castlebrynth', JSON.stringify({ version, mode: 'combat', meta: {} }))
+      const { state, discarded } = load(store)
+      expect(discarded, `version ${version}`).toBe('incompatible')
+      expect(state.run).toBeUndefined()
+    }
+    expect(SAVE_VERSION).toBe(8)
+  })
+
+  it('survives an empty and a corrupt store', () => {
+    const store = storage()
+    expect(load(store).state.mode).toBe('title')
+    store.setItem('castlebrynth', 'not json')
+    expect(load(store).discarded).toBe('corrupt')
+    wipe(store)
+    expect(load(store).state.mode).toBe('title')
+  })
+
+  it('holds no animation state', () => {
+    // Nothing about a transition may be written. A reload lands on a settled
+    // frame by construction, not by a clock being recovered.
+    const store = storage()
+    const smashed = play(
+      reduce(
+        walkTo(reduce(TITLE, { type: 'START_RUN', seed: 8 }), 'hollow'),
+        { type: 'FIGHT' },
+      ),
+      { type: 'FIELD', width: 4, specialIds: [] },
+      { type: 'THROW' },
+      { type: 'SMASH' },
+    )
+    save(smashed, store)
+    const raw = store.getItem('castlebrynth')!
+    for (const forbidden of ['frame', 'elapsed', 'animating', 'startedAt']) {
+      expect(raw, `the save carries ${forbidden}`).not.toContain(`"${forbidden}"`)
     }
   })
+})
 
-  it('sometimes pays and sometimes does not', () => {
-    const paid = SEEDS.filter(dropped).length
-    expect(paid, 'the Gnawing never drops').toBeGreaterThan(0)
-    expect(paid, 'the Gnawing always drops').toBeLessThan(SEEDS.length)
-    // The declared chance, within sampling noise on 300 seeds.
-    const rate = paid / SEEDS.length
-    expect(rate).toBeGreaterThan(enemy('gnawing').rewardChance - 0.12)
-    expect(rate).toBeLessThan(enemy('gnawing').rewardChance + 0.12)
+describe('determinism', () => {
+  it('a seed replays exactly', () => {
+    const once = fightItOut(
+      reduce(
+        walkTo(reduce(TITLE, { type: 'START_RUN', seed: 44 }), 'hollow'),
+        { type: 'FIGHT' },
+      ),
+    )
+    const twice = fightItOut(
+      reduce(
+        walkTo(reduce(TITLE, { type: 'START_RUN', seed: 44 }), 'hollow'),
+        { type: 'FIGHT' },
+      ),
+    )
+    expect(once).toEqual(twice)
   })
 
-  it('never offers more than the enemy declares', () => {
-    for (const seed of SEEDS) {
-      const won = wonAt(1, MAX_HP, seed)
-      if (won.mode !== 'reward') continue
-      expect(won.run!.offer!.length).toBeLessThanOrEqual(enemy('gnawing').rewardChoices)
-      expect(won.run!.offer!.length).toBeGreaterThan(0)
-    }
+  it('two seeds do not', () => {
+    const runOf = (seed: number): GameState =>
+      reduce(
+        walkTo(reduce(TITLE, { type: 'START_RUN', seed }), 'hollow'),
+        { type: 'FIGHT' },
+      )
+    expect(runOf(1).run!.combat!.enemyLine).not.toEqual(runOf(2).run!.combat!.enemyLine)
   })
 
-  it('gives the boss nothing to drop, on any seed', () => {
-    for (const seed of SEEDS.slice(0, 60)) {
-      expect(offerFor(newRun(seed), 'warden', new Rng(seed))).toEqual([])
-    }
-  })
-
-  it('makes the optional fight the better-paying one', () => {
-    expect(enemy('marrow').rewardChance).toBeGreaterThan(enemy('gnawing').rewardChance)
+  it('a new run carries the same opening pile whatever the seed', () => {
+    for (const seed of [1, 2, 3, 999]) expect(totalBones(newRun(seed))).toBe(BONE_CEILING)
   })
 })

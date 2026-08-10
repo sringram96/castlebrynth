@@ -33,12 +33,29 @@ npm run balance      # deterministic fight simulation
   UI panel — without a product decision.
 - **Game state is pure data. Rendering never decides outcomes.**
 - **Animations reveal committed outcomes.** They never contain game logic and
-  never roll dice.
+  never throw a bone.
 - **Every interactive change needs a mobile browser test.**
 - **Every content item must be understandable from the shipped UI.** Comments
   and docs are not player explanation.
 - **If a playtest says the game is broken while tests are green, the tests are
   wrong.** Fix the suite, then the bug.
+
+### And, since the War of Bones
+
+- **No hit points, under any name.** Not `hp`, not a compatibility field, not a
+  bone counter that behaves like a health bar. Life is a pile of objects and
+  what happens to it is that objects break.
+- **No damage number.** A lane is won by breaking one of its bones, and that
+  bone is on screen breaking. There is no figure to raise off the enemy.
+- **One player throw.** No HOLD, no general REROLL. A Charm is the only rethrow
+  in the game and it is once per fight.
+- **No manual lane order.** Both lines sort themselves, and the sort is a rule
+  that lives in `combat/line.ts` — not in DOM order, and not in array order.
+- **Art completeness is a feature-completion gate.** Every enemy has a visible
+  end; a bone family ships whole or not at all.
+- **Asset bytes are reported, not capped.** There is no global payload ceiling
+  and one is not to be reintroduced under another name. See
+  `docs/ART_DIRECTION.md`.
 
 ## The input contract
 
@@ -64,9 +81,9 @@ src/
   app/           root controller, mode router, action dispatcher
   game/          GameState, the reducer, new runs, saves,
                  the dungeon director and the map it makes
-  combat/        dice, scoring, resolution, enemy intent
+  combat/        fielding, throwing, sorting, the smash
   exploration/   moving, looking, rewards
-  content/       dice, relics, enemies, room templates, run plans, copy, assets
+  content/       bones, rewards, enemies, room templates, run plans, copy, assets
   render/        the fixed-order compositor and asset loading
   ui/            views and components
 test/
@@ -117,5 +134,7 @@ a plan. Neither requires touching the other, and that is the test.
 - The relevant Playwright journey green.
 - No new dependency on `archive/`.
 - No unexplained increase in player-facing nouns.
-- No global art payload ceiling. Art is validated, never budgeted — see
+- Runtime asset payload **reported** in the description when it moves — the
+  number is evidence for a reader, not a gate for a build. There is no global
+  art payload ceiling; art is validated, never budgeted — see
   `docs/ART_DIRECTION.md`.

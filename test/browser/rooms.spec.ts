@@ -14,11 +14,37 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 
-import { act, boot, screenName, settled, state, tappable, wayTo, where } from './helpers.js'
+import {
+  act,
+  boot,
+  livingBones,
+  screenName,
+  settled,
+  state,
+  tappable,
+  wayTo,
+  where,
+} from './helpers.js'
 import { fightItOut } from './play.js'
 
 const say = (page: Page) => page.locator('#say')
-const hp = (page: Page) => page.locator('#hp')
+const pile = (page: Page) => page.locator('#pile')
+
+/**
+ * What the run is carrying that a chest could have given it.
+ *
+ * There is no relic row any more: a found thing is either a named bone in the
+ * pouch or a charge in the satchel, so "what did the chest pay" is a count
+ * across all three rather than one array.
+ */
+function carried(now: Awaited<ReturnType<typeof state>>): string[] {
+  const run = now.run!
+  return [
+    ...run.specials.map((s) => s.specialId),
+    ...Array.from({ length: run.charms }, () => 'charm'),
+    ...Array.from({ length: run.vials }, () => 'vial'),
+  ]
+}
 
 /** One of the room's objects, by the id the reducer switches on. */
 const thing = (page: Page, id: string) => page.locator(`[data-interact="${id}"]`)
@@ -107,9 +133,14 @@ test.describe('the Reliquary', () => {
     await expect(thing(page, 'reliquary-chest')).toHaveCount(0)
 
     const after = await state(page)
-    expect(after.run?.relics).toHaveLength(1)
-    // The relic is carried, and it is on the tray where every relic is.
-    await expect(page.locator(`.relic[data-relic-id="${after.run!.relics[0]}"]`)).toBeVisible()
+    expect(carried(after)).toHaveLength(1)
+    // It is carried, and it is somewhere the player can see without opening
+    // anything: a charge on its satchel bay, or a bone in the pouch count.
+    const found = carried(after)[0]!
+    const bay = found === 'charm' || found === 'vial' ? found : 'pouch'
+    await expect(page.locator(`.satchel-slot[data-slot-id="${bay}"] .satchel-count`)).toHaveText(
+      '1',
+    )
   })
 
   test('cannot be made to pay twice by an impatient thumb', async ({ page }) => {
@@ -123,7 +154,7 @@ test.describe('the Reliquary', () => {
     await take.click()
     await take.click({ timeout: 2000 }).catch(() => {})
     await settled(page)
-    expect((await state(page)).run?.relics).toHaveLength(1)
+    expect(carried(await state(page))).toHaveLength(1)
     await expect(thing(page, 'reliquary-chest')).toHaveCount(0)
   })
 
@@ -132,7 +163,7 @@ test.describe('the Reliquary', () => {
     await act(page, 'go').click()
     expect(await where(page)).toBe('fork')
     // Untouched and unpunished.
-    expect((await state(page)).run?.hp).toBe(100)
+    expect(await livingBones(page)).toBe(30)
     await expect(act(page, 'go')).toHaveCount(2)
   })
 })
@@ -157,16 +188,16 @@ test.describe('the Chain Vault', () => {
     await tappable(page, thing(page, 'vault-lever'))
   })
 
-  test('costs six health for a lever pulled against nothing', async ({ page }) => {
+  test('costs one bone for a lever pulled against nothing', async ({ page }) => {
     await boot(page, '?room=chain-vault&seed=3')
-    await expect(hp(page)).toHaveText('100')
+    await expect(pile(page)).toHaveText('30')
 
     await thing(page, 'vault-lever').click()
     await expect(say(page)).toContainText('The mechanism snaps back')
-    await expect(hp(page)).toHaveText('94')
+    await expect(pile(page)).toHaveText('29')
     // And it bought nothing: still shut, still no way on.
     await expect(act(page, 'go')).toHaveCount(0)
-    expect((await state(page)).run?.hp).toBe(94)
+    expect(await livingBones(page)).toBe(29)
   })
 
   test('opens the gate for cage, then lever — and lets you out', async ({ page }) => {
@@ -181,7 +212,7 @@ test.describe('the Chain Vault', () => {
     await thing(page, 'vault-lever').click()
     await expect(say(page)).toContainText('The gate rises')
     // Cost nothing, and the machinery is spent.
-    await expect(hp(page)).toHaveText('100')
+    await expect(pile(page)).toHaveText('30')
     await expect(thing(page, 'vault-chain')).toHaveCount(0)
     await expect(thing(page, 'vault-lever')).toHaveCount(0)
 
@@ -194,7 +225,7 @@ test.describe('the Chain Vault', () => {
   })
 
   test('can kill you, and lands on the death the game already has', async ({ page }) => {
-    await boot(page, '?room=chain-vault&hp=6&seed=3')
+    await boot(page, '?room=chain-vault&bones=1&seed=3')
     await thing(page, 'vault-lever').click()
     expect(await screenName(page)).toBe('dead')
     await expect(page.locator('#screen')).toContainText('The chain mechanism')
@@ -225,7 +256,7 @@ test.describe('the deep route, end to end', () => {
   })
 
   test('puts the Reliquary between the chapel and the fork', async ({ page }) => {
-    await boot(page, '?room=sanctuary&hp=40&seed=3')
+    await boot(page, '?room=sanctuary&bones=12&seed=3')
     await act(page, 'ritual').click()
     await act(page, 'go').click()
     expect(await where(page)).toBe('reliquary')
@@ -244,7 +275,7 @@ test.describe('the deep route, end to end', () => {
 test.describe('with motion reduced', () => {
   test.use({ reducedMotion: 'reduce' })
 
-  test('solves the Reliquary to the same relic, in the same tick', async ({ page }) => {
+  test('solves the Reliquary to the same reward, in the same tick', async ({ page }) => {
     await boot(page, '?room=reliquary&seed=3', { motion: true })
     await thing(page, 'reliquary-bell').click()
     await thing(page, 'reliquary-brazier').click()
@@ -252,7 +283,7 @@ test.describe('with motion reduced', () => {
     await thing(page, 'reliquary-chest').click()
 
     const after = await state(page)
-    expect(after.run?.relics).toHaveLength(1)
+    expect(carried(after)).toHaveLength(1)
     await expect(say(page)).toContainText('Inside:')
     await expect(act(page, 'go')).toBeVisible()
 
@@ -268,19 +299,19 @@ test.describe('with motion reduced', () => {
     await expect(plate(page, 'reliquary-brazier')).toHaveAttribute('data-look', 'out')
     await expect(plate(page, 'reliquary-chest')).toHaveAttribute('data-look', 'open')
 
-    // The same seed and the same history reach the same relic with motion on.
+    // The same seed and the same history reach the same reward with motion on.
     await boot(page, '?room=reliquary&seed=3&reliquary=solved')
-    expect((await state(page)).run?.relics).toEqual(after.run?.relics)
+    expect(carried(await state(page))).toEqual(carried(after))
   })
 
-  test('opens the vault, and charges the same six for getting it wrong', async ({ page }) => {
+  test('opens the vault, and charges the same one bone for getting it wrong', async ({ page }) => {
     await boot(page, '?room=chain-vault&seed=3', { motion: true })
     await thing(page, 'vault-lever').click()
-    await expect(hp(page)).toHaveText('94')
+    await expect(pile(page)).toHaveText('29')
 
     await thing(page, 'vault-chain').click()
     await thing(page, 'vault-lever').click()
-    await expect(hp(page)).toHaveText('94')
+    await expect(pile(page)).toHaveText('29')
     await expect(act(page, 'go')).toBeVisible()
     await act(page, 'go').click()
     expect(await where(page)).toBe('deep')
@@ -426,7 +457,7 @@ test.describe('the room is art, and the art is not the interface', () => {
     // Nothing is left mid-move, because no move was ever started.
     for (const id of OBJECTS) await expect(plate(page, id)).not.toHaveAttribute('data-move', /.*/)
     await thing(page, 'reliquary-chest').click()
-    expect((await state(page)).run?.relics).toHaveLength(1)
+    expect(carried(await state(page))).toHaveLength(1)
     await expect(act(page, 'go')).toBeVisible()
   })
 })
@@ -474,7 +505,7 @@ test.describe('across a real reload', () => {
 
     const after = await state(page)
     expect(await where(page)).toBe('reliquary')
-    expect(after.run!.relics).toEqual(before.run!.relics)
+    expect(carried(after)).toEqual(carried(before))
     // Nothing left to press, and nothing that could pay a second time.
     for (const id of ['reliquary-bell', 'reliquary-lever', 'reliquary-chest']) {
       await expect(thing(page, id)).toHaveCount(0)

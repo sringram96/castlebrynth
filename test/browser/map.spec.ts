@@ -141,16 +141,17 @@ test.describe('room state belongs to the room, not to the kind of room', () => {
   })
 
   test('files a cleared fight and a spent font under their nodes', async ({ page }) => {
-    await boot(page, '?room=sanctuary&hp=40')
+    await boot(page, '?room=sanctuary&bones=12')
     await act(page, 'ritual').click()
     const chapel = await state(page)
     expect(chapel.run!.ritual!.roomId).toBe(chapel.run!.roomId)
     expect(chapel.run!.ritual!.roomId).not.toBe('sanctuary')
 
-    await boot(page, '?room=hollow&enemyHp=1&seed=1')
-    await act(page, 'roll').click()
-    await page.locator('#crown .die').nth(0).click()
-    await act(page, 'score').click()
+    // The same for a fight: what is filed is the room it happened in, not the
+    // authored place it looked like.
+    // `dying=1` stands in the beat after the smash that finished it, and the
+    // kill was committed by that smash — so the record is already written.
+    await boot(page, '?room=hollow&dying=1')
     const felled = await state(page)
     expect(felled.run!.cleared).toContain(felled.run!.roomId)
     expect(felled.run!.cleared).not.toContain('hollow')

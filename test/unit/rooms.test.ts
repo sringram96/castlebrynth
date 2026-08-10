@@ -17,33 +17,32 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { MAX_HP, VAULT_BACKLASH, newRun, reduce } from '../../src/game/reducer.js'
+import { newRun, reduce } from '../../src/game/reducer.js'
 import { SAVE_VERSION, TITLE } from '../../src/game/state.js'
-import type { GameState, RoomInteractionState, RunState } from '../../src/game/state.js'
+import type { GameState, RoomInteractionState } from '../../src/game/state.js'
 import { load, save } from '../../src/game/save.js'
-import { LOOT_RELICS } from '../../src/content/relics.js'
-import { firstNodeOf, roomAt } from '../../src/game/map.js'
+import { LOOT_REWARDS, reward } from '../../src/content/rewards.js'
+import { BONE_CEILING, totalBones } from '../../src/content/bones.js'
+import { roomAt } from '../../src/game/map.js'
+import { nodeOf } from './where.js'
 import { actionFor, initialRoomState, stateOf } from '../../src/content/interactions.js'
 
 /**
- * The node of a run that used a named authored template.
+ * Standing in a room, mid-run, with nothing in it touched.
  *
- * Named by template, stood in by node. Both of these rooms are worked rooms,
- * which is exactly where the difference bites: their state is filed under the
- * node, so two Reliquaries in one descent would be two chests.
+ * Named by its authored **template** — the reliquary, the chain vault — and
+ * resolved to whichever node of this run's map used it. A test may not invent
+ * a room; it may only stand in one the director built.
  */
-function nodeOf(run: RunState, templateId: string): string {
-  const found = firstNodeOf(run.map, templateId)
-  if (!found) throw new Error(`this run has no ${templateId}`)
-  return found.id
-}
-
-/** Standing in a room, mid-run, with nothing in it touched. */
-function standingIn(templateId: string, seed = 7, hp = MAX_HP): GameState {
+function standingIn(templateId: string, seed = 7, bones = BONE_CEILING): GameState {
   const run = newRun(seed)
   const roomId = nodeOf(run, templateId)
-  const stood: RunState = { ...run, roomId, hp, path: [...run.path, roomId], say: '' }
-  return { ...TITLE, mode: 'explore', run: { ...stood, say: roomAt(stood).arrival } }
+  const stood = { ...run, roomId, commonBones: bones, path: [...run.path, roomId] }
+  return {
+    ...TITLE,
+    mode: 'explore',
+    run: { ...stood, say: roomAt(stood).arrival },
+  }
 }
 
 /** Where a press has to go, from where the run is standing. */
@@ -52,6 +51,16 @@ const onwardFrom = (state: GameState): string => roomAt(state.run!).exits[0]!.to
 /** The way on from a fork, by the label the player reads. */
 const towards = (state: GameState, label: string): string =>
   roomAt(state.run!).exits.find((e) => e.label === label)!.to
+
+/** What the run is carrying that a chest could have given it. */
+function carried(state: GameState): readonly string[] {
+  const run = state.run!
+  return [
+    ...run.specials.map((s) => s.specialId),
+    ...Array.from({ length: run.charms }, () => 'charm'),
+    ...Array.from({ length: run.vials }, () => 'vial'),
+  ]
+}
 
 const press = (state: GameState, ...ids: readonly string[]): GameState =>
   ids.reduce((s, interactionId) => reduce(s, { type: 'INTERACT', interactionId }), state)
@@ -139,10 +148,10 @@ describe('the Reliquary', () => {
     const shut = press(standingIn('reliquary'), 'reliquary-bell')
     expect(actionFor(roomStateOf(shut), 'reliquary-chest')).toBeUndefined()
     expect(reduce(shut, { type: 'INTERACT', interactionId: 'reliquary-chest' })).toBe(shut)
-    expect(shut.run?.relics).toEqual([])
+    expect(carried(shut)).toEqual([])
   })
 
-  it('gives exactly one relic the run does not already carry', () => {
+  it('gives exactly one thing from the reward pool', () => {
     const took = press(
       standingIn('reliquary'),
       'reliquary-bell',
@@ -150,53 +159,62 @@ describe('the Reliquary', () => {
       'reliquary-lever',
       'reliquary-chest',
     )
-    expect(took.run?.relics).toHaveLength(1)
-    const found = took.run!.relics[0]!
-    // An existing relic. No new species, no new noun.
-    expect(LOOT_RELICS).toContain(found)
+    expect(carried(took)).toHaveLength(1)
+    const found = carried(took)[0]!
+    // Something from the pool the fights draw from. No new species, no new
+    // noun, and no chest-only object.
+    expect(LOOT_REWARDS).toContain(found)
     const claimed = roomStateOf(took)
     expect(claimed.templateId === 'reliquary' && claimed.claimed).toBe(true)
     expect(claimed.templateId === 'reliquary' && claimed.rewardId).toBe(found)
     expect(took.run?.say).toContain('Inside:')
     // Meta remembers it exactly as a reward screen would.
-    expect(took.meta.seenRelics).toContain(found)
+    expect(took.meta.seenRewards).toContain(found)
   })
 
-  it('never offers a relic the run is already carrying', () => {
-    // Every relic but one. The chest has exactly one legal answer.
-    const carrying = LOOT_RELICS.slice(0, LOOT_RELICS.length - 1)
-    const last = LOOT_RELICS[LOOT_RELICS.length - 1]!
+  it('offers a named bone only when there is somewhere to put it', () => {
+    // Thirty named bones and no common one: a Cinderbone has nowhere to go,
+    // and an offer that cannot be taken is not an offer.
     const here = standingIn('reliquary')
-    const loaded: GameState = { ...here, run: { ...here.run!, relics: [...carrying] } }
-    const took = press(loaded, 'reliquary-bell', 'reliquary-brazier', 'reliquary-lever', 'reliquary-chest')
-    expect(took.run?.relics).toEqual([...carrying, last])
-  })
-
-  it('answers an empty chest plainly, and still counts as opened', () => {
-    const here = standingIn('reliquary')
-    const rich: GameState = { ...here, run: { ...here.run!, relics: [...LOOT_RELICS] } }
-    const took = press(rich, 'reliquary-bell', 'reliquary-brazier', 'reliquary-lever', 'reliquary-chest')
-    expect(took.run?.relics).toEqual([...LOOT_RELICS])
-    expect(took.run?.say).toBe('The chest is empty.')
+    const stuffed: GameState = {
+      ...here,
+      run: {
+        ...here.run!,
+        commonBones: 0,
+        specials: Array.from({ length: BONE_CEILING }, (_, i) => ({
+          instanceId: `knuckle#${i}`,
+          specialId: 'knuckle' as const,
+        })),
+        nextSpecialSerial: BONE_CEILING,
+      },
+    }
+    const took = press(
+      stuffed,
+      'reliquary-bell',
+      'reliquary-brazier',
+      'reliquary-lever',
+      'reliquary-chest',
+    )
     const claimed = roomStateOf(took)
-    expect(claimed.templateId === 'reliquary' && claimed.claimed).toBe(true)
-    expect(claimed.templateId === 'reliquary' && claimed.rewardId).toBeUndefined()
+    const found = claimed.templateId === 'reliquary' ? claimed.rewardId : undefined
+    if (found) expect(reward(found).kind).not.toBe('bone')
+    expect(totalBones(took.run!)).toBe(BONE_CEILING)
   })
 
-  it('draws the same relic for the same seed and the same history', () => {
+  it('draws the same thing for the same seed and the same history', () => {
     const solve = (s: GameState): GameState =>
       press(s, 'reliquary-bell', 'reliquary-brazier', 'reliquary-lever', 'reliquary-chest')
-    expect(solve(standingIn('reliquary', 99)).run?.relics).toEqual(
-      solve(standingIn('reliquary', 99)).run?.relics,
+    expect(carried(solve(standingIn('reliquary', 99)))).toEqual(
+      carried(solve(standingIn('reliquary', 99))),
     )
     // And the seed is genuinely what decides it, rather than the pool's order.
     const spread = new Set(
-      Array.from({ length: 24 }, (_, i) => solve(standingIn('reliquary', i + 1)).run!.relics[0]!),
+      Array.from({ length: 24 }, (_, i) => carried(solve(standingIn('reliquary', i + 1)))[0]!),
     )
     expect(spread.size).toBeGreaterThan(1)
   })
 
-  it('cannot have its relic changed by a reload', () => {
+  it('cannot have its reward changed by a reload', () => {
     const took = press(
       standingIn('reliquary', 12),
       'reliquary-bell',
@@ -205,7 +223,7 @@ describe('the Reliquary', () => {
       'reliquary-chest',
     )
     const back = reloaded(took)
-    expect(back.run?.relics).toEqual(took.run?.relics)
+    expect(carried(back)).toEqual(carried(took))
     expect(roomStateOf(back)).toEqual(roomStateOf(took))
   })
 
@@ -219,9 +237,9 @@ describe('the Reliquary', () => {
     )
     const again = press(took, 'reliquary-chest', 'reliquary-chest')
     expect(again).toBe(took)
-    expect(again.run?.relics).toHaveLength(1)
+    expect(carried(again)).toHaveLength(1)
     // Not even across a reload, which is the press the save used to invite.
-    expect(press(reloaded(took), 'reliquary-chest').run?.relics).toHaveLength(1)
+    expect(carried(press(reloaded(took), 'reliquary-chest'))).toHaveLength(1)
   })
 
   it('lets you leave without touching anything in it', () => {
@@ -231,7 +249,7 @@ describe('the Reliquary', () => {
     // No penalty, and no trace: the run records nothing about a room it
     // walked through.
     expect(walked.run?.rooms).toBeUndefined()
-    expect(walked.run?.hp).toBe(MAX_HP)
+    expect(totalBones(walked.run!)).toBe(BONE_CEILING)
   })
 
   it('lets you leave from any half-solved position', () => {
@@ -279,10 +297,10 @@ describe('the Chain Vault', () => {
     expect(actionFor(roomStateOf(up), 'vault-chain')?.label).toBe('LOWER')
   })
 
-  it('costs exactly six health when the lever is pulled against nothing', () => {
+  it('costs exactly one bone when the lever is pulled against nothing', () => {
     const hurt = press(standingIn('chain-vault'), 'vault-lever')
-    expect(hurt.run?.hp).toBe(MAX_HP - VAULT_BACKLASH)
-    expect(hurt.run?.say).toMatch(/The mechanism snaps back.*6 HP/)
+    expect(totalBones(hurt.run!)).toBe(BONE_CEILING - 1)
+    expect(hurt.run?.say).toMatch(/The mechanism snaps back.*snaps/)
     expect(hurt.mode).toBe('explore')
   })
 
@@ -292,28 +310,29 @@ describe('the Chain Vault', () => {
     const shut = roomStateOf(state)
     expect(shut.templateId === 'chain-vault' && shut.gate).toBe('closed')
     expect(shut.templateId === 'chain-vault' && shut.lever).toBe('up')
-    expect(state.run?.hp).toBe(MAX_HP - VAULT_BACKLASH * 3)
+    expect(totalBones(state.run!)).toBe(BONE_CEILING - 3)
   })
 
   it('can be pulled to death, and uses the death the game already has', () => {
-    // Two pulls from six health: the first takes it to nothing.
-    let state = standingIn('chain-vault', 7, VAULT_BACKLASH)
+    // One bone left. The pull takes it, and there is nothing behind it.
+    let state = standingIn('chain-vault', 7, 1)
     state = press(state, 'vault-lever')
-    expect(state.run?.hp).toBe(0)
+    expect(totalBones(state.run!)).toBe(0)
     expect(state.mode).toBe('dead')
     expect(state.run?.cause).toBe('The chain mechanism.')
     // And it is over: a corpse cannot keep working the room.
     expect(press(state, 'vault-chain')).toBe(state)
   })
 
-  it('clamps at zero rather than going negative', () => {
-    const state = press(standingIn('chain-vault', 7, 2), 'vault-lever')
-    expect(state.run?.hp).toBe(0)
+  it('takes nothing from an empty pile rather than going negative', () => {
+    const here = standingIn('chain-vault', 7, 0)
+    const state = press(here, 'vault-lever')
+    expect(totalBones(state.run!)).toBe(0)
   })
 
   it('opens the gate when the plate is weighted, and costs nothing', () => {
     const open = press(standingIn('chain-vault'), 'vault-chain', 'vault-lever')
-    expect(open.run?.hp).toBe(MAX_HP)
+    expect(totalBones(open.run!)).toBe(BONE_CEILING)
     expect(roomStateOf(open)).toEqual({
       templateId: 'chain-vault',
       chain: 'on',
@@ -379,7 +398,7 @@ describe('what a save carries', () => {
     const back = reloaded(solved)
     expect(roomAt(back.run!).id).toBe('reliquary')
     expect(roomStateOf(back)).toEqual(roomStateOf(solved))
-    expect(back.run?.relics).toEqual(solved.run?.relics)
+    expect(carried(back)).toEqual(carried(solved))
     // Every one-shot is spent: the bell has answered, the lever is down and
     // the chest has been emptied, so none of them is a control any more.
     for (const id of ['reliquary-bell', 'reliquary-lever', 'reliquary-chest']) {
@@ -409,9 +428,13 @@ describe('what a save carries', () => {
   })
 
   it('was bumped, because the shape of a run changed', () => {
-    expect(SAVE_VERSION).toBe(7)
+    expect(SAVE_VERSION).toBe(8)
     // And the policy is unchanged: an older save is discarded, never migrated.
-    const held = new Map<string, string>([['castlebrynth', JSON.stringify({ version: 6, mode: 'explore' })]])
+    // 6 is the game this replaced. **7 is discarded too**, and that is the
+    // unusual part: the generated map and the War of Bones both reached 7
+    // independently, so a save claiming it could be either shape and this
+    // build can read neither.
+    const held = new Map<string, string>([['castlebrynth', JSON.stringify({ version: 7, mode: 'explore' })]])
     const store = {
       getItem: (k: string) => held.get(k) ?? null,
       setItem: () => {},

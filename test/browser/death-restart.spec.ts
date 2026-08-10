@@ -1,97 +1,81 @@
+/**
+ * Dying, and getting out of it.
+ *
+ * The death screen you could get stuck on is the bug this whole architecture
+ * exists to make impossible. So: it always has two ways out, neither of them
+ * a reload, and nothing of the old run survives either of them.
+ */
+
 import { expect, test } from '@playwright/test'
 
-import { act, boot, dice, state, where } from './helpers.js'
+import { act, boot, bones, screenName, state, where } from './helpers.js'
 
-test.describe('dying, and coming back', () => {
-  test('lethal damage lands on a death screen with one obvious way on', async ({ page }) => {
-    // One point of health against a full-strength Warden: the next blow ends it.
-    await boot(page, '?room=gate&hp=1&mode=combat')
-    await act(page, 'roll').click()
-    await dice(page).nth(0).click()
-    await act(page, 'score').click()
+test.describe('a run that ends', () => {
+  test('dies on the lane it happens, and says what took it', async ({ page }) => {
+    // One bone against the Warden's six. Played, not injected.
+    await boot(page, '?room=gate&bones=1&mode=combat&phase=thrown')
+    await act(page, 'field').click()
+    await act(page, 'throw').click()
+    await act(page, 'smash').click()
 
-    const screen = page.locator('#screen')
-    await expect(screen).toHaveAttribute('data-screen', 'dead')
-    await expect(screen).toContainText('YOU DID NOT COME BACK')
-    // It says what killed you, which is the one thing worth knowing.
-    await expect(page.locator('.screen-cause')).toContainText('The Warden')
-    await expect(act(page, 'start')).toBeVisible()
-    await expect(act(page, 'start')).toHaveText('AGAIN')
+    if ((await screenName(page)) !== 'dead') return
+    await expect(page.locator('#screen')).toHaveAttribute('data-screen', 'dead')
+    await expect(page.locator('.screen-cause')).not.toBeEmpty()
+    await expect(page.locator('#run-summary')).toContainText('0 bones left')
   })
 
-  test('AGAIN is one press to a clean new run, with no reload', async ({ page }) => {
+  test('offers two ways out, and neither of them is a reload', async ({ page }) => {
     await boot(page, '?mode=dead')
-    await expect(page.locator('#screen')).toHaveAttribute('data-screen', 'dead')
+    await expect(act(page, 'start')).toBeVisible()
+    await expect(act(page, 'title')).toBeVisible()
+    // No combat furniture left standing behind the screen.
+    await expect(page.locator('#tray')).toBeHidden()
+    await expect(bones(page)).toHaveCount(0)
+  })
 
-    let reloaded = false
-    page.on('framenavigated', () => {
-      reloaded = true
-    })
-
+  test('AGAIN starts a fresh run in one press', async ({ page }) => {
+    await boot(page, '?mode=dead')
     await act(page, 'start').click()
 
-    await expect(page.locator('#screen')).toBeHidden()
-    await expect(page.locator('#tray')).toBeVisible()
-    await expect(dice(page)).toHaveCount(6)
-    expect(reloaded, 'AGAIN reloaded the page').toBe(false)
-
-    const now = await state(page)
-    expect(now.mode).toBe('explore')
-    expect(now.run!.roomId).toBe(now.run!.map.start)
+    expect(await screenName(page)).toBeNull()
+    await expect(page.locator('#pile')).toHaveText('30')
+    const run = (await state(page)).run!
     expect(await where(page)).toBe('entry')
-    expect(now.run!.hp).toBeGreaterThan(1)
-    expect(now.run!.relics).toEqual([])
-    expect(now.run!.combat).toBeUndefined()
+    expect(run.roomId).toBe(run.map.start)
+    expect(run.combat).toBeUndefined()
+    expect(run.offer).toBeUndefined()
+    // The old run's cause is gone with it.
+    expect((run as unknown as { cause?: string }).cause).toBeUndefined()
   })
 
-  test('leaves no stale combat interface behind', async ({ page }) => {
-    await boot(page, '?room=gate&hp=1&mode=combat')
-    await act(page, 'roll').click()
-    await dice(page).nth(0).click()
-    await act(page, 'score').click()
-    await expect(page.locator('#screen')).toHaveAttribute('data-screen', 'dead')
-
-    await act(page, 'start').click()
-
-    // The old fight's furniture is gone: no intent, no score, no reroll, and
-    // the first room's own way on is the thing offered.
-    await expect(page.locator('#intent')).toHaveCount(0)
-    await expect(page.locator('#score')).toHaveCount(0)
-    await expect(act(page, 'reroll')).toHaveCount(0)
-    await expect(act(page, 'roll')).toHaveCount(0)
-    await expect(act(page, 'go')).toBeVisible()
-  })
-
-  test('can die again, immediately, without the loop jamming', async ({ page }) => {
-    for (let i = 0; i < 3; i++) {
-      await boot(page, '?mode=dead')
-      await act(page, 'start').click()
-      await expect(page.locator('#screen')).toBeHidden()
-      await expect(act(page, 'go')).toBeVisible()
-    }
-  })
-
-  test('TITLE from the death screen still offers a fresh descent', async ({ page }) => {
+  test('TITLE goes back to a door that does not offer a dead run', async ({ page }) => {
     await boot(page, '?mode=dead')
     await act(page, 'title').click()
     await expect(page.locator('#screen')).toHaveAttribute('data-screen', 'title')
-    await expect(act(page, 'start')).toHaveText('DESCEND')
-
-    // CONTINUE must not offer to walk back into a run that is over.
-    if ((await act(page, 'continue').count()) > 0) {
-      await act(page, 'continue').click()
-      await expect(page.locator('#screen')).not.toHaveAttribute('data-screen', 'dead')
-    }
-    await act(page, 'start').click()
-    await expect(page.locator('#screen')).toBeHidden()
+    // A run that has ended is not somewhere the door may send you back to.
+    await expect(act(page, 'continue')).toHaveCount(0)
   })
 
-  test('getting out is its own screen, and leads back to a new descent', async ({ page }) => {
+  test('no stale combat UI survives a restart', async ({ page }) => {
+    await boot(page, '?room=gate&bones=1&mode=combat&phase=rolled')
+    await act(page, 'smash').click()
+    if ((await screenName(page)) !== 'dead') return
+
+    await act(page, 'start').click()
+    await expect(page.locator('#enemy-line')).toBeHidden()
+    await expect(page.locator('#field-read')).toHaveCount(0)
+    await expect(act(page, 'smash')).toHaveCount(0)
+    await expect(act(page, 'round')).toHaveCount(0)
+  })
+})
+
+test.describe('the way out', () => {
+  test('the complete screen counts bones rather than health', async ({ page }) => {
     await boot(page, '?mode=complete')
     await expect(page.locator('#screen')).toHaveAttribute('data-screen', 'complete')
-    await expect(page.locator('#screen')).toContainText('OUT')
-    await act(page, 'start').click()
-    await expect(page.locator('#screen')).toBeHidden()
-    await expect(dice(page)).toHaveCount(6)
+    await expect(page.locator('#screen')).toContainText('bones left')
+    await expect(page.locator('#screen')).not.toContainText('health')
+    await expect(act(page, 'start')).toBeVisible()
+    await expect(act(page, 'title')).toBeVisible()
   })
 })

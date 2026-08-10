@@ -15,7 +15,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { Rng } from '../../src/combat/dice.js'
+import { Rng } from '../../src/game/rng.js'
 import { ENEMY_LIST } from '../../src/content/enemies.js'
 import { ROOM_LIBRARY } from '../../src/content/rooms.js'
 import { canHost, candidatesFor, fits, preferFresh, resolveEncounter, resolveRoom } from '../../src/content/roomResolver.js'

@@ -181,6 +181,39 @@ export const HAND_ART: Readonly<Record<string, Asset>> = {
 
 export const TRAY_ART: Asset = asset('tray', 'ui/tray.png', 730, 364)
 
+/**
+ * The bones, the satchel, and the breakage — when they are painted.
+ *
+ * Both tables are **deliberately empty**. Every row here would name a file, and
+ * `test/unit/assets.test.ts` holds a row to a real file of the declared size,
+ * so a manifest that promises art nobody has drawn fails the build rather than
+ * shipping a broken `<img>` into the middle of a smash.
+ *
+ * What is owed is written down instead, in full, under `## HUMAN ART REQUIRED`
+ * in `POLISH_PROGRESS.md`: a bone body per profile with faces 1–8 and a broken
+ * state, a Vial, a Charm and a Pouch plate, a shatter family, and a tray
+ * repaint whose top rail has a bay for the enemy's line.
+ *
+ * Until then the bones are drawn from the pip geometry in `ui/components.ts` —
+ * which is the same mechanism the game has always drawn a face with, not a new
+ * stand-in — and every one of them states its number as text as well as as a
+ * pattern. Adding a row here and a file on disk is the whole of the swap;
+ * nothing outside this file names a bone's filename.
+ */
+export const BONE_ART: Readonly<Record<string, Asset>> = {}
+
+export const SATCHEL_ART: Readonly<Record<string, Asset>> = {}
+
+/** One face of one bone, or nothing because it was never painted. */
+export function boneArt(profile: string, face: string): Asset | undefined {
+  return BONE_ART[`${profile}.${face}`]
+}
+
+/** One satchel icon, or nothing because it was never painted. */
+export function satchelArt(id: string): Asset | undefined {
+  return SATCHEL_ART[id]
+}
+
 export function url(a: Asset): string {
   return `${ASSET_ROOT}${a.file}`
 }
@@ -252,11 +285,20 @@ export function handArt(pose: string): Asset {
 }
 
 /**
- * Everything the runtime loads, once each.
+ * Every distinct file the game ships, once each.
  *
  * By file, not by manifest row: a pose family names its opening plate twice —
- * once plainly and once as `far` — and that is one download and one entry in
- * the payload budget, not two.
+ * once plainly and once as `far` — and that is one file on disk, not two.
+ *
+ * **This is a validation and reporting list, not a preload list.** It used to
+ * be the thing the boot decoded, and it was the boot's cost. Loading is now
+ * staged — see `render/loader.ts` — and what this is for is `npm run art`
+ * printing the payload and `test/unit/assets.test.ts` holding every row to a
+ * real file of the declared size.
+ *
+ * The total bytes are **measured and reported, never capped**. A global
+ * ceiling makes authored pose coverage compete with itself, and coverage is
+ * the feature. See `docs/ART_DIRECTION.md`.
  */
 export function allAssets(): readonly Asset[] {
   const seen = new Set<string>()
@@ -266,31 +308,8 @@ export function allAssets(): readonly Asset[] {
     ...Object.values(PROP_ART),
     ...Object.values(AMBIENT_ART),
     ...Object.values(HAND_ART),
+    ...Object.values(BONE_ART),
+    ...Object.values(SATCHEL_ART),
     TRAY_ART,
   ].filter((a) => !seen.has(a.file) && seen.add(a.file))
-}
-
-/**
- * Decode everything before the first frame.
- *
- * Room and enemy art are both mandatory, so a failure here is loud: the boot
- * reports it rather than showing an empty room or an absent opponent.
- */
-export async function preload(): Promise<readonly string[]> {
-  const failures: string[] = []
-  await Promise.all(
-    allAssets().map(
-      (a) =>
-        new Promise<void>((done) => {
-          const img = new Image()
-          img.onload = () => done()
-          img.onerror = () => {
-            failures.push(a.id)
-            done()
-          }
-          img.src = url(a)
-        }),
-    ),
-  )
-  return failures
 }

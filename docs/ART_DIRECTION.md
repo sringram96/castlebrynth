@@ -26,7 +26,7 @@ there is no path where a backdrop ends up above an enemy.
 | 1 | `midground` | the room's **props**: every object that is pressed |
 | 2 | `enemy` | **mandatory in combat** |
 | 3 | `foreground` | the player's own arm, and occluders |
-| 4 | `fx` | hit flash, shake, damage numbers, vignette |
+| 4 | `fx` | break flash, shake, dust, vignette |
 | 5 | `hud` | the word band, the intent, the tray — never world art |
 
 ## Sizes
@@ -41,25 +41,36 @@ there is no path where a backdrop ends up above an enemy.
   Whole frames cost bytes and buy registration. `isScenePlate` in
   `src/render/assets.ts` is how the compositor tells the two apart, and it asks
   the art rather than content.
-- **There is no runtime payload ceiling, and one is not to be reintroduced.**
-  There was: 4 MB for nine rooms, 4.5 MB when the Reliquary and the Chain Vault
-  cost 512 KB of backdrop between them, 5.6 MB when the Warden became an
-  authored family. Every raise was preceded by a measured compression trial and
-  every trial reached the same answer — the banding cost more in the picture
-  than the bytes were worth — which is a ceiling that was only ever going to be
-  raised. The numbers are in git.
+- **There is no runtime payload budget.** There was one — 4 MB, then 4.5, then
+  5.6 — and every raise came with an argument about whether a backdrop or a
+  pose family was worth its bytes. That argument had the priorities backwards.
 
-  What holds instead is what `test/unit/assets.test.ts` already enforces
-  everywhere else: **an asset is validated, not budgeted.** The file exists, the
-  manifest's dimensions are true, whole-scene registration is consistent, an
-  enemy's plates are all present, an authored family is complete. None of that
-  can be satisfied by shipping a worse picture.
+  The order is: **authored state coverage first, delivery architecture second,
+  byte minimisation third.** A single global number made the first of those
+  compete with itself, so that a fifth authored pose for an enemy nobody had
+  reached yet was a cost to the title screen.
 
-  A room or an encounter is never rejected for having more frames than its
-  neighbours, and the generated map may not decline an authored place because of
-  what it weighs. If richer content ever makes loading uncomfortable, the answer
-  is on the loading side — per-room preload, next-room preload,
-  encounter-family preload, caching — never on the art's.
+  What replaced it is architecture, not a bigger number. `src/render/loader.ts`
+  decodes what the screen needs and prefetches what the screen after it will
+  need, so a family costs the fight that uses it. Bytes are **measured and
+  reported** — `npm run art` prints them, and `test/unit/assets.test.ts` prints
+  them per family — and never capped. The gates that replaced the cap are
+  behavioural and live in `test/browser/loading.spec.ts`:
+
+  - the title renders without decoding every file;
+  - a room decodes its own art, and the room ahead is fetched while the player
+    is still reading this one;
+  - no broken image is ever on screen, and no sequence begins by fetching its
+    own first frame;
+  - repeat visits reuse what was decoded;
+  - no input is lost to loading.
+
+  Do not reintroduce a total-MB ceiling under another name, and do not compress
+  or delete authored pose coverage to hit an arbitrary total. A room or an
+  encounter is never rejected for having more frames than its neighbours, and
+  the generated map may not decline an authored place because of what it
+  weighs — `validateRunMap` asks whether the art can hold the fight, never what
+  the art costs.
 
 Masters (1024×1536, 2–4 MB each) live in `docs/art-reference/masters/` and are
 never served.
@@ -100,7 +111,7 @@ midground cover-fits them exactly as the backdrop is cover-fitted, so the
 object sits where it was painted at every viewport with no coordinate anywhere.
 That is what lets eight frames pass through one element during a throw without
 the object moving by a pixel; a trimmed plate is registered by its own
-silhouette, and a die climbing out of a basin changes that silhouette every
+silhouette, and a bone climbing out of a basin changes that silhouette every
 frame.
 
 A room may hold **several** props, and then each is its own plate on the same
@@ -136,8 +147,14 @@ Scenery may degrade. The opponent may not.
 ## Motion budget
 
 Idle motion is tiny and high-impact: a slow enemy breath, a candle flicker,
-a vignette pulse. Combat impact is sprite translation, a one-frame brighten,
-a screen shake and a damage number.
+a vignette pulse. Combat impact is one bone breaking in its lane, a one-frame
+brighten on the body, and a screen shake.
+
+**There is no damage number, because there is no damage.** What happened when
+you won a lane is that one of its bones broke, and that bone is on screen, in
+its lane, breaking. A figure rising off the enemy would be arithmetic drawn
+over the top of a physical fact. The only number combat ever raises is the
+pile's own delta — a count of objects — over the orb that holds them.
 
 Animation reveals an outcome that is already committed. **No animation
 contains game logic**, and no roll or branch happens inside a timeline. With
@@ -149,5 +166,12 @@ and nothing is lost.
 - At 390×844, every combat screenshot shows the enemy without tapping.
 - Each room in the slice is distinguishable as a thumbnail.
 - No gameplay text sits on a busy focal region without a scrim.
-- Dice, face marks, selected state, held state and the damage preview are
-  readable at arm's length.
+- Enemy line, player line, field width, special sigils, casualty state and the
+  living-bone count are readable at arm's length.
+- **A seven and an eight are readable without a tooltip.** No die anybody has
+  held has those faces, so there is no pattern to recognise: they print their
+  numeral over the pips, and the numeral is the truth.
+- A broken bone is not conveyed by colour alone. It darkens, it drops, and it
+  carries a fracture across it.
+- Every enemy has a visible end. An army that empties and then simply stops
+  being drawn is a fight that ended without the player seeing it end.

@@ -1,6 +1,17 @@
 import { expect, test } from '@playwright/test'
 
-import { act, boot, dice, screenName, state, toFirstFight, wayTo } from './helpers.js'
+import {
+  act,
+  boot,
+  bones,
+  enemyBones,
+  livingBones,
+  screenName,
+  state,
+  toFirstFight,
+  valuesOf,
+  where,
+} from './helpers.js'
 import { fightItOut } from './play.js'
 
 test.describe('the first run', () => {
@@ -13,7 +24,7 @@ test.describe('the first run', () => {
     await expect(act(page, 'continue')).toHaveCount(0)
   })
 
-  test('starting a run lands in the first room with six dice', async ({ page }) => {
+  test('starting a run lands in the first room with thirty bones', async ({ page }) => {
     await boot(page)
     await act(page, 'start').click()
 
@@ -21,14 +32,33 @@ test.describe('the first run', () => {
     await expect(page.locator('#backdrop')).toBeVisible()
     await expect(page.locator('#tray')).toBeVisible()
     await expect(page.locator('#say')).toContainText('The stair ends in a long hall')
-    await expect(dice(page)).toHaveCount(6)
+
+    // The pile is the life, and it reads at arm's length.
+    await expect(page.locator('#pile')).toHaveText('30')
+    await expect(page.locator('#pile')).toHaveAttribute('aria-label', '30 living bones')
+    // Out of a fight there is no line. Six sockets pretending to be a hand
+    // would be the old game's furniture left standing.
+    await expect(bones(page)).toHaveCount(0)
+  })
+
+  test('carries no trace of the game this replaced', async ({ page }) => {
+    await boot(page)
+    await act(page, 'start').click()
+    const body = await page.locator('body').innerHTML()
+    for (const gone of ['data-act="roll"', 'data-act="reroll"', 'data-act="score"', 'score-formula']) {
+      expect(body, `${gone} is still in the DOM`).not.toContain(gone)
+    }
+    const run = (await state(page)).run as unknown as Record<string, unknown>
+    expect(run).not.toHaveProperty('hp')
+    expect(run).not.toHaveProperty('dice')
+    expect(run).not.toHaveProperty('relics')
   })
 
   test('looking is free, always answers, and never commits', async ({ page }) => {
     await boot(page)
     await act(page, 'start').click()
 
-    const before = await state(page)
+    const before = await livingBones(page)
     const details = page.locator('#hits .hit')
     const count = await details.count()
     expect(count).toBeGreaterThan(0)
@@ -39,25 +69,32 @@ test.describe('the first run', () => {
       await expect(page.locator('#say')).not.toBeEmpty()
     }
 
-    const after = await state(page)
-    expect(after.run!.hp).toBe(before.run!.hp)
-    expect(after.run!.roomId).toBe(before.run!.roomId)
+    expect(await livingBones(page)).toBe(before)
+    expect(await where(page)).toBe('entry')
   })
 
-  test('MENU states the whole loadout, in full, and the ladder', async ({ page }) => {
-    await boot(page, '?room=fork&dice=careful&relics=knuckle')
+  test('MENU states the army, the satchel and the four rules', async ({ page }) => {
+    await boot(page, '?room=fork&specials=knuckle&vials=2&charms=1')
 
     await act(page, 'menu').click()
     const overlay = page.locator('#overlay')
-    await expect(overlay).toContainText('Careful Bone')
-    await expect(overlay).toContainText('This die can only roll 3 or 4')
-    await expect(overlay).toContainText("Saint's Knuckle")
-    await expect(overlay).toContainText('use ×3 instead of ×2')
-    // The ladder, so a player can name the hand they just scored.
-    await expect(overlay.locator('.ladder-row')).toHaveCount(7)
-    await expect(overlay).toContainText('FULL HOUSE')
-    // And the arithmetic, literally rather than in prose.
-    await expect(overlay).toContainText('DAMAGE = selected dice total × hand multiplier + relic bonuses')
+
+    await expect(overlay.locator('#army-total')).toContainText('BONES')
+    await expect(overlay).toContainText('Common bones')
+    await expect(overlay).toContainText('Knuckle')
+    await expect(overlay).toContainText('4, 5, 6, 6, 7, 8.')
+
+    await expect(overlay).toContainText('Vial')
+    await expect(overlay).toContainText('Charm')
+    await expect(overlay).toContainText('5 common bones back, up to 30 in all')
+
+    // The whole game, in four lines, and nothing else. No scoring ladder.
+    await expect(overlay.locator('#rules li')).toHaveCount(4)
+    await expect(overlay).toContainText('The enemy throws first.')
+    await expect(overlay).toContainText('High kills low. Ties kill both.')
+    await expect(overlay).not.toContainText('FULL HOUSE')
+    await expect(overlay).not.toContainText('multiplier')
+
     await act(page, 'close').click()
     await expect(overlay).toBeHidden()
   })
@@ -66,168 +103,151 @@ test.describe('the first run', () => {
     await boot(page)
     await toFirstFight(page)
 
-    // Still exploring: no roll, no score, and the monster already fills the
+    // Still exploring: no line, no verb, and the monster already fills the
     // scene. This is the P0 the reset exists to fix.
-    await expect(act(page, 'roll')).toHaveCount(0)
+    await expect(act(page, 'field')).toHaveCount(0)
+    await expect(bones(page)).toHaveCount(0)
     const enemy = page.locator('#enemy')
     await expect(enemy).toBeVisible()
     await expect(enemy).toHaveAttribute('data-enemy', 'present')
 
-    const box = (await enemy.boundingBox())!
-    const world = (await page.locator('#world').boundingBox())!
-    const share = (box.width * box.height) / (world.width * world.height)
-    // The Gnawing is a thing that closes, and it opens the encounter at the
-    // far end of a long hall — so *dominating the scene* is what it does on
-    // its way in, not what it does on arrival at the room. What has to be true
-    // here is that it is unmistakably there before any control appears. That it
-    // grows, and by how much, is `test/browser/approach.spec.ts`.
-    //
-    // Legibility is asserted in pixels rather than as a share of the frame.
-    // Area is a bad proxy for a thing that was painted to be distant: the
-    // Gnawing opens at 117 x 87 on a 390 x 844 phone — a plainly readable
-    // shape at the end of a hall — and that is 4% of the world box. The share
-    // below is only a guard that something is on screen at all.
-    expect(share, 'the enemy is not on screen at all').toBeGreaterThan(0.03)
-    expect(Math.min(box.width, box.height), 'the enemy is a speck').toBeGreaterThan(80)
-    expect(box.x).toBeGreaterThanOrEqual(-1)
-    expect(box.x + box.width).toBeLessThanOrEqual(world.width + 1)
+    // And the well says what it is, before the fight is entered.
+    await expect(page.locator('#well')).toContainText('The Gnawing')
   })
+})
 
-  test('every enemy in the slice is on screen in its own room', async ({ page }) => {
-    // The Gnawing is measured where it ends up rather than where it starts:
-    // it is the one enemy in the slice that arrives at you, and the fixture
-    // stands it at the reach it arrives from.
-    for (const [room, name, fixture, floor] of [
-      ['hollow', 'The Gnawing', '?room=hollow&reach=close', 0.2],
-      ['deep', 'The Marrow', '?room=deep', 0.2],
-      ['gate', 'The Warden', '?room=gate', 0.2],
-    ] as const) {
-      await boot(page, fixture)
-      const enemy = page.locator('#enemy')
-      await expect(enemy).toHaveAttribute('data-enemy', 'present')
-      const box = (await enemy.boundingBox())!
-      const world = (await page.locator('#world').boundingBox())!
-      expect(
-        (box.width * box.height) / (world.width * world.height),
-        `${name} does not dominate its scene`,
-      ).toBeGreaterThan(floor)
-      // Named where the mode names things: the well out of a fight, the
-      // enemy bar in one.
-      await expect(page.locator(room === 'hollow' ? '#enemy-bar' : '#well')).toContainText(name)
-    }
-  })
-
-  test('the backdrop can never be painted over the enemy', async ({ page }) => {
-    await boot(page, '?room=hollow&mode=combat')
-    const order = await page.evaluate(() =>
-      [...document.querySelectorAll('#world > .layer')].map((el) => ({
-        layer: (el as HTMLElement).dataset['layer'],
-        z: Number((el as HTMLElement).style.zIndex),
-      })),
-    )
-    const z = (name: string) => order.find((l) => l.layer === name)!.z
-    expect(z('backdrop')).toBeLessThan(z('enemy'))
-    expect(z('midground')).toBeLessThan(z('enemy'))
-    expect(z('enemy')).toBeLessThan(z('fx'))
-    expect(z('fx')).toBeLessThan(z('hud'))
-
-    // Belt and braces: paint order follows DOM order for equal stacking
-    // contexts, so the enemy is after the backdrop there too.
-    const dom = await page.evaluate(() =>
-      [...document.querySelectorAll('#world > .layer')].map((el) => (el as HTMLElement).dataset['layer']),
-    )
-    expect(dom.indexOf('backdrop')).toBeLessThan(dom.indexOf('enemy'))
-  })
-
-  test('each room in the slice is its own place', async ({ page }) => {
-    const seen = new Set<string>()
-    const rooms = [
-      'entry',
-      'passage',
-      'hollow',
-      'sanctuary',
-      'reliquary',
-      'fork',
-      'chain-vault',
-      'deep',
-      'gate',
-    ]
-    for (const room of rooms) {
-      await boot(page, `?room=${room}`)
-      const src = await page.locator('#backdrop').getAttribute('src')
-      expect(src, `${room} has no backdrop`).toBeTruthy()
-      seen.add(src!)
-    }
-    expect(seen.size, 'two rooms are the same picture').toBe(rooms.length)
-  })
-
-  test('plays the whole route to the way out, in one browser, with real presses', async ({
-    page,
-  }) => {
-    // The full journey, fought rather than skipped: three enemies beaten by
-    // tapping dice and pressing SCORE. Nothing is dispatched behind the UI's
-    // back and the page is never reloaded.
-    test.setTimeout(180_000)
+test.describe('the first fight', () => {
+  test('the enemy throws first, and its line is public before any decision', async ({ page }) => {
     await boot(page)
+    await toFirstFight(page)
+    await act(page, 'fight').click()
 
-    await act(page, 'start').click()
-    await act(page, 'go').click()
-    await act(page, 'go').click()
+    // Face-up, sorted, and up *before* FIELD exists as a press.
+    const line = await valuesOf(enemyBones(page))
+    expect(line.length).toBeGreaterThan(0)
+    expect([...line].sort((a, b) => b - a)).toEqual(line)
+    for (const value of line) expect(value).toBeGreaterThanOrEqual(1)
 
-    // A win may or may not have dropped anything, and the route has to
-    // continue either way — an unconditional take here is what would hide a
-    // no-drop win from every journey in the suite.
-    const takeAnyReward = async () => {
-      if ((await screenName(page)) !== 'reward') return
-      const offers = await page.locator('#offers .offer').count()
-      expect(offers, 'a win offered more than two').toBeLessThanOrEqual(2)
-      await page.locator('[data-act="take"]').first().click()
-      await expect(page.locator('#screen')).toBeHidden()
+    // Every one of them is readable as text, not only as pips.
+    for (let i = 0; i < line.length; i++) {
+      await expect(enemyBones(page).nth(i)).toHaveAttribute(
+        'aria-label',
+        `Its bone, rolled ${line[i]}`,
+      )
+    }
+    await expect(act(page, 'field')).toBeVisible()
+  })
+
+  test('the width can be reduced below six, and FIELD commits exactly that', async ({ page }) => {
+    await boot(page)
+    await toFirstFight(page)
+    await act(page, 'fight').click()
+
+    const stepper = page.locator('#width')
+    await expect(stepper).toHaveAttribute('data-width', '6')
+    await act(page, 'width-down').click()
+    await act(page, 'width-down').click()
+    await expect(stepper).toHaveAttribute('data-width', '4')
+    await expect(bones(page)).toHaveCount(4)
+
+    await act(page, 'field').click()
+    expect((await state(page)).run!.combat!.field).toEqual({ width: 4, specialIds: [] })
+    // Committed, and face-down: no value has been decided.
+    await expect(bones(page)).toHaveCount(4)
+    for (const value of await valuesOf(bones(page))) expect(Number.isNaN(value)).toBe(true)
+  })
+
+  test('the stepper stops at one and at the pile, and is absent at its ends', async ({ page }) => {
+    await boot(page, '?room=hollow&bones=2&mode=combat')
+    await expect(page.locator('#width')).toHaveAttribute('data-width', '2')
+    // Two bones alive: there is no seventh, and there is no third.
+    await expect(act(page, 'width-up')).toHaveCount(0)
+    await act(page, 'width-down').click()
+    await expect(page.locator('#width')).toHaveAttribute('data-width', '1')
+    await expect(act(page, 'width-down')).toHaveCount(0)
+  })
+
+  test('THROW rolls exactly the committed width, sorted high to low', async ({ page }) => {
+    await boot(page)
+    await toFirstFight(page)
+    await act(page, 'fight').click()
+    await act(page, 'width-down').click()
+    await act(page, 'field').click()
+    await act(page, 'throw').click()
+
+    const line = await valuesOf(bones(page))
+    expect(line).toHaveLength(5)
+    expect([...line].sort((a, b) => b - a)).toEqual(line)
+    for (const value of line) expect(value).toBeGreaterThanOrEqual(1)
+  })
+
+  test('there is one throw: no REROLL exists anywhere', async ({ page }) => {
+    await boot(page, '?room=hollow&mode=combat&phase=rolled')
+    await expect(act(page, 'reroll')).toHaveCount(0)
+    await expect(act(page, 'throw')).toHaveCount(0)
+    await expect(act(page, 'smash')).toBeVisible()
+  })
+
+  test('one phase, one verb: the four are never on screen together', async ({ page }) => {
+    const verbs = ['field', 'throw', 'smash', 'round']
+    for (const phase of ['thrown', 'fielded', 'rolled']) {
+      await boot(page, `?room=hollow&mode=combat&phase=${phase}`)
+      let showing = 0
+      for (const verb of verbs) showing += await act(page, verb).count()
+      expect(showing, `${phase} offers ${showing} combat verbs`).toBe(1)
+    }
+  })
+
+  test('SMASH resolves the lanes exactly, and the dead stay dead', async ({ page }) => {
+    await boot(page, '?room=hollow&mode=combat&phase=rolled&seed=9')
+
+    const mine = await valuesOf(bones(page))
+    const theirs = await valuesOf(enemyBones(page))
+    const paired = Math.min(mine.length, theirs.length)
+
+    await act(page, 'smash').click()
+
+    // Every paired lane, checked against the two numbers that were on screen.
+    for (let lane = 0; lane < paired; lane++) {
+      const myBone = bones(page).nth(lane)
+      const itsBone = enemyBones(page).nth(lane)
+      const myBroken = (await myBone.getAttribute('data-broken')) === 'yes'
+      const itsBroken = (await itsBone.getAttribute('data-broken')) === 'yes'
+      if (mine[lane]! > theirs[lane]!) {
+        expect(myBroken, `lane ${lane}: mine won and broke`).toBe(false)
+        expect(itsBroken, `lane ${lane}: mine won and its bone lived`).toBe(true)
+      } else if (mine[lane]! < theirs[lane]!) {
+        expect(myBroken, `lane ${lane}: mine lost and lived`).toBe(true)
+      } else {
+        // A normal tie kills both.
+        expect(myBroken && itsBroken, `lane ${lane}: a tie spared somebody`).toBe(true)
+      }
     }
 
-    expect(await fightItOut(page), 'lost to the Gnawing').toBe('won')
-    await takeAnyReward()
+    // Unpaired bones fought nothing, and the screen says so.
+    for (let lane = paired; lane < mine.length; lane++) {
+      await expect(bones(page).nth(lane)).toHaveAttribute('data-safe', 'yes')
+    }
 
-    // The chapel, between the first fight and the fork. There is no way on out
-    // of it until the font has been used, so the journey has to press it.
-    await act(page, 'go').click()
-    await expect(page.locator('#say')).toContainText('The hall opens into a chapel')
-    await expect(act(page, 'go')).toHaveCount(0)
-    await act(page, 'ritual').click()
-    await expect(act(page, 'ritual')).toHaveCount(0)
+    // And the casualties are gone from the pile, for good.
+    const smash = (await state(page)).run!.combat!.lastSmash!
+    const lost = smash.playerCommonLost + smash.playerSpecialsLost.length
+    expect(await livingBones(page)).toBe(30 - lost)
 
-    // The dead chapel, which asks for nothing. The journey walks straight
-    // through it without touching one object, because that is the claim the
-    // room makes and this is the run that has to prove it.
-    await act(page, 'go').click()
-    await expect(page.locator('#say')).toContainText('A dead chapel')
-    await expect(act(page, 'go')).toBeVisible()
+    if ((await act(page, 'round').count()) > 0) {
+      await act(page, 'round').click()
+      // A new round, a new line, and nothing resurrected.
+      expect((await state(page)).run!.combat!.round).toBe(2)
+      expect(await livingBones(page)).toBe(30 - lost)
+    }
+  })
 
-    await act(page, 'go').click()
-    await expect(page.locator('#say')).toContainText('The passage splits')
-    await (await wayTo(page, 'chain-vault')).click() // the long way round, on purpose
-
-    // And the vault, which asks for everything. There is no way on until the
-    // gate is up, so the journey has to work it — cage onto the plate, then
-    // the lever — exactly as a player must.
-    await expect(page.locator('#say')).toContainText('ends at an iron gate')
-    await expect(act(page, 'go')).toHaveCount(0)
-    await page.locator('[data-interact="vault-chain"]').click()
-    await expect(act(page, 'go')).toHaveCount(0)
-    await page.locator('[data-interact="vault-lever"]').click()
-    await expect(act(page, 'go')).toBeVisible()
-
-    await act(page, 'go').click()
-    expect(await fightItOut(page), 'lost to the Marrow').toBe('won')
-    await takeAnyReward()
-
-    await act(page, 'go').click()
-    expect(await fightItOut(page), 'lost to the Warden').toBe('won')
-    // The boss leaves nothing; the door is the reward.
-    await expect(page.locator('#screen')).toBeHidden()
-
-    await act(page, 'go').click()
-    await expect(page.locator('#screen')).toHaveAttribute('data-screen', 'complete')
-    await expect(page.locator('#screen')).toContainText('OUT')
+  test('the first fight can be won by pressing buttons', async ({ page }) => {
+    await boot(page)
+    await toFirstFight(page)
+    expect(await fightItOut(page)).toBe('won')
+    if ((await screenName(page)) === 'reward') {
+      await expect(page.locator('#offers .offer').first()).toBeVisible()
+    }
   })
 })

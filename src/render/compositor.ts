@@ -192,7 +192,7 @@ export interface PropPlate {
  *   - **absent means gone.** Anything on the layer that this call does not
  *     name is removed, in both directions and on every call, so no plate can
  *     outlive the state that put it up. That is the same rule `placeEnemy`
- *     follows for `contact` and `defeat`.
+ *     follows for `defeat`.
  *
  * Nothing is placed. The plates are the scene, cover-fitted like the backdrop,
  * so there is no geometry here to get wrong and none to drift.
@@ -294,14 +294,6 @@ export interface EnemyPose {
    */
   readonly scene?: boolean
   /**
-   * It arrived, and this is the settled picture of that.
-   *
-   * The terminal rung of the contact ladder, written from state rather than
-   * left behind by the sequence that played it — so reloading onto the death
-   * screen shows the thing on top of you rather than politely down the hall.
-   */
-  readonly contact?: boolean
-  /**
    * One frame of its own death.
    *
    * `step` selects the stylesheet's treatment for that beat and `dim` is how
@@ -310,8 +302,8 @@ export interface EnemyPose {
    * placing the sprite, not by transforming it — so this carries only what
    * placement cannot say.
    *
-   * Written in both directions on every call, as `contact` is, so no frame of
-   * a death can outlive the sequence that painted it.
+   * Written in both directions on every call, so no frame of a death can
+   * outlive the sequence that painted it.
    */
   readonly defeat?: { readonly step: number; readonly dim: number }
 }
@@ -347,15 +339,6 @@ export function placeEnemy(world: World, src: string, pose: EnemyPose): void {
   world.enemy.dataset['enemy'] = 'present'
   if (pose.reach) world.enemy.dataset['reach'] = pose.reach
   else delete world.enemy.dataset['reach']
-  // Written on every paint, in both directions, so no rung of the contact
-  // ladder can outlive the state that put it there.
-  if (pose.contact) {
-    world.enemy.dataset['contact'] = 'landed'
-    world.root.dataset['contact'] = 'landed'
-  } else {
-    delete world.enemy.dataset['contact']
-    delete world.root.dataset['contact']
-  }
   if (pose.defeat) {
     world.enemy.dataset['defeat'] = String(pose.defeat.step)
     world.enemy.style.setProperty('--dim', String(pose.defeat.dim))
@@ -371,8 +354,6 @@ export function hideEnemy(world: World): void {
   delete world.enemy.dataset['enemy']
   delete world.enemy.dataset['scene']
   delete world.enemy.dataset['reach']
-  delete world.enemy.dataset['contact']
   delete world.enemy.dataset['defeat']
   world.enemy.style.removeProperty('--dim')
-  delete world.root.dataset['contact']
 }

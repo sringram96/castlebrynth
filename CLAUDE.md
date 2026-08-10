@@ -1,8 +1,9 @@
 # Castlebrynth
 
-A portrait pixel-horror roguelike: descend through hand-authored rooms, fight
-grotesque things by rolling six dice, collect strange dice and relics, and
-decide how far to push before the dungeon kills you.
+A portrait pixel-horror roguelike: descend through hand-authored rooms carrying
+a pile of thirty bones, fight grotesque things by choosing how many of those
+bones to risk against the line they have already thrown, collect strange named
+bones, and decide how far to push before the dungeon kills you.
 
 ## Read these first
 
@@ -10,8 +11,7 @@ Four documents, about twenty minutes in total, and they are the whole contract.
 
 - **`docs/PRODUCT.md`** — what the game is, what the slice contains, what is
   deliberately parked.
-- **`docs/COMBAT.md`** — the turn, the ladder, the damage formula, the
-  invariants.
+- **`docs/COMBAT.md`** — the round, the smash, the bones, the invariants.
 - **`docs/ART_DIRECTION.md`** — the layers, the sizes, the pipeline, the
   content validation.
 - **`docs/CONTRIBUTING.md`** — how to work here, and the input contract.
@@ -43,9 +43,9 @@ src/
   app/           the root controller and the one dispatcher
   game/          GameState, the reducer, saves, dev fixtures,
                  the dungeon director, the generated map
-  combat/        dice, scoring, resolution
+  combat/        fielding, throwing, sorting, the smash
   exploration/   (folded into game/reducer while the slice is this small)
-  content/       dice, relics, enemies, room templates, run plans,
+  content/       bones, rewards, enemies, room templates, run plans,
                  copy, tray geometry
   render/        the fixed-order compositor, the asset manifest, animation
   ui/            views and components
@@ -77,6 +77,11 @@ that produces a `GameState`.
   instance is a map node, never a template id — `roomAt(run)` is the only join.
 - **No new gameplay noun** — collectible species, status family, screen mode,
   UI panel — without a product decision.
+- **No hit points and no damage number, under any name.** Life is a pile of
+  objects; what happens to it is that objects break. A bone counter that
+  behaves like a health bar is the game this replaced, wearing its coat.
+- **Asset bytes are reported, never capped.** There is no global runtime-art
+  payload ceiling. Loading is staged instead — see `src/render/loader.ts`.
 
 ## No art in the polish sweep
 
@@ -92,7 +97,8 @@ that does not need it continues.
 ## Dev fixtures
 
 Any mode is reachable from a URL, which is what keeps the ends of the game
-testable: `?room=gate&hp=1&mode=combat`, `?mode=dead`, `?dice=pusher,leech`. `?room=`
-names an authored template and stands you in the first room of the run that
-used it; `?node=n8` names one exact room.
+testable: `?room=gate&bones=1&mode=combat`, `?mode=dead`,
+`?specials=cinderbone,knuckle`, `?phase=rolled&width=3`. `?room=` names an
+authored template and stands you in the first room of the run that used it;
+`?node=n8` names one exact room.
 See `src/game/fixture.ts`.

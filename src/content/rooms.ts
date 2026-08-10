@@ -134,8 +134,8 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
     art: 'sanctuary',
     // The one room in the slice that gives something back. The director puts it
     // between the first fight and the fork on purpose: the decision at the fork
-    // is *how much health am I willing to spend*, and it is a real decision only
-    // if the player knows how much health they have to spend. That ordering is
+    // is *how many bones am I willing to spend*, and it is a real decision only
+    // if the player knows how many bones they have to spend. That ordering is
     // the plan's, in `content/runPlans.ts`, and no longer this room's.
     role: 'recovery',
     territory: 'chapel',
@@ -165,8 +165,8 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
       // skull under the middle of this.
       at: { x: 0.5, y: 0.68 },
       // What it does, in numbers, before the press — the same contract every
-      // die and every relic in the game is held to.
-      prompt: 'A basin, filled to the lip, with a die turning under the surface. It gives back a share of what I have already lost. The higher it lands, the bigger the share.',
+      // bone and every carried thing in the game is held to.
+      prompt: 'A basin, filled to the lip, with a die turning under the surface. It gives back bones: whatever it lands on, and two more. Never past thirty, and never one that had a name.',
     },
     topology: THROUGH,
   },

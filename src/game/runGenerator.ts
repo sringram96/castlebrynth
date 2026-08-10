@@ -28,7 +28,7 @@ import type { RoomRequest } from '../content/roomResolver.js'
 import { DESCENT, way } from '../content/runPlans.js'
 import type { PlanEdge, RoomSlot, RunPlan } from '../content/runPlans.js'
 import type { Territory } from '../content/roomTypes.js'
-import { Rng } from '../combat/dice.js'
+import { Rng } from './rng.js'
 import { validateRun } from './mapValidation.js'
 import type { MapExit, RunMap, RunRoom } from './map.js'
 

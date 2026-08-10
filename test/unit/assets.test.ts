@@ -11,20 +11,26 @@ import { readFileSync, statSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 import {
+  BONE_ART,
   ENEMY_ART,
   HAND_ART,
   PROP_ART,
   ROOM_ART,
+  SATCHEL_ART,
   SCENE,
   TRAY_ART,
   allAssets,
+  boneArt,
   enemyArt,
   handArt,
   isScenePlate,
   propArt,
   roomArt,
+  satchelArt,
 } from '../../src/render/assets.js'
-import { ENEMIES, REACHES } from '../../src/content/enemies.js'
+import { BONE_PROFILES } from '../../src/content/bones.js'
+import { defeatOf } from '../../src/content/defeat.js'
+import { ENEMIES, STAGES } from '../../src/content/enemies.js'
 import { ROOM_LIBRARY, template } from '../../src/content/rooms.js'
 import { platesFor } from '../../src/content/interactions.js'
 import type { RoomInteractionState } from '../../src/game/state.js'
@@ -142,32 +148,45 @@ describe('the manifest', () => {
   })
 
   /**
-   * There is no payload ceiling, and one must not be reintroduced.
+   * The payload is **measured and reported, and it is not a gate.**
    *
-   * There was: 4 MB, then 4.5 MB, then 5.6 MB, raised each time a room or a
-   * family was added and each time after a measured argument that compression
-   * would cost more in the picture than it saved in bytes. Three raises in a
-   * row, each concluding that the art was worth the bytes, is a ceiling
-   * answering "no" to a question it was never going to answer any other way.
-   * The measured numbers for every raise are in git.
+   * There used to be a ceiling here — 4 MB, then 4.5, then 5.6 — and every
+   * raise came with an argument about whether a backdrop or a pose family was
+   * worth its bytes. That argument had the priorities backwards. Authored
+   * state coverage is the feature; delivery architecture is second; byte
+   * minimisation is third. A single global number made the first of those
+   * compete with itself, so that a fifth authored pose for an enemy nobody had
+   * reached yet was a cost to the title screen.
    *
-   * What replaced it is the rule this file already enforces everywhere else:
-   * **an asset is validated, not budgeted.** It exists, its manifest dimensions
-   * are true, whole-scene registration is consistent, an enemy's plates are all
-   * present, an authored family is complete. None of those can be satisfied by
-   * shipping a worse picture.
+   * What replaced it is architecture rather than a bigger number:
+   * `render/loader.ts` decodes what the screen needs and prefetches what the
+   * screen after it will need, so a family costs the fight that uses it. The
+   * gates that remain are behavioural and live in
+   * `test/browser/loading.spec.ts`.
    *
-   * And a room or an encounter is never rejected for having more frames than
-   * its neighbours. The generated map chooses among authored places; if a place
-   * is expensive to load, that is a loading problem — per-room preload, next-
-   * room preload, encounter-family preload, caching — and it is solved on that
-   * side. Lowering the art to fit a number is the one answer that is not
-   * available.
+   * So this prints, and never fails. A number nobody can see is a number
+   * nobody can reason about; a number that fails a build is a number that
+   * makes the art worse.
    */
-  it('ships every file the runtime will load, and none of them empty', () => {
-    for (const a of allAssets()) {
-      expect(png(a.file).bytes, `${a.id} (${a.file}) is missing or empty`).toBeGreaterThan(0)
+  it('reports the runtime art payload without capping it', () => {
+    const files = allAssets()
+    const total = files.reduce((sum, a) => sum + png(a.file).bytes, 0)
+
+    const byFamily = new Map<string, number>()
+    for (const a of files) {
+      const family = a.file.split('/')[0] ?? 'other'
+      byFamily.set(family, (byFamily.get(family) ?? 0) + png(a.file).bytes)
     }
+    const mb = (n: number): string => `${(n / 1024 / 1024).toFixed(3)} MB`
+    const report = [...byFamily]
+      .sort((a, b) => b[1] - a[1])
+      .map(([family, bytes]) => `  ${family.padEnd(10)} ${mb(bytes)}`)
+      .join('\n')
+    console.info(`runtime art: ${files.length} files, ${mb(total)}\n${report}`)
+
+    // The only assertion is that there is something there to measure. There is
+    // deliberately no upper bound.
+    expect(total).toBeGreaterThan(0)
   })
 })
 
@@ -188,15 +207,15 @@ describe('every enemy has combat art', () => {
     expect([...held].sort()).toEqual([...used].sort())
   })
 
-  it('gives a thing that closes a file for every reach, or none at all', () => {
+  it('gives a staged enemy a file for every stage, or none at all', () => {
     // Half a pose family is the failure this catches: a `close` plate that
     // landed while `mid` did not silently falls back to the plain sprite, and
     // the encounter reads as the thing changing shape as it comes.
     for (const e of Object.values(ENEMIES)) {
-      if (!e.approach) continue
-      const posed = REACHES.filter((reach) => ENEMY_ART[`${e.art}.${reach}`])
+      if (!e.staging) continue
+      const posed = STAGES.filter((reach: string) => ENEMY_ART[`${e.art}.${reach}`])
       expect(
-        posed.length === 0 || posed.length === REACHES.length,
+        posed.length === 0 || posed.length === STAGES.length,
         `${e.id} has plates for ${posed.join(', ')} and not the rest`,
       ).toBe(true)
       for (const key of posed) expect(png(enemyArt(e.art, key).file).bytes).toBeGreaterThan(0)
@@ -225,11 +244,11 @@ describe('every enemy has combat art', () => {
     for (const e of Object.values(ENEMIES)) {
       const lit = ENEMY_ART[`${e.art}.hit`]
       if (!lit) continue
-      const fits = REACHES.filter((reach) => {
+      const fits = STAGES.filter((reach: string) => {
         const at = ENEMY_ART[`${e.art}.${reach}`]
         return at && at.width === lit.width && at.height === lit.height
       })
-      expect(fits.length, `${e.id}'s impact plate fits no reach`).toBeGreaterThan(0)
+      expect(fits.length, `${e.id}'s impact plate fits no stage`).toBeGreaterThan(0)
     }
   })
 })
@@ -330,11 +349,11 @@ describe('the player is holding something', () => {
     }
   })
 
-  it('gives an enemy that closes an arm to close on it with', () => {
-    // The strike is the other half of the approach: the thing comes at you and
-    // you put something in it. An encounter with one and not the other is half
-    // an encounter.
-    const closing = Object.values(ENEMIES).filter((e) => e.approach)
+  it('gives a staged enemy an arm to smash with', () => {
+    // The arm is the other half of the encounter: the thing throws bones at
+    // you and you put something into the ones that lose. A fight with one and
+    // not the other is half a fight.
+    const closing = Object.values(ENEMIES).filter((e) => e.staging)
     expect(closing.length).toBeGreaterThan(0)
     expect(Object.keys(HAND_ART).sort()).toEqual(['rest', 'thrust'])
   })
@@ -349,9 +368,9 @@ describe('the player is holding something', () => {
     // but it still has to be a legible shape rather than a speck, so its
     // opening stance carries a floor of its own.
     for (const e of Object.values(ENEMIES)) {
-      const widest = e.approach ? e.approach.stances.close.width : e.width
+      const widest = e.staging ? e.staging.close.width : e.width
       expect(widest, `${e.id} never dominates`).toBeGreaterThanOrEqual(0.35)
-      expect(e.width, `${e.id} opens invisibly`).toBeGreaterThanOrEqual(e.approach ? 0.3 : 0.35)
+      expect(e.width, `${e.id} opens invisibly`).toBeGreaterThanOrEqual(e.staging ? 0.3 : 0.35)
       // Only a thing on top of you may be wider than the frame it is in.
       expect(e.width).toBeLessThanOrEqual(1)
       expect(e.foot).toBeGreaterThan(0.5)
@@ -361,8 +380,8 @@ describe('the player is holding something', () => {
   it('never shrinks or stalls on the way in', () => {
     // Every step has to be big enough that nobody wonders whether it moved.
     for (const e of Object.values(ENEMIES)) {
-      if (!e.approach) continue
-      const { far, mid, close } = e.approach.stances
+      if (!e.staging) continue
+      const { far, mid, close } = e.staging
       expect(mid.width, `${e.id} barely moves to mid`).toBeGreaterThan(far.width * 1.5)
       expect(close.width, `${e.id} barely moves to close`).toBeGreaterThan(mid.width * 1.5)
       expect(mid.foot).toBeGreaterThan(far.foot)
@@ -370,6 +389,94 @@ describe('the player is holding something', () => {
       // Its still pose is where the fight opens, so walking in and starting a
       // fight cannot make it jump.
       expect({ width: e.width, foot: e.foot }).toEqual(far)
+    }
+  })
+})
+
+/**
+ * The War of Bones families.
+ *
+ * Both tables are empty today — the bones are drawn from the pip geometry in
+ * `ui/components.ts`, which is the mechanism the game has always drawn a face
+ * with, and the plates that are owed are written out under
+ * `## HUMAN ART REQUIRED` in `POLISH_PROGRESS.md`.
+ *
+ * The gates below are **armed rather than skipped**. They pass vacuously on an
+ * empty table and bite the moment a row is added, which is what stops the art
+ * landing half-delivered: a `heavy.8` that shipped while `heavy.7` did not
+ * would silently fall back to a drawn face, and one bone in the line would be
+ * a different object from its neighbour.
+ */
+describe('the bone families, when they land', () => {
+  it('ships a whole family or none of it', () => {
+    for (const id of Object.keys(BONE_PROFILES) as (keyof typeof BONE_PROFILES)[]) {
+      const profile = BONE_PROFILES[id]
+      const wanted = ['back', 'broken', ...new Set(profile.faces.map(String))]
+      const present = wanted.filter((face) => boneArt(id, face))
+      expect(
+        present.length === 0 || present.length === wanted.length,
+        `${id} has art for ${present.join(', ')} and not ${wanted
+          .filter((f) => !present.includes(f))
+          .join(', ')}`,
+      ).toBe(true)
+    }
+  })
+
+  it('holds every bone row to a real file of the declared size', () => {
+    for (const art of Object.values(BONE_ART)) {
+      const file = png(art.file)
+      expect(file.bytes, art.id).toBeGreaterThan(0)
+      expect([file.width, file.height], art.id).toEqual([art.width, art.height])
+    }
+  })
+
+  it('holds every satchel row to a real file of the declared size', () => {
+    for (const art of Object.values(SATCHEL_ART)) {
+      const file = png(art.file)
+      expect(file.bytes, art.id).toBeGreaterThan(0)
+      expect([file.width, file.height], art.id).toEqual([art.width, art.height])
+    }
+  })
+
+  it('ships all three satchel icons or none of them', () => {
+    const present = ['vial', 'charm', 'pouch'].filter((id) => satchelArt(id))
+    expect(present.length === 0 || present.length === 3).toBe(true)
+  })
+})
+
+/**
+ * Every fight has a visible end.
+ *
+ * A completion gate rather than a nicety: an enemy whose army empties and
+ * which then simply stops being drawn is a fight that ended without the player
+ * seeing it end. `defeatOf` keeps a sparse fallback as a defensive path — a
+ * save from a build that had an entry this one does not must still resolve —
+ * but no shipped fight may reach it.
+ */
+describe('every enemy has a death', () => {
+  it('has an authored defeat, and it has frames', () => {
+    for (const e of Object.values(ENEMIES)) {
+      const death = defeatOf(e.id)
+      expect(death, `${e.id} has no authored death`).toBeDefined()
+      expect(death!.frames.length, `${e.id} has an empty death`).toBeGreaterThan(0)
+    }
+  })
+
+  it('holds every named defeat plate to a real file', () => {
+    for (const e of Object.values(ENEMIES)) {
+      for (const frame of defeatOf(e.id)!.frames) {
+        if (!frame.pose) continue
+        const art = ENEMY_ART[`${e.art}.${frame.pose}`]
+        expect(art, `${e.id} names ${frame.pose} and no plate exists`).toBeDefined()
+        expect(png(art!.file).bytes).toBeGreaterThan(0)
+      }
+    }
+  })
+
+  it('ends on a held frame, so a death is not a flicker', () => {
+    for (const e of Object.values(ENEMIES)) {
+      const frames = defeatOf(e.id)!.frames
+      expect(frames[frames.length - 1]!.hold, e.id).toBeGreaterThanOrEqual(250)
     }
   })
 })

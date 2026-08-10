@@ -20,7 +20,7 @@
 import { ENEMY_LIST, enemy } from './enemies.js'
 import { ROOM_LIBRARY } from './rooms.js'
 import type { RoomRole, RoomTemplate, Territory, ThreatBand } from './roomTypes.js'
-import type { Rng } from '../combat/dice.js'
+import type { Rng } from '../game/rng.js'
 
 export interface RoomRequest {
   readonly role: RoomRole
