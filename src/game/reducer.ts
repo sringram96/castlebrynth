@@ -29,7 +29,6 @@ import { exitsOpen, legal, stateOf } from '../content/interactions.js'
 import {
   LINE_WIDTH,
   enemyField,
-  recharmLine,
   rollEnemyLine,
   rollPlayerLine,
 } from '../combat/line.js'
@@ -44,6 +43,7 @@ import type {
   EnemyBoneInstance,
   GameState,
   MetaState,
+  PlayerField,
   RitualRoll,
   RolledBone,
   RoomInteractionState,
@@ -59,20 +59,21 @@ export type Action =
   | { readonly type: 'GO'; readonly to: string }
   | { readonly type: 'FIGHT' }
   /**
-   * Commit the whole field in one action.
+   * Throw, and find out. The whole round, in one tick.
    *
-   * Width and specials arrive together because they are one decision. While
-   * the phase is `thrown` the player is editing a **draft** that lives in the
-   * view — nudging a stepper, lighting a bone in the pouch — and none of that
-   * is a move: a reload before FIELD loses nothing but an unfinished thought,
-   * and a save can never hold a half-selected army. This is the tick where the
-   * decision becomes a fact, and the reducer validates all of it at once
-   * rather than duplicating the rules across a run of little actions.
+   * It carries the modifier the player was editing — which named bones are
+   * standing in the line — and nothing else, because nothing else was theirs
+   * to decide. That selection lives in the **view** until this moment: it is a
+   * thought, not a move, and a reload before the throw loses an unfinished
+   * thought rather than a half-committed army.
+   *
+   * There were three actions here — FIELD, THROW, SMASH. Two of them existed
+   * so a width could be committed and then a Charm spent against the result,
+   * and neither decision survives. Splitting a throw across presses when there
+   * is nothing to decide between them is asking the player to confirm that
+   * they meant it.
    */
-  | { readonly type: 'FIELD'; readonly width: number; readonly specialIds: readonly string[] }
-  | { readonly type: 'THROW' }
-  | { readonly type: 'CHARM'; readonly boneKey: string }
-  | { readonly type: 'SMASH' }
+  | { readonly type: 'THROW'; readonly specialIds?: readonly string[] }
   | { readonly type: 'ROUND' }
   | { readonly type: 'DRINK' }
   | { readonly type: 'TAKE'; readonly id: RewardId }
@@ -314,7 +315,6 @@ export function newRun(seed: number): RunState {
     commonBones: STARTING_BONES,
     specials: [],
     nextSpecialSerial: 0,
-    charms: 0,
     vials: 0,
     looked: [],
     cleared: [],
@@ -348,7 +348,6 @@ function beginCombat(run: RunState): CombatState {
     enemyBones: bones,
     enemyStartCount: bones.length,
     enemyLine: throwEnemy(run, bones, 1),
-    charmUsed: false,
     log: e.rule ? [e.tell, e.rule] : [e.tell],
   }
 }
@@ -359,24 +358,38 @@ export function maxWidth(run: RunState): number {
 }
 
 /**
- * Whether a field is one the game could accept.
+ * The line the pile puts up, given which named bones are standing in it.
  *
- * Every rule of the commitment, in one place, so the view and the reducer
- * cannot drift apart: the view calls this to decide whether FIELD may be
- * offered, and the reducer calls it to decide whether to honour a press.
+ * The one place the composition rule lives, so the view and the reducer cannot
+ * drift: the tray calls this to draw the line before it is thrown, and THROW
+ * calls it to build the line it throws.
+ *
+ * Three rules, and all three are consequences of *the line is always as wide
+ * as the bones going into it allow* rather than opinions of their own:
+ *
+ * 1. **A named bone asked for is only honoured if it is alive.** A request is
+ *    a thought and the pile is the fact; a Cinderbone that broke last round
+ *    cannot be in this round's line because a menu still had it selected.
+ * 2. **Named bones stand *inside* the width, never on top of it.** Six bones
+ *    with a Knuckle among them is five commons and a Knuckle — carrying named
+ *    bones does not widen the line, it changes what is in it.
+ * 3. **Width is what is actually available, capped at six** — the commons in
+ *    the pile plus the named bones standing. Held-back bones are counted out
+ *    of it rather than quietly replaced: a line of six with a Knuckle
+ *    withdrawn is a line of five when there is no sixth common to take its
+ *    place, which is the honest answer and the one the pile can pay.
+ *
+ * `specialIds` comes back sorted, so two players who chose the same two bones
+ * threw the same thing however their thumbs got there.
  */
-export function fieldLegal(
-  run: RunState,
-  width: number,
-  specialIds: readonly string[],
-): boolean {
-  if (!Number.isInteger(width)) return false
-  if (width < 1 || width > maxWidth(run)) return false
-  if (new Set(specialIds).size !== specialIds.length) return false
+export function fieldFor(run: RunState, wanted: readonly string[] = []): PlayerField {
   const alive = new Set(run.specials.map((s) => s.instanceId))
-  if (!specialIds.every((id) => alive.has(id))) return false
-  if (specialIds.length > width) return false
-  return width - specialIds.length <= run.commonBones
+  const standing = [...new Set(wanted)]
+    .filter((id) => alive.has(id))
+    .sort()
+    .slice(0, LINE_WIDTH)
+  const width = Math.min(LINE_WIDTH, run.commonBones + standing.length)
+  return { width, specialIds: standing.slice(0, width) }
 }
 
 /** What a smash cost, in one line, for the word band. */
@@ -477,7 +490,6 @@ function victory(state: GameState, run: RunState, combat: CombatState): GameStat
 /** Put one reward where it belongs. The only place a TAKE means anything. */
 function grant(run: RunState, id: RewardId): RunState {
   const kind = reward(id).kind
-  if (kind === 'charm') return { ...run, charms: run.charms + 1 }
   if (kind === 'vial') return { ...run, vials: run.vials + 1 }
   return addSpecial(run, id)
 }
@@ -584,74 +596,24 @@ export function reduce(state: GameState, action: Action): GameState {
       return { ...state, mode: 'combat', run: { ...run, combat: beginCombat(run), say: '' } }
     }
 
-    case 'FIELD': {
+    case 'THROW': {
       const run = state.run
       const combat = run?.combat
       if (!run || !combat || state.mode !== 'combat') return state
       if (combat.phase !== 'thrown' || combat.defeated) return state
-      if (!fieldLegal(run, action.width, action.specialIds)) return state
 
-      // Sorted, so the committed record is stable however the pouch was
-      // tapped — two players who chose the same two bones committed the same
-      // thing, and a save cannot record the order of their thumbs.
-      const specialIds = [...action.specialIds].sort()
-      const { playerLine: _unthrown, lastSmash: _old, ...rest } = combat
-      return {
-        ...state,
-        run: {
-          ...run,
-          combat: { ...rest, phase: 'fielded', field: { width: action.width, specialIds } },
-        },
-      }
-    }
-
-    case 'THROW': {
-      const run = state.run
-      const combat = run?.combat
-      if (!run || !combat || combat.phase !== 'fielded' || !combat.field || combat.defeated) {
-        return state
-      }
+      // The whole round, in one action. There is no committed field to read
+      // back, because committing was never a decision — the pile fields as
+      // wide as it can, and the only thing the player chose is which named
+      // bones are standing in it.
+      const field = fieldFor(run, action.specialIds)
+      if (field.width === 0) return state
       const playerLine = rollPlayerLine(
-        combat.field,
+        field,
         run,
         combat.round,
         fightRng(run, combat.round, RNG_CHANNEL.playerThrow),
       )
-      return { ...state, run: { ...run, combat: { ...combat, phase: 'rolled', playerLine } } }
-    }
-
-    case 'CHARM': {
-      const run = state.run
-      const combat = run?.combat
-      if (!run || !combat || combat.phase !== 'rolled' || combat.defeated) return state
-      if (combat.charmUsed || run.charms <= 0) return state
-      const line = combat.playerLine
-      if (!line || !line.some((b) => b.boneKey === action.boneKey)) return state
-
-      return {
-        ...state,
-        run: {
-          ...run,
-          charms: run.charms - 1,
-          combat: {
-            ...combat,
-            charmUsed: true,
-            playerLine: recharmLine(
-              line,
-              action.boneKey,
-              fightRng(run, combat.round, RNG_CHANNEL.charm),
-            ),
-          },
-        },
-      }
-    }
-
-    case 'SMASH': {
-      const run = state.run
-      const combat = run?.combat
-      if (!run || !combat || combat.phase !== 'rolled' || combat.defeated) return state
-      const playerLine = combat.playerLine
-      if (!playerLine) return state
 
       const { record, pool } = resolveSmash({
         pool: {
@@ -677,6 +639,8 @@ export function reduce(state: GameState, action: Action): GameState {
       const after: CombatState = {
         ...combat,
         phase: 'smashed',
+        field,
+        playerLine,
         enemyBones: pool.enemyBones,
         lastSmash: record,
         log: smashSay(record, namesLost),
@@ -934,7 +898,6 @@ export function carriedNames(run: RunState): readonly string[] {
     counted.set(name, (counted.get(name) ?? 0) + 1)
   }
   const out = [...counted].map(([name, n]) => (n > 1 ? `${name} ×${n}` : name))
-  if (run.charms > 0) out.push(run.charms > 1 ? `Charm ×${run.charms}` : 'Charm')
   if (run.vials > 0) out.push(run.vials > 1 ? `Vial ×${run.vials}` : 'Vial')
   return out
 }

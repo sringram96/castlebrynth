@@ -338,12 +338,15 @@ export function pouchRow(
   row.append(faces, text)
 
   if (view.fieldable || view.fielded) {
+    // The two acts are named for what pressing does, not for what the row is.
+    // A bone standing in the line is withdrawn; a bone held back is put in.
+    // Every named bone starts standing, so `withdraw-bone` is the common one.
     const b = button({
-      act: view.fielded ? 'unfield' : 'field-bone',
-      label: view.fielded ? 'FIELDED' : 'FIELD',
+      act: view.fielded ? 'withdraw-bone' : 'field-bone',
+      label: view.fielded ? 'STANDING' : 'HELD',
       describe: view.fielded
-        ? `Take ${bone.name} out of the line`
-        : `Put ${bone.name} in the line`,
+        ? `Hold ${bone.name} back, out of the line`
+        : `Stand ${bone.name} in the line`,
       onPress: view.onPress,
       className: `act act-pouch${view.fielded ? ' act-on' : ''}`,
     })

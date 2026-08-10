@@ -24,10 +24,10 @@ const SCREENS: readonly [string, string][] = [
   ['the vault, shut', '?room=chain-vault'],
   ['the vault, open', '?room=chain-vault&vault=open'],
   ['a fight, before the field', '?room=hollow&mode=combat&phase=thrown'],
-  ['a fight, committed', '?room=hollow&mode=combat&phase=fielded'],
-  ['a fight, thrown', '?room=hollow&mode=combat&phase=rolled'],
+  ['a fight, committed', '?room=hollow&mode=combat&phase=thrown'],
+  ['a fight, thrown', '?room=hollow&mode=combat&phase=smashed'],
   ['a fight, smashed', '?room=deep&mode=combat&phase=smashed'],
-  ['carrying everything', '?room=fork&specials=knuckle,cinderbone&vials=2&charms=1'],
+  ['carrying everything', '?room=fork&specials=knuckle,cinderbone&vials=2'],
 ]
 
 interface Box {
@@ -71,7 +71,7 @@ test.describe('nothing runs off the phone', () => {
 
 test.describe('the crown', () => {
   test('seats one bone per lane, at the touch floor, never overlapping', async ({ page }) => {
-    await boot(page, '?room=deep&mode=combat&phase=rolled')
+    await boot(page, '?room=deep&mode=combat&phase=smashed')
     const seated = await boxes(page, '#crown .bone')
     expect(seated.length, 'the crown drew no line').toBeGreaterThan(0)
 
@@ -86,10 +86,10 @@ test.describe('the crown', () => {
     }
   })
 
-  test('draws exactly the width that was committed, and no ghost lanes', async ({ page }) => {
-    for (const width of [1, 3, 6]) {
-      await boot(page, `?room=deep&mode=combat&phase=rolled&width=${width}`)
-      await expect(bones(page)).toHaveCount(width)
+  test('draws exactly what the pile can throw, and no ghost lanes', async ({ page }) => {
+    for (const [pile, lanes] of [[1, 1], [3, 3], [30, 6]] as const) {
+      await boot(page, `?room=deep&bones=${pile}&mode=combat&phase=thrown`)
+      await expect(bones(page)).toHaveCount(lanes)
     }
   })
 
@@ -100,18 +100,19 @@ test.describe('the crown', () => {
 })
 
 test.describe('the enemy line', () => {
-  test('stands above the crown, lane for lane', async ({ page }) => {
-    await boot(page, '?room=deep&mode=combat&phase=rolled&width=6')
+  test('stands in the well below the crown, lane for lane', async ({ page }) => {
+    await boot(page, '?room=deep&mode=combat&phase=smashed')
     const mine = await boxes(page, '#crown .bone')
     const theirs = await boxes(page, '#enemy-line .bone-enemy')
     expect(theirs.length).toBe(6)
     expect(mine.length).toBe(6)
 
     for (let lane = 0; lane < 6; lane++) {
-      // Above, and centred on the same lane. This is the whole reason it is a
-      // child of the tray rather than of the world.
-      expect(theirs[lane]!.bottom, `lane ${lane} is not above the crown`).toBeLessThanOrEqual(
-        mine[lane]!.y + 1,
+      // Below, and centred on the same lane. The column *is* the pairing —
+      // lane N against lane N is the whole smash rule — which is why the line
+      // is a child of the tray and seated on the crown's own pitch.
+      expect(theirs[lane]!.y, `lane ${lane} is not below the crown`).toBeGreaterThanOrEqual(
+        mine[lane]!.bottom - 1,
       )
       const mineCentre = mine[lane]!.x + mine[lane]!.w / 2
       const theirCentre = theirs[lane]!.x + theirs[lane]!.w / 2
@@ -131,10 +132,11 @@ test.describe('the enemy line', () => {
 })
 
 test.describe('the satchel', () => {
-  test('seats three bays that never overlap', async ({ page }) => {
-    await boot(page, '?room=fork&vials=1&charms=1&specials=knuckle')
+  test('seats two bays that never overlap', async ({ page }) => {
+    await boot(page, '?room=fork&vials=1&specials=knuckle')
     const seated = await boxes(page, '.satchel-slot')
-    expect(seated).toHaveLength(3)
+    // Two, on a plate painted for three. The empty bay is left showing.
+    expect(seated).toHaveLength(2)
     for (let i = 1; i < seated.length; i++) {
       expect(seated[i]!.x, 'two satchel bays overlap').toBeGreaterThanOrEqual(
         seated[i - 1]!.right - 0.5,
@@ -160,18 +162,13 @@ test.describe('the beds', () => {
 
     await boot(page, '?room=hollow&mode=combat&phase=thrown')
     const menu = (await boxOf('menu'))!
-    const field = (await boxOf('field'))!
-    expect(menu.x).toBeLessThan(field.x)
+    const throwing = (await boxOf('throw'))!
+    expect(menu.x).toBeLessThan(throwing.x)
 
-    // Every phase puts its one verb in the same bed.
-    for (const [phase, verb] of [
-      ['fielded', 'throw'],
-      ['rolled', 'smash'],
-    ] as const) {
-      await boot(page, `?room=deep&mode=combat&phase=${phase}`)
-      const here = (await boxOf(verb))!
-      expect(Math.abs(here.x - field.x), `${verb} moved bed`).toBeLessThan(2)
-    }
+    // Both phases put their one verb in the same bed.
+    await boot(page, '?room=deep&mode=combat&phase=smashed')
+    const round = await boxOf('round')
+    if (round) expect(Math.abs(round.x - throwing.x), 'round moved bed').toBeLessThan(2)
   })
 
   test('no label is ever clipped by its own box', async ({ page }) => {

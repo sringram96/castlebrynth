@@ -1,10 +1,15 @@
 /**
  * Everything the labyrinth can hand you.
  *
- * Three nouns and no fourth: **bones**, **Charms**, **Vials**. Relics are gone
- * — a passive arithmetic modifier has nothing to modify in a game whose whole
- * combat rule is *higher kills lower* — and no new collectible category may be
- * added without a product decision. See `CLAUDE.md`.
+ * Two nouns and no third: **bones** and **Vials**. Relics went first — a
+ * passive arithmetic modifier has nothing to modify in a game whose whole
+ * combat rule is *higher kills lower* — and the Charm followed the phase it
+ * was spent in, because a reroll needs a moment between seeing your throw and
+ * living with it and the round no longer has one. No new collectible category
+ * may be added without a product decision. See `CLAUDE.md`.
+ *
+ * What is left is the shape of the two things a fight lets you decide: a Vial
+ * is *how long do I last*, and a named bone is *what is standing in the line*.
  *
  * A reward card has to state its exact mechanic before TAKE is pressed. Not a
  * hint, not a category: the numbers. `Restore 5 bones, up to 30.` is the whole
@@ -14,9 +19,9 @@
 import type { SpecialBoneId } from './bones.js'
 import { SPECIAL_BONES, specialBone } from './bones.js'
 
-export type RewardId = SpecialBoneId | 'charm' | 'vial'
+export type RewardId = SpecialBoneId | 'vial'
 
-export type RewardKind = 'bone' | 'charm' | 'vial'
+export type RewardKind = 'bone' | 'vial'
 
 export interface Reward {
   readonly id: RewardId
@@ -44,14 +49,6 @@ const REWARD_LIST: readonly Reward[] = [
     rule: 'Drink it: 5 common bones back, up to 30 in all.',
     flavour: 'Thick, and still warm. Best not to ask.',
     weight: 6,
-  },
-  {
-    id: 'charm',
-    name: 'Charm',
-    kind: 'charm',
-    rule: 'Once per fight: throw 1 of your rolled bones again.',
-    flavour: 'Somebody wore this until the day they did not.',
-    weight: 3,
   },
   {
     id: 'cinderbone',

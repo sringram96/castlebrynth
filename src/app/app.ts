@@ -2,10 +2,10 @@
  * The root controller.
  *
  * It owns exactly five things: the current state, the dispatcher, when to
- * repaint, the presentation of a change that has already happened, and the two
- * pieces of *draft* the player is editing before they commit — the field they
- * are building and whether a Charm is armed. It computes no outcome — `reduce`
- * does that — and it draws no pixel; the views do.
+ * repaint, the presentation of a change that has already happened, and the one
+ * piece of *draft* the player is editing before they throw — which named bones
+ * are standing in the line. It computes no outcome — `reduce` does that — and
+ * it draws no pixel; the views do.
  *
  * There is one dispatcher and one path from a press to a state change, which
  * is the whole answer to the class of bug this reset exists to fix.
@@ -16,16 +16,16 @@
  * already saved before the first frame of any sequence, so a reload mid-throw
  * lands on the settled truth and a replay of the same seed is identical. What
  * a sequence may do is hold the *previous* state on screen for a few hundred
- * milliseconds — see `presenting` — because a SMASH whose next round paints
- * over it instantly is a smash the player never saw.
+ * milliseconds — see `presenting` — because a throw whose next round paints
+ * over it instantly is a throw the player never saw.
  *
  * ## The draft is not state
  *
- * Nudging the width stepper and lighting a bone in the pouch change nothing a
- * save can hold. They are a thought in progress, and they reach the reducer
- * once, whole, as `FIELD`. A reload before that press loses the thought and
- * nothing else — which is exactly right, because a half-selected army is not a
- * position the game should be able to be in.
+ * Lighting a bone in the pouch changes nothing a save can hold. It is a
+ * thought in progress, and it reaches the reducer once, whole, on the `THROW`
+ * that acts on it. A reload before that press loses the thought and nothing
+ * else — which is exactly right, because a half-chosen line is not a position
+ * the game should be able to be in.
  */
 
 import { armySize, enemy, stageForRound, stanceAt } from '../content/enemies.js'
@@ -37,7 +37,7 @@ import { totalBones } from '../content/bones.js'
 import type { BoneProfileId, SpecialBoneInstance } from '../content/bones.js'
 import type { RewardId } from '../content/rewards.js'
 import { applyLanes } from '../combat/clash.js'
-import { fieldLegal, maxWidth, reduce } from '../game/reducer.js'
+import { reduce } from '../game/reducer.js'
 import type { Action } from '../game/reducer.js'
 import { save } from '../game/save.js'
 import type { CombatState, GameState, SmashRecord } from '../game/state.js'
@@ -89,40 +89,27 @@ const ENEMY_THROW = {
 } as const
 
 /**
- * And of your own throw.
+ * Your throw, and everything it costs — one uninterrupted beat.
  *
- * Shorter, because the bones are already on the table with their backs up: the
- * only thing this reveals is what they say. It ends by handing over SMASH.
- */
-const PLAYER_THROW = {
-  lift: 0,
-  next: 420,
-} as const
-
-/**
- * The Charm.
+ * This used to be three sequences behind three presses: the throw, then a
+ * Charm, then the smash. **They are one press now, so they are one movement**,
+ * and the numbers below are the shape of that movement rather than three
+ * animations played back to back:
  *
- * One bone, one spin, and a line that may have to re-seat itself around the
- * new number. That last part is the whole reason it is a sequence and not a
- * repaint: a bone that changes value and jumps three lanes on the same frame
- * is a bone the player cannot follow.
- */
-const CHARM = {
-  spin: 0,
-  landed: 320,
-  next: 440,
-} as const
-
-/**
- * The smash, one lane at a time.
+ *   tumble    the bones turn over and show what they rolled
+ *   read      a held frame — long enough to see both lines standing
+ *   wind      the arm draws back
+ *   lanes     one clear beat per resolved lane, high to low
+ *   settle    the pile and the counts catch up, then the word band
  *
- * The record is already written. These are the beats that let a player watch
- * four separate things break rather than see a number change. One clear beat
- * per resolved lane, and the pile settles after the last of them — never
- * before, because the count moving early is the answer arriving ahead of the
- * question.
+ * `read` is the beat that keeps this legible rather than fast. Without it the
+ * faces and the breaking arrive together and a player watches an outcome
+ * without ever having seen the throw that caused it — which is the whole thing
+ * a single step risks, and the reason it is a held frame rather than a gap.
  */
-const SMASH = {
+const THROW = {
+  tumble: 0,
+  read: 300,
   wind: 0,
   /** The arm goes in as the first lane lands. */
   thrust: 90,
@@ -228,24 +215,16 @@ export class App {
   private presenting: GameState | undefined
   private sequence: Sequence | undefined
   /**
-   * The field being built, and which round it belongs to.
+   * Which named bones are standing in the line, and which round that is for.
    *
-   * The round is what makes it self-correcting: a draft from round two is not
-   * a draft for round three, so the moment the round moves it is rebuilt at
-   * the widest legal width — which is the right default, because the player
-   * has to be told that fielding *everything* is the thing they are choosing
-   * not to do.
+   * The round is what makes it self-correcting: a modifier chosen in round two
+   * is not one chosen for round three, so the moment the round moves it is
+   * rebuilt with **every named bone in**. That is the right default — a bone
+   * you are carrying is a bone you are fighting with, and holding one back is
+   * the thing the player has to choose to do.
    */
-  private draft: FieldDraft = { width: 1, specialIds: [] }
+  private draft: FieldDraft = { specialIds: [] }
   private draftFor: string | undefined
-  /**
-   * Whether the Charm is armed.
-   *
-   * Two steps, never one. A rare consumable that a stray tap on a bone could
-   * spend is a consumable the player will lose by accident exactly once and
-   * then never touch again.
-   */
-  private charmArmed = false
   /**
    * The idle loop: which enemy it is running for, its clock, and which plate.
    *
@@ -341,52 +320,36 @@ export class App {
     const key = `${combat.enemyId}:${combat.round}`
     if (this.draftFor !== key) {
       this.draftFor = key
-      this.draft = { width: maxWidth(run), specialIds: [] }
+      this.draft = { specialIds: run.specials.map((s) => s.instanceId) }
     }
-    // A special that died in the last smash cannot still be in a draft, and a
-    // width the pile no longer supports cannot still be legal. Both are
-    // corrected rather than trusted: the draft is a thought, and the pile is
-    // the fact.
+    // A special that died in the last smash cannot still be in a line. The
+    // draft is a thought and the pile is the fact, so it is corrected here
+    // rather than trusted — and `fieldFor` corrects it again in the reducer,
+    // because the view is not what makes a throw legal.
     const alive = new Set(run.specials.map((s) => s.instanceId))
     const specialIds = this.draft.specialIds.filter((id) => alive.has(id))
-    const width = Math.max(
-      Math.max(1, specialIds.length),
-      Math.min(this.draft.width, maxWidth(run)),
-    )
-    if (specialIds.length !== this.draft.specialIds.length || width !== this.draft.width) {
-      this.draft = { width, specialIds }
-    }
+    if (specialIds.length !== this.draft.specialIds.length) this.draft = { specialIds }
     return this.draft
   }
 
-  private setWidth(width: number): void {
-    const run = this.state.run
-    if (!run) return
-    const least = Math.max(1, this.draft.specialIds.length)
-    const clamped = Math.max(least, Math.min(Math.floor(width), maxWidth(run)))
-    if (clamped === this.draft.width) return
-    this.draft = { ...this.draft, width: clamped }
-    this.render()
-  }
-
   /**
-   * Put a named bone in the line, or take it out.
+   * Hold a named bone back, or put it in the line.
    *
-   * A special occupies a slot *inside* the width rather than adding one, so
-   * choosing a third bone into a field of two widens the field to three when
-   * the pile allows it and refuses when it does not — it never silently drops
-   * the one that was already there.
+   * The one decision inside a fight. Every named bone is in by default, so
+   * this is always a *withdrawal* — and withdrawing is the interesting half:
+   * a Knuckle in the line is four faces of six-or-better and one more thing
+   * that can break forever, and which of those matters more depends on the
+   * line it is standing against.
    */
   private toggleSpecial(instance: SpecialBoneInstance): void {
     const run = this.state.run
     if (!run || run.combat?.phase !== 'thrown') return
     const has = this.draft.specialIds.includes(instance.instanceId)
-    const specialIds = has
-      ? this.draft.specialIds.filter((id) => id !== instance.instanceId)
-      : [...this.draft.specialIds, instance.instanceId]
-    const width = Math.max(this.draft.width, specialIds.length)
-    if (!fieldLegal(run, width, specialIds)) return
-    this.draft = { width, specialIds }
+    this.draft = {
+      specialIds: has
+        ? this.draft.specialIds.filter((id) => id !== instance.instanceId)
+        : [...this.draft.specialIds, instance.instanceId],
+    }
     this.render()
     if (this.opened?.kind === 'pouch') this.open({ kind: 'pouch' })
   }
@@ -404,10 +367,6 @@ export class App {
   }
 
   private play(before: GameState, after: GameState, action: Action): void {
-    // Every press disarms the Charm. It is armed for exactly one decision, and
-    // an armed state that survives the press that used it is a state that will
-    // eat the next tap.
-    if (action.type !== 'CHARM') this.charmArmed = false
     this.stage(after)
 
     switch (action.type) {
@@ -415,11 +374,7 @@ export class App {
       case 'ROUND':
         return this.playEnemyThrow(before, after)
       case 'THROW':
-        return this.playPlayerThrow(after)
-      case 'CHARM':
-        return this.playCharm(before, after, action.boneKey)
-      case 'SMASH':
-        return this.playSmash(before, after)
+        return this.playThrow(before, after)
       case 'DRINK':
         return this.playDrink(before, after)
       case 'RITUAL_ROLL':
@@ -479,93 +434,39 @@ export class App {
   }
 
   /**
-   * Your own throw.
+   * The throw and everything it costs, as one movement.
    *
-   * The bones are already showing the reducer's faces; the tumble is played
-   * over the truth rather than towards it.
+   * The reducer has already thrown, sorted and resolved: `playerLine` and
+   * `lastSmash` are both in the save before a frame of this runs. What plays
+   * here is that record, in order — the bones turn over, both lines stand for
+   * a beat, and then one clear break per resolved lane, high to low.
+   *
+   * The pool on screen at beat *k* is `applyLanes` of the first *k* lanes,
+   * which is arithmetic the combat module owns: the view never counts a
+   * casualty for itself. And `stoppedAtLane` is respected by construction —
+   * it is in the record, the record has no lanes after it, so neither does
+   * the sequence.
    */
-  private playPlayerThrow(after: GameState): void {
-    this.render()
-    if (!this.animated) return
-    const bones = [...this.tray.crown.querySelectorAll<HTMLElement>('.bone')]
-    if (bones.length === 0) return
-
-    const sequence = this.start()
-    tumble(sequence, { bones, paint: paintTumble })
-    sequence.at(Math.max(tumbleDuration(bones.length), PLAYER_THROW.next), () => {
-      this.sequence = undefined
-      void after
-    })
-  }
-
-  /**
-   * One bone, thrown again.
-   *
-   * It lifts, spins on a fixed cosmetic cycle, and lands on the value that was
-   * already saved. If the new number moved it to another lane the whole line
-   * re-seats — which is why the settled paint is held back until the spin is
-   * over rather than being allowed to jump under the player's thumb.
-   */
-  private playCharm(before: GameState, after: GameState, boneKey: string): void {
-    this.charmArmed = false
-    if (!this.animated) {
-      this.presenting = undefined
-      this.render()
-      return
-    }
-
-    // Hold the line as it was, so the target is still where the thumb left it.
-    this.presenting = before
-    this.render()
-    const target = this.tray.crown.querySelector<HTMLElement>(`.bone[data-bone-key="${boneKey}"]`)
-
-    const sequence = this.start()
-    if (target) {
-      sequence.at(CHARM.spin, () => target.classList.add('bone-charmed'))
-      for (let step = 0; step < 3; step++) {
-        sequence.at(CHARM.spin + 70 * step, () => paintTumble(target, step))
-      }
-    }
-    sequence.at(CHARM.landed, () => {
-      this.presenting = after
-      this.render()
-      const landed = this.tray.crown.querySelector<HTMLElement>(`.bone[data-bone-key="${boneKey}"]`)
-      landed?.classList.add('bone-charmed')
-    })
-    sequence.at(CHARM.next, () => this.finish())
-  }
-
-  /**
-   * The smash, lane by lane.
-   *
-   * The reducer has already written `lastSmash` and applied every casualty.
-   * What plays here is that record, in order, one beat per resolved lane — so
-   * the player watches four separate things break rather than seeing a number
-   * change. The pool on screen at beat *k* is `applyLanes` of the first *k*
-   * lanes, which is arithmetic the combat module owns: the view never counts
-   * casualties for itself.
-   *
-   * `stoppedAtLane` is respected by construction. It is in the record, the
-   * record has no lanes after it, and so neither does the sequence.
-   */
-  private playSmash(before: GameState, after: GameState): void {
+  private playThrow(before: GameState, after: GameState): void {
     const run = before.run!
     const combat = run.combat!
-    const record = after.run?.combat?.lastSmash
-    if (!record) return void this.finish()
+    const thrown = after.run?.combat
+    const record = thrown?.lastSmash
+    if (!thrown || !record) return void this.finish()
 
     const start = {
       commonBones: run.commonBones,
       specials: run.specials,
       enemyBones: combat.enemyBones,
     }
-    const settledCombat = after.run?.combat
-    const defeated = settledCombat?.defeated === true
+    const defeated = thrown.defeated === true
     const dead = after.mode === 'dead'
     const pose = smashPose(combat.enemyId, record)
 
-    // One frame of the smash: the pile and the army as they stood after `k`
-    // lanes, with the record truncated to the lanes that have been shown.
+    // One frame: the pile and the army as they stood after `k` lanes, with the
+    // record truncated to the lanes that have been shown. `k = 0` is the throw
+    // itself — both lines standing, nothing broken yet — which only exists
+    // because the phase carries the thrown line rather than a committed field.
     const frame = (k: number): GameState => {
       const lanes = record.lanes.slice(0, k)
       const pool = applyLanes(start, lanes)
@@ -585,11 +486,11 @@ export class App {
         ...before,
         run: {
           ...run,
+          say: '',
           commonBones: pool.commonBones,
           specials: pool.specials,
           combat: {
-            ...combat,
-            phase: 'smashed',
+            ...thrown,
             enemyBones: pool.enemyBones,
             lastSmash: partial,
             log: [],
@@ -598,7 +499,7 @@ export class App {
       }
     }
 
-    this.presenting = { ...before, run: { ...run, say: '' } }
+    this.presenting = frame(0)
     this.render()
 
     if (!this.animated) {
@@ -615,12 +516,24 @@ export class App {
     }
 
     const sequence = this.start()
+
+    // The bones turn over. They are already showing the reducer's faces, so
+    // the tumble is played over the truth rather than towards it — nothing
+    // below can disagree with what has already landed.
+    const bones = [...this.tray.crown.querySelectorAll<HTMLElement>('.bone')]
+    if (bones.length > 0) tumble(sequence, { bones, paint: paintTumble })
+
+    // Then a held frame, and only then the arm. This is the seam where three
+    // presses used to be, and the held frame is what replaces them: both lines
+    // stand, fully readable, before anything breaks.
+    const smashAt = (bones.length > 0 ? tumbleDuration(bones.length) : 0) + THROW.read
+
     // The arm draws back and goes in. It swings once, for the whole smash,
     // because the smash is one movement — a thrust per lane would be four
     // people fighting.
-    sequence.at(SMASH.wind, () => weaponThrust(this.world, 'wind'))
-    sequence.at(SMASH.thrust, () => weaponThrust(this.world, 'thrust'))
-    sequence.at(SMASH.rest, () => weaponThrust(this.world, 'rest'))
+    sequence.at(smashAt + THROW.wind, () => weaponThrust(this.world, 'wind'))
+    sequence.at(smashAt + THROW.thrust, () => weaponThrust(this.world, 'thrust'))
+    sequence.at(smashAt + THROW.rest, () => weaponThrust(this.world, 'rest'))
 
     // Only the lanes that actually resolved. A safe lane is a lane in which
     // nothing happened, so it gets no beat of its own — it is simply still
@@ -629,7 +542,7 @@ export class App {
       (l) => l.result !== 'safe-player' && l.result !== 'safe-enemy',
     ).length
 
-    let at = SMASH.firstLane
+    let at = smashAt + THROW.firstLane
     for (let k = 1; k <= resolved; k++) {
       const lane = record.lanes[k - 1]!
       sequence.at(at, () => {
@@ -645,12 +558,12 @@ export class App {
         }
         if (lane.result === 'enemy' || lane.result === 'warden-hold') shake(this.world, 1)
       })
-      at += SMASH.perLane
+      at += THROW.perLane
     }
 
     // Everything settles: the full record, the counts, and the picture of what
     // the thing just did to you.
-    at += SMASH.settle
+    at += THROW.settle
     sequence.at(at, () => {
       this.presenting = frame(record.lanes.length)
       this.render()
@@ -659,19 +572,25 @@ export class App {
       if (pose && !defeated) this.showPose(combat.enemyId, pose)
     })
 
-    at += SMASH.said
+    at += THROW.said
     sequence.at(at, () => {
-      this.presenting = { ...before, run: { ...after.run!, combat: settledCombat! } }
+      // The settled fight, said out loud — and deliberately not the room's
+      // line. A win writes the cleared room's arrival into `say`, and while
+      // the fight is still on the plate that band belongs to the smash: with
+      // both lines now inside the tray, a word about the empty corridor
+      // arriving over the top of the wreckage is the next screen leaking into
+      // this one. Blanking `say` lets the band fall through to `combat.log`.
+      this.presenting = { ...before, run: { ...after.run!, say: '', combat: thrown } }
       this.render()
       if (pose && !defeated) this.showPose(combat.enemyId, pose)
     })
 
     // A death outranks the beats below it. The run ended on a lane, and no
     // further picture of the fight belongs on the screen.
-    if (dead) return void sequence.at(at + SMASH.next, () => this.finish())
+    if (dead) return void sequence.at(at + THROW.next, () => this.finish())
     if (defeated) return this.playDefeat(sequence, at, combat, after, record)
 
-    sequence.at(at + SMASH.next, () => this.finish())
+    sequence.at(at + THROW.next, () => this.finish())
   }
 
   /**
@@ -876,7 +795,7 @@ export class App {
   ): void {
     const death = defeatOf(combat.enemyId)
     if (!death) {
-      return void sequence.at(from + SMASH.next, () => {
+      return void sequence.at(from + THROW.next, () => {
         this.finish()
         this.dispatch({ type: 'DEFEAT_DONE' })
       })
@@ -1087,26 +1006,14 @@ export class App {
     renderTray(
       this.tray,
       state,
-      { draft: this.currentDraft(state), charmArmed: this.charmArmed },
+      { draft: this.currentDraft(state) },
       {
         onMenu: () => this.open({ kind: 'menu' }),
         onFight: () => this.dispatch({ type: 'FIGHT' }),
-        onWidth: (width) => this.setWidth(width),
-        onField: () =>
-          this.dispatch({
-            type: 'FIELD',
-            width: this.draft.width,
-            specialIds: this.draft.specialIds,
-          }),
-        onThrow: () => this.dispatch({ type: 'THROW' }),
-        onSmash: () => this.dispatch({ type: 'SMASH' }),
+        onThrow: () =>
+          this.dispatch({ type: 'THROW', specialIds: this.draft.specialIds }),
         onRound: () => this.dispatch({ type: 'ROUND' }),
         onDrink: () => this.dispatch({ type: 'DRINK' }),
-        onArmCharm: () => {
-          this.charmArmed = !this.charmArmed
-          this.render()
-        },
-        onCharmBone: (boneKey) => this.dispatch({ type: 'CHARM', boneKey }),
         onPouch: () => this.open({ kind: 'pouch' }),
         onInspectReward: (id) => this.open({ kind: 'reward', id: id as RewardId }),
         onInspectBone: (profile: BoneProfileId, specialId?: string) =>
@@ -1139,14 +1046,11 @@ export class App {
     const run = state.run
     const thrown = run?.combat?.phase === 'thrown'
     renderOverlay(this.overlay, view, state, () => this.close(), {
+      // Every named bone can always come back into the line: it stands inside
+      // the width rather than widening it, so there is never a pile that can
+      // hold the bone but not the choice.
       fieldable: (instance) =>
-        thrown &&
-        !!run &&
-        !this.draft.specialIds.includes(instance.instanceId) &&
-        fieldLegal(run, Math.max(this.draft.width, this.draft.specialIds.length + 1), [
-          ...this.draft.specialIds,
-          instance.instanceId,
-        ]),
+        thrown && !!run && !this.draft.specialIds.includes(instance.instanceId),
       fielded: (instance) => this.draft.specialIds.includes(instance.instanceId),
       onToggle: (instance) => this.toggleSpecial(instance),
     })

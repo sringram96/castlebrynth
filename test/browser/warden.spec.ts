@@ -17,8 +17,8 @@ test.describe('before anything is committed', () => {
     await expect(rule).toBeVisible()
     await expect(rule).toHaveText('TIES HOLD.')
     await expect(rule).toHaveAttribute('aria-label', /HOLDS TIES/)
-    // And it is up while the player still has the decision to make.
-    await expect(act(page, 'field')).toBeVisible()
+    // And it is up while the player still has a decision to make.
+    await expect(act(page, 'throw')).toBeVisible()
   })
 
   test('says it in the room, before the fight is even entered', async ({ page }) => {
@@ -50,35 +50,35 @@ test.describe('before anything is committed', () => {
 
 test.describe('an equal lane', () => {
   test('breaks my bone and leaves its own standing', async ({ page }) => {
-    // Search the seeds for a fight whose first lane is a genuine tie. Nothing
-    // is injected: every one of these is a real opening round.
+    // Search the seeds for a fight whose opening round contains a genuine
+    // tie. Nothing is injected: every one of these is a real round, resolved
+    // by the one press the game offers.
     for (let seed = 1; seed <= 60; seed++) {
-      await boot(page, `?room=gate&mode=combat&phase=rolled&seed=${seed}`)
+      await boot(page, `?room=gate&mode=combat&phase=smashed&seed=${seed}`)
+      if ((await bones(page).count()) === 0) continue
       const mine = await valuesOf(bones(page))
       const theirs = await valuesOf(enemyBones(page))
       const lane = mine.findIndex((value, i) => value === theirs[i])
       if (lane < 0) continue
 
-      const before = await livingBones(page)
-      await act(page, 'smash').click()
-
       // My bone is broken. Its bone is not.
       await expect(bones(page).nth(lane)).toHaveAttribute('data-broken', 'yes')
       await expect(enemyBones(page).nth(lane)).not.toHaveAttribute('data-broken', 'yes')
-      expect(await livingBones(page)).toBeLessThan(before)
 
       const smash = (await state(page)).run!.combat!.lastSmash!
       expect(smash.heldTies).toBeGreaterThan(0)
+      expect(smash.playerCommonLost + smash.playerSpecialsLost.length).toBeGreaterThan(0)
       return
     }
     expect(null, 'no seed in 60 produced a tie against the Warden').not.toBeNull()
   })
 
   test('is the only thing its rule changes', async ({ page }) => {
-    await boot(page, '?room=gate&mode=combat&phase=rolled&seed=3')
+    // `smashed` is the settled round: both lines are face-up and every
+    // casualty is already marked, because the throw and the smash are one.
+    await boot(page, '?room=gate&mode=combat&phase=smashed&seed=3')
     const mine = await valuesOf(bones(page))
     const theirs = await valuesOf(enemyBones(page))
-    await act(page, 'smash').click()
 
     const paired = Math.min(mine.length, theirs.length)
     for (let lane = 0; lane < paired; lane++) {
@@ -129,10 +129,10 @@ test.describe('the body', () => {
 test.describe('reduced motion lands on the same fight', () => {
   test('a held tie reads identically with motion off', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
-    await boot(page, '?room=gate&mode=combat&phase=rolled&seed=3', { motion: true })
+    await boot(page, '?room=gate&mode=combat&phase=thrown&seed=3', { motion: true })
     const mine = await valuesOf(bones(page))
     const theirs = await valuesOf(enemyBones(page))
-    await act(page, 'smash').click()
+    await act(page, 'throw').click()
 
     // No waiting, no sequence: the settled truth is on screen immediately, and
     // every casualty is readable as an attribute rather than as a movement.

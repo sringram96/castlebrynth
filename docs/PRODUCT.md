@@ -7,14 +7,14 @@ Read time: five minutes.
 
 > Castlebrynth is a portrait pixel-horror roguelike where you descend through
 > hand-authored rooms carrying a pile of thirty bones, fight grotesque enemies
-> by choosing how many of those bones to risk against the line they have
-> already thrown, collect strange named bones that roll higher than any
-> ordinary one, and decide how far to push before the dungeon kills you.
+> by throwing that pile against the line they have already thrown, collect
+> strange named bones that roll higher than any ordinary one, and decide how
+> far to push before the dungeon kills you.
 
 The whole of the fight is four sentences. **It throws first. High kills low.
 Ties kill both. What dies stays dead.** Everything else in the system exists to
-make those four legible: the width control is how the player prices them, and
-the pile is what pays.
+make those four legible: the pile is what pays, and one press is what it takes
+to find out how much.
 
 ## The player verbs
 
@@ -25,10 +25,7 @@ as support for one of them, it is out of scope.
 | --- | --- |
 | **LOOK** | Tap a visible thing in the room. Always answers. Never commits. |
 | **GO** | Choose the next room. |
-| **FIELD** | Commit how many bones to risk this round, and which named ones. |
-| **THROW** | Throw the committed line. Once. |
-| **CHARM** | Spend a Charm to throw one rolled bone again. Once per fight. |
-| **SMASH** | Meet the two lines lane by lane, and break the losers. |
+| **THROW** | Throw the whole pile against its line, and watch the losers break. One press, one round. |
 | **ROUND** | Let it throw again. |
 | **DRINK** | Spend a Vial: five bones back. |
 | **TAKE** | Choose a reward. |
@@ -125,20 +122,24 @@ permanent knowledge clues · refusal flags · the Book of Ends as state ·
 procedural region lean and lock · the provable-winnability generator ·
 hand-size wounds and upgrades · classes · QTE windows · merchants and currency
 
-Three collectible nouns exist: **bones** (including named ones), **Charms**
-and **Vials**. Adding a fourth is a product decision, not an engineering one.
+Two collectible nouns exist: **bones** (including named ones) and **Vials**.
+Adding a third is a product decision, not an engineering one.
 
 Relics are gone. A passive arithmetic modifier has nothing to modify in a game
 whose whole combat rule is *higher kills lower*, and keeping them would have
 meant keeping a number for them to add to.
 
+Charms are gone too, and for a different reason: a reroll needs a moment
+between seeing your throw and living with it, and collapsing the round to one
+press removed that moment. See `docs/COMBAT.md` § *What was cut, and why*.
+
 ## Definition of done for the slice
 
 - A fresh mobile browser completes the whole route without a reload.
 - Every enemy is visibly present before FIGHT is offered.
-- The enemy's line is face-up and readable before FIELD is offered.
-- Field, throw, charm, smash, round, drink, inspect, reward, skip, navigation
-  and death-restart all have passing browser tests.
+- The enemy's line is face-up and readable before THROW is offered.
+- Throw, round, drink, inspect, reward, skip, navigation and death-restart all
+  have passing browser tests.
 - A first-time player can say what their named bone rolls, in digits.
 - Death to new run is one press, and never leaves stale combat UI.
 - The active docs read in under twenty minutes.

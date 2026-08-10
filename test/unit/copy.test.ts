@@ -69,11 +69,6 @@ describe('a reward card states its exact mechanic', () => {
     expect(reward('vial').rule).toContain('5')
     expect(reward('vial').rule).toContain('30')
   })
-
-  it('says a Charm is once and is one bone', () => {
-    expect(reward('charm').rule).toMatch(/once/i)
-    expect(reward('charm').rule).toContain('1')
-  })
 })
 
 describe('the enemies say what they are about to do', () => {
@@ -133,16 +128,12 @@ describe('the controls are plain verbs', () => {
     }
   })
 
-  it('has one verb per phase of a round, and no scoring verb', () => {
-    expect(VERBS).toMatchObject({
-      field: 'FIELD',
-      throw: 'THROW',
-      smash: 'SMASH',
-      round: 'ROUND',
-    })
-    expect(VERBS).not.toHaveProperty('roll')
-    expect(VERBS).not.toHaveProperty('reroll')
-    expect(VERBS).not.toHaveProperty('score')
+  it('has one verb per phase of a round, and a round is two phases', () => {
+    expect(VERBS).toMatchObject({ throw: 'THROW', round: 'ROUND' })
+    // The three that became one, and the four the old game scored with.
+    for (const gone of ['field', 'smash', 'charm', 'roll', 'reroll', 'score']) {
+      expect(VERBS, `${gone} is still a verb`).not.toHaveProperty(gone)
+    }
   })
 })
 

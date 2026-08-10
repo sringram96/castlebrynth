@@ -57,7 +57,6 @@ interface Cell {
   readonly costP90: number
   readonly left: number
   readonly specials: number
-  readonly charms: number
   readonly vials: number
 }
 
@@ -75,7 +74,6 @@ function fightStats(room: string, tier: Tier, loadout: Loadout = {}): Cell {
     costP90: quantile(costs, 0.9),
     left: mean(won.map((r) => r.bonesLeft)),
     specials: results.reduce((n, r) => n + r.specialsLost.length, 0),
-    charms: results.reduce((n, r) => n + r.charmsSpent, 0),
     vials: results.reduce((n, r) => n + r.vialsDrunk, 0),
   }
 }
@@ -104,13 +102,11 @@ const boss = {
   naive: fightStats('gate', 'naive', {
     bones: 26,
     specials: ['knuckle', 'cinderbone'],
-    charms: 1,
     vials: 1,
   }),
   heuristic: fightStats('gate', 'heuristic', {
     bones: 26,
     specials: ['knuckle', 'cinderbone'],
-    charms: 1,
     vials: 1,
   }),
 }
@@ -138,7 +134,7 @@ function fightRow(name: string, cell: { naive: Cell; heuristic: Cell }): void {
 fightRow('THE GNAWING — bare, 30 bones', first)
 fightRow('THE MARROW — 24 bones, nothing named', secondBare)
 fightRow('THE MARROW — 24 bones and a Knuckle', secondArmed)
-fightRow('THE WARDEN — 26 bones, two named, a Charm, a Vial', boss)
+fightRow('THE WARDEN — 26 bones, two named, a Vial', boss)
 fightRow('THE WARDEN — 12 bones, nothing else', bossBare)
 
 // ── the provisional bands ──────────────────────────────────────────────
@@ -197,6 +193,22 @@ console.log('')
 band('safe route — escape (naive)', safeNaive.escape, 0.35, 0.75)
 band('deep route — escape (naive)', deepNaive.escape, 0.2, 0.6)
 band('a solver does better than a beginner', safeSolver.escape - safeNaive.escape, 0, 1, pct)
+// The trade the surviving decision actually makes, both halves of it, so a
+// reader can see what skill buys and what it is bought with.
+band(
+  'named bones a solver saves at the boss, per 400',
+  boss.naive.specials - boss.heuristic.specials,
+  1,
+  Infinity,
+  one,
+)
+band(
+  'common bones that costs, per fight',
+  boss.heuristic.cost - boss.naive.cost,
+  0,
+  6,
+  one,
+)
 
 // ── the invariants ─────────────────────────────────────────────────────
 //
@@ -225,9 +237,22 @@ invariant(
   'a developed run beats the boss more often than a bare one',
   boss.naive.win > bossBare.naive.win,
 )
+// What reading the line is worth, now that width is not a decision.
+//
+// This invariant used to be `heuristic.cost <= naive.cost`, and it held
+// because the solver could narrow against a line it could not beat. **That
+// decision no longer exists.** The line is always as wide as the pile allows,
+// so the only lever left is holding a named bone out of it — and the solver
+// pays *more* common bones to do it.
+//
+// That is not the policy being wrong. It is the shape of the game: the skill
+// on offer is protecting what cannot be replaced, and common bones are what it
+// is bought with. So the invariant measures the decision that exists rather
+// than the one that was removed, and the cost comparison moved to the report
+// above where a person can watch it.
 invariant(
-  'reading the line is worth something: the solver spends fewer bones',
-  boss.heuristic.cost <= boss.naive.cost,
+  'reading the line is worth something: the solver keeps more named bones',
+  boss.heuristic.specials < boss.naive.specials,
 )
 invariant(
   'the boss is the hardest fight in the slice',

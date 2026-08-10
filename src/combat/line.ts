@@ -76,7 +76,7 @@ export function rollEnemyLine(
  * A common bone's identity for one round.
  *
  * Ephemeral by construction, because a common bone has no identity outside the
- * line it is standing in: it exists so that a Charm can target *this* one and
+ * line it is standing in: it exists so that a smash can break *this* one and
  * a smash can mark *this* one broken. The round is in the key so two rounds'
  * keys can never collide inside one presented sequence.
  */
@@ -155,26 +155,6 @@ export function rollPlayerLine(
   return sortPlayerLine(thrown)
 }
 
-/**
- * Throw one bone of a line again, and stand the line up afresh.
- *
- * The whole of CHARM's arithmetic. Only the named bone is thrown; every other
- * bone comes back byte-identical, and the line is re-sorted because the new
- * value may belong somewhere else. Both halves are tested.
- */
-export function recharmLine(
-  line: readonly RolledBone[],
-  boneKey: string,
-  rng: Rng,
-): readonly RolledBone[] {
-  return sortPlayerLine(
-    line.map((bone) => {
-      if (bone.boneKey !== boneKey) return bone
-      const { faceIndex, value } = castProfile(bone.profile, rng)
-      return { ...bone, faceIndex, value }
-    }),
-  )
-}
 
 /**
  * The player's line, standing high to low.

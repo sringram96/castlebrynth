@@ -64,24 +64,19 @@ number** as well as their pips. See `docs/ART_DIRECTION.md`.
 
 ## The round
 
+**Choose your modifiers, then throw and watch what it costs.** Two steps, and
+each of them is one of those sentences.
+
 ```
 FIGHT
   |
   v
 thrown       its line is already rolled, face-up and sorted
+  |          yours is not: the pile throws as wide as it can, and the only
+  |          thing you decide is which named bones stand in it
   |
-  | FIELD { width, specialIds }
-  v
-fielded      exactly those bones committed; no face decided yet
-  |
-  | THROW
-  v
-rolled       my line rolled once and sorted
-  |  \
-  |   \ CHARM { boneKey }   optional, once a fight, costs a Charm
-  |    \__________________  back to rolled, whole line re-sorted
-  |
-  | SMASH
+  | THROW { specialIds }
+  |          fields, rolls, sorts and resolves — one action, one tick
   v
 smashed      the casualties are settled and visible
   |
@@ -90,35 +85,61 @@ smashed      the casualties are settled and visible
 thrown       its next line
 ```
 
-Each phase has **exactly one** verb. FIELD, THROW, SMASH and ROUND are never on
-screen together.
+Each phase has **exactly one** verb: THROW, then ROUND. There were four phases
+and four verbs, and `fielded` and `rolled` are gone with the decisions they
+existed to carry — see *What was cut, and why* below.
 
 ### 1. It throws first
 
 The enemy fields up to six bones from its army in **authored priority order** —
 a number on the content, not a heuristic — rolls them, and stands them high to
 low. This happens in the same tick as FIGHT or ROUND, and it is public before
-the player commits anything. That is what makes the next step a decision.
+the player throws. That is what makes the round something you answer rather
+than something you start.
 
-### 2. Width is a decision
+### 2. Width is not a decision; composition is
 
-The player fields `1 .. min(6, totalBones)`. Narrow play risks fewer bones and
-kills fewer of its; wide play does the opposite. Named bones occupy slots
-*inside* the width rather than adding to it.
+The line is `min(6, commonBones + named bones standing)`, always. There is no
+stepper and no width to commit: a run throws everything it can, every round.
 
-While the phase is `thrown` the player is editing a **draft** — a stepper and
-the pouch — and none of it is a move. It reaches the reducer once, whole, as
-`FIELD`. A reload before that loses the thought and nothing else; a save can
-never hold a half-selected army.
+What the player chooses is **which named bones are in it**. Every named bone
+stands by default — a bone you are carrying is a bone you are fighting with —
+and the pouch lets you hold one back. A Knuckle in the line is four faces of
+six-or-better and one more thing that can break forever; against a line it
+cannot beat, holding it back is the better bet. Holding one back costs a lane
+whenever the pile has no spare common to take its place, and the width recomputes
+to say so rather than inventing a bone.
 
-### 3. One throw
+While the phase is `thrown` that selection is a **draft** and none of it is a
+move. It reaches the reducer once, whole, on the `THROW` that acts on it. A
+reload before that loses the thought and nothing else.
 
-There is no HOLD, no general reroll, and no second throw. A Charm is the only
-rethrow in the game: it costs a charge, it throws exactly one already-rolled
-bone, and it may be spent **once per fight** however many are carried.
+### 3. One throw, and no way to take it back
 
-Arming is two presses — tap the Charm bay, then tap a bone. A rare consumable a
-stray tap could spend is one the player loses by accident exactly once.
+There is no HOLD, no reroll, and no second throw. Not one under any name: the
+Charm was the last rethrow in the game and it is gone with the phase it was
+spent in — a reroll needs a moment between seeing your throw and living with
+it, and the round no longer has one.
+
+### What was cut, and why
+
+The round was `thrown → fielded → rolled → smashed`: four phases, four verbs,
+three presses to get through one exchange. FIELD committed a width, THROW
+rolled it, and SMASH resolved it.
+
+Two of those presses were confirmations. Between THROW and SMASH there was
+exactly one thing a player could do — spend a Charm — and between FIELD and
+THROW there was nothing at all. A phase whose only content is confirming a
+decision already taken is a phase that exists to be pressed through, and three
+taps to resolve one exchange is what a fight felt like from the outside.
+
+So: **throwing and finding out are one press**, and the beat that was spread
+across three of them is spent on showing the throw instead — the bones turn
+over, both lines stand for a moment, and then one clear break per lane.
+
+The honest cost is written down in *Balance* below: the width control was the
+game's skill ceiling, and removing it lowered it. What is left is real but
+smaller.
 
 ### 4. Both lines sort themselves
 
@@ -201,8 +222,13 @@ reading of *dead stays dead*.
 
 ## Rewards
 
-Three nouns and no fourth: **bones**, **Charms**, **Vials**. No new collectible
-category without a product decision.
+Two nouns and no third: **bones** and **Vials**. No new collectible category
+without a product decision. Relics went first — a passive arithmetic modifier
+has nothing to modify in a game whose whole rule is *higher kills lower* — and
+the Charm followed the phase it was spent in.
+
+What is left is the shape of the two things a fight lets you decide: a Vial is
+*how long do I last*, and a named bone is *what is standing in the line*.
 
 Taking a named bone at the ceiling **transmutes one common bone** into it: the
 total stays at thirty and there is no replacement picker. The player asked for
@@ -229,14 +255,16 @@ cannot perturb a result somewhere else:
 |---|---|
 | `enemyThrow` | FIGHT (round 1) and ROUND |
 | `playerThrow` | THROW |
-| `charm` | CHARM, for its one target |
 | `reward` | the win |
 
-SMASH draws no random number and takes no generator. Presentation draws none
-either — the faces that flicker past a tumbling bone come from a counter.
+`resolveSmash` draws no random number and takes no generator — it is a pure
+function of two lines and a tie rule. Presentation draws none either: the faces
+that flicker past a tumbling bone come from a counter, not a generator, so a
+replay of the same seed is identical on screen as well as in state.
 
-A reload at `fielded` and a press of THROW give the same line. A reload at
-`rolled` rolls nothing at all.
+A reload at `thrown` and a press of THROW give the same round. A reload at
+`smashed` rolls nothing at all: the throw and every casualty were written by
+the press that caused them, before a frame of the sequence ran.
 
 ---
 
@@ -246,9 +274,10 @@ The list a change has to keep true.
 
 1. A fresh run is exactly thirty common bones.
 2. No health, no damage, no hit points — under any name.
-3. The enemy's line is public before the player commits.
-4. The player fields 1–6, and never more than the pile allows.
-5. One player throw. A Charm is the only rethrow, once per fight.
+3. The enemy's line is public before the player throws.
+4. The line is as wide as the pile allows, capped at six. Width is never asked
+   for and never offered.
+5. One player throw, and no rethrow of any kind.
 6. Both lines sort high to low automatically; no manual lane order.
 7. High kills low; ties kill both; the Warden holds ties.
 8. Extras are safe.
@@ -265,19 +294,40 @@ The list a change has to keep true.
 `npm run balance` runs 400 seeds per cell **through the real reducer** with a
 policy where the thumb goes. It is not a second model of combat.
 
-Two tiers. **naive** fields everything and drinks only when a bad round could
-end the run — the first-time player, and the floor the slice has to be winnable
-from. **heuristic** reads the public line, compares every legal width, and
-spends a Charm on a losing lane it could actually win. It is allowed to be
-better than a first-time human; it is not allowed to know anything a human at
-the same screen does not.
+Two tiers. **naive** stands every named bone it owns and drinks only when a bad
+round could end the run — the first-time player, and the floor the slice has to
+be winnable from. **heuristic** reads the public line and holds a named bone
+back when the lane it will land in is likely to break it for less than it is
+worth. It is allowed to be better than a first-time human; it is not allowed to
+know anything a human at the same screen does not.
 
 The report prints **invariants**, which fail the build, and **provisional
 bands**, which print `WATCH` and do not. That split is deliberate: the bands
 were written before this implementation existed, and a target that predates its
 own simulator is a hypothesis rather than a gate.
 
-### Observed, at first ratification
+### What collapsing the round cost, measured
+
+Worth stating plainly, because it is the price of the two-step round and it is
+not small.
+
+The old invariant was *reading the line is worth something: the solver spends
+fewer bones*, and it held because a solver could narrow against a line it could
+not beat. **That decision is gone**, and with it most of the skill expression:
+the solver now spends about 4.5 bones a fight *more* than the beginner at the
+boss, because the only lever left — holding a named bone back — is paid for in
+common bones.
+
+What it buys is real: across 400 boss fights the solver finishes with **326
+more named bones** than the beginner. That is the trade the game now offers, so
+that is what the invariant measures, and both halves of it print in the report
+where a person can watch them move.
+
+A shallower skill ceiling was the accepted cost of one press per round. If it
+turns out to be too shallow, the lever to reach for is content — enemy armies
+and what a run arrives carrying — not putting the stepper back.
+
+### Observed, after the round collapsed
 
 | | naive | note |
 |---|---|---|
@@ -286,10 +336,10 @@ own simulator is a hypothesis rather than a gate.
 | Marrow, with a Knuckle | 100% win, **6.7 bones** | in band |
 | Warden, developed | **84% win**, 11.4 bones | band wanted 45–60% |
 | Warden, bare 12 | 10% win | in band |
-| safe route | 69% out | in band |
-| deep route | 60% out | in band |
+| safe route | 70% out | in band |
+| deep route | **65% out** | band wanted 20–60% |
 
-**Three bands are open, and they are named rather than quietly moved.**
+**Five bands are open, and they are named rather than quietly moved.**
 
 The Gnawing costs about three bones instead of four to seven. That reads as
 correct rather than wrong: it is the tutorial, it is five common bones against
@@ -301,10 +351,14 @@ developed pile is not an exam. The cause is legible in the numbers: eight bones
 against a player carrying twenty-six is not enough army for held ties to bite,
 because the fight ends before attrition does. The levers are its army size, its
 profile mix, and how many bones a run arrives with — all three are content
-decisions, and none of them belongs in the commit that built the system. The
-army in this document is the one the specification fixes; changing it is a
-product decision and should arrive in a commit that says so.
+decisions, and none of them belongs in the commit that built the system.
 
-Until then the report says `WATCH` on every run, which is the point: a number
-outside its band is a conversation, and a conversation nobody can see is a
-number somebody will quietly nudge.
+**The deep route got easier**, from 60% out to 65%, and the two-step round is
+why: forcing a full-width line every round is on average good play, and the
+route that used to punish over-committing no longer can. Whether that makes the
+fork a real choice is a content question, and it is now the second one on the
+list.
+
+Until they are answered the report says `WATCH` on every run, which is the
+point: a number outside its band is a conversation, and a conversation nobody
+can see is a number somebody will quietly nudge.

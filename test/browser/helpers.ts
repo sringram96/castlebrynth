@@ -58,7 +58,6 @@ export async function state(page: Page): Promise<{
     map: { start: string; nodes: Record<string, { id: string; templateId: string }> }
     commonBones: number
     specials: { instanceId: string; specialId: string }[]
-    charms: number
     vials: number
     cleared: string[]
     offer?: string[]
@@ -66,7 +65,6 @@ export async function state(page: Page): Promise<{
       enemyId: string
       round: number
       phase: string
-      charmUsed: boolean
       enemyBones: { boneId: string }[]
       enemyLine: { boneKey: string; value: number }[]
       playerLine?: { boneKey: string; value: number; specialInstanceId?: string }[]
@@ -143,9 +141,7 @@ export async function wayTo(page: Page, templateId: string): Promise<Locator> {
  */
 const MIN_WIDTH: Readonly<Record<string, number>> = {
   'inspect-bone': 34,
-  'charm-bone': 34,
   drink: 28,
-  charm: 28,
   pouch: 28,
   'inspect-reward': 28,
 }

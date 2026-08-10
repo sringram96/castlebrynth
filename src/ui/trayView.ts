@@ -8,19 +8,20 @@
  *
  *   the orb        the pile — how many bones are alive
  *   the crown      your line, six lanes, and nothing else
- *   the strip      the enemy's line, lane-aligned with the crown above it
- *   the well       the field count, and the one instruction for the phase
- *   the right bays the satchel: Vial, Charm, Pouch
+ *   the well       **its** line, lane-aligned under yours, and the phase's line
+ *   the right bays the satchel: Vial, Pouch
  *   the three beds MENU · the phase's one verb · a second route out of a room
  *
- * A secondary action that does not exist is **absent**, never disabled. And
- * the four combat verbs never appear together: a phase has exactly one.
+ * A secondary action that does not exist is **absent**, never disabled. And a
+ * phase has exactly one verb: THROW, then ROUND.
  */
 
 import {
   ACTION_BEDS,
   DIE_CENTRES,
   DIE_PITCH,
+  ENEMY_BONE,
+  ENEMY_LANES,
   ORB,
   ORB_TEXT,
   RELIC_CENTRES,
@@ -31,39 +32,33 @@ import { PHASE_LINE, VERBS, WELL_IDLE } from '../content/text.js'
 import { BONE_CEILING, roomToRecover, specialBone, totalBones } from '../content/bones.js'
 import type { BoneProfileId } from '../content/bones.js'
 import { brokenPlayerKeys } from '../combat/clash.js'
-import { LINE_WIDTH } from '../combat/line.js'
 import { enemy as enemyById } from '../content/enemies.js'
 import { roomAt } from '../game/map.js'
 import { exitsOpen, stateOf } from '../content/interactions.js'
-import { fieldLegal, maxWidth } from '../game/reducer.js'
+import { fieldFor } from '../game/reducer.js'
 import type { CombatState, GameState, RunState } from '../game/state.js'
 import { boneProfile } from '../content/bones.js'
 import { boneButton, boneFace, button, el, place, seat, seatBed } from './components.js'
 
 /**
- * The draft the player is editing before FIELD.
+ * The modifier the player is editing before the throw.
  *
- * Presentation-local, and deliberately not in `GameState`: nudging a stepper
- * is not a move. It reaches the reducer once, whole, as the FIELD action.
+ * Which named bones stand in the line, and nothing else — the width is not a
+ * choice. Presentation-local and deliberately not in `GameState`: lighting a
+ * bone in the pouch is a thought, not a move, and it reaches the reducer once,
+ * whole, on the THROW that acts on it.
  */
 export interface FieldDraft {
-  readonly width: number
   readonly specialIds: readonly string[]
 }
 
 export interface TrayHandlers {
   readonly onMenu: () => void
   readonly onFight: () => void
-  readonly onWidth: (width: number) => void
-  readonly onField: () => void
+  /** Throw, and find out. The only press inside a round. */
   readonly onThrow: () => void
-  readonly onSmash: () => void
   readonly onRound: () => void
   readonly onDrink: () => void
-  /** Arm the Charm, or put it away. Two steps, never one. */
-  readonly onArmCharm: () => void
-  /** Spend the armed Charm on one rolled bone. */
-  readonly onCharmBone: (boneKey: string) => void
   readonly onPouch: () => void
   /** A close look at one satchel utility. No state change. */
   readonly onInspectReward: (id: string) => void
@@ -75,7 +70,6 @@ export interface TrayHandlers {
 /** What the tray needs to know that is not in the save. */
 export interface TrayView {
   readonly draft: FieldDraft
-  readonly charmArmed: boolean
 }
 
 export interface Tray {
@@ -111,10 +105,8 @@ export function mountTray(root: HTMLElement, frameSrc: string): Tray {
   const crown = el('div', 'crown player-line')
   crown.id = 'crown'
 
-  // The enemy's line sits directly above the plate, in the plate's own
-  // coordinate space, so lane N of the enemy is over lane N of the crown at
-  // every viewport. It is above the tray rather than inside it because the
-  // painted frame has no bay for it — see `## HUMAN ART REQUIRED`.
+  // Its line stands in the well, in the plate's own coordinate space, so lane
+  // N of the enemy is directly under lane N of the crown at every viewport.
   const enemyLine = el('div', 'bone-line enemy-line')
   enemyLine.id = 'enemy-line'
 
@@ -171,9 +163,11 @@ function renderPile(tray: Tray, run: RunState): void {
 /**
  * The enemy's line, face-up and public.
  *
- * It exists before the player commits anything, which is the first rule of the
- * fight. Lane-aligned with the crown below it, in DOM order that matches the
- * visible order, and every value is in the accessible name.
+ * It exists before the player throws, which is the first rule of the fight:
+ * you are answering a line you can already read. Lane-aligned with the crown
+ * above it — the column *is* the pairing, and the smash that follows breaks
+ * one against the other down that column — in DOM order that matches the
+ * visible order, with every value in the accessible name.
  */
 function renderEnemyLine(tray: Tray, combat: CombatState | undefined): void {
   tray.enemyLine.replaceChildren()
@@ -184,7 +178,7 @@ function renderEnemyLine(tray: Tray, combat: CombatState | undefined): void {
   tray.enemyLine.dataset['count'] = String(combat.enemyLine.length)
 
   combat.enemyLine.forEach((bone, lane) => {
-    const centre = DIE_CENTRES[lane] ?? DIE_CENTRES[DIE_CENTRES.length - 1]!
+    const centre = ENEMY_LANES[lane] ?? ENEMY_LANES[ENEMY_LANES.length - 1]!
     const node = el('div', 'bone bone-enemy')
     node.dataset['lane'] = String(lane)
     node.dataset['boneKey'] = bone.boneKey
@@ -197,7 +191,12 @@ function renderEnemyLine(tray: Tray, combat: CombatState | undefined): void {
       `Its bone, rolled ${bone.value}${broken.has(bone.boneKey) ? ', broken' : ''}`,
     )
     node.append(boneFace(bone.profile, bone.value))
-    seat(node, centre, DIE_PITCH)
+    // Read, not pressed: seated on the painted bone's own size rather than
+    // grown to the touch floor, which is what lets six of them fit the well.
+    node.style.left = `${(centre.x - ENEMY_BONE.width / 2) * 100}%`
+    node.style.top = `${(centre.y - ENEMY_BONE.height / 2) * 100}%`
+    node.style.width = `${ENEMY_BONE.width * 100}%`
+    node.style.height = `${ENEMY_BONE.height * 100}%`
     tray.enemyLine.append(node)
   })
 }
@@ -237,30 +236,30 @@ function renderPlayerLine(
     return
   }
 
-  // Before the throw the crown shows the *shape* of the commitment: which
-  // lanes are named bones and which are anonymous ones. Faces are absent
-  // because no face has been decided — showing one would be the view
-  // inventing a number the reducer has not drawn.
-  if (phase === 'thrown' || phase === 'fielded') {
-    const committed = phase === 'fielded' ? combat.field : undefined
-    const width = committed?.width ?? view.draft.width
-    const specialIds = committed?.specialIds ?? view.draft.specialIds
+  // Before the throw the crown shows the *shape* of the line: how many bones
+  // are going in, and which of them are named. Faces are absent because no
+  // face has been decided — showing one would be the view inventing a number
+  // the reducer has not drawn.
+  //
+  // Nothing here is a control any more. The width is not a choice, and which
+  // named bones stand in the line is chosen in the pouch, where the bones
+  // actually live. A press on a lane is a close look, exactly as it is after
+  // the throw.
+  if (phase === 'thrown') {
+    const { width, specialIds } = fieldFor(run, view.draft.specialIds)
     const byId = new Map(run.specials.map((s) => [s.instanceId, s]))
-    const lanes = [
-      ...specialIds.map((id) => ({ id, profile: profileFor(run, id) })),
-      ...Array.from({ length: Math.max(0, width - specialIds.length) }, () => ({
-        id: undefined,
-        profile: 'common' as BoneProfileId,
-      })),
-    ]
-    tray.crown.dataset['count'] = String(lanes.length)
-    lanes.forEach((lane, index) => {
+    tray.crown.dataset['count'] = String(width)
+
+    for (let index = 0; index < width; index++) {
       const centre = DIE_CENTRES[index] ?? DIE_CENTRES[DIE_CENTRES.length - 1]!
-      const named = lane.id ? byId.get(lane.id)?.specialId : undefined
+      const id = specialIds[index]
+      const named = id ? byId.get(id)?.specialId : undefined
+      const profile: BoneProfileId = id ? profileFor(run, id) : 'common'
+
       const b = boneButton(
         {
-          boneKey: lane.id ?? `draft:${index}`,
-          profile: lane.profile,
+          boneKey: id ?? `draft:${index}`,
+          profile,
           lane: index,
           ...(named ? { specialId: named } : {}),
         },
@@ -269,29 +268,22 @@ function renderPlayerLine(
           describe: named
             ? `Inspect ${specialBone(named).name}, lane ${index + 1}`
             : `A common bone, lane ${index + 1}`,
-          onPress: () => on.onInspectBone(lane.profile, named),
+          onPress: () => on.onInspectBone(profile, named),
         },
       )
-      if (phase === 'fielded') b.dataset['committed'] = 'yes'
       seat(b, centre, DIE_PITCH)
       tray.crown.append(b)
-    })
+    }
     return
   }
 
   const line = combat.playerLine ?? []
-  const smash = phase === 'smashed' ? combat.lastSmash : undefined
+  const smash = combat.lastSmash
   const broken = smash ? brokenPlayerKeys(smash.lanes) : new Set<string>()
   const safe = new Set(
     (smash?.lanes ?? []).filter((l) => l.result === 'safe-player').map((l) => l.player!.boneKey),
   )
   tray.crown.dataset['count'] = String(line.length)
-
-  // In `rolled` with the Charm armed, a bone is a target. Otherwise a press on
-  // one takes a close look at it — the same rule the old crown had, and the
-  // reason a bone is a button in every phase rather than only sometimes.
-  const arming = phase === 'rolled' && view.charmArmed
-  tray.crown.dataset['charmArmed'] = arming ? 'yes' : 'no'
 
   line.forEach((bone, lane) => {
     const centre = DIE_CENTRES[lane] ?? DIE_CENTRES[DIE_CENTRES.length - 1]!
@@ -308,18 +300,11 @@ function renderPlayerLine(
         ...(broken.has(bone.boneKey) ? { broken: true } : {}),
         ...(safe.has(bone.boneKey) ? { safe: true } : {}),
       },
-      arming
-        ? {
-            act: 'charm-bone',
-            describe: `Throw this ${bone.value} again`,
-            onPress: () => on.onCharmBone(bone.boneKey),
-          }
-        : {
-            act: 'inspect-bone',
-            onPress: () => on.onInspectBone(bone.profile, named),
-          },
+      {
+        act: 'inspect-bone',
+        onPress: () => on.onInspectBone(bone.profile, named),
+      },
     )
-    if (arming) b.dataset['target'] = 'yes'
     seat(b, centre, DIE_PITCH)
     tray.crown.append(b)
   })
@@ -352,13 +337,10 @@ function renderSatchel(
     run.vials > 0 &&
     roomToRecover(run) > 0 &&
     (!combat || (!combat.defeated && combat.phase !== 'smashed'))
-  const canCharm =
-    combat !== undefined &&
-    !combat.defeated &&
-    combat.phase === 'rolled' &&
-    !combat.charmUsed &&
-    run.charms > 0
-
+  // Two bays on a plate painted for three. The empty one is left showing
+  // rather than the pair being re-centred on it: the recess is part of the
+  // picture, and sliding controls around to hide that the Charm is gone would
+  // be the tray pretending its own geometry changed.
   const bays: readonly {
     id: string
     label: string
@@ -380,26 +362,13 @@ function renderSatchel(
       live: canDrink,
     },
     {
-      id: 'charm',
-      label: view.charmArmed ? 'PICK' : 'CHARM',
-      count: run.charms,
-      act: canCharm ? 'charm' : 'inspect-reward',
-      describe: canCharm
-        ? view.charmArmed
-          ? 'Choose one rolled bone to reroll'
-          : 'Spend a Charm to throw one rolled bone again'
-        : `Charms: ${run.charms}. Inspect`,
-      on: canCharm ? on.onArmCharm : () => on.onInspectReward('charm'),
-      live: canCharm,
-    },
-    {
       id: 'pouch',
       label: 'POUCH',
       count: run.specials.length,
       act: 'pouch',
       describe:
         combat?.phase === 'thrown'
-          ? 'Open the pouch and choose named bones for the line'
+          ? 'Open the pouch and choose which named bones stand in the line'
           : 'Open the pouch: every named bone and its faces',
       on: on.onPouch,
       live: true,
@@ -416,7 +385,6 @@ function renderSatchel(
     })
     b.dataset['slotId'] = bay.id
     b.dataset['live'] = bay.live ? 'yes' : 'no'
-    if (bay.id === 'charm' && view.charmArmed) b.dataset['armed'] = 'yes'
     b.append(el('span', 'satchel-label', bay.label))
     if (bay.count !== undefined) {
       const badge = el('b', 'satchel-count', String(bay.count))
@@ -450,25 +418,13 @@ function renderWell(
     const box = el('div', 'field-read')
     box.id = 'field-read'
 
-    // The count on both sides of a skull. Mine on the left, its on the right,
-    // and the two numbers are the whole tactical picture before FIELD.
-    const counts = el('div', 'field-pips')
-    const mine =
-      combat.phase === 'thrown'
-        ? view.draft.width
-        : (combat.field?.width ?? combat.playerLine?.length ?? 0)
-    counts.append(pipGroup('player', mine))
-    counts.append(el('span', 'field-skull', '☠'))
-    counts.append(pipGroup('enemy', combat.enemyLine.length))
+    // The well's top half is the enemy's line, which is seated over this box
+    // rather than inside it. What is left is a reserved band, so the phase line
+    // starts below its bones instead of behind them.
+    const mine = combat.field?.width ?? fieldFor(run, view.draft.specialIds).width
     box.dataset['playerCount'] = String(mine)
     box.dataset['enemyCount'] = String(combat.enemyLine.length)
-    box.append(counts)
-
-    // The stepper, and only in the phase that can use it. Below it there is
-    // nothing to nudge and the control is absent rather than dead.
-    if (combat.phase === 'thrown') {
-      box.append(widthStepper(run, view, on))
-    }
+    box.append(el('div', 'enemy-band'))
 
     if (combat.phase === 'smashed' && combat.lastSmash) {
       const smash = combat.lastSmash
@@ -537,63 +493,6 @@ function renderWell(
   tray.well.append(routes)
 }
 
-function pipGroup(side: 'player' | 'enemy', count: number): HTMLElement {
-  const group = el('span', `pip-group pip-${side}`)
-  group.dataset['count'] = String(count)
-  for (let n = 0; n < Math.min(count, LINE_WIDTH); n++) group.append(el('i', 'field-pip'))
-  return group
-}
-
-/**
- * How many bones to risk.
- *
- * Minimum one, maximum whatever the pile allows, and it may never fall below
- * the number of named bones already chosen — lowering the width past a fielded
- * special would silently unfield it, and a control that undoes a decision the
- * player did not revisit is a control that lies.
- *
- * The two buttons are absent at the ends of their range rather than dead, and
- * the count announces itself with its legal range so the whole control is
- * readable without seeing it.
- */
-function widthStepper(run: RunState, view: TrayView, on: TrayHandlers): HTMLElement {
-  const box = el('div', 'width-stepper')
-  box.id = 'width'
-  const most = maxWidth(run)
-  const least = Math.max(1, view.draft.specialIds.length)
-  box.dataset['width'] = String(view.draft.width)
-  box.dataset['min'] = String(least)
-  box.dataset['max'] = String(most)
-
-  if (view.draft.width > least) {
-    box.append(
-      button({
-        act: 'width-down',
-        label: '−',
-        describe: `Risk one bone fewer: ${view.draft.width - 1}`,
-        onPress: () => on.onWidth(view.draft.width - 1),
-        className: 'act act-step',
-      }),
-    )
-  }
-  const read = el('b', 'width-count', String(view.draft.width))
-  read.setAttribute('role', 'status')
-  read.setAttribute('aria-label', `Fielding ${view.draft.width} of a possible ${most}`)
-  box.append(read)
-  if (view.draft.width < most) {
-    box.append(
-      button({
-        act: 'width-up',
-        label: '+',
-        describe: `Risk one bone more: ${view.draft.width + 1}`,
-        onPress: () => on.onWidth(view.draft.width + 1),
-        className: 'act act-step',
-      }),
-    )
-  }
-  return box
-}
-
 /**
  * The three beds.
  *
@@ -638,44 +537,20 @@ function renderBeds(
 
     switch (combat.phase) {
       case 'thrown': {
-        const legal = fieldLegal(run, view.draft.width, view.draft.specialIds)
-        if (!legal) return
-        bed(
-          1,
-          button({
-            act: 'field',
-            label: VERBS.field,
-            describe: `Commit ${view.draft.width} ${view.draft.width === 1 ? 'bone' : 'bones'}`,
-            onPress: on.onField,
-            className: 'act act-primary',
-          }),
-        )
-        return
-      }
-      case 'fielded':
+        const { width } = fieldFor(run, view.draft.specialIds)
+        if (width === 0) return
         bed(
           1,
           button({
             act: 'throw',
             label: VERBS.throw,
-            describe: 'Throw the bones you committed',
+            describe: `Throw ${width} ${width === 1 ? 'bone' : 'bones'} against its line`,
             onPress: on.onThrow,
             className: 'act act-primary',
           }),
         )
         return
-      case 'rolled':
-        bed(
-          1,
-          button({
-            act: 'smash',
-            label: VERBS.smash,
-            describe: 'Line them up and break the losers',
-            onPress: on.onSmash,
-            className: 'act act-primary',
-          }),
-        )
-        return
+      }
       case 'smashed':
         bed(
           1,

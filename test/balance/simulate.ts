@@ -20,7 +20,7 @@ import type { SpecialBoneId } from '../../src/content/bones.js'
 import { enemy } from '../../src/content/enemies.js'
 import { firstNodeOf, roomAt } from '../../src/game/map.js'
 import { exitsOpen, legal, stateOf } from '../../src/content/interactions.js'
-import { charmFor, drinkFor, fieldFor } from './policies.js'
+import { drinkFor, fieldFor } from './policies.js'
 import type { Table, Tier } from './policies.js'
 import type { RewardId } from '../../src/content/rewards.js'
 
@@ -37,9 +37,7 @@ function tableOf(state: GameState): Table {
     tieRule: enemy(combat.enemyId).tieRule,
     commonBones: run.commonBones,
     specials: run.specials,
-    charms: run.charms,
     vials: run.vials,
-    charmUsed: combat.charmUsed,
   }
 }
 
@@ -61,7 +59,6 @@ export interface FightResult {
   /** Named bones lost, by name. A run-shaping loss, not an attrition one. */
   readonly specialsLost: readonly string[]
   readonly bonesLeft: number
-  readonly charmsSpent: number
   readonly vialsDrunk: number
 }
 
@@ -79,7 +76,6 @@ export function simulateFight(
   const before = state.run!
   const bonesBefore = totalBones(before)
   const specialsBefore = new Map(before.specials.map((s) => [s.instanceId, s.specialId]))
-  const charmsBefore = before.charms
   const vialsBefore = before.vials
 
   let current = reduce(state, { type: 'FIGHT' })
@@ -102,21 +98,13 @@ export function simulateFight(
 
     if (drinkFor(tableOf(current), tier)) current = reduce(current, { type: 'DRINK' })
 
+    // One press. Throwing and finding out is a single action now, so the
+    // model's round is a single action too — there is no half-thrown state a
+    // policy could be consulted in.
     const decision = fieldFor(tableOf(current), tier)
     if (decision.width < 1) break
-    current = play(
-      current,
-      { type: 'FIELD', width: decision.width, specialIds: decision.specialIds },
-      { type: 'THROW' },
-    )
+    current = reduce(current, { type: 'THROW', specialIds: decision.specialIds })
 
-    const rolled = current.run?.combat
-    if (rolled?.phase === 'rolled') {
-      const target = charmFor(tableOf(current), rolled.playerLine ?? [], tier)
-      if (target) current = reduce(current, { type: 'CHARM', boneKey: target })
-    }
-
-    current = reduce(current, { type: 'SMASH' })
     const smash = current.run?.combat?.lastSmash
     if (smash) broken += smash.playerCommonLost + smash.playerSpecialsLost.length
 
@@ -149,7 +137,6 @@ export function simulateFight(
       netBones: (settled ? totalBones(settled) : 0) - bonesBefore,
       specialsLost,
       bonesLeft: settled ? totalBones(settled) : 0,
-      charmsSpent: charmsBefore - (settled?.charms ?? 0),
       vialsDrunk: vialsBefore - (settled?.vials ?? 0),
     },
   }
@@ -158,7 +145,6 @@ export function simulateFight(
 export interface Loadout {
   readonly bones?: number
   readonly specials?: readonly SpecialBoneId[]
-  readonly charms?: number
   readonly vials?: number
 }
 
@@ -184,7 +170,6 @@ export function fightIn(templateId: string, seed: number, loadout: Loadout = {})
     specials,
     nextSpecialSerial: specials.length,
     commonBones: Math.max(0, total - specials.length),
-    ...(loadout.charms !== undefined ? { charms: loadout.charms } : {}),
     ...(loadout.vials !== undefined ? { vials: loadout.vials } : {}),
   }
   return { ...started, run: next }

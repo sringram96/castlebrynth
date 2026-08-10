@@ -25,8 +25,8 @@ const settle = (page: Page): Promise<void> =>
 
 test.describe('the state is saved before the first frame', () => {
   test('a smash is decided before any of it is shown', async ({ page }) => {
-    await boot(page, '?room=deep&mode=combat&phase=rolled&seed=6', { motion: true })
-    await act(page, 'smash').click()
+    await boot(page, '?room=deep&mode=combat&phase=thrown&seed=6', { motion: true })
+    await act(page, 'throw').click()
 
     // Read the moment the press returns: the record is already complete, and
     // what happens next is only a picture of it.
@@ -40,8 +40,8 @@ test.describe('the state is saved before the first frame', () => {
   })
 
   test('settling early lands on exactly the same screen', async ({ page }) => {
-    await boot(page, '?room=deep&mode=combat&phase=rolled&seed=6', { motion: true })
-    await act(page, 'smash').click()
+    await boot(page, '?room=deep&mode=combat&phase=thrown&seed=6', { motion: true })
+    await act(page, 'throw').click()
     await settle(page)
     const early = {
       bones: await livingBones(page),
@@ -50,8 +50,8 @@ test.describe('the state is saved before the first frame', () => {
     }
 
     // The same fight, watched to its end.
-    await boot(page, '?room=deep&mode=combat&phase=rolled&seed=6', { motion: true })
-    await act(page, 'smash').click()
+    await boot(page, '?room=deep&mode=combat&phase=thrown&seed=6', { motion: true })
+    await act(page, 'throw').click()
     await expect.poll(() => animating(page), { timeout: 6000 }).toBe(false)
 
     expect(await livingBones(page)).toBe(early.bones)
@@ -60,8 +60,8 @@ test.describe('the state is saved before the first frame', () => {
   })
 
   test('an impatient thumb finishes a sequence rather than being locked out', async ({ page }) => {
-    await boot(page, '?room=deep&mode=combat&phase=rolled&seed=6', { motion: true })
-    await act(page, 'smash').click()
+    await boot(page, '?room=deep&mode=combat&phase=thrown&seed=6', { motion: true })
+    await act(page, 'throw').click()
     // The press arrives mid-sequence and is honoured: `dispatch` settles first.
     if ((await act(page, 'round').count()) > 0) {
       await act(page, 'round').click()
@@ -79,29 +79,19 @@ test.describe('a throw is played over the truth', () => {
   })
 
   test('my own throw settles onto the faces the reducer chose', async ({ page }) => {
-    await boot(page, '?room=deep&mode=combat&phase=fielded&seed=8', { motion: true })
+    await boot(page, '?room=deep&mode=combat&phase=thrown&seed=8', { motion: true })
     await act(page, 'throw').click()
     const fromState = (await state(page)).run!.combat!.playerLine!.map((b) => b.value)
     await settle(page)
     expect(await valuesOf(bones(page))).toEqual(fromState)
   })
 
-  test('a Charm lands on the value that was already saved', async ({ page }) => {
-    await boot(page, '?room=deep&charms=1&mode=combat&phase=rolled&seed=8', { motion: true })
-    await act(page, 'charm').click()
-    await bones(page).first().click()
-    const fromState = (await state(page)).run!.combat!.playerLine!.map((b) => b.value)
-    await settle(page)
-    expect(await valuesOf(bones(page))).toEqual(fromState)
-  })
 })
 
 test.describe('reduced motion is the same game', () => {
   test('the same presses produce the same run', async ({ page }) => {
     const playRound = async (): Promise<string> => {
-      await act(page, 'field').click()
       await act(page, 'throw').click()
-      await act(page, 'smash').click()
       await settle(page)
       return JSON.stringify((await state(page)).run!.combat!.lastSmash)
     }
@@ -118,8 +108,8 @@ test.describe('reduced motion is the same game', () => {
 
   test('every casualty is readable without watching anything', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
-    await boot(page, '?room=deep&mode=combat&phase=rolled&seed=15', { motion: true })
-    await act(page, 'smash').click()
+    await boot(page, '?room=deep&mode=combat&phase=thrown&seed=15', { motion: true })
+    await act(page, 'throw').click()
 
     // No sequence ran, and the result is already fully stated: broken bones
     // carry an attribute, the summary carries the counts, and the word band

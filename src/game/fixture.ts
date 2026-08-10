@@ -14,11 +14,9 @@
  *   ?bones=12                   a thinner pile
  *   ?specials=cinderbone,knuckle  named bones in the pile
  *   ?vials=2                    a stocked satchel
- *   ?charms=1
  *   ?enemyBones=3               a fight with most of its army already broken
  *   ?round=2                    the fight standing on a later round
- *   ?phase=thrown|fielded|rolled|smashed
- *   ?width=4                    what to field, when the phase needs one
+ *   ?phase=thrown|smashed       before the throw, or standing in its wreckage
  *   ?mode=combat                open the room's fight, or jump to an ending
  *   ?dying=1                    the room's enemy finished, mid-death — what a
  *                               save written a third of a second before the
@@ -39,7 +37,7 @@
 import { BONE_CEILING, isSpecialBoneId, newSpecial } from '../content/bones.js'
 import type { SpecialBoneInstance } from '../content/bones.js'
 import { firstNodeOf, roomAt } from './map.js'
-import { maxWidth, newRun, reduce } from './reducer.js'
+import { newRun, reduce } from './reducer.js'
 import type { Action } from './reducer.js'
 import { SAVE_VERSION } from './state.js'
 import type { CombatPhase, GameState, Mode } from './state.js'
@@ -48,7 +46,7 @@ const play = (state: GameState, ...actions: readonly Action[]): GameState =>
   actions.reduce((s, a) => reduce(s, a), state)
 
 const MODES: readonly Mode[] = ['title', 'explore', 'combat', 'reward', 'dead', 'complete']
-const PHASES: readonly CombatPhase[] = ['thrown', 'fielded', 'rolled', 'smashed']
+const PHASES: readonly CombatPhase[] = ['thrown', 'smashed']
 
 const list = (raw: string | null): string[] =>
   raw ? raw.split(',').map((s) => s.trim()).filter(Boolean) : []
@@ -163,8 +161,6 @@ export function applyFixture(base: GameState, search: string): GameState {
 
   const vials = num(p.get('vials'))
   if (vials !== undefined) run = { ...run, vials: Math.max(0, Math.floor(vials)) }
-  const charms = num(p.get('charms'))
-  if (charms !== undefined) run = { ...run, charms: Math.max(0, Math.floor(charms)) }
 
   // Standing in a half-worked room.
   //
@@ -213,34 +209,23 @@ export function applyFixture(base: GameState, search: string): GameState {
     // reaches on its own — a wide line against a single low bone is an
     // ordinary last round — so this only skips the rounds that get there.
     const doomed = standArmyAt(opened, 1, true)
-    return play(
-      doomed,
-      { type: 'FIELD', width: maxWidth(doomed.run!), specialIds: [] },
-      { type: 'THROW' },
-      { type: 'SMASH' },
-    )
+    return play(doomed, { type: 'THROW' })
   }
 
   const wantsFight =
-    mode === 'combat' || p.has('enemyBones') || p.has('round') || p.has('phase') || p.has('width')
+    mode === 'combat' || p.has('enemyBones') || p.has('round') || p.has('phase')
 
   if (wantsFight && roomAt(run).enemy) {
     state = reduce(state, { type: 'FIGHT' })
 
-    // Rounds are *fought*, not set: each one is a real FIELD/THROW/SMASH, so
-    // the enemy line a fixture lands on is the line those rounds produced and
-    // the round counter can never disagree with the army standing behind it.
+    // Rounds are *fought*, not set: each one is a real THROW, so the enemy
+    // line a fixture lands on is the line those rounds produced and the round
+    // counter can never disagree with the army standing behind it.
     const rounds = Math.max(1, Math.floor(num(p.get('round')) ?? 1))
     for (let r = 1; r < rounds; r++) {
       const here = state.run?.combat
       if (!here || here.defeated || state.mode !== 'combat') break
-      state = play(
-        state,
-        { type: 'FIELD', width: maxWidth(state.run!), specialIds: [] },
-        { type: 'THROW' },
-        { type: 'SMASH' },
-        { type: 'ROUND' },
-      )
+      state = play(state, { type: 'THROW' }, { type: 'ROUND' })
     }
 
     // How much of its army is left. Applied after the rounds, because it is the
@@ -250,24 +235,17 @@ export function applyFixture(base: GameState, search: string): GameState {
       state = standArmyAt(state, Math.floor(enemyBones))
     }
 
-    // And the phase, walked to by the actions that reach it.
+    // And the phase, walked to by the one action that reaches it.
     const wantedPhase = p.get('phase')
     const phase =
       wantedPhase && (PHASES as readonly string[]).includes(wantedPhase)
         ? (wantedPhase as CombatPhase)
         : undefined
-    if (phase && phase !== 'thrown' && state.run?.combat && state.mode === 'combat') {
-      const width = Math.max(
-        1,
-        Math.min(Math.floor(num(p.get('width')) ?? maxWidth(state.run)), maxWidth(state.run)),
-      )
-      const specialIds = state.run.specials.slice(0, width).map((s) => s.instanceId)
-      state = reduce(state, { type: 'FIELD', width, specialIds })
-      if (phase === 'rolled' || phase === 'smashed') state = reduce(state, { type: 'THROW' })
-      if (phase === 'smashed') state = reduce(state, { type: 'SMASH' })
-    } else if (!phase && p.has('width') && state.run?.combat) {
-      const width = Math.max(1, Math.min(Math.floor(num(p.get('width'))!), maxWidth(state.run)))
-      state = reduce(state, { type: 'FIELD', width, specialIds: [] })
+    if (phase === 'smashed' && state.run?.combat && state.mode === 'combat') {
+      state = reduce(state, {
+        type: 'THROW',
+        specialIds: state.run.specials.map((sp) => sp.instanceId),
+      })
     }
     return state
   }

@@ -684,9 +684,14 @@ and does not yet know to what. It has to be unmistakably *not a face*.
 
 ### The satchel
 
-Three icons, and all three or none: `vial`, `charm`, `pouch`. They sit in the
-three bays on the right of the tray at roughly 32 × 44 CSS px on a phone, so
-they are read as silhouettes. The count badge is drawn over them.
+Two icons, and both or neither: `vial`, `pouch`. They sit in the first two of
+the three bays on the right of the tray at roughly 32 × 44 CSS px on a phone,
+so they are read as silhouettes. The count badge is drawn over them.
+
+The Charm is gone, so the third bay is now an empty painted recess. That is
+left showing deliberately rather than re-centring the pair on it — the recess
+is part of the picture — but a repaint that re-cuts the right side for two bays
+instead of three would be an improvement, not a regression.
 
 ### Clash FX
 
@@ -698,18 +703,23 @@ looks like.
 
 ### The tray
 
-The plate has **no bay for the enemy's line**. That line is six lane-aligned
-bones sitting directly above the crown, and today it is positioned in the tray's
-own coordinate space at `top: -54px` — over the bottom of the world rather than
-in a recess painted for it. It works and it is legible; it is also the one place
-in the interface where a control is floating on nothing.
+The enemy's line used to float above the plate at `top: -54px`, over the bottom
+of the world, because the painted frame has no bay for it. On a dark floor that
+was four unreadable objects, so it moved **into the well** — the one painted
+recess wide enough to hold a row, already dark, and now the only region the
+fight's two lines both live in.
 
-A repaint would want: a top rail deep enough to hold the enemy's six, an orb
-that reads as a **heap of bone** rather than a glass of liquid, and the three
-right bays re-cut for Vial / Charm / Pouch rather than for relic icons. Every
-coordinate in `src/content/tray.ts` was measured off the current 730 × 364 file
-by luminance profile; if the plate is repainted, that table is the only thing
-that needs measuring again.
+It is seated at the crown's pitch rather than the well's, because lane N under
+lane N is the whole smash rule and the column is how a player reads a pairing.
+The cost is that the outer two bones overhang the recess by about 18 px a side
+and rest on the painted frame. It reads; it is not what a bay looks like.
+
+A repaint would want: **the well widened to 0.532 of the plate** so the enemy's
+six sit inside it at the crown's pitch, an orb that reads as a **heap of bone**
+rather than a glass of liquid, and the right side re-cut for two bays — Vial and
+Pouch — rather than three relic icons. Every coordinate in `src/content/tray.ts`
+was measured off the current 730 × 364 file by luminance profile; if the plate
+is repainted, that table is the only thing that needs measuring again.
 
 ### The Marrow
 

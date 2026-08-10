@@ -9,7 +9,15 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { FONT_BONUS, VIAL_BONES, fontRestore, loseOneBone, newRun, reduce } from '../../src/game/reducer.js'
+import {
+  FONT_BONUS,
+  VIAL_BONES,
+  fieldFor,
+  fontRestore,
+  loseOneBone,
+  newRun,
+  reduce,
+} from '../../src/game/reducer.js'
 import type { Action } from '../../src/game/reducer.js'
 import { EMPTY_META, SAVE_VERSION } from '../../src/game/state.js'
 import type { GameState, RitualRoll, RunState } from '../../src/game/state.js'
@@ -139,27 +147,24 @@ describe('a vial', () => {
     expect(after.run!.specials).toEqual([])
   })
 
-  it('is legal in a fight, and does not touch the line already thrown', () => {
-    const rolled = play(
-      at('hollow', { commonBones: 10, vials: 1 }),
-      { type: 'FIGHT' },
-      { type: 'FIELD', width: 4, specialIds: [] },
-      { type: 'THROW' },
-    )
-    const line = rolled.run!.combat!.playerLine
-    const after = reduce(rolled, { type: 'DRINK' })
-    expect(after.run!.combat!.playerLine).toEqual(line)
-    expect(after.run!.commonBones).toBe(15)
-    expect(after.run!.combat!.phase).toBe('rolled')
+  it('is legal in the modifier step, and widens the line it is about to throw', () => {
+    // The one place a Vial is drunk now: before the throw, against a line the
+    // player can already read. Five bones back is up to five more lanes — and
+    // the width is recomputed from the pile, so the Vial is not a number that
+    // arrives after the decision it changes.
+    const facing = play(at('hollow', { commonBones: 3, vials: 1 }), { type: 'FIGHT' })
+    expect(fieldFor(facing.run!).width).toBe(3)
+    const after = reduce(facing, { type: 'DRINK' })
+    expect(after.run!.commonBones).toBe(8)
+    expect(after.run!.combat!.phase).toBe('thrown')
+    expect(fieldFor(after.run!).width).toBe(6)
   })
 
   it('is refused while a smash is being read', () => {
     const smashed = play(
       at('hollow', { commonBones: 10, vials: 1 }),
       { type: 'FIGHT' },
-      { type: 'FIELD', width: 1, specialIds: [] },
       { type: 'THROW' },
-      { type: 'SMASH' },
     )
     if (smashed.run?.combat?.phase === 'smashed') {
       expect(reduce(smashed, { type: 'DRINK' })).toBe(smashed)

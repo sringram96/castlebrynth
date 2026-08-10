@@ -857,18 +857,19 @@ button {
 }
 
 /*
- * The enemy's line, above the plate.
+ * The enemy's line, in the well.
  *
- * It is a child of the tray so that it inherits the plate's coordinate space
- * and `seat()` can put lane N of the enemy directly over lane N of the crown.
- * It sits above the painted frame because the frame has no bay for it — the
- * repaint that gives it one is recorded under `## HUMAN ART REQUIRED`.
+ * It used to float above the plate, because the painted frame had no bay for
+ * it — and over the room art it was four dark objects on a dark floor, which
+ * is the complaint this answers. The well is a bay: the one painted recess on
+ * the plate wide enough to hold a row, already dark, already the region that
+ * carries what the fight is doing. No repaint is needed to put it there.
+ *
+ * It stays a child of the tray so it keeps the plate's coordinate space, and
+ * it is inert: these bones are read, never pressed.
  */
 #enemy-line {
-  left: 0;
-  right: 0;
-  top: -54px;
-  height: 48px;
+  inset: 0;
 }
 
 /* ── the pile ────────────────────────────────────────────────────────── */
@@ -1251,8 +1252,40 @@ button {
   pointer-events: none;
 }
 
+/* Full width of its seat rather than 62% of a touch target: in the well the
+   box *is* the bone, because nothing here has to be thumb-sized. */
 .bone-enemy .bone-face {
-  width: 62%;
+  width: 100%;
+}
+
+/*
+ * A lane you have taken a bone back out of.
+ *
+ * The empty bay is the control's whole feedback, so it has to read as an empty
+ * socket rather than as a missing object — the painted recess is shallow and
+ * dark, and without this the row just looks short. Nothing is dimmed: a
+ * withdrawn lane is a live button that puts the bone back.
+ */
+.bone[data-fielded="no"] .bone-face {
+  background: none;
+  box-shadow:
+    inset 0 2px 5px rgb(0 0 0 / 0.85),
+    inset 0 0 0 1px rgb(0 0 0 / 0.6),
+    0 1px 0 rgb(180 160 118 / 0.22);
+  border-radius: 16%;
+}
+
+.bone[data-fielded="no"] .pip,
+.bone[data-fielded="no"] .bone-numeral,
+.bone[data-fielded="no"] .bone-face.bone-back::after {
+  display: none;
+}
+
+/* The last bone in the line cannot be withdrawn — there is no field of zero.
+   It is not dimmed, because it is not unavailable: it is the floor. */
+.bone[disabled] {
+  opacity: 1;
+  cursor: default;
 }
 
 /* One of its bones arriving. Cast, then landed — the stagger is in the app. */
@@ -1291,31 +1324,29 @@ button {
 /*
  * The field read.
  *
- * Your count on the left of a skull and its count on the right. Two numbers,
- * and between them the whole tactical picture before FIELD: how many of mine
- * are going in against how many of its. There is no formula here because there
- * is no arithmetic in the game — the pips *are* the bones.
+ * The pip counts are gone. They were a second encoding of a fact the row now
+ * states directly: how many of mine against how many of its is legible from
+ * the bones themselves the moment both lines are on the plate. Two encodings
+ * of one fact is one of them being decoration.
  */
 .field-read {
   display: grid;
-  gap: 4px;
-  place-items: center;
+  gap: 2px;
+  justify-items: center;
+  align-content: start;
   width: 100%;
+  height: 100%;
 }
 
-.field-pips {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.pip-group {
-  display: flex;
-  gap: 3px;
-}
-
-.pip-enemy {
-  flex-direction: row-reverse;
+/*
+ * The band the enemy's bones stand in.
+ *
+ * They are seated in the tray's coordinate space, not in this box, so this
+ * reserves the height they occupy and nothing else — it is what keeps the
+ * phase line below its line instead of behind it.
+ */
+.enemy-band {
+  height: 30px;
 }
 
 .field-pip {

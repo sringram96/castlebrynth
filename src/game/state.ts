@@ -36,13 +36,23 @@ export const SAVE_VERSION = 8
 export type Mode = 'title' | 'explore' | 'combat' | 'reward' | 'dead' | 'complete'
 
 /**
- * The four model phases of a round. See `docs/COMBAT.md`.
+ * The two model phases of a round. See `docs/COMBAT.md`.
  *
- * The enemy has already thrown when a round begins, which is why the opening
- * phase is called `thrown` rather than something that implies the player is
- * waiting to be dealt to. The threat is public before any decision is made.
+ * **Choose your modifiers, then throw and watch what it costs.** That is the
+ * whole round, and each phase is one of those two sentences:
+ *
+ * - `thrown` — its line is up and yours is not committed. Drink, or change
+ *   which named bones stand in the line. Nothing here is a number to nudge.
+ * - `smashed` — it has been thrown and read. The wreckage is on the plate.
+ *
+ * There were four. `fielded` and `rolled` split the throw across two presses
+ * so a width could be committed and then a Charm spent, and both of those
+ * decisions are gone: the line is always as wide as the pile allows, and
+ * throwing and finding out is one uninterrupted beat. A phase whose only
+ * content is confirming a decision already taken is a phase that exists to be
+ * pressed through.
  */
-export type CombatPhase = 'thrown' | 'fielded' | 'rolled' | 'smashed'
+export type CombatPhase = 'thrown' | 'smashed'
 
 /** How an enemy answers a lane whose two bones show the same number. */
 export type TieRule = 'mutual' | 'warden-holds'
@@ -95,11 +105,16 @@ export interface RolledBone {
 }
 
 /**
- * What the player committed to risk this round.
+ * What went in this round.
  *
  * Recorded as *width plus named specials* rather than as a list of bones,
  * because common bones are anonymous: there is no such thing as "that one".
  * The remainder — `width - specialIds.length` — is drawn from the pile.
+ *
+ * **The width is not a choice and the specials are.** Every round throws as
+ * many bones as the pile can put up; what the player decides in the modifier
+ * step is which of their named bones stand among them, and a Knuckle in the
+ * line is four faces of 6-or-better and one more thing that can break forever.
  */
 export interface PlayerField {
   readonly width: number
@@ -155,13 +170,14 @@ export interface CombatState {
   /** Face-up and sorted, before the player commits anything. */
   readonly enemyLine: readonly RolledBone[]
 
-  /** Set by FIELD. Absent until then, which is what `thrown` means. */
+  /**
+   * What went in, and what it rolled. Both are set by THROW and neither exists
+   * before it — which is exactly what `thrown` means: it has thrown, you have
+   * not.
+   */
   readonly field?: PlayerField
-  /** Set by THROW. Absent until then, which is what `fielded` means. */
   readonly playerLine?: readonly RolledBone[]
 
-  /** One Charm per fight, spent or not. Carried across every round. */
-  readonly charmUsed: boolean
   readonly lastSmash?: SmashRecord
   /**
    * It is dead, and the fight is being held open on the picture of that.
@@ -278,7 +294,11 @@ export interface RunState {
   readonly nextSpecialSerial: number
 
   // ── satchel ───────────────────────────────────────────────────────────
-  readonly charms: number
+  /**
+   * The one consumable. Charms are gone with the phase they were spent in —
+   * a reroll needs a moment between seeing your throw and living with it, and
+   * there is no such moment any more.
+   */
   readonly vials: number
 
   /** Which details have been looked at, in the node being stood in. */

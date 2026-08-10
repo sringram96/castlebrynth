@@ -14,7 +14,7 @@
 import { expect } from '@playwright/test'
 import type { Page } from '@playwright/test'
 
-import { charmFor, drinkFor, fieldFor } from '../balance/policies.js'
+import { drinkFor, fieldFor } from '../balance/policies.js'
 import type { Table } from '../balance/policies.js'
 import type { RolledBone, TieRule } from '../../src/game/state.js'
 import { ENEMIES } from '../../src/content/enemies.js'
@@ -31,41 +31,41 @@ async function table(page: Page): Promise<Table> {
     tieRule: (ENEMIES[combat.enemyId]?.tieRule ?? 'mutual') as TieRule,
     commonBones: run.commonBones,
     specials: run.specials as never,
-    charms: run.charms,
     vials: run.vials,
-    charmUsed: combat.charmUsed,
   }
 }
 
-/** Set the width stepper to `want`, one press at a time. */
-async function stepTo(page: Page, want: number): Promise<void> {
-  for (let guard = 0; guard < 12; guard++) {
-    const stepper = page.locator('#width')
-    if ((await stepper.count()) === 0) return
-    const now = Number(await stepper.getAttribute('data-width'))
-    if (now === want) return
-    const button = now > want ? act(page, 'width-down') : act(page, 'width-up')
-    if ((await button.count()) === 0) return
-    await button.click()
-  }
-}
+/**
+ * Stand exactly the named bones the policy wants, through the pouch.
+ *
+ * Every named bone is in the line by default, so this is a **withdrawal** pass
+ * as often as a selection one — the row is toggled until its state matches the
+ * decision, which is what a thumb in the pouch actually does.
+ */
+async function standSpecials(page: Page, want: readonly string[]): Promise<void> {
+  const now = await state(page)
+  const carried = now.run?.specials ?? []
+  const wanted = new Set(want)
+  if (carried.length === 0) return
 
-/** Put the named bones in the line, through the pouch, as a player would. */
-async function fieldSpecials(page: Page, want: readonly string[]): Promise<void> {
-  if (want.length === 0) return
   await act(page, 'pouch').click()
-  for (const instanceId of want) {
-    const row = page.locator(`.pouch-row[data-instance-id="${instanceId}"]`)
+  for (const bone of carried) {
+    const row = page.locator(`.pouch-row[data-instance-id="${bone.instanceId}"]`)
     if ((await row.count()) === 0) continue
-    if ((await row.getAttribute('data-fielded')) === 'yes') continue
-    const button = row.locator('[data-act="field-bone"]')
-    if ((await button.count()) > 0) await button.click()
+    const standing = (await row.getAttribute('data-fielded')) === 'yes'
+    if (standing === wanted.has(bone.instanceId)) continue
+    const button = row.locator('[data-act="field-bone"], [data-act="withdraw-bone"]')
+    if ((await button.count()) > 0) await button.first().click()
   }
   await act(page, 'close').click()
 }
 
 /**
- * One round: field, throw, maybe a Charm, smash, and on to the next.
+ * One round: choose your modifiers, throw, and watch — then on to the next.
+ *
+ * Two presses, and the second one is the whole fight happening. There is no
+ * commit step to walk through and no width to step to, because neither is a
+ * decision the screen offers any more.
  *
  * Returns how many Vials it drank, because a caller checking a guaranteed
  * drop needs to know: a fight that pays one Vial and spends one leaves the
@@ -79,35 +79,14 @@ export async function takeRound(page: Page): Promise<number> {
     drank += 1
   }
 
-  const decision = fieldFor(await table(page), 'heuristic')
-  await fieldSpecials(page, decision.specialIds)
-  await stepTo(page, decision.width)
-  await act(page, 'field').click()
-
+  await standSpecials(page, fieldFor(await table(page), 'heuristic').specialIds)
   await act(page, 'throw').click()
-
-  const rolled = (await state(page)).run?.combat
-  if (rolled?.phase === 'rolled' && rolled.playerLine) {
-    const target = charmFor(
-      await table(page),
-      rolled.playerLine as unknown as readonly RolledBone[],
-      'heuristic',
-    )
-    if (target && (await act(page, 'charm').count()) > 0) {
-      // Two presses, always: arm the Charm, then choose the bone. A single tap
-      // on a bone may never spend one.
-      await act(page, 'charm').click()
-      await page.locator(`.bone[data-bone-key="${cssEscape(target)}"]`).click()
-    }
-  }
-
-  await act(page, 'smash').click()
-  if ((await act(page, 'round').count()) > 0) await act(page, 'round').click()
+  // Visible, not merely present. A winning throw puts a reward screen over the
+  // tray, and the tray under it can still be holding a ROUND button that no
+  // thumb could ever reach — counting it would hang the journey on a control
+  // the player cannot see.
+  if (await act(page, 'round').isVisible()) await act(page, 'round').click()
   return drank
-}
-
-function cssEscape(value: string): string {
-  return value.replace(/[^\w-]/g, (c) => `\\${c}`)
 }
 
 export type FightEnd = 'won' | 'died'
@@ -128,7 +107,7 @@ export async function fight(page: Page, maxRounds = 25): Promise<FightReport> {
     if (screen === 'dead') return { end: 'died', drank }
     // A win with nothing to give goes straight back to the room, and a fight
     // that is over has no verb of its own left on the tray.
-    if ((await act(page, 'field').count()) === 0 && (await act(page, 'round').count()) === 0) {
+    if (!(await act(page, 'throw').isVisible()) && !(await act(page, 'round').isVisible())) {
       return { end: (await screenName(page)) === 'dead' ? 'died' : 'won', drank }
     }
     drank += await takeRound(page)

@@ -41,7 +41,6 @@ function carried(now: Awaited<ReturnType<typeof state>>): string[] {
   const run = now.run!
   return [
     ...run.specials.map((s) => s.specialId),
-    ...Array.from({ length: run.charms }, () => 'charm'),
     ...Array.from({ length: run.vials }, () => 'vial'),
   ]
 }
@@ -137,7 +136,7 @@ test.describe('the Reliquary', () => {
     // It is carried, and it is somewhere the player can see without opening
     // anything: a charge on its satchel bay, or a bone in the pouch count.
     const found = carried(after)[0]!
-    const bay = found === 'charm' || found === 'vial' ? found : 'pouch'
+    const bay = found === 'vial' ? found : 'pouch'
     await expect(page.locator(`.satchel-slot[data-slot-id="${bay}"] .satchel-count`)).toHaveText(
       '1',
     )

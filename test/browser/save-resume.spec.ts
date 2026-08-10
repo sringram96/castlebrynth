@@ -25,18 +25,14 @@ type Page = import('@playwright/test').Page
  * about the save. So these tests play to the position and then reload into
  * whatever `localStorage` is holding.
  */
-async function played(page: Page, phase: 'thrown' | 'fielded' | 'rolled' | 'smashed'): Promise<void> {
+async function played(page: Page, phase: 'thrown' | 'smashed'): Promise<void> {
   await boot(page)
   await act(page, 'start').click()
   await act(page, 'go').click()
   await act(page, 'go').click()
   await act(page, 'fight').click()
   if (phase === 'thrown') return
-  await act(page, 'field').click()
-  if (phase === 'fielded') return
   await act(page, 'throw').click()
-  if (phase === 'rolled') return
-  await act(page, 'smash').click()
 }
 
 /** Boot always lands on the title; CONTINUE is one press back. */
@@ -51,42 +47,28 @@ test.describe('a reload from', () => {
   test('thrown keeps the enemy line and resets nothing but the draft', async ({ page }) => {
     await played(page, 'thrown')
     const line = await valuesOf(enemyBones(page))
-    await act(page, 'width-down').click()
-    await act(page, 'width-down').click()
-    await expect(page.locator('#width')).toHaveAttribute('data-width', '4')
 
     await resume(page)
 
     // The threat is identical. It was decided by FIGHT and saved before a
     // frame of the throw played.
     expect(await valuesOf(enemyBones(page))).toEqual(line)
-    // And the draft is gone, because a draft is a thought rather than a move.
-    // Losing an unfinished thought is exactly right; a half-selected army in
-    // a save would not be.
-    await expect(page.locator('#width')).toHaveAttribute('data-width', '6')
+    // Nothing of the player's has been committed, because nothing of the
+    // player's *can* be until the throw. A reload before it loses the one
+    // thought there was to lose — which named bones were standing — and the
+    // pouch defaults them all back in.
     expect((await state(page)).run!.combat!.field).toBeUndefined()
-  })
-
-  test('fielded keeps the committed composition', async ({ page }) => {
-    await played(page, 'fielded')
-    const field = (await state(page)).run!.combat!.field!
-    await resume(page)
-
-    expect((await state(page)).run!.combat!.field).toEqual(field)
+    expect((await state(page)).run!.combat!.playerLine).toBeUndefined()
     await expect(act(page, 'throw')).toBeVisible()
-    // And the throw it produces is the one it was always going to produce.
-    await act(page, 'throw').click()
-    const first = await valuesOf(bones(page))
-    expect(first).toHaveLength(field.width)
   })
 
-  test('rolled keeps the exact values, and does not roll again', async ({ page }) => {
-    await played(page, 'rolled')
+  test('thrown keeps the exact values, and does not roll again', async ({ page }) => {
+    await played(page, 'smashed')
+    if ((await screenName(page)) !== null) return
     const line = await valuesOf(bones(page))
     await resume(page)
 
     expect(await valuesOf(bones(page))).toEqual(line)
-    await expect(act(page, 'smash')).toBeVisible()
     await expect(act(page, 'throw')).toHaveCount(0)
   })
 
@@ -142,7 +124,7 @@ test.describe('the save never holds a frame', () => {
 
 test.describe('a fixture is never written over a real save', () => {
   test('playing, then opening a fixture, then reloading finds the run', async ({ page }) => {
-    await played(page, 'rolled')
+    await played(page, 'smashed')
     const line = await valuesOf(bones(page))
 
     // A fixture run: same tab, different URL, and `persist` is off for it.

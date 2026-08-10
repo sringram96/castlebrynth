@@ -14,7 +14,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { maxWidth, newRun, reduce } from '../../src/game/reducer.js'
+import { newRun, reduce } from '../../src/game/reducer.js'
 import type { Action } from '../../src/game/reducer.js'
 import { SAVE_VERSION, TITLE } from '../../src/game/state.js'
 import type { GameState } from '../../src/game/state.js'
@@ -47,13 +47,7 @@ function fightItOut(state: GameState, guard = 60): GameState {
     if (now.mode !== 'combat') return now
     switch (combat.phase) {
       case 'thrown':
-        now = reduce(now, { type: 'FIELD', width: maxWidth(now.run!), specialIds: [] })
-        break
-      case 'fielded':
         now = reduce(now, { type: 'THROW' })
-        break
-      case 'rolled':
-        now = reduce(now, { type: 'SMASH' })
         break
       case 'smashed':
         now = reduce(now, { type: 'ROUND' })
@@ -340,9 +334,7 @@ describe('the save', () => {
         walkTo(reduce(TITLE, { type: 'START_RUN', seed: 8 }), 'hollow'),
         { type: 'FIGHT' },
       ),
-      { type: 'FIELD', width: 4, specialIds: [] },
       { type: 'THROW' },
-      { type: 'SMASH' },
     )
     save(smashed, store)
     const raw = store.getItem('castlebrynth')!

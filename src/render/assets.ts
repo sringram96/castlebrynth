@@ -191,7 +191,7 @@ export const TRAY_ART: Asset = asset('tray', 'ui/tray.png', 730, 364)
  *
  * What is owed is written down instead, in full, under `## HUMAN ART REQUIRED`
  * in `POLISH_PROGRESS.md`: a bone body per profile with faces 1–8 and a broken
- * state, a Vial, a Charm and a Pouch plate, a shatter family, and a tray
+ * state, a Vial and a Pouch plate, a shatter family, and a tray
  * repaint whose top rail has a bay for the enemy's line.
  *
  * Until then the bones are drawn from the pip geometry in `ui/components.ts` —

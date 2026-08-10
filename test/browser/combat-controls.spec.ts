@@ -10,12 +10,12 @@ import { expect, test } from '@playwright/test'
 
 import { act, boot, bones, enemyBones, tappable, trayControls, valuesOf } from './helpers.js'
 
-const PHASES = ['thrown', 'fielded', 'rolled', 'smashed'] as const
+const PHASES = ['thrown', 'smashed'] as const
 
 test.describe('every control answers a tap', () => {
   for (const phase of PHASES) {
     test(`in ${phase}`, async ({ page }) => {
-      await boot(page, `?room=hollow&specials=knuckle&charms=1&vials=1&mode=combat&phase=${phase}`)
+      await boot(page, `?room=hollow&specials=knuckle&vials=1&mode=combat&phase=${phase}`)
       const controls = await trayControls(page)
       expect(controls.length, 'the tray offered nothing').toBeGreaterThan(0)
       for (const control of controls) await tappable(page, control)
@@ -23,14 +23,14 @@ test.describe('every control answers a tap', () => {
   }
 
   test('exploring', async ({ page }) => {
-    await boot(page, '?room=fork&vials=1&charms=1&specials=knuckle')
+    await boot(page, '?room=fork&vials=1&specials=knuckle')
     for (const control of await trayControls(page)) await tappable(page, control)
   })
 })
 
 test.describe('art never eats a press', () => {
   test('the tray plate and every bone face are inert', async ({ page }) => {
-    await boot(page, '?room=hollow&mode=combat&phase=rolled')
+    await boot(page, '?room=hollow&mode=combat&phase=smashed')
     const inert = await page.evaluate(() =>
       [...document.querySelectorAll('#tray-frame, .bone-face, .pip, #enemy, #backdrop')].map(
         (n) => getComputedStyle(n).pointerEvents,
@@ -59,7 +59,7 @@ test.describe('an unavailable action is absent', () => {
 
 test.describe('the lines are readable', () => {
   test('DOM order is lane order, on both sides', async ({ page }) => {
-    await boot(page, '?room=deep&mode=combat&phase=rolled&seed=12')
+    await boot(page, '?room=deep&mode=combat&phase=smashed&seed=12')
 
     for (const line of [bones(page), enemyBones(page)]) {
       const lanes = await line.evaluateAll((nodes) =>
@@ -72,7 +72,7 @@ test.describe('the lines are readable', () => {
   })
 
   test('every bone states its number as text', async ({ page }) => {
-    await boot(page, '?room=gate&specials=knuckle&mode=combat&phase=rolled&seed=3')
+    await boot(page, '?room=gate&specials=knuckle&mode=combat&phase=smashed&seed=3')
     for (const bone of await bones(page).all()) {
       const label = await bone.getAttribute('aria-label')
       const value = await bone.getAttribute('data-value')
@@ -82,7 +82,7 @@ test.describe('the lines are readable', () => {
   })
 
   test('a named bone carries its name in its accessible name', async ({ page }) => {
-    await boot(page, '?room=gate&specials=knuckle&mode=combat&phase=rolled&width=6&seed=3')
+    await boot(page, '?room=gate&specials=knuckle&mode=combat&phase=smashed&seed=3')
     const named = page.locator('#crown .bone[data-special-id="knuckle"]')
     if ((await named.count()) > 0) {
       await expect(named.first()).toHaveAttribute('aria-label', /^Knuckle, rolled \d/)
@@ -102,9 +102,7 @@ test.describe('the lines are readable', () => {
 
 test.describe('the well says what the phase wants', () => {
   const lines: Readonly<Record<string, string>> = {
-    thrown: 'Choose how many bones to risk.',
-    fielded: 'Throw them.',
-    rolled: 'Line them up and smash.',
+    thrown: 'Its line is up. Throw yours against it.',
     smashed: 'What is broken is broken.',
   }
 

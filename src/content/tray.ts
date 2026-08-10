@@ -99,6 +99,34 @@ export const DIE_BAY = { width: 0.07534, height: 0.0989 } as const
 export const WELL: Rect = { x: 0.27397, y: 0.2967, width: 0.44384, height: 0.40385 }
 
 /**
+ * Where the enemy's line stands: in the well, under the crown, in column.
+ *
+ * Its line used to float above the plate over the room art, because the
+ * painted frame has no bay for it. On a dark floor at a dark hour that was
+ * four unreadable objects, which is not a line you can answer. The well is
+ * already a dark recess and is the only region wide enough to hold a row, so
+ * the line moved into it and no repaint was needed.
+ *
+ * **It uses the crown's pitch, not the well's.** Six lanes at `DIE_PITCH` span
+ * 0.532 of the plate and the well's recess is 0.444, so the outer two bones
+ * overhang the recess by about 18 px a side and rest on the painted frame.
+ * That is the cheaper of the two costs available: lane N against lane N is the
+ * entire smash rule, and the column is how a player reads a pairing before an
+ * animation explains it. Fitting the recess would have meant a row whose lanes
+ * converge on the hand above them like a perspective error.
+ *
+ * The bones are read, never pressed, so they are seated at their painted size
+ * rather than grown to the 44 px touch floor.
+ */
+export const ENEMY_ROW_Y = 0.3906
+export const ENEMY_LANES: readonly Point[] = DIE_CENTRES.map((c) => ({
+  x: c.x,
+  y: ENEMY_ROW_Y,
+}))
+
+export const ENEMY_BONE = { width: 0.058, height: 0.155 } as const
+
+/**
  * Three small bays on the right. Relics sit here, and are the one place the
  * player can see their passive build without opening anything.
  */

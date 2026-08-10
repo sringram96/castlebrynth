@@ -14,9 +14,7 @@ test.describe('a run that ends', () => {
   test('dies on the lane it happens, and says what took it', async ({ page }) => {
     // One bone against the Warden's six. Played, not injected.
     await boot(page, '?room=gate&bones=1&mode=combat&phase=thrown')
-    await act(page, 'field').click()
     await act(page, 'throw').click()
-    await act(page, 'smash').click()
 
     if ((await screenName(page)) !== 'dead') return
     await expect(page.locator('#screen')).toHaveAttribute('data-screen', 'dead')
@@ -57,8 +55,8 @@ test.describe('a run that ends', () => {
   })
 
   test('no stale combat UI survives a restart', async ({ page }) => {
-    await boot(page, '?room=gate&bones=1&mode=combat&phase=rolled')
-    await act(page, 'smash').click()
+    await boot(page, '?room=gate&bones=1&mode=combat&phase=thrown')
+    await act(page, 'throw').click()
     if ((await screenName(page)) !== 'dead') return
 
     await act(page, 'start').click()

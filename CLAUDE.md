@@ -98,7 +98,7 @@ that does not need it continues.
 
 Any mode is reachable from a URL, which is what keeps the ends of the game
 testable: `?room=gate&bones=1&mode=combat`, `?mode=dead`,
-`?specials=cinderbone,knuckle`, `?phase=rolled&width=3`. `?room=` names an
+`?specials=cinderbone,knuckle`, `?phase=smashed`. `?room=` names an
 authored template and stands you in the first room of the run that used it;
 `?node=n8` names one exact room.
 See `src/game/fixture.ts`.
