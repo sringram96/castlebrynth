@@ -18,7 +18,8 @@ import { newRun, reduce } from '../../src/game/reducer.js'
 import type { Action } from '../../src/game/reducer.js'
 import { SAVE_VERSION, TITLE } from '../../src/game/state.js'
 import type { GameState } from '../../src/game/state.js'
-import { BONE_CEILING, totalBones } from '../../src/content/bones.js'
+import { BONE_CEILING } from '../../src/content/bones.js'
+import { legalScores } from '../../src/combat/hands.js'
 import { ROOM_LIBRARY } from '../../src/content/rooms.js'
 import { roomAt } from '../../src/game/map.js'
 import { validateRun } from '../../src/game/mapValidation.js'
@@ -31,13 +32,13 @@ const play = (state: GameState, ...actions: readonly Action[]): GameState =>
 /**
  * Fight whatever is in the room until it or the run is finished.
  *
- * Real presses only: FIELD, THROW, SMASH, ROUND, and DEFEAT_DONE when a death
- * is being held open. The width is always the widest legal one, which is the
- * naive policy and the one a first-time player uses.
+ * Real presses only: ROLL, SCORE, and DEFEAT_DONE when a death is being held
+ * open. It never rerolls and it takes the first legal hand, which is the naive
+ * policy and the one a first-time player uses.
  */
-function fightItOut(state: GameState, guard = 60): GameState {
+function fightItOut(state: GameState, guard = 80): GameState {
   let now = state
-  for (let round = 0; round < guard; round++) {
+  for (let step = 0; step < guard; step++) {
     const combat = now.run?.combat
     if (!combat) return now
     if (combat.defeated) {
@@ -45,14 +46,15 @@ function fightItOut(state: GameState, guard = 60): GameState {
       continue
     }
     if (now.mode !== 'combat') return now
-    switch (combat.phase) {
-      case 'thrown':
-        now = reduce(now, { type: 'THROW' })
-        break
-      case 'smashed':
-        now = reduce(now, { type: 'ROUND' })
-        break
+    if (combat.dice.length === 0) {
+      const rolled = reduce(now, { type: 'ROLL' })
+      if (rolled === now) return now
+      now = rolled
+      continue
     }
+    const hand = legalScores(combat.dice, combat.usedHands)[0]
+    if (!hand) return now
+    now = reduce(now, { type: 'SCORE', hand })
   }
   throw new Error('a fight ran past its guard')
 }
@@ -101,7 +103,7 @@ describe('the door', () => {
     const started = reduce(TITLE, { type: 'START_RUN', seed: 1 })
     expect(started.mode).toBe('explore')
     expect(started.run!.roomId).toBe(started.run!.map.start)
-    expect(totalBones(started.run!)).toBe(BONE_CEILING)
+    expect(started.run!.bones).toBe(BONE_CEILING)
     expect(started.meta.runs).toBe(1)
   })
 
@@ -247,26 +249,26 @@ describe('the run can end', () => {
   it('dies when the last bone breaks, and says what took it', () => {
     let state = reduce(TITLE, { type: 'START_RUN', seed: 3 })
     state = walkTo(state, 'hollow')
-    // One bone, one round. Whatever happens, the run cannot survive losing it.
-    state = { ...state, run: { ...state.run!, commonBones: 1 } }
+    // One bone, one attack. It throws one die, does at least one damage, and
+    // the Gnawing breaks three of a pile that has one.
+    state = { ...state, run: { ...state.run!, bones: 1 } }
     state = fightItOut(reduce(state, { type: 'FIGHT' }))
     if (state.mode !== 'dead') return
-    expect(totalBones(state.run!)).toBe(0)
+    expect(state.run!.bones).toBe(0)
     expect(state.run!.cause).toBeTruthy()
     // And the death screen has a way out that is not a reload.
     expect(reduce(state, { type: 'START_RUN', seed: 4 }).mode).toBe('explore')
     expect(reduce(state, { type: 'TITLE' }).mode).toBe('title')
   })
 
-  it('never fights with nothing left to field', () => {
+  it('never fights with nothing left to throw', () => {
     const state = reduce(TITLE, { type: 'START_RUN', seed: 1 })
     const empty: GameState = {
       ...state,
       run: {
         ...state.run!,
         roomId: nodeOf(state.run!, 'hollow'),
-        commonBones: 0,
-        specials: [],
+        bones: 0,
       },
     }
     expect(reduce(empty, { type: 'FIGHT' })).toBe(empty)
@@ -298,22 +300,23 @@ describe('the save', () => {
     const { state } = load(store)
     expect(state.mode).toBe('title')
     expect(state.resume).toBe('combat')
-    // And one press is back where the run stood, mid-round.
-    expect(reduce(state, { type: 'CONTINUE' }).run!.combat!.phase).toBe('thrown')
+    // And one press is back where the run stood, mid-fight.
+    const back = reduce(state, { type: 'CONTINUE' })
+    expect(back.mode).toBe('combat')
+    expect(back.run!.combat!.dice).toEqual([])
   })
 
   it('discards a save from the game this replaced', () => {
     const store = storage()
-    // **Both** of the shapes that reached 7 are discarded: the generated map
-    // and the War of Bones arrived at that number independently, so a save
-    // claiming 7 could be either and this build can read neither.
-    for (const version of [6, 7]) {
+    // Every earlier shape, including the War of Bones at 8. There is no
+    // migration ladder: an old save is detected, discarded, and reported.
+    for (const version of [6, 7, 8]) {
       store.setItem('castlebrynth', JSON.stringify({ version, mode: 'combat', meta: {} }))
       const { state, discarded } = load(store)
       expect(discarded, `version ${version}`).toBe('incompatible')
       expect(state.run).toBeUndefined()
     }
-    expect(SAVE_VERSION).toBe(8)
+    expect(SAVE_VERSION).toBe(9)
   })
 
   it('survives an empty and a corrupt store', () => {
@@ -329,16 +332,16 @@ describe('the save', () => {
     // Nothing about a transition may be written. A reload lands on a settled
     // frame by construction, not by a clock being recovered.
     const store = storage()
-    const smashed = play(
+    const mid = play(
       reduce(
         walkTo(reduce(TITLE, { type: 'START_RUN', seed: 8 }), 'hollow'),
         { type: 'FIGHT' },
       ),
-      { type: 'THROW' },
+      { type: 'ROLL' },
     )
-    save(smashed, store)
+    save(mid, store)
     const raw = store.getItem('castlebrynth')!
-    for (const forbidden of ['frame', 'elapsed', 'animating', 'startedAt']) {
+    for (const forbidden of ['frame', 'elapsed', 'animating', 'startedAt', 'held']) {
       expect(raw, `the save carries ${forbidden}`).not.toContain(`"${forbidden}"`)
     }
   })
@@ -362,15 +365,18 @@ describe('determinism', () => {
   })
 
   it('two seeds do not', () => {
-    const runOf = (seed: number): GameState =>
+    const throwOf = (seed: number): readonly number[] =>
       reduce(
-        walkTo(reduce(TITLE, { type: 'START_RUN', seed }), 'hollow'),
-        { type: 'FIGHT' },
-      )
-    expect(runOf(1).run!.combat!.enemyLine).not.toEqual(runOf(2).run!.combat!.enemyLine)
+        reduce(
+          walkTo(reduce(TITLE, { type: 'START_RUN', seed }), 'hollow'),
+          { type: 'FIGHT' },
+        ),
+        { type: 'ROLL' },
+      ).run!.combat!.dice
+    expect(throwOf(1)).not.toEqual(throwOf(2))
   })
 
   it('a new run carries the same opening pile whatever the seed', () => {
-    for (const seed of [1, 2, 3, 999]) expect(totalBones(newRun(seed))).toBe(BONE_CEILING)
+    for (const seed of [1, 2, 3, 999]) expect(newRun(seed).bones).toBe(BONE_CEILING)
   })
 })

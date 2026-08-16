@@ -10,175 +10,89 @@
  * stuck on, the choosing screen with no way out, the tab that ate its own
  * press — was a mode the shell had to infer from four other fields.
  *
- * ## There is no health here
+ * ## The pile is the player
  *
- * A run's life is a physical army of bones. `hp`, `maxHp`, `enemyHp` and
- * `enemyMaxHp` are gone, and are not to come back behind another name: a bone
- * counter that behaves like a health bar is the old game wearing the new one's
- * coat. See `docs/COMBAT.md`.
+ * A run's life is `run.bones`, and there is no second life field: no `hp`, no
+ * `maxHp`, no shield, no armour. A hit removes bones from the pile, and
+ * because an attack rolls `min(6, bones)`, being hurt directly narrows the
+ * dice game. Enemies *do* carry an explicit `enemyHp`, deliberately — see
+ * `docs/COMBAT.md`.
  */
 
-import type { BoneProfileId, SpecialBoneInstance } from '../content/bones.js'
+import type { ScoreId, NamedHandId } from '../combat/hands.js'
+import type { DieValue } from '../combat/roll.js'
 import type { RewardId } from '../content/rewards.js'
 import type { RunMap } from './map.js'
 
 /**
  * Bumped whenever the shape below changes. Old saves are not migrated.
  *
- * **8, and it skipped nothing.** Two changes reached 7 independently — the
- * generated map, and the War of Bones — and a save written by either of them
- * has a shape this build cannot read. A version that two different schemas
- * both claim is worse than no version at all: it is the one number whose whole
- * job is to say *I know what this is*.
+ * **9.** The Yahtzee reset changed the run's life from a two-part pile to one
+ * number and replaced the whole of `CombatState`, so a save written by 8 has a
+ * shape this build cannot read. There is no migration ladder and there is not
+ * going to be one: an old save is detected, discarded, and reported.
  */
-export const SAVE_VERSION = 8
+export const SAVE_VERSION = 9
 
 export type Mode = 'title' | 'explore' | 'combat' | 'reward' | 'dead' | 'complete'
 
 /**
- * The two model phases of a round. See `docs/COMBAT.md`.
+ * One settled exchange, in full.
  *
- * **Choose your modifiers, then throw and watch what it costs.** That is the
- * whole round, and each phase is one of those two sentences:
- *
- * - `thrown` — its line is up and yours is not committed. Drink, or change
- *   which named bones stand in the line. Nothing here is a number to nudge.
- * - `smashed` — it has been thrown and read. The wreckage is on the plate.
- *
- * There were four. `fielded` and `rolled` split the throw across two presses
- * so a width could be committed and then a Charm spent, and both of those
- * decisions are gone: the line is always as wide as the pile allows, and
- * throwing and finding out is one uninterrupted beat. A phase whose only
- * content is confirming a decision already taken is a phase that exists to be
- * pressed through.
+ * Written by SCORE before a frame of it is shown, and read by the presentation
+ * in order. Every number the sequence says out loud is on here: the animation
+ * reveals an outcome the reducer already computed, and it recomputes nothing.
  */
-export type CombatPhase = 'thrown' | 'smashed'
+export interface AttackRecord {
+  /** The faces that were on the table when the hand was scored. */
+  readonly dice: readonly DieValue[]
+  readonly hand: ScoreId
+  readonly sum: number
+  readonly multiplier: number
+  readonly damage: number
 
-/** How an enemy answers a lane whose two bones show the same number. */
-export type TieRule = 'mutual' | 'warden-holds'
+  readonly enemyHpBefore: number
+  readonly enemyHpAfter: number
 
-/**
- * One bone in an enemy's army.
- *
- * `priority` is the enemy's *authored* fielding order, and it is content
- * rather than an opinion formed at runtime: "best first" must be a number
- * somebody wrote down, not a heuristic that can quietly change what a fight
- * feels like. It is also the stable tie-break when two enemy bones roll the
- * same value, so no hidden rearrangement happens after the throw.
- */
-export interface EnemyBoneInstance {
-  readonly boneId: string
-  readonly profile: BoneProfileId
-  readonly priority: number
+  /** What it broke in answer. Zero when the attack finished it. */
+  readonly retaliation: number
+  readonly bonesBefore: number
+  readonly bonesAfter: number
 }
 
 /**
- * One bone that has been thrown and is standing in a line.
+ * A fight in progress.
  *
- * `boneKey` is its identity for the length of the round — a Charm targets one,
- * a smash breaks one — and it is never a screen position. For a common bone it
- * is ephemeral (`common:r3:0`); for a special it carries the run-long
- * `specialInstanceId` alongside, because that is the thing that dies.
+ * Small, serialisable, and with no phase enum: the position is derivable and
+ * saying it twice is how two fields come to disagree.
  *
- * `faceIndex` travels with `value` so a bone that rolled the second of two
- * sevens is distinguishable from one that rolled the first, even though the
- * two resolve identically.
+ *   `dice.length === 0`                 waiting for the initial ROLL
+ *   `dice.length > 0 && rollsUsed < 3`  may SCORE or REROLL
+ *   `dice.length > 0 && rollsUsed === 3` must SCORE
+ *
+ * What is *not* here is as deliberate: no held flags, because a hold is a
+ * thought the view is editing and a reload may forget it; no enemy dice,
+ * because the enemy rolls nothing; and no clock anywhere, because a frame is
+ * not a fact about a run.
  */
-export interface RolledBone {
-  readonly boneKey: string
-  readonly profile: BoneProfileId
-  readonly faceIndex: number
-  readonly value: number
-  /** Set when this is a player special. Its death removes this instance. */
-  readonly specialInstanceId?: string
-  /**
-   * Which named bone it is, carried on the bone rather than looked up.
-   *
-   * A dead special is removed from the pile the instant it breaks, so a view
-   * that resolved the name through `run.specials` would find nothing exactly
-   * when the name matters most — on the frame the Cinderbone is lying broken
-   * in its lane. The bone knows what it is.
-   */
-  readonly specialId?: string
-  /** Set when this is an enemy bone. Its death removes this id from the army. */
-  readonly enemyBoneId?: string
-}
-
-/**
- * What went in this round.
- *
- * Recorded as *width plus named specials* rather than as a list of bones,
- * because common bones are anonymous: there is no such thing as "that one".
- * The remainder — `width - specialIds.length` — is drawn from the pile.
- *
- * **The width is not a choice and the specials are.** Every round throws as
- * many bones as the pile can put up; what the player decides in the modifier
- * step is which of their named bones stand among them, and a Knuckle in the
- * line is four faces of 6-or-better and one more thing that can break forever.
- */
-export interface PlayerField {
-  readonly width: number
-  readonly specialIds: readonly string[]
-}
-
-/** What one high-to-low pairing did. */
-export type LaneOutcome =
-  | 'player'
-  | 'enemy'
-  | 'both'
-  | 'safe-player'
-  | 'safe-enemy'
-  | 'warden-hold'
-
-export interface LaneResult {
-  readonly lane: number
-  readonly player?: RolledBone
-  readonly enemy?: RolledBone
-  readonly result: LaneOutcome
-}
-
-/**
- * What a smash cost, in full.
- *
- * The record is authoritative and is written by the reducer before a frame of
- * it is shown. The presentation reads lanes off this in order; it never
- * recomputes a casualty, and it never decides one.
- *
- * `stoppedAtLane` is the run ending mid-smash. Lanes after it did not resolve
- * and are not retroactively anything — they simply never happened.
- */
-export interface SmashRecord {
-  readonly lanes: readonly LaneResult[]
-  readonly playerCommonLost: number
-  readonly playerSpecialsLost: readonly string[]
-  readonly enemyBonesLost: readonly string[]
-  /** Lanes an enemy tie rule kept. The Warden's whole encounter, as a count. */
-  readonly heldTies: number
-  readonly stoppedAtLane?: number
-}
-
 export interface CombatState {
   readonly enemyId: string
-  /** 1-based. Round 1 is the fight opening, and its enemy line is already up. */
+  /** 1-based attack round. Round 1 is the fight opening. */
   readonly round: number
-  readonly phase: CombatPhase
 
-  /** Its living army. Casualties are removed here and never return. */
-  readonly enemyBones: readonly EnemyBoneInstance[]
-  /** How many it started with, so a band can be computed without content. */
-  readonly enemyStartCount: number
-  /** Face-up and sorted, before the player commits anything. */
-  readonly enemyLine: readonly RolledBone[]
+  readonly enemyHp: number
+  readonly enemyMaxHp: number
 
-  /**
-   * What went in, and what it rolled. Both are set by THROW and neither exists
-   * before it — which is exactly what `thrown` means: it has thrown, you have
-   * not.
-   */
-  readonly field?: PlayerField
-  readonly playerLine?: readonly RolledBone[]
+  /** Named categories deliberately scored during this fight. CRAP is never here. */
+  readonly usedHands: readonly NamedHandId[]
 
-  readonly lastSmash?: SmashRecord
+  /** The current attack's dice. Empty before the initial roll of a round. */
+  readonly dice: readonly DieValue[]
+  /** 0 before rolling, then 1..3. */
+  readonly rollsUsed: 0 | 1 | 2 | 3
+
+  /** The last settled exchange, for the copy and the beats. */
+  readonly lastAttack?: AttackRecord
   /**
    * It is dead, and the fight is being held open on the picture of that.
    *
@@ -286,19 +200,17 @@ export interface RunState {
   readonly roomId: string
 
   // ── life ──────────────────────────────────────────────────────────────
-  /** Anonymous bones. There is no such thing as *that* common bone. */
-  readonly commonBones: number
-  /** Named bones, each a distinct object, because each one's death matters. */
-  readonly specials: readonly SpecialBoneInstance[]
-  /** So two Cinderbones can never share an instance id. Monotonic. */
-  readonly nextSpecialSerial: number
+  /**
+   * The pile. One number, and it is the player's whole life.
+   *
+   * It is also the width of the next attack: a hand rolls `min(6, bones)`, so
+   * damage narrows the dice game rather than merely counting down. There is no
+   * second life field anywhere and there is not to be one.
+   */
+  readonly bones: number
 
   // ── satchel ───────────────────────────────────────────────────────────
-  /**
-   * The one consumable. Charms are gone with the phase they were spent in —
-   * a reroll needs a moment between seeing your throw and living with it, and
-   * there is no such moment any more.
-   */
+  /** The one consumable. */
   readonly vials: number
 
   /** Which details have been looked at, in the node being stood in. */
@@ -334,8 +246,7 @@ export interface RunState {
 export interface MetaState {
   readonly runs: number
   readonly wins: number
-  /** Everything ever carried, so the title screen has something to say. */
-  readonly seenBones: readonly string[]
+  /** Everything ever found, so the title screen has something to say. */
   readonly seenRewards: readonly string[]
 }
 
@@ -355,6 +266,6 @@ export interface GameState {
   readonly resume?: Mode
 }
 
-export const EMPTY_META: MetaState = { runs: 0, wins: 0, seenBones: [], seenRewards: [] }
+export const EMPTY_META: MetaState = { runs: 0, wins: 0, seenRewards: [] }
 
 export const TITLE: GameState = { version: SAVE_VERSION, mode: 'title', meta: EMPTY_META }

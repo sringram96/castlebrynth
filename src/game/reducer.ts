@@ -11,44 +11,33 @@
  * changes nothing should be unreachable from a press.
  */
 
-import {
-  BONE_CEILING,
-  STARTING_BONES,
-  isSpecialBoneId,
-  newSpecial,
-  roomToRecover,
-  specialBone,
-  totalBones,
-} from '../content/bones.js'
-import type { SpecialBoneInstance } from '../content/bones.js'
-import { LOOT_REWARDS, isBoneReward, reward } from '../content/rewards.js'
+import { STARTING_BONES, roomToRecover } from '../content/bones.js'
+import { LOOT_REWARDS, reward } from '../content/rewards.js'
 import type { RewardId } from '../content/rewards.js'
-import { armyOf, armySize, enemy } from '../content/enemies.js'
+import { enemy } from '../content/enemies.js'
+import type { Enemy } from '../content/enemies.js'
 import { defeatOf } from '../content/defeat.js'
 import { exitsOpen, legal, stateOf } from '../content/interactions.js'
 import {
-  LINE_WIDTH,
-  enemyField,
-  rollEnemyLine,
-  rollPlayerLine,
-} from '../combat/line.js'
-import { resolveSmash } from '../combat/clash.js'
+  legalScores,
+  scoreDice,
+  scoreName,
+} from '../combat/hands.js'
+import type { NamedHandId, ScoreId } from '../combat/hands.js'
+import { MAX_ROLLS, activeDice, canonicalHeld, rerollDice, rollDice } from '../combat/roll.js'
 import { roomAt } from './map.js'
 import { generateRun } from './runGenerator.js'
 import { RELIQUARY_CHANNEL, RITUAL_CHANNEL, RNG_CHANNEL, combatSalt, rngAt } from './rng.js'
 import type { Rng } from './rng.js'
 import { SAVE_VERSION } from './state.js'
 import type {
+  AttackRecord,
   CombatState,
-  EnemyBoneInstance,
   GameState,
   MetaState,
-  PlayerField,
   RitualRoll,
-  RolledBone,
   RoomInteractionState,
   RunState,
-  SmashRecord,
 } from './state.js'
 
 export type Action =
@@ -58,26 +47,28 @@ export type Action =
   | { readonly type: 'LOOK'; readonly detailId: string }
   | { readonly type: 'GO'; readonly to: string }
   | { readonly type: 'FIGHT' }
+  /** Throw the bones the pile can put up. Once per attack, and first. */
+  | { readonly type: 'ROLL' }
   /**
-   * Throw, and find out. The whole round, in one tick.
+   * Throw again, keeping what was held.
    *
-   * It carries the modifier the player was editing — which named bones are
-   * standing in the line — and nothing else, because nothing else was theirs
-   * to decide. That selection lives in the **view** until this moment: it is a
-   * thought, not a move, and a reload before the throw loses an unfinished
-   * thought rather than a half-committed army.
+   * It carries the decision, because the decision is the player's and the view
+   * is not what makes it legal: `held` is a bare list of positions, and the
+   * reducer canonicalises it — unique, in range, sorted — before a die moves.
+   * A stale index from a wider roll changes nothing; a repeat of the same
+   * index changes nothing; and a reroll with everything held is refused rather
+   * than charged, because it is not a throw.
    *
-   * There were three actions here — FIELD, THROW, SMASH. Two of them existed
-   * so a width could be committed and then a Charm spent against the result,
-   * and neither decision survives. Splitting a throw across presses when there
-   * is nothing to decide between them is asking the player to confirm that
-   * they meant it.
+   * The selection itself lives in the **view** until this moment. It is a
+   * thought, not a move, and a reload before the press loses an unfinished
+   * thought rather than granting another roll.
    */
-  | { readonly type: 'THROW'; readonly specialIds?: readonly string[] }
-  | { readonly type: 'ROUND' }
+  | { readonly type: 'REROLL'; readonly held: readonly number[] }
+  /** Commit the dice as one hand. The whole attack, in one tick. */
+  | { readonly type: 'SCORE'; readonly hand: ScoreId }
   | { readonly type: 'DRINK' }
   | { readonly type: 'TAKE'; readonly id: RewardId }
-  /** Leave it. A reward screen may never force a change to the army. */
+  /** Leave it. A reward screen may never force a change on the run. */
   | { readonly type: 'SKIP' }
   | { readonly type: 'RITUAL_ROLL' }
   /**
@@ -96,7 +87,7 @@ export type Action =
    *
    * The only way out of `combat.defeated`, and the one place a win is granted
    * for a horror whose death is played. It carries nothing: everything it
-   * needs was decided by the SMASH that killed the thing, so a second press,
+   * needs was decided by the SCORE that killed the thing, so a second press,
    * a stuck timer or a reload cannot make it pay twice.
    */
   | { readonly type: 'DEFEAT_DONE' }
@@ -112,9 +103,6 @@ export type Action =
  * still worth three bones, so a press is never a wasted press unless the pile
  * is already full — and at full it says so plainly rather than paying nothing
  * and looking broken.
- *
- * It restores **common bones only**. Nothing in the game resurrects a named
- * special: that is the whole weight of fielding one.
  */
 export const FONT_BONUS = 2
 
@@ -141,9 +129,8 @@ function ritualSay(roll: RitualRoll, restored: number): string {
 
 // ── helpers ────────────────────────────────────────────────────────────
 
-const remember = (meta: MetaState, bones: readonly string[], rewards: readonly string[]): MetaState => ({
+const remember = (meta: MetaState, rewards: readonly string[]): MetaState => ({
   ...meta,
-  seenBones: [...new Set([...meta.seenBones, ...bones])],
   seenRewards: [...new Set([...meta.seenRewards, ...rewards])],
 })
 
@@ -152,9 +139,17 @@ function rngFor(run: RunState, salt: number): Rng {
   return rngAt(run.seed, salt)
 }
 
-/** Where a round's draw sits: the path, the round, and which channel. */
-function fightRng(run: RunState, round: number, channel: number): Rng {
-  return rngFor(run, combatSalt(run.path.length, round, channel))
+/**
+ * Where one draw of a fight sits: the path, the round, which roll, which
+ * channel.
+ *
+ * Four terms rather than three, because an attack draws up to three times
+ * before it is scored. Derived and never stored, so a reload before ROLL and a
+ * press of ROLL land on the same faces, and a REROLL replayed with the same
+ * held positions lands on the same faces again.
+ */
+function fightRng(run: RunState, round: number, rollNumber: number, channel: number): Rng {
+  return rngFor(run, combatSalt(run.path.length, round, rollNumber, channel))
 }
 
 /**
@@ -174,25 +169,12 @@ function reliquarySalt(run: RunState): number {
 }
 
 /**
- * Which rewards a run may still be offered.
- *
- * Everything, nearly always: Vials and Charms stack, and two Cinderbones are a
- * real thing to be carrying. The one exclusion is the corner where a special
- * has nowhere to go — thirty bones already, and not one of them common to
- * transmute — because an offer that cannot be taken is not an offer.
- */
-function eligible(run: RunState, ids: readonly RewardId[]): readonly RewardId[] {
-  const full = totalBones(run) >= BONE_CEILING && run.commonBones === 0
-  return full ? ids.filter((id) => !isBoneReward(id)) : ids
-}
-
-/**
  * Draw one id, weighted, and take it out of the pool.
  *
- * Rarity lives on the reward — a Vial is six times as likely as a Knuckle —
- * rather than in a table curated per enemy, so the cadence of the whole slice
- * can be read in `content/rewards.ts`. Within one offer the draw is without
- * replacement, so a screen never shows the same card twice.
+ * Rarity lives on the reward rather than in a table curated per enemy, so the
+ * cadence of the whole slice can be read in `content/rewards.ts`. Within one
+ * offer the draw is without replacement, so a screen never shows the same card
+ * twice — and a pool that runs dry simply offers fewer.
  */
 function drawWeighted(pool: RewardId[], rng: Rng): RewardId | undefined {
   if (pool.length === 0) return undefined
@@ -214,7 +196,7 @@ function drawWeighted(pool: RewardId[], rng: Rng): RewardId | undefined {
  * plainly rather than leaving it looking like the offer screen failed.
  */
 function chestReward(run: RunState, rng: Rng): RewardId | undefined {
-  return drawWeighted([...eligible(run, LOOT_REWARDS)], rng)
+  return drawWeighted([...LOOT_REWARDS], rng)
 }
 
 /** What the room says about a press that changed something. */
@@ -243,66 +225,36 @@ const VAULT_CAUSE = 'The chain mechanism.'
 /**
  * Take one bone out of the pile, for something that is not a fight.
  *
- * **Common first, then the oldest living special.** One helper, so every
- * non-combat cost in the game — the vault's backlash today, whatever wants one
- * next — spends the pile the same way and names what it took in the same
- * words. A cost can therefore still kill a run made entirely of specials,
- * which is the honest reading of *dead stays dead*.
+ * One helper, so every non-combat cost in the game — the vault's backlash
+ * today, whatever wants one next — spends the pile the same way. The pile is
+ * one number now, so this is one subtraction, and it answers whether there was
+ * anything left to take.
  */
 export function loseOneBone(run: RunState): {
   readonly run: RunState
-  readonly lost: { readonly kind: 'common' } | { readonly kind: 'special'; readonly name: string }
   readonly took: boolean
 } {
-  if (run.commonBones > 0) {
-    return { run: { ...run, commonBones: run.commonBones - 1 }, lost: { kind: 'common' }, took: true }
-  }
-  const oldest = run.specials[0]
-  if (!oldest) return { run, lost: { kind: 'common' }, took: false }
-  return {
-    run: { ...run, specials: run.specials.slice(1) },
-    lost: { kind: 'special', name: specialBone(oldest.specialId).name },
-    took: true,
-  }
+  if (run.bones <= 0) return { run, took: false }
+  return { run: { ...run, bones: run.bones - 1 }, took: true }
 }
 
 /**
- * Put common bones back, never above the ceiling.
+ * Put bones back, never above the ceiling.
  *
  * The one place recovery arithmetic lives. It answers with what it actually
  * gave, because zero is a real answer and the copy has to be able to say so.
  */
 function recover(run: RunState, wanted: number): { readonly run: RunState; readonly gave: number } {
   const gave = Math.max(0, Math.min(wanted, roomToRecover(run)))
-  return { run: gave === 0 ? run : { ...run, commonBones: run.commonBones + gave }, gave }
-}
-
-/**
- * Put a named bone in the pile.
- *
- * At the ceiling with a common bone to spare, one common bone becomes the
- * special and the total does not move — **no replacement picker, no loadout
- * screen**. The player asked for the bone; making them then choose which
- * anonymous bone to sacrifice is a decision with no information in it.
- */
-function addSpecial(run: RunState, id: string): RunState {
-  if (!isSpecialBoneId(id)) return run
-  const instance = newSpecial(id, run.nextSpecialSerial)
-  const transmute = totalBones(run) >= BONE_CEILING && run.commonBones > 0
-  return {
-    ...run,
-    commonBones: transmute ? run.commonBones - 1 : run.commonBones,
-    specials: [...run.specials, instance],
-    nextSpecialSerial: run.nextSpecialSerial + 1,
-  }
+  return { run: gave === 0 ? run : { ...run, bones: run.bones + gave }, gave }
 }
 
 /**
  * A run at its waking.
  *
- * Thirty common bones, an empty satchel, and no trace of the run before it.
- * Note what is absent: `combat`, `offer` and `cause`, which is the invariant
- * the stuck-on-death bug turned on.
+ * Thirty bones, an empty satchel, and no trace of the run before it. Note what
+ * is absent: `combat`, `offer` and `cause`, which is the invariant the
+ * stuck-on-death bug turned on.
  */
 export function newRun(seed: number): RunState {
   // The descent is generated here, once, and stored. Everything after this
@@ -312,9 +264,7 @@ export function newRun(seed: number): RunState {
     seed: seed >>> 0,
     map,
     roomId: map.start,
-    commonBones: STARTING_BONES,
-    specials: [],
-    nextSpecialSerial: 0,
+    bones: STARTING_BONES,
     vials: 0,
     looked: [],
     cleared: [],
@@ -326,91 +276,47 @@ export function newRun(seed: number): RunState {
 
 // ── the fight ──────────────────────────────────────────────────────────
 
-/** The enemy's line for a round, thrown and standing in order. */
-function throwEnemy(
-  run: RunState,
-  enemyBones: readonly EnemyBoneInstance[],
-  round: number,
-): readonly RolledBone[] {
-  return rollEnemyLine(enemyField(enemyBones), fightRng(run, round, RNG_CHANNEL.enemyThrow))
-}
-
-/** Open a fight against the room's enemy. Its line is up before FIELD is. */
+/** Open a fight against the room's enemy. It rolls nothing. */
 function beginCombat(run: RunState): CombatState {
   const id = roomAt(run).enemy
   if (!id) throw new Error(`${run.roomId} has no enemy`)
   const e = enemy(id)
-  const bones = armyOf(id)
   return {
     enemyId: id,
     round: 1,
-    phase: 'thrown',
-    enemyBones: bones,
-    enemyStartCount: bones.length,
-    enemyLine: throwEnemy(run, bones, 1),
+    enemyHp: e.maxHp,
+    enemyMaxHp: e.maxHp,
+    usedHands: [],
+    dice: [],
+    rollsUsed: 0,
     log: e.rule ? [e.tell, e.rule] : [e.tell],
   }
 }
 
-/** How many bones the player could legally field right now. */
-export function maxWidth(run: RunState): number {
-  return Math.min(LINE_WIDTH, totalBones(run))
+/** Whether a fight is live: open, not won, not being watched dying. */
+function live(state: GameState, run: RunState | undefined): run is RunState {
+  return state.mode === 'combat' && !!run?.combat && !run.combat.defeated
 }
 
-/**
- * The line the pile puts up, given which named bones are standing in it.
- *
- * The one place the composition rule lives, so the view and the reducer cannot
- * drift: the tray calls this to draw the line before it is thrown, and THROW
- * calls it to build the line it throws.
- *
- * Three rules, and all three are consequences of *the line is always as wide
- * as the bones going into it allow* rather than opinions of their own:
- *
- * 1. **A named bone asked for is only honoured if it is alive.** A request is
- *    a thought and the pile is the fact; a Cinderbone that broke last round
- *    cannot be in this round's line because a menu still had it selected.
- * 2. **Named bones stand *inside* the width, never on top of it.** Six bones
- *    with a Knuckle among them is five commons and a Knuckle — carrying named
- *    bones does not widen the line, it changes what is in it.
- * 3. **Width is what is actually available, capped at six** — the commons in
- *    the pile plus the named bones standing. Held-back bones are counted out
- *    of it rather than quietly replaced: a line of six with a Knuckle
- *    withdrawn is a line of five when there is no sixth common to take its
- *    place, which is the honest answer and the one the pile can pay.
- *
- * `specialIds` comes back sorted, so two players who chose the same two bones
- * threw the same thing however their thumbs got there.
- */
-export function fieldFor(run: RunState, wanted: readonly string[] = []): PlayerField {
-  const alive = new Set(run.specials.map((s) => s.instanceId))
-  const standing = [...new Set(wanted)]
-    .filter((id) => alive.has(id))
-    .sort()
-    .slice(0, LINE_WIDTH)
-  const width = Math.min(LINE_WIDTH, run.commonBones + standing.length)
-  return { width, specialIds: standing.slice(0, width) }
+/** How a multiplier prints. `2`, `1.25`, `0.5` — never `2.00`. */
+function showMultiplier(multiplier: number): string {
+  return String(multiplier)
 }
 
-/** What a smash cost, in one line, for the word band. */
-function smashSay(record: SmashRecord, names: readonly string[]): readonly string[] {
-  const beats: string[] = []
-  const lost = record.playerCommonLost + record.playerSpecialsLost.length
-  beats.push(
-    lost === 0
-      ? 'Nothing of mine breaks.'
-      : `${lost} of mine ${lost === 1 ? 'breaks' : 'break'}.`,
-  )
-  for (const name of names) beats.push(`${name} is gone.`)
-  if (record.enemyBonesLost.length > 0) {
+/** What an exchange did, in beats, for the word band. */
+function attackSay(e: Enemy, record: AttackRecord): readonly string[] {
+  const beats: string[] = [
+    `${scoreName(record.hand)}. ${record.sum} × ${showMultiplier(record.multiplier)} — ${record.damage}.`,
+    `${e.name}: ${record.enemyHpBefore} → ${Math.max(0, record.enemyHpAfter)}.`,
+  ]
+  if (record.enemyHpAfter <= 0) {
+    beats.push('It stops.')
+  } else if (record.bonesAfter === 0) {
+    beats.push(`It breaks ${record.retaliation}. That was all of them.`)
+  } else {
     beats.push(
-      `${record.enemyBonesLost.length} of its bones ${
-        record.enemyBonesLost.length === 1 ? 'breaks' : 'break'
-      }.`,
+      `It breaks ${record.retaliation} of mine. ${record.bonesBefore} → ${record.bonesAfter} bones.`,
     )
-  }
-  if (record.heldTies > 0) {
-    beats.push(record.heldTies === 1 ? 'It held the tie.' : `It held ${record.heldTies} ties.`)
   }
   return beats
 }
@@ -424,11 +330,11 @@ function smashSay(record: SmashRecord, names: readonly string[]): readonly strin
  *   1. **did it drop?** — `rewardChance`, and the number is always drawn, so
  *      whether a fight paid can never depend on what was left in the pool;
  *   2. **what?** — `rewardChoices` drawn without replacement from the enemy's
- *      table, weighted by rarity, skipping anything that cannot be taken.
+ *      table, weighted by rarity.
  *
- * Nothing is padded *up*: if one eligible thing remains, one is offered. An
- * empty return is a real answer — the fight gave nothing — and the room says
- * so plainly rather than leaving it looking like the offer screen failed.
+ * Nothing is padded *up*: if one thing remains, one is offered. An empty
+ * return is a real answer — the fight gave nothing — and the room says so
+ * plainly rather than leaving it looking like the offer screen failed.
  */
 export function offerFor(run: RunState, enemyId: string, rng: Rng): readonly RewardId[] {
   // An enemy that declares no reward gives none. That is content saying so,
@@ -438,7 +344,7 @@ export function offerFor(run: RunState, enemyId: string, rng: Rng): readonly Rew
   if (e.rewards.length === 0 || e.rewardChoices === 0) return []
   if (rng.next() >= e.rewardChance) return []
 
-  const pool = [...eligible(run, e.rewards)]
+  const pool = [...e.rewards]
   const out: RewardId[] = []
   while (out.length < e.rewardChoices) {
     const drawn = drawWeighted(pool, rng)
@@ -451,13 +357,13 @@ export function offerFor(run: RunState, enemyId: string, rng: Rng): readonly Rew
 /**
  * The fight is over and the room is yours.
  *
- * The one place a win is granted, called from exactly two: the SMASH that
- * emptied an army with no death to show, and the `DEFEAT_DONE` that ends one
- * that had. Both hand it the same `run` — the pile already settled — and both
- * get the same answer, because everything it draws on comes from the run's own
- * generator at a fixed position. A death that is watched and a death that is
- * skipped pay identically, and neither can pay twice: `combat` is gone from
- * the state it returns, so a second call has no fight left to win.
+ * The one place a win is granted, called from exactly two: the SCORE that
+ * emptied a health total with no death to show, and the `DEFEAT_DONE` that
+ * ends one that had. Both hand it the same `run` — the pile already settled —
+ * and both get the same answer, because everything it draws on comes from the
+ * run's own generator at a fixed position. A death that is watched and a death
+ * that is skipped pay identically, and neither can pay twice: `combat` is gone
+ * from the state it returns, so a second call has no fight left to win.
  *
  * The guaranteed drop is applied **first and once**, inside here, so the
  * Marrow's Vial does not ride on the 70% that decides whether a screen opens.
@@ -467,10 +373,10 @@ function victory(state: GameState, run: RunState, combat: CombatState): GameStat
   const paid = e.drop ? grant(run, e.drop) : run
   const dropped = e.drop ? ` It leaves a ${reward(e.drop).name}.` : ''
 
-  const rng = fightRng(paid, combat.round, RNG_CHANNEL.reward)
+  const rng = fightRng(paid, combat.round, 0, RNG_CHANNEL.reward)
   const offer = offerFor(paid, combat.enemyId, rng)
   const { combat: _gone, ...rest } = paid
-  const meta = e.drop ? remember(state.meta, [], [e.drop]) : state.meta
+  const meta = e.drop ? remember(state.meta, [e.drop]) : state.meta
   const cleared = { ...rest, cleared: [...paid.cleared, paid.roomId], say: '' }
 
   // A fight with nothing left to give goes straight back to the room. Said
@@ -489,17 +395,10 @@ function victory(state: GameState, run: RunState, combat: CombatState): GameStat
 
 /** Put one reward where it belongs. The only place a TAKE means anything. */
 function grant(run: RunState, id: RewardId): RunState {
-  const kind = reward(id).kind
-  if (kind === 'vial') return { ...run, vials: run.vials + 1 }
-  return addSpecial(run, id)
+  return reward(id).kind === 'vial' ? { ...run, vials: run.vials + 1 } : run
 }
 
-/**
- * The run is over, on the lane it ended on.
- *
- * Zero bones outranks everything, including an enemy that would have been
- * emptied by a later lane in the same smash. That lane did not resolve.
- */
+/** The run is over, with the fight it ended in still on the plate. */
 function died(state: GameState, run: RunState, combat: CombatState, cause: string): GameState {
   return { ...state, mode: 'dead', run: { ...run, combat, cause } }
 }
@@ -513,9 +412,9 @@ export function reduce(state: GameState, action: Action): GameState {
       // the same thing whether you got here by pressing TITLE or by reloading.
       // Only a *live* mode is remembered: a run that has ended is not
       // somewhere the door may offer to send you back to.
-      const live: readonly string[] = ['explore', 'combat', 'reward']
+      const alive: readonly string[] = ['explore', 'combat', 'reward']
       const resume = state.mode === 'title' ? state.resume : state.mode
-      return { ...state, mode: 'title', ...(resume && live.includes(resume) ? { resume } : {}) }
+      return { ...state, mode: 'title', ...(resume && alive.includes(resume) ? { resume } : {}) }
     }
 
     case 'START_RUN': {
@@ -592,69 +491,123 @@ export function reduce(state: GameState, action: Action): GameState {
       const run = state.run
       if (!run || state.mode !== 'explore' || run.combat) return state
       if (!roomAt(run).enemy || run.cleared.includes(run.roomId)) return state
-      if (totalBones(run) === 0) return state
+      if (run.bones === 0) return state
       return { ...state, mode: 'combat', run: { ...run, combat: beginCombat(run), say: '' } }
     }
 
-    case 'THROW': {
+    /**
+     * The bones the pile can put up, thrown.
+     *
+     * `min(6, bones)` of them, and never more than are alive — which is the
+     * whole of the wounded rule. A player down to four bones rolls four dice,
+     * a Full House stops being reachable, and no line of code anywhere says so
+     * on purpose.
+     */
+    case 'ROLL': {
       const run = state.run
       const combat = run?.combat
-      if (!run || !combat || state.mode !== 'combat') return state
-      if (combat.phase !== 'thrown' || combat.defeated) return state
+      if (!live(state, run) || !combat) return state
+      if (combat.dice.length > 0 || combat.rollsUsed !== 0) return state
 
-      // The whole round, in one action. There is no committed field to read
-      // back, because committing was never a decision — the pile fields as
-      // wide as it can, and the only thing the player chose is which named
-      // bones are standing in it.
-      const field = fieldFor(run, action.specialIds)
-      if (field.width === 0) return state
-      const playerLine = rollPlayerLine(
-        field,
-        run,
-        combat.round,
-        fightRng(run, combat.round, RNG_CHANNEL.playerThrow),
-      )
+      const width = activeDice(run.bones)
+      if (width === 0) return state
 
-      const { record, pool } = resolveSmash({
-        pool: {
-          commonBones: run.commonBones,
-          specials: run.specials,
-          enemyBones: combat.enemyBones,
-        },
-        playerLine,
-        enemyLine: combat.enemyLine,
-        tieRule: enemy(combat.enemyId).tieRule,
-      })
-
-      const namesLost = record.playerSpecialsLost.map((instanceId) => {
-        const found = run.specials.find((s) => s.instanceId === instanceId)
-        return found ? specialBone(found.specialId).name : 'A bone'
-      })
-
-      const settled: RunState = {
-        ...run,
-        commonBones: pool.commonBones,
-        specials: pool.specials,
+      const dice = rollDice(width, fightRng(run, combat.round, 1, RNG_CHANNEL.playerRoll))
+      return {
+        ...state,
+        run: { ...run, say: '', combat: { ...combat, dice, rollsUsed: 1, log: [] } },
       }
+    }
+
+    /**
+     * Throw the unheld bones again.
+     *
+     * Refused rather than charged when everything is held: a throw in which
+     * nothing moves is not a throw, and spending one of two rerolls on it
+     * would be the interface taking a press the player did not mean to make.
+     */
+    case 'REROLL': {
+      const run = state.run
+      const combat = run?.combat
+      if (!live(state, run) || !combat) return state
+      if (combat.dice.length === 0) return state
+      if (combat.rollsUsed < 1 || combat.rollsUsed >= MAX_ROLLS) return state
+
+      const held = canonicalHeld(action.held, combat.dice.length)
+      if (held.length === combat.dice.length) return state
+
+      const rollNumber = combat.rollsUsed + 1
+      const dice = rerollDice(
+        combat.dice,
+        held,
+        fightRng(run, combat.round, rollNumber, RNG_CHANNEL.playerRoll),
+      )
+      return {
+        ...state,
+        run: {
+          ...run,
+          say: '',
+          combat: { ...combat, dice, rollsUsed: rollNumber as 2 | 3, log: [] },
+        },
+      }
+    }
+
+    /**
+     * The attack, committed.
+     *
+     * The legal set is recomputed here and the request is checked against it,
+     * because the UI's claim that a score is legal is not what makes it legal.
+     * Everything after that is arithmetic with no randomness in it at all:
+     * damage is `max(1, floor(sum × multiplier))`, the hit lands, and a thing
+     * still standing breaks exactly `enemy.damage` bones in answer.
+     */
+    case 'SCORE': {
+      const run = state.run
+      const combat = run?.combat
+      if (!live(state, run) || !combat) return state
+      if (combat.dice.length === 0) return state
+      if (!legalScores(combat.dice, combat.usedHands).includes(action.hand)) return state
+
+      const e = enemy(combat.enemyId)
+      const { sum, multiplier, damage } = scoreDice(combat.dice, action.hand)
+      const enemyHp = Math.max(0, combat.enemyHp - damage)
+      const killed = enemyHp === 0
+
+      // A dead thing does not answer. The kill happened first, and it happened
+      // whatever the pile was down to.
+      const retaliation = killed ? 0 : e.damage
+      const bones = Math.max(0, run.bones - retaliation)
+
+      const record: AttackRecord = {
+        dice: combat.dice,
+        hand: action.hand,
+        sum,
+        multiplier,
+        damage,
+        enemyHpBefore: combat.enemyHp,
+        enemyHpAfter: enemyHp,
+        retaliation,
+        bonesBefore: run.bones,
+        bonesAfter: bones,
+      }
+
+      // CRAP is never written down. It is what the legal set *is* when nothing
+      // named qualifies, so it cannot be spent and cannot run out.
+      const usedHands: readonly NamedHandId[] =
+        action.hand === 'crap' ? combat.usedHands : [...combat.usedHands, action.hand]
+
+      const settled: RunState = { ...run, bones }
       const after: CombatState = {
         ...combat,
-        phase: 'smashed',
-        field,
-        playerLine,
-        enemyBones: pool.enemyBones,
-        lastSmash: record,
-        log: smashSay(record, namesLost),
+        enemyHp,
+        usedHands,
+        dice: [],
+        rollsUsed: 0,
+        lastAttack: record,
+        log: attackSay(e, record),
       }
 
-      // Zero outranks a win. If the last lane that resolved took the player's
-      // final bone, the run is over even when the enemy has nothing standing
-      // either — and any lane after it never happened.
-      if (totalBones(settled) === 0) {
-        const named = namesLost.length > 0 ? ` ${namesLost[namesLost.length - 1]} last.` : ''
-        return died(state, settled, after, `${enemy(combat.enemyId).name} — the last of my bones.${named}`)
-      }
-
-      if (pool.enemyBones.length === 0) {
+      if (killed) {
         // A horror whose death has been authored keeps the fight open on it.
         // The room is *not* cleared, no offer is drawn and no screen changes:
         // the state says only that the thing is finished and is being watched
@@ -665,44 +618,26 @@ export function reduce(state: GameState, action: Action): GameState {
         return victory(state, { ...settled, combat: after }, after)
       }
 
-      return { ...state, run: { ...settled, combat: after } }
-    }
+      if (bones === 0) {
+        return died(state, settled, after, `${e.name} — the last of my bones.`)
+      }
 
-    case 'ROUND': {
-      const run = state.run
-      const combat = run?.combat
-      if (!run || !combat || combat.phase !== 'smashed' || combat.defeated) return state
-      // Terminal in either direction has no next round. Neither is reachable
-      // from a settled `smashed` — both are handled in SMASH — but the reducer
-      // is total and says so rather than relying on that.
-      if (combat.enemyBones.length === 0 || totalBones(run) === 0) return state
-
-      const round = combat.round + 1
-      const { field: _spent, playerLine: _thrown, lastSmash: _read, ...rest } = combat
+      // The next attack begins here, in the same tick. There is no ROUND
+      // button: the score *is* the commitment, and what follows it is another
+      // empty table waiting for ROLL.
       return {
         ...state,
-        run: {
-          ...run,
-          combat: {
-            ...rest,
-            round,
-            phase: 'thrown',
-            enemyLine: throwEnemy(run, combat.enemyBones, round),
-            log: [`It throws again.`],
-          },
-        },
+        run: { ...settled, combat: { ...after, round: combat.round + 1 } },
       }
     }
 
     case 'DRINK': {
       const run = state.run
       if (!run || run.vials <= 0) return state
-      // Not while the result of a smash is being read, and not over a death.
-      // Everywhere else — the room, and any phase in which the player still
-      // has a decision to make — it is legal.
+      // Everywhere the player still has a decision to make. Not over a death,
+      // and not on a screen that is not the room or the fight.
       if (state.mode === 'combat') {
-        const combat = run.combat
-        if (!combat || combat.defeated || combat.phase === 'smashed') return state
+        if (!run.combat || run.combat.defeated) return state
       } else if (state.mode !== 'explore') {
         return state
       }
@@ -714,7 +649,7 @@ export function reduce(state: GameState, action: Action): GameState {
         run: {
           ...filled,
           vials: run.vials - 1,
-          say: `${gave} ${gave === 1 ? 'bone' : 'bones'} back. ${totalBones(filled)} in all.`,
+          say: `${gave} ${gave === 1 ? 'bone' : 'bones'} back. ${filled.bones} in all.`,
         },
       }
     }
@@ -802,7 +737,7 @@ export function reduce(state: GameState, action: Action): GameState {
             const paid = found ? grant(run, found) : run
             return {
               ...state,
-              meta: found ? remember(state.meta, [], [found]) : state.meta,
+              meta: found ? remember(state.meta, [found]) : state.meta,
               run: {
                 ...paid,
                 rooms: { ...run.rooms, [run.roomId]: next },
@@ -825,17 +760,14 @@ export function reduce(state: GameState, action: Action): GameState {
 
       // The lever. Nothing on the plate means the mechanism has nothing to bear
       // against, and it comes back through your hand — and it takes a bone for
-      // it. One bone, every time, and it takes the named one when there is
-      // nothing anonymous left to take.
+      // it. One bone, every time.
       if (before.pressurePlate === 'off') {
-        const { run: paid, lost, took } = loseOneBone(run)
-        const gone = totalBones(paid) === 0
-        const what =
-          lost.kind === 'special' ? ` ${lost.name} snaps.` : ' One of my bones snaps.'
+        const { run: paid, took } = loseOneBone(run)
+        const gone = paid.bones === 0
         const hurt: RunState = {
           ...paid,
           say: took
-            ? `The mechanism snaps back. The chain catches my hand.${what}`
+            ? 'The mechanism snaps back. The chain catches my hand. One of my bones snaps.'
             : 'The mechanism snaps back. There is nothing left of me for it to take.',
           ...(gone ? { cause: VAULT_CAUSE } : {}),
         }
@@ -855,9 +787,9 @@ export function reduce(state: GameState, action: Action): GameState {
       return {
         ...state,
         mode: 'explore',
-        meta: remember(state.meta, isBoneReward(action.id) ? [action.id] : [], [action.id]),
+        meta: remember(state.meta, [action.id]),
         run: {
-          // A pickup repeats the thing's actual rule. "Charm. Taken." confirms
+          // A pickup repeats the thing's actual rule. "Vial. Taken." confirms
           // a press and explains nothing, and sending the player to MENU to
           // find out what they just chose is the same failure again.
           ...paid,
@@ -878,35 +810,19 @@ export function reduce(state: GameState, action: Action): GameState {
   //
   // TypeScript makes the switch above exhaustive, so this line is unreachable
   // from typed code — and it is here precisely for the code that is not typed:
-  // a stale `ROLL` from a bookmarked console, a dispatch from a build that had
-  // a verb this one does not. Falling off the end would return `undefined` and
-  // hand the app a state with no mode, which is the class of bug the explicit
-  // `mode` field exists to make impossible.
+  // a stale `THROW` from a bookmarked console, a dispatch from a build that
+  // had a verb this one does not. Falling off the end would return `undefined`
+  // and hand the app a state with no mode, which is the class of bug the
+  // explicit `mode` field exists to make impossible.
   return state
 }
 
 /** The living pile, for anything outside the reducer that needs the number. */
 export function livingBones(state: GameState): number {
-  return state.run ? totalBones(state.run) : 0
+  return state.run?.bones ?? 0
 }
 
 /** Everything the run is carrying, named, for a summary screen. */
 export function carriedNames(run: RunState): readonly string[] {
-  const counted = new Map<string, number>()
-  for (const s of run.specials) {
-    const name = specialBone(s.specialId).name
-    counted.set(name, (counted.get(name) ?? 0) + 1)
-  }
-  const out = [...counted].map(([name, n]) => (n > 1 ? `${name} ×${n}` : name))
-  if (run.vials > 0) out.push(run.vials > 1 ? `Vial ×${run.vials}` : 'Vial')
-  return out
+  return run.vials > 0 ? [run.vials > 1 ? `Vial ×${run.vials}` : 'Vial'] : []
 }
-
-/** How many bones an enemy stood up with, for a band. Content, not state. */
-export { armySize }
-
-/** Re-exported so views ask one module about a special's name. */
-export { specialBone }
-
-/** The reward table, for the balance simulation's policies. */
-export type { SpecialBoneInstance }

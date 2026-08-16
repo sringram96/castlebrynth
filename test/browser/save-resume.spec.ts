@@ -9,7 +9,7 @@
 
 import { expect, test } from '@playwright/test'
 
-import { act, boot, bones, enemyBones, screenName, state, valuesOf } from './helpers.js'
+import { act, boot, dice, screenName, state, valuesOf } from './helpers.js'
 
 /** Reload the tab, the way a player does. The save is what comes back. */
 async function reload(page: Page): Promise<void> {
@@ -19,20 +19,23 @@ async function reload(page: Page): Promise<void> {
 type Page = import('@playwright/test').Page
 
 /**
- * Walk into a fight and stand it at a phase, without a fixture.
+ * Walk into a fight and stand it somewhere, without a fixture.
  *
  * A fixture rebuilds itself from the URL on reload, which would prove nothing
  * about the save. So these tests play to the position and then reload into
  * whatever `localStorage` is holding.
  */
-async function played(page: Page, phase: 'thrown' | 'smashed'): Promise<void> {
+async function played(page: Page, upTo: 'open' | 'rolled' | 'rerolled'): Promise<void> {
   await boot(page)
   await act(page, 'start').click()
   await act(page, 'go').click()
   await act(page, 'go').click()
   await act(page, 'fight').click()
-  if (phase === 'thrown') return
-  await act(page, 'throw').click()
+  if (upTo === 'open') return
+  await act(page, 'roll').click()
+  if (upTo === 'rolled') return
+  await dice(page).first().click()
+  await act(page, 'reroll').click()
 }
 
 /** Boot always lands on the title; CONTINUE is one press back. */
@@ -44,46 +47,64 @@ async function resume(page: Page): Promise<void> {
 }
 
 test.describe('a reload from', () => {
-  test('thrown keeps the enemy line and resets nothing but the draft', async ({ page }) => {
-    await played(page, 'thrown')
-    const line = await valuesOf(enemyBones(page))
+  test('an unthrown attack keeps the fight and offers the throw again', async ({ page }) => {
+    await played(page, 'open')
+    const before = (await state(page)).run!.combat!
 
     await resume(page)
 
-    // The threat is identical. It was decided by FIGHT and saved before a
-    // frame of the throw played.
-    expect(await valuesOf(enemyBones(page))).toEqual(line)
-    // Nothing of the player's has been committed, because nothing of the
-    // player's *can* be until the throw. A reload before it loses the one
-    // thought there was to lose — which named bones were standing — and the
-    // pouch defaults them all back in.
-    expect((await state(page)).run!.combat!.field).toBeUndefined()
-    expect((await state(page)).run!.combat!.playerLine).toBeUndefined()
-    await expect(act(page, 'throw')).toBeVisible()
+    const after = (await state(page)).run!.combat!
+    expect(after.enemyId).toBe(before.enemyId)
+    expect(after.enemyHp).toBe(before.enemyHp)
+    expect(after.dice).toEqual([])
+    expect(after.rollsUsed).toBe(0)
+    await expect(act(page, 'roll')).toBeVisible()
   })
 
-  test('thrown keeps the exact values, and does not roll again', async ({ page }) => {
-    await played(page, 'smashed')
+  test('a thrown attack keeps the exact faces, and does not throw again', async ({ page }) => {
+    await played(page, 'rolled')
     if ((await screenName(page)) !== null) return
-    const line = await valuesOf(bones(page))
+    const faces = await valuesOf(dice(page))
     await resume(page)
 
-    expect(await valuesOf(bones(page))).toEqual(line)
-    await expect(act(page, 'throw')).toHaveCount(0)
+    expect(await valuesOf(dice(page))).toEqual(faces)
+    expect((await state(page)).run!.combat!.rollsUsed).toBe(1)
+    // The one thing a reload is allowed to lose is the thought: which dice the
+    // thumb had lit. It does not lose the faces, and it does not grant a throw.
+    for (const die of await dice(page).all()) {
+      await expect(die).toHaveAttribute('data-held', 'no')
+    }
+    await expect(act(page, 'reroll')).toBeVisible()
   })
 
-  test('smashed keeps the casualties and still offers ROUND', async ({ page }) => {
-    await played(page, 'smashed')
+  test('a rerolled attack keeps its count of throws', async ({ page }) => {
+    await played(page, 'rerolled')
     if ((await screenName(page)) !== null) return
     const before = (await state(page)).run!
-    const smash = before.combat?.lastSmash
-    if (!smash) return
+    const faces = await valuesOf(dice(page))
 
     await resume(page)
     const after = (await state(page)).run!
-    expect(after.commonBones).toBe(before.commonBones)
-    expect(after.combat!.lastSmash).toEqual(smash)
-    await expect(act(page, 'round')).toBeVisible()
+    expect(after.bones).toBe(before.bones)
+    expect(after.combat!.rollsUsed).toBe(2)
+    expect(await valuesOf(dice(page))).toEqual(faces)
+  })
+
+  test('a settled exchange keeps the record it was settled with', async ({ page }) => {
+    await played(page, 'rolled')
+    const combat = (await state(page)).run!.combat!
+    // Score whatever the table allows, through the scorecard.
+    await page.locator('button.score-entry').first().click()
+    if ((await screenName(page)) !== null) return
+    const before = (await state(page)).run!
+    if (!before.combat?.lastAttack) return
+
+    await resume(page)
+    const after = (await state(page)).run!
+    expect(after.bones).toBe(before.bones)
+    expect(after.combat!.lastAttack).toEqual(before.combat.lastAttack)
+    expect(after.combat!.round).toBe(combat.round + 1)
+    await expect(act(page, 'roll')).toBeVisible()
   })
 
   test('a cleared room stays cleared', async ({ page }) => {
@@ -98,11 +119,11 @@ test.describe('a reload from', () => {
 })
 
 test.describe('the save never holds a frame', () => {
-  test('nothing about an animation is written', async ({ page }) => {
-    await played(page, 'smashed')
+  test('nothing about an animation, and no hold, is written', async ({ page }) => {
+    await played(page, 'rerolled')
     const raw = await page.evaluate(() => localStorage.getItem('castlebrynth'))
     expect(raw).toBeTruthy()
-    for (const forbidden of ['frame', 'elapsed', 'animating', 'startedAt', 'presenting']) {
+    for (const forbidden of ['frame', 'elapsed', 'animating', 'startedAt', 'presenting', 'held']) {
       expect(raw, `the save carries ${forbidden}`).not.toContain(`"${forbidden}"`)
     }
   })
@@ -112,7 +133,7 @@ test.describe('the save never holds a frame', () => {
     await page.evaluate(() =>
       localStorage.setItem(
         'castlebrynth',
-        JSON.stringify({ version: 6, mode: 'combat', meta: { runs: 3, wins: 1 } }),
+        JSON.stringify({ version: 8, mode: 'combat', meta: { runs: 3, wins: 1 } }),
       ),
     )
     await page.goto('/?motion=0')
@@ -124,8 +145,8 @@ test.describe('the save never holds a frame', () => {
 
 test.describe('a fixture is never written over a real save', () => {
   test('playing, then opening a fixture, then reloading finds the run', async ({ page }) => {
-    await played(page, 'smashed')
-    const line = await valuesOf(bones(page))
+    await played(page, 'rolled')
+    const faces = await valuesOf(dice(page))
 
     // A fixture run: same tab, different URL, and `persist` is off for it.
     await page.goto('/?room=gate&mode=combat&motion=0')
@@ -133,6 +154,6 @@ test.describe('a fixture is never written over a real save', () => {
 
     await page.goto('/?motion=0')
     await act(page, 'continue').click()
-    expect(await valuesOf(bones(page))).toEqual(line)
+    expect(await valuesOf(dice(page))).toEqual(faces)
   })
 })

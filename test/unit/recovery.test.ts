@@ -1,18 +1,16 @@
 /**
  * Getting bones back, and paying bones out.
  *
- * Three touchpoints and one invariant running through all of them: **nothing
- * resurrects a named bone.** The Font gives commons, a Vial gives commons, and
- * the ceiling is measured against the total with the specials counted in — so
- * a run cannot stack named bones on a full pile and then heal thirty commons
- * back underneath them.
+ * Three touchpoints and one number: `run.bones` is the pile, the ceiling is
+ * thirty, and everything that gives bones back or takes them away measures
+ * against those two and nothing else. There is no second life field to keep in
+ * step, which is most of why this file is short.
  */
 
 import { describe, expect, it } from 'vitest'
 import {
   FONT_BONUS,
   VIAL_BONES,
-  fieldFor,
   fontRestore,
   loseOneBone,
   newRun,
@@ -21,7 +19,8 @@ import {
 import type { Action } from '../../src/game/reducer.js'
 import { EMPTY_META, SAVE_VERSION } from '../../src/game/state.js'
 import type { GameState, RitualRoll, RunState } from '../../src/game/state.js'
-import { BONE_CEILING, newSpecial, totalBones } from '../../src/content/bones.js'
+import { BONE_CEILING } from '../../src/content/bones.js'
+import { activeDice } from '../../src/combat/roll.js'
 import { roomAt } from '../../src/game/map.js'
 import { nodeOf } from './where.js'
 
@@ -62,51 +61,36 @@ describe('the font', () => {
     expect(fontRestore(1, 0)).toBe(0)
   })
 
-  it('restores common bones and records what it gave', () => {
-    const state = play(at('sanctuary', { commonBones: 10 }), { type: 'RITUAL_ROLL' })
+  it('restores bones and records what it gave', () => {
+    const state = play(at('sanctuary', { bones: 10 }), { type: 'RITUAL_ROLL' })
     const run = state.run!
     expect(run.ritual).toBeDefined()
     expect(run.ritual!.restored).toBe(run.ritual!.roll + FONT_BONUS)
-    expect(run.commonBones).toBe(10 + run.ritual!.restored)
+    expect(run.bones).toBe(10 + run.ritual!.restored)
     expect(run.ritual!.missingBefore).toBe(BONE_CEILING - 10)
   })
 
   it('never puts the pile over the ceiling', () => {
     for (let seed = 1; seed <= 30; seed++) {
-      const state = play(at('sanctuary', { commonBones: 28 }, seed), { type: 'RITUAL_ROLL' })
-      expect(totalBones(state.run!)).toBeLessThanOrEqual(BONE_CEILING)
+      const state = play(at('sanctuary', { bones: 28 }, seed), { type: 'RITUAL_ROLL' })
+      expect(state.run!.bones).toBeLessThanOrEqual(BONE_CEILING)
     }
   })
 
-  it('counts specials against the ceiling', () => {
-    // Twenty-eight commons and two named bones is already thirty. The basin
-    // has nothing to give, and it says so rather than paying anyway.
-    const state = play(
-      at('sanctuary', {
-        commonBones: 28,
-        specials: [newSpecial('knuckle', 0), newSpecial('cinderbone', 1)],
-        nextSpecialSerial: 2,
-      }),
-      { type: 'RITUAL_ROLL' },
-    )
+  it('says so plainly at a full pile rather than paying nothing quietly', () => {
+    const state = play(at('sanctuary', { bones: 30 }), { type: 'RITUAL_ROLL' })
     expect(state.run!.ritual!.restored).toBe(0)
-    expect(totalBones(state.run!)).toBe(BONE_CEILING)
+    expect(state.run!.bones).toBe(BONE_CEILING)
     expect(state.run!.say).toContain('already full')
   })
 
-  it('never resurrects a named bone', () => {
-    const before = at('sanctuary', { commonBones: 10, specials: [], nextSpecialSerial: 3 })
-    const after = play(before, { type: 'RITUAL_ROLL' })
-    expect(after.run!.specials).toEqual([])
-  })
-
   it('answers once, whatever the thumb does', () => {
-    const once = play(at('sanctuary', { commonBones: 10 }), { type: 'RITUAL_ROLL' })
+    const once = play(at('sanctuary', { bones: 10 }), { type: 'RITUAL_ROLL' })
     expect(reduce(once, { type: 'RITUAL_ROLL' })).toBe(once)
   })
 
   it('withholds the exits until it has been pressed', () => {
-    const unpressed = at('sanctuary', { commonBones: 10 })
+    const unpressed = at('sanctuary', { bones: 10 })
     const on = onward(unpressed)
     expect(reduce(unpressed, { type: 'GO', to: on })).toBe(unpressed)
     const pressed = play(unpressed, { type: 'RITUAL_ROLL' })
@@ -115,86 +99,63 @@ describe('the font', () => {
 })
 
 describe('a vial', () => {
-  it('gives five common bones and spends one vial', () => {
-    const after = play(at('fork', { commonBones: 10, vials: 2 }), { type: 'DRINK' })
-    expect(after.run!.commonBones).toBe(15)
+  it('gives five bones and spends one vial', () => {
+    const after = play(at('fork', { bones: 10, vials: 2 }), { type: 'DRINK' })
+    expect(after.run!.bones).toBe(15)
     expect(after.run!.vials).toBe(1)
     expect(VIAL_BONES).toBe(5)
   })
 
   it('stops at the ceiling and gives only the remainder', () => {
-    const after = play(at('fork', { commonBones: 28, vials: 1 }), { type: 'DRINK' })
-    expect(totalBones(after.run!)).toBe(BONE_CEILING)
+    const after = play(at('fork', { bones: 28, vials: 1 }), { type: 'DRINK' })
+    expect(after.run!.bones).toBe(BONE_CEILING)
     expect(after.run!.say).toContain('2 bones')
   })
 
   it('is refused at a full pile, so the vial is not wasted', () => {
-    const full = at('fork', { commonBones: 30, vials: 1 })
+    const full = at('fork', { bones: 30, vials: 1 })
     expect(reduce(full, { type: 'DRINK' })).toBe(full)
     expect(full.run!.vials).toBe(1)
   })
 
   it('is refused with an empty satchel', () => {
-    const dry = at('fork', { commonBones: 10, vials: 0 })
+    const dry = at('fork', { bones: 10, vials: 0 })
     expect(reduce(dry, { type: 'DRINK' })).toBe(dry)
   })
 
-  it('never resurrects a named bone', () => {
-    const after = play(
-      at('fork', { commonBones: 10, vials: 1, specials: [], nextSpecialSerial: 2 }),
-      { type: 'DRINK' },
-    )
-    expect(after.run!.specials).toEqual([])
-  })
-
-  it('is legal in the modifier step, and widens the line it is about to throw', () => {
-    // The one place a Vial is drunk now: before the throw, against a line the
-    // player can already read. Five bones back is up to five more lanes — and
-    // the width is recomputed from the pile, so the Vial is not a number that
-    // arrives after the decision it changes.
-    const facing = play(at('hollow', { commonBones: 3, vials: 1 }), { type: 'FIGHT' })
-    expect(fieldFor(facing.run!).width).toBe(3)
+  it('widens the attack it is about to throw', () => {
+    // The pile is the width of the hand, so five bones back is up to five more
+    // dice — and the width is recomputed from the pile, so the Vial is not a
+    // number that arrives after the decision it changes.
+    const facing = play(at('hollow', { bones: 3, vials: 1 }), { type: 'FIGHT' })
+    expect(activeDice(facing.run!.bones)).toBe(3)
     const after = reduce(facing, { type: 'DRINK' })
-    expect(after.run!.commonBones).toBe(8)
-    expect(after.run!.combat!.phase).toBe('thrown')
-    expect(fieldFor(after.run!).width).toBe(6)
+    expect(after.run!.bones).toBe(8)
+    expect(activeDice(after.run!.bones)).toBe(6)
+    expect(after.run!.combat!.dice).toEqual([])
   })
 
-  it('is refused while a smash is being read', () => {
-    const smashed = play(
-      at('hollow', { commonBones: 10, vials: 1 }),
-      { type: 'FIGHT' },
-      { type: 'THROW' },
-    )
-    if (smashed.run?.combat?.phase === 'smashed') {
-      expect(reduce(smashed, { type: 'DRINK' })).toBe(smashed)
+  it('is refused over a death that is being watched', () => {
+    const open = play(at('hollow', { bones: 10, vials: 1 }), { type: 'FIGHT' })
+    const dying: GameState = {
+      ...open,
+      run: { ...open.run!, combat: { ...open.run!.combat!, defeated: true } },
     }
+    expect(reduce(dying, { type: 'DRINK' })).toBe(dying)
   })
 })
 
 describe('losing one bone outside a fight', () => {
-  it('takes a common one first', () => {
-    const run = { ...newRun(1), commonBones: 5, specials: [newSpecial('knuckle', 0)] }
-    const { run: after, lost } = loseOneBone(run)
-    expect(lost.kind).toBe('common')
-    expect(after.commonBones).toBe(4)
-    expect(after.specials).toHaveLength(1)
-  })
-
-  it('takes the oldest named bone when there is nothing anonymous left', () => {
-    const run = {
-      ...newRun(1),
-      commonBones: 0,
-      specials: [newSpecial('cinderbone', 0), newSpecial('knuckle', 1)],
-    }
-    const { run: after, lost } = loseOneBone(run)
-    expect(lost).toEqual({ kind: 'special', name: 'Cinderbone' })
-    expect(after.specials.map((s) => s.instanceId)).toEqual(['knuckle#1'])
+  it('takes exactly one', () => {
+    const { run: after, took } = loseOneBone({ ...newRun(1), bones: 5 })
+    expect(took).toBe(true)
+    expect(after.bones).toBe(4)
   })
 
   it('takes nothing from an empty pile, and says so', () => {
-    const { took } = loseOneBone({ ...newRun(1), commonBones: 0, specials: [] })
+    const { run: after, took } = loseOneBone({ ...newRun(1), bones: 0 })
     expect(took).toBe(false)
+    expect(after.bones).toBe(0)
   })
 })
 
@@ -202,41 +163,25 @@ describe('the chain vault', () => {
   const vault = (run: Partial<RunState> = {}): GameState => at('chain-vault', run)
 
   it('costs exactly one bone for a lever pulled against nothing', () => {
-    const after = play(vault({ commonBones: 12 }), { type: 'INTERACT', interactionId: 'vault-lever' })
-    expect(after.run!.commonBones).toBe(11)
+    const after = play(vault({ bones: 12 }), { type: 'INTERACT', interactionId: 'vault-lever' })
+    expect(after.run!.bones).toBe(11)
     expect(after.run!.say).toContain('snaps')
   })
 
-  it('names the named bone it takes', () => {
-    const after = play(
-      vault({ commonBones: 0, specials: [newSpecial('cinderbone', 0)], nextSpecialSerial: 1 }),
-      { type: 'INTERACT', interactionId: 'vault-lever' },
-    )
-    expect(after.run!.say).toContain('Cinderbone')
-    expect(after.run!.specials).toHaveLength(0)
-  })
-
-  it('is deterministic: the same pile pays the same bone', () => {
-    const start = vault({ commonBones: 0, specials: [newSpecial('knuckle', 0), newSpecial('cinderbone', 1)] })
-    const a = play(start, { type: 'INTERACT', interactionId: 'vault-lever' })
-    const b = play(start, { type: 'INTERACT', interactionId: 'vault-lever' })
-    expect(a.run!.specials).toEqual(b.run!.specials)
-  })
-
   it('can kill the run, and uses the death the game already has', () => {
-    const after = play(vault({ commonBones: 1 }), { type: 'INTERACT', interactionId: 'vault-lever' })
+    const after = play(vault({ bones: 1 }), { type: 'INTERACT', interactionId: 'vault-lever' })
     expect(after.mode).toBe('dead')
-    expect(totalBones(after.run!)).toBe(0)
+    expect(after.run!.bones).toBe(0)
     expect(after.run!.cause).toBe('The chain mechanism.')
   })
 
   it('costs nothing once the cage is on the plate', () => {
-    const weighted = play(vault({ commonBones: 12 }), {
+    const weighted = play(vault({ bones: 12 }), {
       type: 'INTERACT',
       interactionId: 'vault-chain',
     })
     const after = play(weighted, { type: 'INTERACT', interactionId: 'vault-lever' })
-    expect(after.run!.commonBones).toBe(12)
+    expect(after.run!.bones).toBe(12)
     expect(after.mode).toBe('explore')
   })
 })

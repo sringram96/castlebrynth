@@ -1,10 +1,11 @@
 /**
- * What a win pays, and what taking it does to the army.
+ * What a win pays, and what taking it does to the run.
  *
- * The reward screen is the only place in the game where a press makes a
- * **physical change to the pile that is not a casualty**, so the rules are
- * covered in full here: the cadence, the guaranteed drop, the transmutation at
- * the ceiling, and the SKIP that means the change is always the player's.
+ * The pool is one noun deep for this baseline — named bones went with the
+ * fielding decision they modified — so what is under test is the *machinery*
+ * rather than the contents: the cadence, the guaranteed drop, the win being
+ * granted exactly once, and the SKIP that means the change is always the
+ * player's. When modifiers come back this is the door they come in through.
  */
 
 import { describe, expect, it } from 'vitest'
@@ -12,9 +13,9 @@ import { newRun, offerFor, reduce } from '../../src/game/reducer.js'
 import type { Action } from '../../src/game/reducer.js'
 import { EMPTY_META, SAVE_VERSION } from '../../src/game/state.js'
 import type { GameState, RunState } from '../../src/game/state.js'
-import { BONE_CEILING, newSpecial, totalBones } from '../../src/content/bones.js'
-import { LOOT_REWARDS, isBoneReward, reward } from '../../src/content/rewards.js'
+import { LOOT_REWARDS, isRewardId, reward } from '../../src/content/rewards.js'
 import { enemy } from '../../src/content/enemies.js'
+import { legalScores } from '../../src/combat/hands.js'
 import { Rng } from '../../src/game/rng.js'
 import { nodeOf, standIn } from './where.js'
 
@@ -39,10 +40,12 @@ function payRate(enemyId: string, trials = 600): number {
 }
 
 describe('the reward pool', () => {
-  it('is two nouns and no third', () => {
+  it('is one noun for this baseline, and no second', () => {
     // No new collectible category without a product decision. See CLAUDE.md.
-    // Relics went first, and the Charm followed the phase it was spent in.
-    expect(new Set(LOOT_REWARDS.map((id) => reward(id).kind))).toEqual(new Set(['bone', 'vial']))
+    // Named bones went with the fielding step; nothing was invented to replace
+    // them, because a boring pool is better than contaminating the experiment.
+    expect(LOOT_REWARDS).toEqual(['vial'])
+    expect(new Set(LOOT_REWARDS.map((id) => reward(id).kind))).toEqual(new Set(['vial']))
   })
 
   it('states an exact mechanic on every card', () => {
@@ -50,12 +53,17 @@ describe('the reward pool', () => {
       expect(reward(id).rule, id).toMatch(/\d/)
     }
   })
+
+  it('knows what it does and does not have', () => {
+    expect(isRewardId('vial')).toBe(true)
+    expect(isRewardId('cinderbone')).toBe(false)
+    expect(() => reward('knuckle' as never)).toThrow()
+  })
 })
 
 describe('cadence', () => {
-  it('the Gnawing pays about three times in five, two at a time', () => {
+  it('the Gnawing pays about three times in five', () => {
     expect(enemy('gnawing').rewardChance).toBe(0.6)
-    expect(enemy('gnawing').rewardChoices).toBe(2)
     expect(payRate('gnawing')).toBeGreaterThan(0.53)
     expect(payRate('gnawing')).toBeLessThan(0.67)
   })
@@ -78,9 +86,11 @@ describe('cadence', () => {
     }
   })
 
-  it('offers no more than the enemy declares', () => {
+  it('offers no more than the enemy declares, and never pads a thin pool up', () => {
     for (let seed = 0; seed < 200; seed++) {
-      expect(offerFor(newRun(1), 'gnawing', new Rng(seed)).length).toBeLessThanOrEqual(2)
+      expect(offerFor(newRun(1), 'gnawing', new Rng(seed)).length).toBeLessThanOrEqual(
+        enemy('gnawing').rewardChoices,
+      )
     }
   })
 })
@@ -112,29 +122,20 @@ describe('the guaranteed drop', () => {
   })
 })
 
-/** Fight the Marrow to the end with a fixture-thin army, or give up. */
+/** Fight the Marrow to its last point of health, then finish it. */
 function winAgainstMarrow(seed: number): GameState | undefined {
   let state: GameState = standIn(
     { version: SAVE_VERSION, mode: 'explore', meta: EMPTY_META, run: newRun(seed) },
     'deep',
   )
   state = reduce(state, { type: 'FIGHT' })
-  // Stand its army at one bone, then take that bone. Both are positions the
-  // fight reaches on its own; this only skips the rounds that get there.
+  // Stood on one point of health, which is a position every fight reaches on
+  // its own; this only skips the attacks that get there. Everything after is a
+  // real press.
+  state = { ...state, run: { ...state.run!, combat: { ...state.run!.combat!, enemyHp: 1 } } }
+  state = reduce(state, { type: 'ROLL' })
   const combat = state.run!.combat!
-  const last = combat.enemyLine[combat.enemyLine.length - 1]!
-  state = {
-    ...state,
-    run: {
-      ...state.run!,
-      combat: {
-        ...combat,
-        enemyBones: combat.enemyBones.filter((b) => b.boneId === last.enemyBoneId),
-        enemyLine: [{ ...last, value: 1, faceIndex: 0 }],
-      },
-    },
-  }
-  state = play(state, { type: 'THROW' })
+  state = reduce(state, { type: 'SCORE', hand: legalScores(combat.dice, combat.usedHands)[0]! })
   if (state.run?.combat?.defeated) state = reduce(state, { type: 'DEFEAT_DONE' })
   return state.mode === 'reward' || state.mode === 'explore' ? state : undefined
 }
@@ -145,32 +146,17 @@ describe('TAKE', () => {
     expect(after.run!.vials).toBe(1)
   })
 
-  it('a named bone below the ceiling adds one to the total', () => {
-    const before = offering(['knuckle'], { commonBones: 20 })
-    const after = play(before, { type: 'TAKE', id: 'knuckle' })
-    expect(totalBones(after.run!)).toBe(21)
-    expect(after.run!.commonBones).toBe(20)
-    expect(after.run!.specials).toHaveLength(1)
+  it('stacks', () => {
+    let state = play(offering(['vial']), { type: 'TAKE', id: 'vial' })
+    state = { ...state, mode: 'reward', run: { ...state.run!, offer: ['vial'] } }
+    expect(play(state, { type: 'TAKE', id: 'vial' }).run!.vials).toBe(2)
   })
 
-  it('a named bone at the ceiling transmutes one common bone', () => {
-    // No replacement picker and no loadout screen. The player asked for the
-    // bone; making them choose which anonymous one to sacrifice is a decision
-    // with no information in it.
-    const before = offering(['knuckle'], { commonBones: 30 })
-    expect(totalBones(before.run!)).toBe(BONE_CEILING)
-    const after = play(before, { type: 'TAKE', id: 'knuckle' })
-    expect(totalBones(after.run!)).toBe(BONE_CEILING)
-    expect(after.run!.commonBones).toBe(29)
-    expect(after.run!.specials).toHaveLength(1)
-  })
-
-  it('gives two of the same type two identities', () => {
-    let state = play(offering(['knuckle'], { commonBones: 20 }), { type: 'TAKE', id: 'knuckle' })
-    state = { ...state, mode: 'reward', run: { ...state.run!, offer: ['knuckle'] } }
-    state = play(state, { type: 'TAKE', id: 'knuckle' })
-    const ids = state.run!.specials.map((s) => s.instanceId)
-    expect(new Set(ids).size).toBe(2)
+  it('never touches the pile', () => {
+    // The satchel and the pile are separate things. Nothing on the reward
+    // screen may change how many bones a run is carrying.
+    const before = offering(['vial'], { bones: 17 })
+    expect(play(before, { type: 'TAKE', id: 'vial' }).run!.bones).toBe(17)
   })
 
   it('repeats the rule it just gave you', () => {
@@ -178,52 +164,23 @@ describe('TAKE', () => {
     expect(after.run!.say).toContain(reward('vial').rule)
   })
 
+  it('remembers it, for the door', () => {
+    expect(play(offering(['vial']), { type: 'TAKE', id: 'vial' }).meta.seenRewards).toContain('vial')
+  })
+
   it('refuses something that was not offered', () => {
-    const before = offering(['knuckle'])
+    const before = offering([])
     expect(reduce(before, { type: 'TAKE', id: 'vial' })).toBe(before)
-  })
-})
-
-describe('the ceiling and the pool', () => {
-  it('drops bone rewards from the pool with thirty specials and no commons', () => {
-    // The corner where a named bone has nowhere to go. An offer that cannot be
-    // taken is not an offer.
-    const stuffed: RunState = {
-      ...newRun(1),
-      commonBones: 0,
-      specials: Array.from({ length: BONE_CEILING }, (_, i) => newSpecial('knuckle', i)),
-      nextSpecialSerial: BONE_CEILING,
-    }
-    for (let seed = 0; seed < 100; seed++) {
-      for (const id of offerFor(stuffed, 'gnawing', new Rng(seed * 7919))) {
-        expect(isBoneReward(id), `${id} was offered with nowhere to put it`).toBe(false)
-      }
-    }
-  })
-
-  it('keeps offering bones while one common remains to transmute', () => {
-    const full: RunState = {
-      ...newRun(1),
-      commonBones: 1,
-      specials: Array.from({ length: 29 }, (_, i) => newSpecial('knuckle', i)),
-      nextSpecialSerial: 29,
-    }
-    let sawBone = false
-    for (let seed = 0; seed < 200 && !sawBone; seed++) {
-      sawBone = offerFor(full, 'gnawing', new Rng(seed * 7919)).some(isBoneReward)
-    }
-    expect(sawBone).toBe(true)
   })
 })
 
 describe('SKIP', () => {
   it('returns to the room having changed nothing', () => {
-    const before = offering(['knuckle', 'vial'], { commonBones: 30 })
+    const before = offering(['vial'], { bones: 30 })
     const after = play(before, { type: 'SKIP' })
     expect(after.mode).toBe('explore')
     expect(after.run!.offer).toBeUndefined()
-    expect(after.run!.commonBones).toBe(30)
-    expect(after.run!.specials).toEqual([])
+    expect(after.run!.bones).toBe(30)
     expect(after.run!.vials).toBe(0)
   })
 
@@ -236,7 +193,7 @@ describe('SKIP', () => {
 describe('determinism', () => {
   it('pays the same whether the death was watched or skipped', () => {
     // A death that is watched calls `victory` from DEFEAT_DONE; one that is
-    // not calls it from the SMASH. Both draw from the run's own generator at
+    // not calls it from the SCORE. Both draw from the run's own generator at
     // the same position, so both get the same answer.
     const watched = winAgainstMarrow(11)
     const again = winAgainstMarrow(11)

@@ -1,14 +1,15 @@
 /**
- * What the fight costs, and what it does not.
+ * What a fight costs, and what the cost does to the next attack.
  *
- * Three claims that are the whole reason width is a decision:
+ * Three claims, and they are the whole shape of the new combat:
  *
- *   - **extras are safe.** A bone beyond the paired lanes fought nothing, and
- *     narrowing the field is how a player buys that.
- *   - **dead stays dead.** A casualty is gone from the pile, from the pouch,
- *     and from the next round — and from a reload.
- *   - **zero ends the run on the lane it happens**, and the lanes after it
- *     never resolve.
+ *   - **the number is public.** The enemy's health and the bones it will break
+ *     are on screen before anything is committed, and neither is ever a
+ *     surprise.
+ *   - **the pile is the hand.** Damage does not merely count down: it narrows
+ *     the attack, and a badly wounded run loses access to the shapes that need
+ *     the width.
+ *   - **zero ends the run**, and never goes below it.
  */
 
 import { expect, test } from '@playwright/test'
@@ -16,139 +17,107 @@ import { expect, test } from '@playwright/test'
 import {
   act,
   boot,
-  bones,
-  enemyBones,
+  dice,
   livingBones,
   screenName,
+  scoresOnOffer,
   state,
-  valuesOf,
 } from './helpers.js'
 
-test.describe('extras are safe', () => {
-  test('four of its six never meet anything when the pile can only throw two', async ({
-    page,
-  }) => {
-    // The Warden fields six. Two of mine against six of its is four lanes that
-    // do not happen — and the player no longer chooses that, the pile does.
-    // A run down to two bones fights narrow because it *is* narrow.
-    await boot(page, '?room=gate&bones=2&mode=combat&phase=thrown')
-    await expect(enemyBones(page)).toHaveCount(6)
-    await expect(bones(page)).toHaveCount(2)
+test.describe('the enemy states its numbers before anything is committed', () => {
+  test('shows what is left of it and what it breaks', async ({ page }) => {
+    await boot(page, '?room=deep&mode=combat')
+    const hp = page.locator('#enemy-hp')
+    await expect(hp).toHaveAttribute('data-hp', '120')
+    await expect(hp).toHaveAttribute('data-max', '120')
+    await expect(hp).toContainText('120 / 120')
 
-    const theirs = await valuesOf(enemyBones(page))
-    await act(page, 'throw').click()
-
-    // The four it did not contest are unchanged and unbroken.
-    for (let lane = 2; lane < 6; lane++) {
-      await expect(enemyBones(page).nth(lane)).not.toHaveAttribute('data-broken', 'yes')
-    }
-    expect(await valuesOf(enemyBones(page))).toEqual(theirs)
-
-    // At most two of its bones can have broken, because only two lanes ran.
-    const smash = (await state(page)).run!.combat!.lastSmash!
-    expect(smash.enemyBonesLost.length).toBeLessThanOrEqual(2)
-    expect(smash.playerCommonLost + smash.playerSpecialsLost.length).toBeLessThanOrEqual(2)
+    const hits = page.locator('#enemy-hits')
+    await expect(hits).toBeVisible()
+    await expect(hits).toHaveAttribute('data-damage', '5')
+    await expect(hits).toContainText('5')
   })
 
-  test('my own extras are marked safe rather than left ambiguous', async ({ page }) => {
-    // The Gnawing fields five, so a six-wide line always has one bone with
-    // nothing opposite it. Its whole army can be broken in a single round, so
-    // the seeds are searched for one where the fight is still standing
-    // afterwards and there is a line left to read.
-    for (let seed = 1; seed <= 40; seed++) {
-      await boot(page, `?room=hollow&mode=combat&phase=smashed&seed=${seed}`)
-      if ((await bones(page).count()) === 0) continue
-      const mine = await valuesOf(bones(page))
-      const theirs = await valuesOf(enemyBones(page))
-      if (mine.length <= theirs.length) continue
-
-      for (let lane = theirs.length; lane < mine.length; lane++) {
-        await expect(bones(page).nth(lane)).toHaveAttribute('data-safe', 'yes')
-        await expect(bones(page).nth(lane)).not.toHaveAttribute('data-broken', 'yes')
-      }
-      return
+  test('never hides the damage until it lands', async ({ page }) => {
+    // Before the first throw, mid-attack, and after: the figure is up the
+    // whole time. The entire tactical contract is knowing it.
+    for (const fixture of ['?room=gate&mode=combat', '?room=gate&rolls=1', '?room=gate&rolls=3']) {
+      await boot(page, fixture)
+      await expect(page.locator('#enemy-hits')).toHaveAttribute('data-damage', '8')
     }
-    expect(null, 'no seed in 40 left the Gnawing standing after one round').not.toBeNull()
+  })
+
+  test('takes exactly what it says, and no more', async ({ page }) => {
+    await boot(page, '?room=deep&bones=30&rolls=3&dice=1,1,2,3,4,6')
+    expect(await livingBones(page)).toBe(30)
+    // Pair is the only shape here, and the Marrow survives it comfortably.
+    await page.locator('.score-entry[data-hand="pair"]').click()
+    expect(await livingBones(page)).toBe(25)
+    const attack = (await state(page)).run!.combat!.lastAttack!
+    expect(attack.retaliation).toBe(5)
+    expect(attack.bonesBefore - attack.bonesAfter).toBe(5)
   })
 })
 
-test.describe('a named bone that breaks', () => {
-  test('is named, removed from the pouch, and stays gone', async ({ page }) => {
-    // A Cinderbone in a losing lane. Nothing is injected: the seeds are
-    // searched for a round in which it genuinely loses, and the throw that
-    // resolves it is the same single press a player makes.
-    for (let seed = 1; seed <= 60; seed++) {
-      await boot(page, `?room=gate&specials=cinderbone&mode=combat&phase=thrown&seed=${seed}`)
-      if ((await act(page, 'throw').count()) === 0) continue
-
-      // Every named bone stands by default, so there is nothing to press.
-      await expect(page.locator('#crown .bone[data-special-id="cinderbone"]')).toHaveCount(1)
-      const before = await livingBones(page)
-      await act(page, 'throw').click()
-
-      const named = page.locator('#crown .bone[data-special-id="cinderbone"]')
-      if ((await named.count()) === 0) continue
-      if ((await named.getAttribute('data-broken')) !== 'yes') continue
-
-      const smash = (await state(page)).run!.combat!.lastSmash!
-      // The whole cost of the round, of which the Cinderbone is one — other
-      // lanes break too, and the pile has to agree with the record exactly.
-      const lost = smash.playerCommonLost + smash.playerSpecialsLost.length
-      expect(await livingBones(page)).toBe(before - lost)
-      expect(smash.playerSpecialsLost).toHaveLength(1)
-      expect(smash.playerSpecialsLost[0]).toMatch(/^cinderbone#/)
-      // The word band names it, because a named bone dying is a run-shaping
-      // event and a number in a corner is not enough.
-      await expect(page.locator('#say')).toContainText('Cinderbone is gone')
-
-      // The pouch no longer holds it, and a reload does not bring it back.
-      await act(page, 'pouch').click()
-      await expect(page.locator('.pouch-row')).toHaveCount(0)
-      await act(page, 'close').click()
-      return
-    }
-    expect(null, 'no seed in 60 broke a Cinderbone against the Warden').not.toBeNull()
+test.describe('the pile is the hand', () => {
+  test('a healthy run throws six', async ({ page }) => {
+    await boot(page, '?room=hollow&bones=30&mode=combat')
+    await expect(dice(page)).toHaveCount(6)
   })
 
-  test('never turns into a common bone', async ({ page }) => {
-    await boot(page, '?room=gate&specials=knuckle&bones=10&mode=combat&phase=thrown&seed=8')
-    const before = (await state(page)).run!
-    // The Knuckle is standing in the line already — it is carried, so it is in.
-    await expect(page.locator('#crown .bone[data-special-id="knuckle"]')).toHaveCount(1)
-    await act(page, 'throw').click()
+  test('a wounded run throws what it has', async ({ page }) => {
+    for (const [bones, count] of [
+      [6, 6],
+      [5, 5],
+      [4, 4],
+      [2, 2],
+      [1, 1],
+    ] as const) {
+      await boot(page, `?room=hollow&bones=${bones}&mode=combat`)
+      await expect(dice(page), `${bones} bones`).toHaveCount(count)
+    }
+  })
 
-    const after = (await state(page)).run!
-    const lost = after.combat!.lastSmash!
-    // Whatever broke, the common count fell by exactly the commons that broke.
-    expect(after.commonBones).toBe(before.commonBones - lost.playerCommonLost)
-    expect(after.specials).toHaveLength(before.specials.length - lost.playerSpecialsLost.length)
+  test('loses the shapes that need the width, with nothing saying so', async ({ page }) => {
+    // Four bones, all alike: the best a full hand could make is out of reach
+    // and no line of code anywhere states the rule.
+    await boot(page, '?room=hollow&bones=4&rolls=1&dice=4,4,4,4')
+    const offered = await scoresOnOffer(page)
+    expect(offered).toContain('four-kind')
+    expect(offered).not.toContain('full-house')
+    expect(offered).not.toContain('five-kind')
+    expect(offered).not.toContain('six-kind')
+    // And a straight is impossible with four bones, so it is information.
+    await expect(page.locator('.score-entry[data-hand="straight"]')).toHaveAttribute(
+      'data-legal',
+      'no',
+    )
+  })
+
+  test('says so on the pile itself, once the attack starts narrowing', async ({ page }) => {
+    await boot(page, '?room=fork&bones=20')
+    await expect(page.locator('#orb')).toHaveAttribute('data-low', 'no')
+    await boot(page, '?room=fork&bones=6')
+    await expect(page.locator('#orb')).toHaveAttribute('data-low', 'yes')
   })
 })
 
 test.describe('zero', () => {
-  test('ends the run on the lane it happens', async ({ page }) => {
-    // One bone against the Warden's six. The run ends on lane one, and there
-    // are no lanes after it.
-    await boot(page, '?room=gate&bones=1&mode=combat&phase=thrown')
-    await expect(bones(page)).toHaveCount(1)
+  test('ends the run, and never goes below it', async ({ page }) => {
+    // Five bones against the Warden's eight. Whatever the hand does, the
+    // answer takes everything — unless the attack finishes the thing first,
+    // which it cannot from full health.
+    await boot(page, '?room=gate&bones=5&rolls=3')
+    const offered = await scoresOnOffer(page)
+    await page.locator(`.score-entry[data-hand="${offered[0]}"]`).click()
 
-    const theirs = (await valuesOf(enemyBones(page)))[0]!
-    await act(page, 'throw').click()
-    const mine = (await valuesOf(bones(page)))[0]!
-
-    if (mine > theirs) {
-      // It won its lane and lives. Nothing to assert about death here.
-      expect(await livingBones(page)).toBe(1)
-      return
-    }
     expect(await screenName(page)).toBe('dead')
     // Off state rather than off the pile: the tray is hidden on a death
     // screen, so the last number it painted is not the truth.
     const run = (await state(page)).run!
-    expect(run.commonBones + run.specials.length).toBe(0)
-    const smash = run.combat!.lastSmash!
-    expect(smash.stoppedAtLane).toBe(0)
-    expect(smash.lanes).toHaveLength(1)
+    expect(run.bones).toBe(0)
+    expect(run.combat!.lastAttack!.bonesAfter).toBe(0)
+    expect(run.cause).toContain('The Warden')
   })
 
   test('the death screen says what is left, what was carried, and how far', async ({ page }) => {
@@ -156,34 +125,41 @@ test.describe('zero', () => {
     const summary = page.locator('#run-summary')
     await expect(summary).toContainText('0 bones left')
     await expect(summary).toContainText('down')
-    // Not the old line about six bones.
-    await expect(page.locator('#screen')).not.toContainText('Carried nothing but the six bones')
     // And two ways out, neither of them a reload.
     await expect(act(page, 'start')).toBeVisible()
     await expect(act(page, 'title')).toBeVisible()
   })
 
-  test('a fight cannot be opened with nothing to field', async ({ page }) => {
+  test('a fight cannot be opened with nothing to throw', async ({ page }) => {
     await boot(page, '?room=hollow&bones=0')
     await expect(act(page, 'fight')).toHaveCount(0)
   })
 })
 
+test.describe('a killing attack takes no answer', () => {
+  test('however thin the pile is', async ({ page }) => {
+    // Three bones left and a thing on its last legs. The Gnawing breaks three,
+    // so an answer would end the run — and there is no answer, because the
+    // kill happened first.
+    await boot(page, '?room=hollow&bones=3&enemyHp=3&rolls=3')
+    const offered = await scoresOnOffer(page)
+    await page.locator(`.score-entry[data-hand="${offered[0]}"]`).click()
+
+    await expect
+      .poll(async () => (await state(page)).run?.combat === undefined)
+      .toBe(true)
+    expect(await screenName(page)).not.toBe('dead')
+    expect((await state(page)).run!.bones).toBe(3)
+  })
+})
+
 test.describe('the pile', () => {
   test('is a count, and it never disagrees with the state', async ({ page }) => {
-    await boot(page, '?room=hollow&bones=17&specials=knuckle&mode=combat&phase=smashed')
-    const run = (await state(page)).run!
-    expect(await livingBones(page)).toBe(run.commonBones + run.specials.length)
-    await expect(page.locator('#pile')).toHaveAttribute(
-      'data-specials',
-      String(run.specials.length),
-    )
-  })
-
-  test('warns when a single smash could end the run', async ({ page }) => {
-    await boot(page, '?room=fork&bones=20')
-    await expect(page.locator('#orb')).toHaveAttribute('data-low', 'no')
-    await boot(page, '?room=fork&bones=6')
-    await expect(page.locator('#orb')).toHaveAttribute('data-low', 'yes')
+    await boot(page, '?room=hollow&bones=17&mode=combat')
+    expect(await livingBones(page)).toBe((await state(page)).run!.bones)
+    // The two-part pile is gone with the named bones it existed for.
+    const pile = page.locator('#pile')
+    await expect(pile).not.toHaveAttribute('data-common', /.*/)
+    await expect(pile).not.toHaveAttribute('data-specials', /.*/)
   })
 })

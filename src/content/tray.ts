@@ -95,36 +95,30 @@ export const DIE_CENTRES: readonly Point[] = [
 /** The painted recess a die sits in, for reference and for the fit tests. */
 export const DIE_BAY = { width: 0.07534, height: 0.0989 } as const
 
-/** The dark recess in the middle. The stage: the score, or the room's line. */
-export const WELL: Rect = { x: 0.27397, y: 0.2967, width: 0.44384, height: 0.40385 }
-
 /**
- * Where the enemy's line stands: in the well, under the crown, in column.
+ * The dark recess in the middle. The stage: the scorecard, or the room's line.
  *
- * Its line used to float above the plate over the room art, because the
- * painted frame has no bay for it. On a dark floor at a dark hour that was
- * four unreadable objects, which is not a line you can answer. The well is
- * already a dark recess and is the only region wide enough to hold a row, so
- * the line moved into it and no repaint was needed.
+ * **It is wider and deeper than the painted recess, and that is deliberate.**
+ * The recess itself is 0.444 × 0.404 — 187 × 84 px on a phone — which was
+ * enough for two lines of prose and is not enough for eight scorecard entries
+ * and a row of real buttons. So the box runs sideways to just inside the pile
+ * orb's caption and the first satchel bay, and downwards to just above the
+ * beds, overhanging the painted frame's ribs left, right and below.
  *
- * **It uses the crown's pitch, not the well's.** Six lanes at `DIE_PITCH` span
- * 0.532 of the plate and the well's recess is 0.444, so the outer two bones
- * overhang the recess by about 18 px a side and rest on the painted frame.
- * That is the cheaper of the two costs available: lane N against lane N is the
- * entire smash rule, and the column is how a player reads a pairing before an
- * animation explains it. Fitting the recess would have meant a row whose lanes
- * converge on the hand above them like a perspective error.
+ * That overhang is precedented rather than novel: the enemy's line used to
+ * overhang the same recess by about 18 px a side, for the same reason — the
+ * plate has one region wide enough to carry what a fight is doing, and the
+ * alternative to spilling over its ribs is not showing the fight. The box
+ * carries its own scrim in CSS so the text stays readable over them. No art is
+ * touched.
  *
- * The bones are read, never pressed, so they are seated at their painted size
- * rather than grown to the 44 px touch floor.
+ * The **top** edge is the one that did not move. The six die targets are 44 px
+ * tall on a plate whose bays are 21, so they already hang below their own
+ * recess; a well that started any higher would be a scorecard entry sitting
+ * under a bone. Every other edge is bounded the same way: by the control it
+ * would otherwise collide with, not by the painting.
  */
-export const ENEMY_ROW_Y = 0.3906
-export const ENEMY_LANES: readonly Point[] = DIE_CENTRES.map((c) => ({
-  x: c.x,
-  y: ENEMY_ROW_Y,
-}))
-
-export const ENEMY_BONE = { width: 0.058, height: 0.155 } as const
+export const WELL: Rect = { x: 0.225, y: 0.2967, width: 0.51, height: 0.4863 }
 
 /**
  * Three small bays on the right. Relics sit here, and are the one place the

@@ -1,28 +1,26 @@
 /**
  * Deterministic simulation, over the real game.
  *
- * Every round below runs through the same reducer the browser does, so the
+ * Every press below runs through the same reducer the browser does, so the
  * model and the runtime cannot drift apart: **this is not a second
  * implementation of combat**, it is the game with a policy where the thumb
- * goes. If a rule changes in `combat/clash.ts`, the report changes with it and
- * nobody has to remember to update a model.
+ * goes. If a multiplier changes in `combat/hands.ts`, the report changes with
+ * it and nobody has to remember to update a model.
  *
  * It is also completely separate from the UI. Nothing here imports from `ui/`
  * or `render/`, and the runtime imports nothing from here.
  */
 
-import { maxWidth, reduce } from '../../src/game/reducer.js'
+import { reduce } from '../../src/game/reducer.js'
 import type { Action } from '../../src/game/reducer.js'
 import { TITLE } from '../../src/game/state.js'
 import type { GameState, RunState } from '../../src/game/state.js'
-import { newSpecial, totalBones } from '../../src/content/bones.js'
-import type { SpecialBoneId } from '../../src/content/bones.js'
 import { enemy } from '../../src/content/enemies.js'
+import type { ScoreId } from '../../src/combat/hands.js'
 import { firstNodeOf, roomAt } from '../../src/game/map.js'
 import { exitsOpen, legal, stateOf } from '../../src/content/interactions.js'
-import { drinkFor, fieldFor } from './policies.js'
+import { drinkFor, holdFor, scoreFor, shouldScore } from './policies.js'
 import type { Table, Tier } from './policies.js'
-import type { RewardId } from '../../src/content/rewards.js'
 
 const play = (state: GameState, ...actions: Action[]): GameState =>
   actions.reduce((s, a) => reduce(s, a), state)
@@ -32,34 +30,44 @@ function tableOf(state: GameState): Table {
   const run = state.run!
   const combat = run.combat!
   return {
-    enemyLine: combat.enemyLine,
-    enemyBones: combat.enemyBones.length,
-    tieRule: enemy(combat.enemyId).tieRule,
-    commonBones: run.commonBones,
-    specials: run.specials,
+    dice: combat.dice,
+    rollsUsed: combat.rollsUsed,
+    usedHands: combat.usedHands,
+    enemyHp: combat.enemyHp,
+    enemyMaxHp: combat.enemyMaxHp,
+    enemyDamage: enemy(combat.enemyId).damage,
+    bones: run.bones,
     vials: run.vials,
   }
+}
+
+/** One scored exchange, as the three facts the report is built out of. */
+export interface AttackLog {
+  readonly hand: ScoreId
+  readonly damage: number
+  /** How many of the three throws it took. */
+  readonly rollsUsed: number
 }
 
 export interface FightResult {
   readonly enemyId: string
   readonly won: boolean
+  /** Attacks scored. One per exchange. */
   readonly rounds: number
   /**
    * Bones of mine that actually broke. The headline number.
    *
-   * Counted off the smash records rather than as a start-to-finish difference,
-   * because a Vial drunk mid-fight puts bones back and a net figure would then
-   * report a fight that cost four bones as costing minus one. What the player
-   * feels is what broke.
+   * Counted off the attack records rather than as a start-to-finish
+   * difference, because a Vial drunk mid-fight puts bones back and a net
+   * figure would then report a fight that cost four bones as costing minus
+   * one. What the player feels is what broke.
    */
   readonly bonesLost: number
   /** The net change in the pile, Vials included. Sometimes positive. */
   readonly netBones: number
-  /** Named bones lost, by name. A run-shaping loss, not an attrition one. */
-  readonly specialsLost: readonly string[]
   readonly bonesLeft: number
   readonly vialsDrunk: number
+  readonly attacks: readonly AttackLog[]
 }
 
 /**
@@ -71,80 +79,82 @@ export interface FightResult {
 export function simulateFight(
   state: GameState,
   tier: Tier,
-  maxRounds = 40,
+  maxRounds = 60,
 ): { readonly result: FightResult; readonly state: GameState } {
-  const before = state.run!
-  const bonesBefore = totalBones(before)
-  const specialsBefore = new Map(before.specials.map((s) => [s.instanceId, s.specialId]))
-  const vialsBefore = before.vials
+  const bonesBefore = state.run!.bones
 
   let current = reduce(state, { type: 'FIGHT' })
   const enemyId = current.run?.combat?.enemyId ?? ''
-  let rounds = 0
+  const attacks: AttackLog[] = []
   let broken = 0
+  // Counted as presses, not as a difference: the Marrow pays a Vial on the
+  // way out, so a satchel that starts and ends at one may have been emptied
+  // and refilled — and a net figure would report that as never having drunk.
+  let drank = 0
 
-  for (; rounds < maxRounds; rounds++) {
+  for (let round = 0; round < maxRounds; round++) {
     const combat = current.run?.combat
     if (!combat || current.mode !== 'combat') break
 
-    // A killing smash parks the fight on the picture of the thing dying. There
-    // is no picture in a simulation, so the model presses through it in the
-    // same tick — the win it grants is the same win either way.
+    // A killing attack parks the fight on the picture of the thing dying.
+    // There is no picture in a simulation, so the model presses through it in
+    // the same tick — the win it grants is the same win either way.
     if (combat.defeated) {
       current = reduce(current, { type: 'DEFEAT_DONE' })
-      rounds++
       break
     }
 
-    if (drinkFor(tableOf(current), tier)) current = reduce(current, { type: 'DRINK' })
-
-    // One press. Throwing and finding out is a single action now, so the
-    // model's round is a single action too — there is no half-thrown state a
-    // policy could be consulted in.
-    const decision = fieldFor(tableOf(current), tier)
-    if (decision.width < 1) break
-    current = reduce(current, { type: 'THROW', specialIds: decision.specialIds })
-
-    const smash = current.run?.combat?.lastSmash
-    if (smash) broken += smash.playerCommonLost + smash.playerSpecialsLost.length
-
-    if (current.mode !== 'combat') {
-      rounds++
-      break
+    if (drinkFor(tableOf(current), tier)) {
+      const filled = reduce(current, { type: 'DRINK' })
+      if (filled !== current) drank++
+      current = filled
     }
-    const after = current.run?.combat
-    if (after?.defeated) {
-      current = reduce(current, { type: 'DEFEAT_DONE' })
-      rounds++
-      break
+    if ((current.run?.bones ?? 0) === 0) break
+
+    current = reduce(current, { type: 'ROLL' })
+    if ((current.run?.combat?.dice.length ?? 0) === 0) break
+
+    // Throw, hold, throw again — up to the three the attack is given.
+    for (;;) {
+      const table = tableOf(current)
+      if (shouldScore(table, tier)) break
+      const next = reduce(current, { type: 'REROLL', held: holdFor(table, tier) })
+      if (next === current) break
+      current = next
     }
-    if (after?.phase === 'smashed') current = reduce(current, { type: 'ROUND' })
+
+    const table = tableOf(current)
+    const hand = scoreFor(table, tier)
+    if (!hand) break
+    current = reduce(current, { type: 'SCORE', hand })
+
+    const record = current.run?.combat?.lastAttack
+    if (record) {
+      attacks.push({ hand: record.hand, damage: record.damage, rollsUsed: table.rollsUsed })
+      broken += record.retaliation
+    }
+
+    if (current.mode !== 'combat') break
   }
 
   const settled = current.run
-  const aliveNow = new Set(settled?.specials.map((s) => s.instanceId) ?? [])
-  const specialsLost = [...specialsBefore]
-    .filter(([id]) => !aliveNow.has(id))
-    .map(([, specialId]) => specialId)
-
   return {
     state: current,
     result: {
       enemyId,
       won: current.mode === 'reward' || current.mode === 'explore',
-      rounds,
+      rounds: attacks.length,
       bonesLost: broken,
-      netBones: (settled ? totalBones(settled) : 0) - bonesBefore,
-      specialsLost,
-      bonesLeft: settled ? totalBones(settled) : 0,
-      vialsDrunk: vialsBefore - (settled?.vials ?? 0),
+      netBones: (settled?.bones ?? 0) - bonesBefore,
+      bonesLeft: settled?.bones ?? 0,
+      vialsDrunk: drank,
+      attacks,
     },
   }
 }
 
 export interface Loadout {
   readonly bones?: number
-  readonly specials?: readonly SpecialBoneId[]
   readonly vials?: number
 }
 
@@ -161,15 +171,11 @@ export function fightIn(templateId: string, seed: number, loadout: Loadout = {})
   const run = started.run!
   const node = firstNodeOf(run.map, templateId)
   if (!node) throw new Error(`this run has no ${templateId} in it`)
-  const specials = (loadout.specials ?? []).map((id, i) => newSpecial(id, i))
-  const total = loadout.bones ?? totalBones(run)
   const next: RunState = {
     ...run,
     roomId: node.id,
     path: [...run.path, node.id],
-    specials,
-    nextSpecialSerial: specials.length,
-    commonBones: Math.max(0, total - specials.length),
+    ...(loadout.bones !== undefined ? { bones: loadout.bones } : {}),
     ...(loadout.vials !== undefined ? { vials: loadout.vials } : {}),
   }
   return { ...started, run: next }
@@ -183,7 +189,7 @@ export interface RunResult {
   readonly rooms: number
   readonly bonesLeft: number
   readonly fights: readonly FightResult[]
-  /** Named bones and satchel things actually acquired before the run ended. */
+  /** Satchel things actually acquired before the run ended. */
   readonly found: number
 }
 
@@ -191,10 +197,7 @@ export interface RunResult {
  * A whole run.
  *
  * The deep way is the harder branch — an extra fight before the boss — so it
- * is the pessimistic reading of whether the slice can be finished. It takes
- * the first reward offered, which is what a first-time player does; the
- * heuristic tier prefers a named bone, which is what a player who has read the
- * cards does.
+ * is the pessimistic reading of whether the slice can be finished.
  */
 export function simulateRun(seed: number, tier: Tier, { deep = true } = {}): RunResult {
   let state = reduce(TITLE, { type: 'START_RUN', seed })
@@ -204,15 +207,7 @@ export function simulateRun(seed: number, tier: Tier, { deep = true } = {}): Run
   const takeReward = (): void => {
     const offer = state.run?.offer
     if (!offer?.[0]) return
-    // Naive takes the first card. Heuristic prefers a bone that rolls higher
-    // than a common one — the reason to want a named bone at all.
-    const wanted: RewardId =
-      tier === 'heuristic'
-        ? (offer.find((id) => id === 'knuckle') ??
-          offer.find((id) => id === 'cinderbone') ??
-          offer[0])
-        : offer[0]
-    state = reduce(state, { type: 'TAKE', id: wanted })
+    state = reduce(state, { type: 'TAKE', id: offer[0] })
     found++
   }
 
@@ -226,7 +221,7 @@ export function simulateRun(seed: number, tier: Tier, { deep = true } = {}): Run
       return {
         reachedExit: true,
         rooms: state.run!.path.length,
-        bonesLeft: totalBones(state.run!),
+        bonesLeft: state.run!.bones,
         fights,
         found,
       }
@@ -276,7 +271,7 @@ export function simulateRun(seed: number, tier: Tier, { deep = true } = {}): Run
     // A room with machinery is worked on the way past, correctly.
     //
     // Deliberately no model of getting it wrong: the simulator does not misread
-    // an enemy line either, and a report that quietly charged every run a bone
+    // a scorecard either, and a report that quietly charged every run a bone
     // for a mistake the clues are written to prevent would be measuring the
     // model's ignorance rather than the slice's difficulty.
     const machinery = stateOf(state.run!.rooms, here.instanceId, here.id)
@@ -300,11 +295,8 @@ export function simulateRun(seed: number, tier: Tier, { deep = true } = {}): Run
   return {
     reachedExit: state.mode === 'complete',
     rooms: state.run!.path.length,
-    bonesLeft: state.run ? totalBones(state.run) : 0,
+    bonesLeft: state.run?.bones ?? 0,
     fights,
     found,
   }
 }
-
-/** The widest legal line, for a test that wants the naive press by hand. */
-export { maxWidth }

@@ -147,14 +147,16 @@ Scenery may degrade. The opponent may not.
 ## Motion budget
 
 Idle motion is tiny and high-impact: a slow enemy breath, a candle flicker,
-a vignette pulse. Combat impact is one bone breaking in its lane, a one-frame
-brighten on the body, and a screen shake.
+a vignette pulse. Combat impact is a bone turning over onto the face it already
+landed on, a one-frame brighten on the body, and a screen shake.
 
-**There is no damage number, because there is no damage.** What happened when
-you won a lane is that one of its bones broke, and that bone is on screen, in
-its lane, breaking. A figure rising off the enemy would be arithmetic drawn
-over the top of a physical fact. The only number combat ever raises is the
-pile's own delta — a count of objects — over the orb that holds them.
+**Nothing rises off the enemy.** The damage figure does exist now — it is on
+the scorecard entry before the press and in the word band after it, where it
+can be read at leisure and with motion off — so the impact layer has nothing to
+carry that words are not already carrying better. What it is for is the half a
+number cannot say: that the thing was hit, and that the frame is the player's
+own head. The only figure combat ever floats is the pile's own delta — a count
+of objects — over the orb that holds them.
 
 Animation reveals an outcome that is already committed. **No animation
 contains game logic**, and no roll or branch happens inside a timeline. With
@@ -166,14 +168,17 @@ and nothing is lost.
 - At 390×844, every combat screenshot shows the enemy without tapping.
 - Each room in the slice is distinguishable as a thumbnail.
 - No gameplay text sits on a busy focal region without a scrim.
-- Enemy line, player line, special sigils, casualty state and the living-bone
-  count are readable at arm's length. Both lines are on the plate, in column —
-  lane N against lane N is the whole smash rule, so the column has to read as
-  a pairing before anything animates.
-- **A seven and an eight are readable without a tooltip.** No die anybody has
-  held has those faces, so there is no pattern to recognise: they print their
-  numeral over the pips, and the numeral is the truth.
-- A broken bone is not conveyed by colour alone. It darkens, it drops, and it
-  carries a fracture across it.
+- The six thrown bones, the scorecard, the enemy's health and its damage
+  figure are all readable at arm's length, at once, without opening anything.
+  The whole tactical contract is knowing what leaving the thing standing costs.
+- **Which hands are spent is legible as shape, not only as colour.** A used
+  entry is struck through as well as dimmed; a live one is a bordered, filled
+  button rather than a differently coloured word.
+- **A held bone is not conveyed by colour alone.** It lifts out of its bay,
+  takes a lit rim, and says so in `aria-pressed` and in its accessible name.
+- The well overhangs its painted recess on three sides and carries its own
+  scrim, because eight scorecard entries and a row of live buttons do not fit
+  the plate as painted. That is a stated deviation, not a drift: see
+  `src/content/tray.ts`.
 - Every enemy has a visible end. An army that empties and then simply stops
   being drawn is a fight that ended without the player seeing it end.

@@ -6,15 +6,17 @@
  * overflows its bay, nothing overlaps its neighbour, nothing runs off the
  * screen, and every label fits inside the box it was given.
  *
- * The regions changed meaning in the War of Bones and the coordinates did not.
- * That is the point of the file: the same measurements, holding a different
- * game.
+ * The regions changed meaning again with the dice and most of the coordinates
+ * did not. That is the point of the file: near enough the same measurements,
+ * holding a different game. The one that did move is the well, which had to
+ * grow to carry eight scorecard entries and a row of live buttons — and it
+ * overhangs the painted recess on purpose. See `content/tray.ts`.
  */
 
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 
-import { act, boot, bones, tappable, trayControls } from './helpers.js'
+import { act, boot, dice, tappable, trayControls } from './helpers.js'
 
 /** Every screen the tray is up on, and what to press to get there. */
 const SCREENS: readonly [string, string][] = [
@@ -23,11 +25,11 @@ const SCREENS: readonly [string, string][] = [
   ['the fork', '?room=fork'],
   ['the vault, shut', '?room=chain-vault'],
   ['the vault, open', '?room=chain-vault&vault=open'],
-  ['a fight, before the field', '?room=hollow&mode=combat&phase=thrown'],
-  ['a fight, committed', '?room=hollow&mode=combat&phase=thrown'],
-  ['a fight, thrown', '?room=hollow&mode=combat&phase=smashed'],
-  ['a fight, smashed', '?room=deep&mode=combat&phase=smashed'],
-  ['carrying everything', '?room=fork&specials=knuckle,cinderbone&vials=2'],
+  ['a fight, before the throw', '?room=hollow&mode=combat'],
+  ['a fight, one throw in', '?room=deep&rolls=1'],
+  ['a fight, out of throws', '?room=deep&rolls=3'],
+  ['a fight with nothing that fits', '?room=deep&rolls=3&dice=1,2,3,4,6,6&used=pair'],
+  ['carrying everything', '?room=fork&vials=2'],
 ]
 
 interface Box {
@@ -70,10 +72,10 @@ test.describe('nothing runs off the phone', () => {
 })
 
 test.describe('the crown', () => {
-  test('seats one bone per lane, at the touch floor, never overlapping', async ({ page }) => {
-    await boot(page, '?room=deep&mode=combat&phase=smashed')
+  test('seats one bone per position, at the touch floor, never overlapping', async ({ page }) => {
+    await boot(page, '?room=deep&rolls=1')
     const seated = await boxes(page, '#crown .bone')
-    expect(seated.length, 'the crown drew no line').toBeGreaterThan(0)
+    expect(seated.length, 'the crown drew no hand').toBeGreaterThan(0)
 
     for (const bone of seated) {
       expect(bone.h, 'a bone target is under 44px tall').toBeGreaterThanOrEqual(43.5)
@@ -86,62 +88,74 @@ test.describe('the crown', () => {
     }
   })
 
-  test('draws exactly what the pile can throw, and no ghost lanes', async ({ page }) => {
-    for (const [pile, lanes] of [[1, 1], [3, 3], [30, 6]] as const) {
-      await boot(page, `?room=deep&bones=${pile}&mode=combat&phase=thrown`)
-      await expect(bones(page)).toHaveCount(lanes)
+  test('draws exactly what the pile can throw, and no ghost positions', async ({ page }) => {
+    for (const [pile, count] of [[1, 1], [3, 3], [30, 6]] as const) {
+      await boot(page, `?room=deep&bones=${pile}&mode=combat`)
+      await expect(dice(page)).toHaveCount(count)
     }
   })
 
   test('is empty out of a fight', async ({ page }) => {
-    await boot(page, '?room=fork&specials=knuckle')
-    await expect(bones(page)).toHaveCount(0)
+    await boot(page, '?room=fork&vials=1')
+    await expect(dice(page)).toHaveCount(0)
   })
 })
 
-test.describe('the enemy line', () => {
-  test('stands in the well below the crown, lane for lane', async ({ page }) => {
-    await boot(page, '?room=deep&mode=combat&phase=smashed')
-    const mine = await boxes(page, '#crown .bone')
-    const theirs = await boxes(page, '#enemy-line .bone-enemy')
-    expect(theirs.length).toBe(6)
-    expect(mine.length).toBe(6)
+test.describe('the scorecard', () => {
+  test('fits inside the tray, and every entry inside the well', async ({ page }) => {
+    await boot(page, '?room=deep&rolls=1')
+    const card = (await boxes(page, '#scorecard'))[0]!
+    const well = (await boxes(page, '#well'))[0]!
+    expect(card.x).toBeGreaterThanOrEqual(well.x - 0.5)
+    expect(card.right).toBeLessThanOrEqual(well.right + 0.5)
+    expect(card.y).toBeGreaterThanOrEqual(well.y - 0.5)
+    expect(card.bottom).toBeLessThanOrEqual(well.bottom + 0.5)
+  })
 
-    for (let lane = 0; lane < 6; lane++) {
-      // Below, and centred on the same lane. The column *is* the pairing —
-      // lane N against lane N is the whole smash rule — which is why the line
-      // is a child of the tray and seated on the crown's own pitch.
-      expect(theirs[lane]!.y, `lane ${lane} is not below the crown`).toBeGreaterThanOrEqual(
-        mine[lane]!.bottom - 1,
-      )
-      const mineCentre = mine[lane]!.x + mine[lane]!.w / 2
-      const theirCentre = theirs[lane]!.x + theirs[lane]!.w / 2
-      expect(Math.abs(mineCentre - theirCentre), `lane ${lane} is not aligned`).toBeLessThan(2)
+  test('never overlaps the crown above it or the beds below it', async ({ page }) => {
+    await boot(page, '?room=deep&rolls=1')
+    const well = (await boxes(page, '#well'))[0]!
+    for (const bone of await boxes(page, '#crown .bone')) {
+      expect(bone.bottom, 'a bone sits over the well').toBeLessThanOrEqual(well.y + 0.5)
+    }
+    for (const bed of await boxes(page, '#beds .act')) {
+      expect(bed.y, 'a bed sits over the well').toBeGreaterThanOrEqual(well.bottom - 0.5)
     }
   })
 
-  test('is on screen and inside the viewport', async ({ page }) => {
-    await boot(page, '?room=deep&mode=combat&phase=thrown')
+  test('is on screen, whole', async ({ page }) => {
+    await boot(page, '?room=deep&rolls=1')
     const viewport = page.viewportSize()!
-    for (const bone of await boxes(page, '#enemy-line .bone-enemy')) {
-      expect(bone.x).toBeGreaterThanOrEqual(-0.5)
-      expect(bone.right).toBeLessThanOrEqual(viewport.width + 0.5)
-      expect(bone.y).toBeGreaterThanOrEqual(-0.5)
+    for (const entry of await boxes(page, '.score-entry')) {
+      expect(entry.x).toBeGreaterThanOrEqual(-0.5)
+      expect(entry.right).toBeLessThanOrEqual(viewport.width + 0.5)
+      expect(entry.y).toBeGreaterThanOrEqual(-0.5)
+      expect(entry.bottom).toBeLessThanOrEqual(viewport.height + 0.5)
+    }
+  })
+
+  test('never overlaps one entry with another', async ({ page }) => {
+    await boot(page, '?room=deep&rolls=1&dice=6,6,6,4,4,3')
+    const seated = await boxes(page, '.score-entry')
+    expect(seated).toHaveLength(8)
+    for (let i = 0; i < seated.length; i++) {
+      for (let j = i + 1; j < seated.length; j++) {
+        const a = seated[i]!
+        const b = seated[j]!
+        const apart =
+          a.right <= b.x + 0.5 || b.right <= a.x + 0.5 || a.bottom <= b.y + 0.5 || b.bottom <= a.y + 0.5
+        expect(apart, `entries ${i} and ${j} overlap`).toBe(true)
+      }
     }
   })
 })
 
 test.describe('the satchel', () => {
-  test('seats two bays that never overlap', async ({ page }) => {
-    await boot(page, '?room=fork&vials=1&specials=knuckle')
+  test('seats the one bay it has, at the touch floor', async ({ page }) => {
+    await boot(page, '?room=fork&vials=1')
     const seated = await boxes(page, '.satchel-slot')
-    // Two, on a plate painted for three. The empty bay is left showing.
-    expect(seated).toHaveLength(2)
-    for (let i = 1; i < seated.length; i++) {
-      expect(seated[i]!.x, 'two satchel bays overlap').toBeGreaterThanOrEqual(
-        seated[i - 1]!.right - 0.5,
-      )
-    }
+    // One, on a plate painted for three. The empty recesses are left showing.
+    expect(seated).toHaveLength(1)
     for (const bay of seated) expect(bay.h).toBeGreaterThanOrEqual(43.5)
   })
 
@@ -156,19 +170,20 @@ test.describe('the satchel', () => {
 })
 
 test.describe('the beds', () => {
-  test('MENU is always bottom-left, and the phase verb is always the centre', async ({ page }) => {
+  test('MENU is always bottom-left, and the throw is always the centre', async ({ page }) => {
     const boxOf = async (name: string): Promise<Box | undefined> =>
       (await boxes(page, `[data-act="${name}"]`))[0]
 
-    await boot(page, '?room=hollow&mode=combat&phase=thrown')
+    await boot(page, '?room=hollow&mode=combat')
     const menu = (await boxOf('menu'))!
-    const throwing = (await boxOf('throw'))!
-    expect(menu.x).toBeLessThan(throwing.x)
+    const rolling = (await boxOf('roll'))!
+    expect(menu.x).toBeLessThan(rolling.x)
 
-    // Both phases put their one verb in the same bed.
-    await boot(page, '?room=deep&mode=combat&phase=smashed')
-    const round = await boxOf('round')
-    if (round) expect(Math.abs(round.x - throwing.x), 'round moved bed').toBeLessThan(2)
+    // Both throws sit in the same bed, so the thumb never has to look.
+    await boot(page, '?room=deep&rolls=1')
+    const again = await boxOf('reroll')
+    expect(again, 'REROLL was not offered').toBeDefined()
+    expect(Math.abs(again!.x - rolling.x), 'reroll moved bed').toBeLessThan(2)
   })
 
   test('no label is ever clipped by its own box', async ({ page }) => {

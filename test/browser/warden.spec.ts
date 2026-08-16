@@ -1,113 +1,101 @@
 /**
- * The Warden, and the one sentence it adds.
+ * The Warden, and the one number it adds.
  *
- * *Ties hold.* It reverses an expectation the player has been taught for two
- * fights, so the two things that matter are that it is **printed before
- * anything can be committed** and that it does exactly what it says.
+ * *It breaks eight.* That is the whole of the exam: eight bones an exchange
+ * against a hundred and eighty of health, so a run that cannot make big shapes
+ * quickly runs out of shapes to make. The two things that matter are that the
+ * figure is **printed before anything can be committed** and that it does
+ * exactly what it says.
  */
 
 import { expect, test } from '@playwright/test'
 
-import { act, boot, bones, enemyBones, livingBones, state, valuesOf } from './helpers.js'
+import { act, boot, dice, livingBones, scoresOnOffer, state } from './helpers.js'
 
 test.describe('before anything is committed', () => {
   test('says its rule out loud, in text, on the first frame of the fight', async ({ page }) => {
-    await boot(page, '?room=gate&mode=combat&phase=thrown')
+    await boot(page, '?room=gate&mode=combat')
     const rule = page.locator('#enemy-rule')
     await expect(rule).toBeVisible()
-    await expect(rule).toHaveText('TIES HOLD.')
-    await expect(rule).toHaveAttribute('aria-label', /HOLDS TIES/)
-    // And it is up while the player still has a decision to make.
-    await expect(act(page, 'throw')).toBeVisible()
+    await expect(rule).toHaveText('ITS RULE')
+    await expect(rule).toHaveAttribute('aria-label', /BREAKS EIGHT/)
+    // And the number itself is in the bar, not only in the rule.
+    await expect(page.locator('#enemy-hits')).toHaveAttribute('data-damage', '8')
+    // Both are up while the player still has a decision to make.
+    await expect(act(page, 'roll')).toBeVisible()
   })
 
   test('says it in the room, before the fight is even entered', async ({ page }) => {
     await boot(page, '?room=gate')
-    await expect(page.locator('#well')).toContainText('HOLDS TIES')
+    await expect(page.locator('#well')).toContainText('BREAKS EIGHT')
   })
 
   test('says it in MENU, where the global card does not', async ({ page }) => {
-    await boot(page, '?room=gate&mode=combat&phase=thrown')
+    await boot(page, '?room=gate&mode=combat')
     await act(page, 'menu').click()
-    await expect(page.locator('#rule-encounter')).toContainText('HOLDS TIES')
-    // The four global lines still say ties kill both, because against
-    // everything else they do.
-    await expect(page.locator('#rules')).toContainText('Ties kill both.')
+    await expect(page.locator('#rule-encounter')).toContainText('BREAKS EIGHT')
+    // The global lines are about the dice, and say nothing about any one fight.
+    await expect(page.locator('#rules')).not.toContainText('EIGHT')
   })
 
-  test('nothing else in the slice holds ties', async ({ page }) => {
-    // The Gnawing has no rule at all — it is the base war, and a badge saying
-    // so would be a rule about not having one.
-    await boot(page, '?room=hollow&mode=combat&phase=thrown')
-    await expect(page.locator('#enemy-rule')).toHaveCount(0)
-
-    // The Marrow has one, and it is not this one.
-    await boot(page, '?room=deep&mode=combat&phase=thrown')
-    await expect(page.locator('#enemy-rule')).toHaveText('ITS RULE')
-    await expect(page.locator('#enemy-rule')).not.toHaveAttribute('aria-label', /tie/i)
+  test('is the heaviest thing in the slice, and says so in numbers', async ({ page }) => {
+    const figures = async (): Promise<[string | null, string | null]> => [
+      await page.locator('#enemy-hp').getAttribute('data-max'),
+      await page.locator('#enemy-hits').getAttribute('data-damage'),
+    ]
+    await boot(page, '?room=hollow&mode=combat')
+    expect(await figures()).toEqual(['70', '3'])
+    await boot(page, '?room=deep&mode=combat')
+    expect(await figures()).toEqual(['120', '5'])
+    await boot(page, '?room=gate&mode=combat')
+    expect(await figures()).toEqual(['180', '8'])
   })
 })
 
-test.describe('an equal lane', () => {
-  test('breaks my bone and leaves its own standing', async ({ page }) => {
-    // Search the seeds for a fight whose opening round contains a genuine
-    // tie. Nothing is injected: every one of these is a real round, resolved
-    // by the one press the game offers.
-    for (let seed = 1; seed <= 60; seed++) {
-      await boot(page, `?room=gate&mode=combat&phase=smashed&seed=${seed}`)
-      if ((await bones(page).count()) === 0) continue
-      const mine = await valuesOf(bones(page))
-      const theirs = await valuesOf(enemyBones(page))
-      const lane = mine.findIndex((value, i) => value === theirs[i])
-      if (lane < 0) continue
-
-      // My bone is broken. Its bone is not.
-      await expect(bones(page).nth(lane)).toHaveAttribute('data-broken', 'yes')
-      await expect(enemyBones(page).nth(lane)).not.toHaveAttribute('data-broken', 'yes')
-
-      const smash = (await state(page)).run!.combat!.lastSmash!
-      expect(smash.heldTies).toBeGreaterThan(0)
-      expect(smash.playerCommonLost + smash.playerSpecialsLost.length).toBeGreaterThan(0)
-      return
-    }
-    expect(null, 'no seed in 60 produced a tie against the Warden').not.toBeNull()
+test.describe('eight bones an exchange', () => {
+  test('takes exactly eight for leaving it standing', async ({ page }) => {
+    await boot(page, '?room=gate&bones=30&rolls=3&dice=1,1,2,3,4,6')
+    expect(await livingBones(page)).toBe(30)
+    await page.locator('.score-entry[data-hand="pair"]').click()
+    expect(await livingBones(page)).toBe(22)
+    expect((await state(page)).run!.combat!.lastAttack!.retaliation).toBe(8)
   })
 
-  test('is the only thing its rule changes', async ({ page }) => {
-    // `smashed` is the settled round: both lines are face-up and every
-    // casualty is already marked, because the throw and the smash are one.
-    await boot(page, '?room=gate&mode=combat&phase=smashed&seed=3')
-    const mine = await valuesOf(bones(page))
-    const theirs = await valuesOf(enemyBones(page))
+  test('compounds: two exchanges narrow the attack itself', async ({ page }) => {
+    // Twenty bones in, sixteen broken over two exchanges, four left — and at
+    // four the hand is four dice wide and the big shapes are out of reach.
+    await boot(page, '?room=gate&bones=20&rolls=3&dice=1,1,2,3,4,6')
+    await page.locator('.score-entry[data-hand="pair"]').click()
+    await expect(dice(page)).toHaveCount(6)
 
-    const paired = Math.min(mine.length, theirs.length)
-    for (let lane = 0; lane < paired; lane++) {
-      const myBroken = (await bones(page).nth(lane).getAttribute('data-broken')) === 'yes'
-      const itsBroken = (await enemyBones(page).nth(lane).getAttribute('data-broken')) === 'yes'
-      if (mine[lane]! > theirs[lane]!) {
-        expect(itsBroken, `lane ${lane}: higher did not kill lower`).toBe(true)
-        expect(myBroken, `lane ${lane}: the winner broke`).toBe(false)
-      } else if (mine[lane]! < theirs[lane]!) {
-        expect(myBroken, `lane ${lane}: the loser lived`).toBe(true)
-      } else {
-        // The rule, and only here.
-        expect(myBroken, `lane ${lane}: a held tie spared me`).toBe(true)
-        expect(itsBroken, `lane ${lane}: a held tie broke its bone`).toBe(false)
-      }
-    }
+    await boot(page, '?room=gate&bones=4&mode=combat')
+    await expect(dice(page)).toHaveCount(4)
+    await act(page, 'roll').click()
+    const offered = await scoresOnOffer(page)
+    expect(offered).not.toContain('full-house')
+    expect(offered).not.toContain('straight')
+  })
+
+  test('does not answer an attack that finishes it', async ({ page }) => {
+    // Eight bones and a Warden on its last legs. Eight is exactly what it
+    // breaks, so a single answer would end the run — and there is none.
+    await boot(page, '?room=gate&bones=8&enemyHp=5&rolls=3')
+    const offered = await scoresOnOffer(page)
+    await page.locator(`.score-entry[data-hand="${offered[0]}"]`).click()
+    await expect.poll(async () => (await state(page)).run?.combat === undefined).toBe(true)
+    expect((await state(page)).run!.bones).toBe(8)
   })
 })
 
 test.describe('the body', () => {
-  test('stands in the plate its army says, and gets worse as it goes', async ({ page }) => {
-    await boot(page, '?room=gate&mode=combat&phase=thrown')
-    const full = await page.locator('#enemy').getAttribute('src')
-    expect(full).toContain('warden-idle-full')
+  test('stands in the plate its health says, and gets worse as it goes', async ({ page }) => {
+    await boot(page, '?room=gate&mode=combat')
+    await expect(page.locator('#enemy')).toHaveAttribute('src', /warden-idle-full/)
 
-    await boot(page, '?room=gate&enemyBones=4&mode=combat&phase=thrown')
+    await boot(page, '?room=gate&enemyHp=90&mode=combat')
     await expect(page.locator('#enemy')).toHaveAttribute('src', /warden-idle-mid/)
 
-    await boot(page, '?room=gate&enemyBones=2&mode=combat&phase=thrown')
+    await boot(page, '?room=gate&enemyHp=20&mode=combat')
     await expect(page.locator('#enemy')).toHaveAttribute('src', /warden-idle-low/)
   })
 
@@ -116,9 +104,9 @@ test.describe('the body', () => {
       const box = await page.locator('#enemy').boundingBox()
       return box!
     }
-    await boot(page, '?room=gate&mode=combat&phase=thrown')
+    await boot(page, '?room=gate&mode=combat')
     const first = await boxOf()
-    await boot(page, '?room=gate&enemyBones=2&mode=combat&phase=thrown')
+    await boot(page, '?room=gate&enemyHp=20&mode=combat')
     const later = await boxOf()
     expect(later.width).toBeCloseTo(first.width, 0)
     expect(later.height).toBeCloseTo(first.height, 0)
@@ -127,21 +115,15 @@ test.describe('the body', () => {
 })
 
 test.describe('reduced motion lands on the same fight', () => {
-  test('a held tie reads identically with motion off', async ({ page }) => {
+  test('the exchange reads identically with motion off', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
-    await boot(page, '?room=gate&mode=combat&phase=thrown&seed=3', { motion: true })
-    const mine = await valuesOf(bones(page))
-    const theirs = await valuesOf(enemyBones(page))
-    await act(page, 'throw').click()
+    await boot(page, '?room=gate&bones=30&rolls=3&dice=6,6,6,4,4,3', { motion: true })
+    await page.locator('.score-entry[data-hand="full-house"]').click()
 
-    // No waiting, no sequence: the settled truth is on screen immediately, and
-    // every casualty is readable as an attribute rather than as a movement.
-    const paired = Math.min(mine.length, theirs.length)
-    for (let lane = 0; lane < paired; lane++) {
-      if (mine[lane] !== theirs[lane]) continue
-      await expect(bones(page).nth(lane)).toHaveAttribute('data-broken', 'yes')
-      await expect(enemyBones(page).nth(lane)).not.toHaveAttribute('data-broken', 'yes')
-    }
-    expect(await livingBones(page)).toBeLessThanOrEqual(30)
+    // No waiting, no sequence: the settled truth is on screen immediately.
+    const attack = (await state(page)).run!.combat!.lastAttack!
+    expect(attack.damage).toBe(58)
+    expect(await livingBones(page)).toBe(22)
+    await expect(page.locator('#enemy-hp')).toHaveAttribute('data-hp', '122')
   })
 })

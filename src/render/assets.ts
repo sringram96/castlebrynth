@@ -190,13 +190,12 @@ export const TRAY_ART: Asset = asset('tray', 'ui/tray.png', 730, 364)
  * shipping a broken `<img>` into the middle of a smash.
  *
  * What is owed is written down instead, in full, under `## HUMAN ART REQUIRED`
- * in `POLISH_PROGRESS.md`: a bone body per profile with faces 1–8 and a broken
- * state, a Vial and a Pouch plate, a shatter family, and a tray
- * repaint whose top rail has a bay for the enemy's line.
+ * in `POLISH_PROGRESS.md`: a bone body with faces 1–6 and a held state, and a
+ * Vial plate.
  *
  * Until then the bones are drawn from the pip geometry in `ui/components.ts` —
  * which is the same mechanism the game has always drawn a face with, not a new
- * stand-in — and every one of them states its number as text as well as as a
+ * stand-in — and every one of them states its number as data as well as as a
  * pattern. Adding a row here and a file on disk is the whole of the swap;
  * nothing outside this file names a bone's filename.
  */
@@ -205,8 +204,8 @@ export const BONE_ART: Readonly<Record<string, Asset>> = {}
 export const SATCHEL_ART: Readonly<Record<string, Asset>> = {}
 
 /** One face of one bone, or nothing because it was never painted. */
-export function boneArt(profile: string, face: string): Asset | undefined {
-  return BONE_ART[`${profile}.${face}`]
+export function boneArt(face: string): Asset | undefined {
+  return BONE_ART[face]
 }
 
 /** One satchel icon, or nothing because it was never painted. */

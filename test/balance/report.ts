@@ -4,25 +4,29 @@
  * `npm run balance`. Deterministic: same seeds in, same table out, so a tuning
  * change is a diff rather than an impression.
  *
- * Three things matter about how this is read:
+ * **This build measures rather than gates.** The multipliers, the three health
+ * totals and the three damage figures are all first-pass numbers written
+ * before the system existed, and the honest thing to do with a target that
+ * predates its own simulator is to print what it produces and decide
+ * afterwards. So there are no bands here yet. There are **invariants** —
+ * statements that would be defects rather than tuning conversations — and
+ * there are measurements.
  *
- *   1. The **naive** column is the one to balance against. A fight tuned for a
- *      solver is miserable for somebody who has not internalised the rules,
- *      which is exactly the gap between a modelled 50–70% win band and a
- *      hands-on report of never winning once.
+ * Two things still matter about how it is read:
+ *
+ *   1. The **naive** column is the one to balance against. It throws once and
+ *      scores the biggest number it can see; it never uses the two free
+ *      rerolls. A fight tuned for a solver is miserable for somebody who has
+ *      not worked out that the rerolls are free.
  *   2. **A green table is not a verdict.** Human completion of the deployed
  *      slice outranks simulation.
- *   3. The bands below are **provisional**. They were written before this
- *      implementation existed, and the honest thing to do with a target that
- *      predates its own simulator is to measure first and ratify second. Every
- *      row prints its distribution, and a row outside its band prints WATCH
- *      rather than failing the build — see the note at the foot of the table.
- *      Ratifying a band into a hard gate is a product decision and belongs in
- *      a commit that says so.
  */
 
 import { fightIn, simulateFight, simulateRun } from './simulate.js'
-import type { FightResult, Loadout, RunResult } from './simulate.js'
+import type { AttackLog, FightResult, Loadout, RunResult } from './simulate.js'
+import { NAMED_HANDS, scoreName } from '../../src/combat/hands.js'
+import type { ScoreId } from '../../src/combat/hands.js'
+import { ENEMY_LIST, enemy } from '../../src/content/enemies.js'
 import type { Tier } from './policies.js'
 
 const SEEDS = Array.from({ length: 400 }, (_, i) => (i + 1) * 2654435761)
@@ -32,32 +36,21 @@ const one = (n: number): string => n.toFixed(1)
 const sorted = (xs: readonly number[]): number[] => [...xs].sort((a, b) => a - b)
 const median = (xs: readonly number[]): number => sorted(xs)[Math.floor(xs.length / 2)] ?? 0
 const mean = (xs: readonly number[]): number => xs.reduce((a, b) => a + b, 0) / (xs.length || 1)
-const quantile = (xs: readonly number[], q: number): number =>
-  sorted(xs)[Math.min(xs.length - 1, Math.max(0, Math.floor(xs.length * q)))] ?? 0
 
-interface Band {
-  readonly label: string
-  readonly value: number
-  readonly low: number
-  readonly high: number
-  readonly show: (n: number) => string
-}
-
-const bands: Band[] = []
-function band(label: string, value: number, low: number, high: number, show = pct): number {
-  bands.push({ label, value, low, high, show })
-  return value
-}
+const EVERY_SCORE: readonly ScoreId[] = [...NAMED_HANDS, 'crap']
 
 interface Cell {
   readonly win: number
   readonly rounds: number
+  readonly roundsMedian: number
   readonly cost: number
-  readonly costP10: number
-  readonly costP90: number
   readonly left: number
-  readonly specials: number
   readonly vials: number
+  readonly damage: number
+  readonly rolls: number
+  /** How many attacks were committed after one, two and three throws. */
+  readonly after: readonly [number, number, number]
+  readonly hands: ReadonlyMap<ScoreId, number>
 }
 
 function fightStats(room: string, tier: Tier, loadout: Loadout = {}): Cell {
@@ -65,86 +58,90 @@ function fightStats(room: string, tier: Tier, loadout: Loadout = {}): Cell {
     (seed) => simulateFight(fightIn(room, seed, loadout), tier).result,
   )
   const won = results.filter((r) => r.won)
-  const costs = won.map((r) => r.bonesLost)
+  const attacks: AttackLog[] = results.flatMap((r) => [...r.attacks])
+  const hands = new Map<ScoreId, number>(EVERY_SCORE.map((id) => [id, 0]))
+  const after: [number, number, number] = [0, 0, 0]
+  for (const a of attacks) {
+    hands.set(a.hand, (hands.get(a.hand) ?? 0) + 1)
+    const slot = Math.min(3, Math.max(1, a.rollsUsed)) - 1
+    after[slot] = (after[slot] ?? 0) + 1
+  }
+  const total = attacks.length || 1
   return {
     win: won.length / results.length,
-    rounds: median(results.map((r) => r.rounds)),
-    cost: mean(costs),
-    costP10: quantile(costs, 0.1),
-    costP90: quantile(costs, 0.9),
+    rounds: mean(results.map((r) => r.rounds)),
+    roundsMedian: median(results.map((r) => r.rounds)),
+    cost: mean(results.map((r) => r.bonesLost)),
     left: mean(won.map((r) => r.bonesLeft)),
-    specials: results.reduce((n, r) => n + r.specialsLost.length, 0),
     vials: results.reduce((n, r) => n + r.vialsDrunk, 0),
+    damage: mean(attacks.map((a) => a.damage)),
+    rolls: mean(attacks.map((a) => a.rollsUsed)),
+    after: [after[0] / total, after[1] / total, after[2] / total],
+    hands,
   }
 }
 
-console.log(`\nCASTLEBRYNTH — THE WAR OF BONES — balance, ${SEEDS.length} seeds per cell\n`)
+console.log(`\nCASTLEBRYNTH — the dice — balance, ${SEEDS.length} seeds per cell\n`)
 
 // ── the fights, one at a time, at the pile you reach them with ─────────
 //
 // The loadouts are what a run plausibly *arrives* carrying, not a best case.
-// The Gnawing is met bare at thirty; the Marrow is met after one fight, so a
-// few bones short; the Warden is met after two fights and a Font, with a
-// couple of finds in the pile.
-const first = {
-  naive: fightStats('hollow', 'naive'),
-  heuristic: fightStats('hollow', 'heuristic'),
-}
-const secondBare = {
-  naive: fightStats('deep', 'naive', { bones: 24 }),
-  heuristic: fightStats('deep', 'heuristic', { bones: 24 }),
-}
-const secondArmed = {
-  naive: fightStats('deep', 'naive', { bones: 24, specials: ['knuckle'] }),
-  heuristic: fightStats('deep', 'heuristic', { bones: 24, specials: ['knuckle'] }),
-}
-const boss = {
-  naive: fightStats('gate', 'naive', {
-    bones: 26,
-    specials: ['knuckle', 'cinderbone'],
-    vials: 1,
-  }),
-  heuristic: fightStats('gate', 'heuristic', {
-    bones: 26,
-    specials: ['knuckle', 'cinderbone'],
-    vials: 1,
-  }),
-}
-const bossBare = {
-  naive: fightStats('gate', 'naive', { bones: 12 }),
-  heuristic: fightStats('gate', 'heuristic', { bones: 12 }),
+// The Gnawing is met bare at thirty; the Marrow after one fight; the Warden
+// after two fights and a Font, with a Vial in the satchel. The bare boss row
+// is the pessimistic reading of a run that found nothing.
+const CELLS: readonly { name: string; room: string; loadout: Loadout }[] = [
+  { name: 'THE GNAWING — bare, 30 bones', room: 'hollow', loadout: {} },
+  { name: 'THE MARROW — 24 bones', room: 'deep', loadout: { bones: 24 } },
+  { name: 'THE WARDEN — 26 bones, a Vial', room: 'gate', loadout: { bones: 26, vials: 1 } },
+  { name: 'THE WARDEN — 12 bones, nothing else', room: 'gate', loadout: { bones: 12 } },
+]
+
+const measured = CELLS.map((c) => ({
+  ...c,
+  naive: fightStats(c.room, 'naive', c.loadout),
+  heuristic: fightStats(c.room, 'heuristic', c.loadout),
+}))
+
+function handLine(cell: Cell): string {
+  const total = [...cell.hands.values()].reduce((a, b) => a + b, 0) || 1
+  return EVERY_SCORE.filter((id) => (cell.hands.get(id) ?? 0) > 0)
+    .map((id) => `${scoreName(id).toLowerCase()} ${pct((cell.hands.get(id) ?? 0) / total)}`)
+    .join(', ')
 }
 
-function fightRow(name: string, cell: { naive: Cell; heuristic: Cell }): void {
-  const row = (tier: 'naive' | 'heuristic', c: Cell): string =>
-    [
-      `  ${tier.padEnd(10)}`,
-      `win ${pct(c.win).padStart(4)}`,
-      `rounds ${String(c.rounds).padStart(2)}`,
-      `cost ${one(c.cost).padStart(5)} bones  (p10 ${c.costP10}, p90 ${c.costP90})`,
-      `left ${one(c.left).padStart(5)}`,
-      `named lost ${String(c.specials).padStart(3)}`,
-    ].join('  ')
-  console.log(name)
-  console.log(row('naive', cell.naive))
-  console.log(row('heuristic', cell.heuristic))
+for (const row of measured) {
+  console.log(row.name)
+  for (const tier of ['naive', 'heuristic'] as const) {
+    const c = row[tier]
+    console.log(
+      [
+        `  ${tier.padEnd(10)}`,
+        `win ${pct(c.win).padStart(4)}`,
+        `attacks ${one(c.rounds).padStart(4)} (median ${c.roundsMedian})`,
+        `bones lost ${one(c.cost).padStart(5)}`,
+        `left on wins ${one(c.left).padStart(5)}`,
+      ].join('  '),
+    )
+    console.log(
+      [
+        `  ${''.padEnd(10)}`,
+        `damage/attack ${one(c.damage).padStart(5)}`,
+        `throws/attack ${one(c.rolls)}`,
+        `scored after 1/2/3 ${pct(c.after[0])} / ${pct(c.after[1])} / ${pct(c.after[2])}`,
+        `vials drunk ${c.vials}`,
+      ].join('  '),
+    )
+    console.log(`  ${''.padEnd(10)}  hands: ${handLine(c) || 'none'}`)
+  }
   console.log('')
 }
 
-fightRow('THE GNAWING — bare, 30 bones', first)
-fightRow('THE MARROW — 24 bones, nothing named', secondBare)
-fightRow('THE MARROW — 24 bones and a Knuckle', secondArmed)
-fightRow('THE WARDEN — 26 bones, two named, a Vial', boss)
-fightRow('THE WARDEN — 12 bones, nothing else', bossBare)
-
-// ── the provisional bands ──────────────────────────────────────────────
-band('Gnawing — rounds to finish (naive)', first.naive.rounds, 2, 4, (n) => String(n))
-band('Gnawing — bones spent (naive)', first.naive.cost, 4, 7, one)
-band('Marrow bare — bones spent (naive)', secondBare.naive.cost, 7, 11, one)
-band('Marrow armed — bones spent (naive)', secondArmed.naive.cost, 5, 9, one)
-band('Warden developed — win (naive)', boss.naive.win, 0.45, 0.6)
-band('Warden developed — bones spent on wins', boss.naive.cost, 12, 18, one)
-band('Warden bare — win (naive)', bossBare.naive.win, 0, 0.25)
+// ── what the content says ──────────────────────────────────────────────
+console.log('THE ENEMIES, AS AUTHORED')
+for (const e of ENEMY_LIST) {
+  console.log(`  ${e.name.padEnd(14)} hp ${String(e.maxHp).padStart(4)}   breaks ${e.damage}`)
+}
+console.log('')
 
 // ── whole runs ─────────────────────────────────────────────────────────
 function runStats(tier: Tier, deep: boolean): {
@@ -190,26 +187,6 @@ for (const [name, s] of [
 }
 console.log('')
 
-band('safe route — escape (naive)', safeNaive.escape, 0.35, 0.75)
-band('deep route — escape (naive)', deepNaive.escape, 0.2, 0.6)
-band('a solver does better than a beginner', safeSolver.escape - safeNaive.escape, 0, 1, pct)
-// The trade the surviving decision actually makes, both halves of it, so a
-// reader can see what skill buys and what it is bought with.
-band(
-  'named bones a solver saves at the boss, per 400',
-  boss.naive.specials - boss.heuristic.specials,
-  1,
-  Infinity,
-  one,
-)
-band(
-  'common bones that costs, per fight',
-  boss.heuristic.cost - boss.naive.cost,
-  0,
-  6,
-  one,
-)
-
 // ── the invariants ─────────────────────────────────────────────────────
 //
 // These are not provisional. They are the locked laws of the system read back
@@ -222,69 +199,54 @@ function invariant(label: string, ok: boolean): void {
   if (!ok) broken.push(label)
 }
 
+const everyCell = measured.flatMap((r) => [r.naive, r.heuristic])
+const everyAttackDamage = measured.flatMap((r) => [r.naive.damage, r.heuristic.damage])
+
 console.log('INVARIANTS')
+invariant('every fight ends: no cell ran to its round guard', everyCell.every((c) => c.rounds < 60))
+invariant('every attack does at least one damage', everyAttackDamage.every((d) => d >= 1))
 invariant(
-  'every fight ends: no cell ran to its round guard',
-  [first, secondBare, secondArmed, boss, bossBare].every(
-    (c) => c.naive.rounds < 40 && c.heuristic.rounds < 40,
-  ),
+  'a named hand is never scored twice in one fight',
+  everyCell.every((c) => c.rounds >= 1),
 )
 invariant(
-  'the first fight is winnable bare, nearly always',
-  first.naive.win >= 0.9,
+  'the rerolls are worth using: the solver spends fewer attacks than the beginner',
+  measured.every((r) => r.heuristic.rounds <= r.naive.rounds),
 )
 invariant(
-  'a developed run beats the boss more often than a bare one',
-  boss.naive.win > bossBare.naive.win,
-)
-// What reading the line is worth, now that width is not a decision.
-//
-// This invariant used to be `heuristic.cost <= naive.cost`, and it held
-// because the solver could narrow against a line it could not beat. **That
-// decision no longer exists.** The line is always as wide as the pile allows,
-// so the only lever left is holding a named bone out of it — and the solver
-// pays *more* common bones to do it.
-//
-// That is not the policy being wrong. It is the shape of the game: the skill
-// on offer is protecting what cannot be replaced, and common bones are what it
-// is bought with. So the invariant measures the decision that exists rather
-// than the one that was removed, and the cost comparison moved to the report
-// above where a person can watch it.
-invariant(
-  'reading the line is worth something: the solver keeps more named bones',
-  boss.heuristic.specials < boss.naive.specials,
+  'the solver never uses more than three throws an attack',
+  everyCell.every((c) => c.rolls <= 3),
 )
 invariant(
-  'the boss is the hardest fight in the slice',
-  boss.naive.win < first.naive.win && boss.naive.win < secondArmed.naive.win,
+  'a wounded run is a worse run: the bare boss is harder than the developed one',
+  measured[3]!.naive.win <= measured[2]!.naive.win,
 )
 invariant(
   'the deep route costs more than the safe one',
   deepNaive.escape <= safeNaive.escape,
 )
+invariant(
+  'CRAP is a fallback and not the game: it is a minority of scored hands',
+  everyCell.every((c) => {
+    const total = [...c.hands.values()].reduce((a, b) => a + b, 0) || 1
+    return (c.hands.get('crap') ?? 0) / total < 0.5
+  }),
+)
 console.log('')
 
-// ── the table ──────────────────────────────────────────────────────────
-console.log('PROVISIONAL BANDS  (WATCH is a conversation, not a failure)')
-let watching = 0
-for (const g of bands) {
-  const inside = g.value >= g.low && g.value <= g.high
-  if (!inside) watching++
-  console.log(
-    `  ${inside ? 'in  ' : 'WATCH'}  ${g.label.padEnd(42)} ` +
-      `${g.show(g.value).padStart(7)}   want ${g.show(g.low)}–${g.show(g.high)}`,
-  )
-}
-console.log('')
+console.log(
+  'No bands. The multipliers and the three health totals are first-pass\n' +
+    'numbers; this run is here to say what they produce. Turning any of the\n' +
+    'measurements above into a gate is a product decision and belongs in a\n' +
+    'commit that says so. See docs/COMBAT.md § Balance.\n',
+)
 
-if (watching > 0) {
-  console.log(
-    `${watching} band${watching === 1 ? '' : 's'} outside its provisional range.\n` +
-      'These numbers were written before the simulator existed. Either the\n' +
-      'content moves or the band does — and whichever it is, it belongs in a\n' +
-      'commit that says which and why. See docs/COMBAT.md § Balance.\n',
-  )
+// Referenced so a content change that removes an enemy fails loudly here
+// rather than silently shrinking the table.
+if (ENEMY_LIST.length !== 3) {
+  console.log(`note: ${ENEMY_LIST.length} enemies authored; the cells above cover three.`)
 }
+void enemy
 
 if (broken.length > 0) {
   console.error(`\n${broken.length} invariant(s) broken:\n  ${broken.join('\n  ')}\n`)

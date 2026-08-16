@@ -28,7 +28,6 @@ import {
   roomArt,
   satchelArt,
 } from '../../src/render/assets.js'
-import { BONE_PROFILES } from '../../src/content/bones.js'
 import { defeatOf } from '../../src/content/defeat.js'
 import { ENEMIES, STAGES } from '../../src/content/enemies.js'
 import { ROOM_LIBRARY, template } from '../../src/content/rooms.js'
@@ -394,7 +393,7 @@ describe('the player is holding something', () => {
 })
 
 /**
- * The War of Bones families.
+ * The bone and satchel families.
  *
  * Both tables are empty today — the bones are drawn from the pip geometry in
  * `ui/components.ts`, which is the mechanism the game has always drawn a face
@@ -403,23 +402,22 @@ describe('the player is holding something', () => {
  *
  * The gates below are **armed rather than skipped**. They pass vacuously on an
  * empty table and bite the moment a row is added, which is what stops the art
- * landing half-delivered: a `heavy.8` that shipped while `heavy.7` did not
- * would silently fall back to a drawn face, and one bone in the line would be
- * a different object from its neighbour.
+ * landing half-delivered: a `6` that shipped while `5` did not would silently
+ * fall back to a drawn face, and one bone in the hand would be a different
+ * object from its neighbour.
  */
 describe('the bone families, when they land', () => {
   it('ships a whole family or none of it', () => {
-    for (const id of Object.keys(BONE_PROFILES) as (keyof typeof BONE_PROFILES)[]) {
-      const profile = BONE_PROFILES[id]
-      const wanted = ['back', 'broken', ...new Set(profile.faces.map(String))]
-      const present = wanted.filter((face) => boneArt(id, face))
-      expect(
-        present.length === 0 || present.length === wanted.length,
-        `${id} has art for ${present.join(', ')} and not ${wanted
-          .filter((f) => !present.includes(f))
-          .join(', ')}`,
-      ).toBe(true)
-    }
+    // Six ordinary faces plus a back, which is what an attack shows before it
+    // has been thrown.
+    const wanted = ['back', '1', '2', '3', '4', '5', '6']
+    const present = wanted.filter((face) => boneArt(face))
+    expect(
+      present.length === 0 || present.length === wanted.length,
+      `the bone has art for ${present.join(', ')} and not ${wanted
+        .filter((f) => !present.includes(f))
+        .join(', ')}`,
+    ).toBe(true)
   })
 
   it('holds every bone row to a real file of the declared size', () => {
@@ -438,9 +436,9 @@ describe('the bone families, when they land', () => {
     }
   })
 
-  it('ships all three satchel icons or none of them', () => {
-    const present = ['vial', 'charm', 'pouch'].filter((id) => satchelArt(id))
-    expect(present.length === 0 || present.length === 3).toBe(true)
+  it('ships every satchel icon the tray can show, or none of them', () => {
+    const present = ['vial'].filter((id) => satchelArt(id))
+    expect(present.length === 0 || present.length === 1).toBe(true)
   })
 })
 
