@@ -123,42 +123,6 @@ export function tumble(sequence: Sequence, { bones, paint }: Tumble): void {
   // the next throw, and nothing reads it.
 }
 
-/** The bones you committed, confirming that they are the line. */
-export function confirm(bones: readonly HTMLElement[]): void {
-  for (const bone of bones) {
-    bone.classList.remove('bone-committing')
-    void bone.offsetWidth
-    bone.classList.add('bone-committing')
-  }
-}
-
-/**
- * One bone breaking, in the lane it was standing in.
- *
- * The whole of a casualty on screen. It is looked up by key rather than by
- * position, because a lane is where a bone *is* and a key is what it *is* —
- * and after a re-sort those are not the same question.
- *
- * The class is not removed on a timer. A broken bone stays broken until the
- * next paint replaces the line, which is the truth: it does not come back.
- */
-export function boneBreak(host: HTMLElement, boneKey: string): void {
-  const bone = host.querySelector<HTMLElement>(`[data-bone-key="${cssEscape(boneKey)}"]`)
-  if (!bone) return
-  bone.dataset['broken'] = 'yes'
-  if (reducedMotion()) return
-  bone.classList.remove('bone-breaking')
-  void bone.offsetWidth
-  bone.classList.add('bone-breaking')
-}
-
-/** Keys carry a colon, which a selector reads as a pseudo-class. */
-function cssEscape(value: string): string {
-  return typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
-    ? CSS.escape(value)
-    : value.replace(/[^\w-]/g, (c) => `\\${c}`)
-}
-
 /** The bones you just lost or got back, over the pile that holds them. */
 export function pileChange(orb: HTMLElement, delta: number): void {
   if (delta === 0) return

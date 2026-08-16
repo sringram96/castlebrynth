@@ -6,15 +6,16 @@ Read time: five minutes.
 ## The pitch
 
 > Castlebrynth is a portrait pixel-horror roguelike where you descend through
-> hand-authored rooms carrying a pile of thirty bones, fight grotesque enemies
-> by throwing that pile against the line they have already thrown, collect
-> strange named bones that roll higher than any ordinary one, and decide how
-> far to push before the dungeon kills you.
+> hand-authored rooms carrying a pile of thirty bones. In a fight you throw up
+> to six at a time, hold and reroll them into Yahtzee-like hands, and turn the
+> total of the dice through the hand's multiplier into damage. Every named hand
+> can be spent once per fight. If the thing survives, it breaks a fixed number
+> of your bones. As the pile gets thin, so does your hand.
 
-The whole of the fight is four sentences. **It throws first. High kills low.
-Ties kill both. What dies stays dead.** Everything else in the system exists to
-make those four legible: the pile is what pays, and one press is what it takes
-to find out how much.
+The whole of the fight is four sentences. **The numbers are my power. The
+pattern makes that power hit harder. Each good pattern goes once. If it
+survives, I know exactly what it costs me.** Everything else in the system
+exists to make those four legible.
 
 ## The player verbs
 
@@ -25,8 +26,10 @@ as support for one of them, it is out of scope.
 | --- | --- |
 | **LOOK** | Tap a visible thing in the room. Always answers. Never commits. |
 | **GO** | Choose the next room. |
-| **THROW** | Throw the whole pile against its line, and watch the losers break. One press, one round. |
-| **ROUND** | Let it throw again. |
+| **ROLL** | Throw `min(6, bones)` ordinary d6s. The first press of an attack. |
+| **HOLD** | Tap a die to keep it. A draft; nothing is committed. |
+| **REROLL** | Throw the unheld ones again. Twice at most. |
+| **SCORE** | Commit the dice as one hand. The whole exchange, in one press. |
 | **DRINK** | Spend a Vial: five bones back. |
 | **TAKE** | Choose a reward. |
 | **SKIP** | Leave a reward where it fell. |
@@ -105,7 +108,7 @@ is inferred.
 | --- | --- | --- |
 | `title` | Do I go down? | `START_RUN`, `CONTINUE` |
 | `explore` | Which way — and what do I touch? | `GO`, or a room's fight begins |
-| `combat` | How many bones do I risk? | its army empty → `reward`; my pile empty → `dead` |
+| `combat` | What can I make of these, and what will it cost? | its health empty → `reward`; my pile empty → `dead` |
 | `reward` | What do I take, if anything? | `TAKE` or `SKIP` → `explore` |
 | `dead` | (nothing — it is over) | `START_RUN` |
 | `complete` | (nothing — you got out) | `START_RUN`, `TITLE` |
@@ -122,38 +125,41 @@ permanent knowledge clues · refusal flags · the Book of Ends as state ·
 procedural region lean and lock · the provable-winnability generator ·
 hand-size wounds and upgrades · classes · QTE windows · merchants and currency
 
-Two collectible nouns exist: **bones** (including named ones) and **Vials**.
-Adding a third is a product decision, not an engineering one.
+One collectible noun exists for this baseline: **Vials**. Adding a second is a
+product decision, not an engineering one.
 
-Relics are gone. A passive arithmetic modifier has nothing to modify in a game
-whose whole combat rule is *higher kills lower*, and keeping them would have
-meant keeping a number for them to add to.
+Named bones are gone with the fielding step they modified. When modifiers
+return — unusual dice that change Yahtzee probabilities — they will be built
+for the combat that actually exists, and they will come in through the reward
+screen, which is why that machinery stayed.
 
-Charms are gone too, and for a different reason: a reroll needs a moment
-between seeing your throw and living with it, and collapsing the round to one
-press removed that moment. See `docs/COMBAT.md` § *What was cut, and why*.
+Relics and Charms were already gone. Nothing has been invented to replace any
+of them: a boring reward pool for one combat prototype is preferable to
+contaminating the experiment. See `docs/COMBAT.md` § *What is not here*.
 
 ## Definition of done for the slice
 
 - A fresh mobile browser completes the whole route without a reload.
 - Every enemy is visibly present before FIGHT is offered.
-- The enemy's line is face-up and readable before THROW is offered.
-- Throw, round, drink, inspect, reward, skip, navigation and death-restart all
-  have passing browser tests.
-- A first-time player can say what their named bone rolls, in digits.
+- The enemy's health and its damage are both readable before ROLL is offered.
+- Roll, hold, reroll, score, drink, reward, skip, navigation and death-restart
+  all have passing browser tests.
+- A first-time player can say what a hand multiplies by, in digits.
 - Death to new run is one press, and never leaves stale combat UI.
 - The active docs read in under twenty minutes.
 
 ### Still open
 
-- **The Warden is too easy.** 84% at a developed pile against a wanted 45–60%.
-  The levers are its army, its profiles, and how much a run arrives carrying;
-  all three are content decisions. See `docs/COMBAT.md` § *Balance*.
-- **The War of Bones art has not been drawn.** The bones are rendered from the
-  pip geometry the game has always drawn a face with. The plates that are owed
-  — bone bodies, a broken state, the satchel icons, a shatter family, a tray
-  repaint with a bay for the enemy's line — are written out under
-  `## HUMAN ART REQUIRED` in `POLISH_PROGRESS.md`.
+- **The rerolls are not optional, and the numbers say so loudly.** A simulated
+  player who throws once and commits finishes the safe route 1% of the time; a
+  player who uses all three throws finishes it 35% of the time. That is a
+  tutorial problem rather than a depth one. See `docs/COMBAT.md` § *Balance*.
+- **The Warden may now be too hard**, at 25% for the solver at a developed
+  pile. Its health total and its damage figure are both first-pass values.
+- **The dice art has not been drawn.** The bones are rendered from the pip
+  geometry the game has always drawn a face with. The plates that are owed —
+  a bone body with faces 1–6 and a held state, and a Vial plate — are written
+  out under `## HUMAN ART REQUIRED` in `POLISH_PROGRESS.md`.
 
 ## The gate
 

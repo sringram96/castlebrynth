@@ -17,49 +17,34 @@ import { reduce } from '../../src/game/reducer.js'
 import type { Action } from '../../src/game/reducer.js'
 import { TITLE } from '../../src/game/state.js'
 import type { GameState } from '../../src/game/state.js'
-import { ENEMIES, armySize } from '../../src/content/enemies.js'
+import { ENEMIES } from '../../src/content/enemies.js'
 import { standIn } from './where.js'
 import { DEFEATS, defeatDuration, defeatOf, defeatStance } from '../../src/content/defeat.js'
-import { totalBones } from '../../src/content/bones.js'
+import { legalScores } from '../../src/combat/hands.js'
 
 const play = (state: GameState, ...actions: Action[]): GameState =>
   actions.reduce((s, a) => reduce(s, a), state)
 
 /**
- * A fight in a named room, standing one lane from over.
+ * A fight in a named room, standing one attack from over.
  *
- * The army is cut to one bone and that bone is stood on a 1, then a real
- * round is fought through the reducer. Both are positions the fight reaches on
- * its own — a six-wide line against a single low bone is an ordinary last
- * round — so this only skips the rounds that get there.
+ * The thing is stood on its last point of health, which is a position every
+ * fight reaches on its own — so this only skips the attacks that get there.
+ * Everything after it is a real press.
  */
 function poised(templateId: string, seed = 1): GameState {
   const started = reduce(TITLE, { type: 'START_RUN', seed })
   const opened = reduce(standIn(started, templateId), { type: 'FIGHT' })
   const combat = opened.run!.combat!
-  // The army and the line are two views of the same bones, so they are cut as
-  // one: keeping a bone the line does not show would leave a fight that cannot
-  // be finished by anything on screen.
-  const last = combat.enemyLine[combat.enemyLine.length - 1]!
-  return {
-    ...opened,
-    run: {
-      ...opened.run!,
-      combat: {
-        ...combat,
-        enemyBones: combat.enemyBones.filter((b) => b.boneId === last.enemyBoneId),
-        enemyLine: [{ ...last, value: 1, faceIndex: 0 }],
-      },
-    },
-  }
+  return { ...opened, run: { ...opened.run!, combat: { ...combat, enemyHp: 1 } } }
 }
 
-/** Take the last bone. */
+/** Take the last of it: one throw, and whatever hand that throw allows. */
 function kill(state: GameState): GameState {
-  return play(
-    state,
-    { type: 'THROW' },
-  )
+  const rolled = reduce(state, { type: 'ROLL' })
+  const combat = rolled.run!.combat!
+  const hand = legalScores(combat.dice, combat.usedHands)[0]!
+  return play(rolled, { type: 'SCORE', hand })
 }
 
 describe('the content', () => {
@@ -128,7 +113,7 @@ describe('the last bone', () => {
     expect(after.mode).toBe('combat')
     const combat = after.run!.combat!
     expect(combat.defeated).toBe(true)
-    expect(combat.enemyBones).toHaveLength(0)
+    expect(combat.enemyHp).toBe(0)
     // Not cleared, no offer drawn, no screen changed. The state says only that
     // the thing is finished and is being watched finishing.
     expect(after.run!.cleared).not.toContain(after.run!.roomId)
@@ -138,9 +123,10 @@ describe('the last bone', () => {
   it('leaves no move in the fight', () => {
     const dying = kill(poised('hollow'))
     for (const action of [
-      { type: 'THROW' },
-      { type: 'ROUND' },
-      { type: 'CHARM', boneKey: 'anything' },
+      { type: 'ROLL' },
+      { type: 'REROLL', held: [] },
+      { type: 'SCORE', hand: 'crap' },
+      { type: 'DRINK' },
     ] as Action[]) {
       expect(reduce(dying, action), action.type).toBe(dying)
     }
@@ -149,10 +135,11 @@ describe('the last bone', () => {
   it('has already settled the pile', () => {
     const before = poised('hollow')
     const after = kill(before)
-    // Whatever the last round cost is already paid. `DEFEAT_DONE` moves no
+    // Whatever the last attack cost is already paid — and a killing attack
+    // takes no answer at all, so it cost nothing. `DEFEAT_DONE` moves no
     // bones; it only packs the fight away.
-    const settled = totalBones(after.run!)
-    expect(totalBones(reduce(after, { type: 'DEFEAT_DONE' }).run!)).toBe(settled)
+    expect(after.run!.bones).toBe(before.run!.bones)
+    expect(reduce(after, { type: 'DEFEAT_DONE' }).run!.bones).toBe(after.run!.bones)
   })
 })
 
@@ -200,7 +187,7 @@ describe('the three fights', () => {
       const after = kill(poised(templateId, 3))
       expect(after.run!.combat?.enemyId, templateId).toBe(enemyId)
       expect(after.run!.combat?.defeated, templateId).toBe(true)
-      expect(armySize(enemyId)).toBeGreaterThan(0)
+      expect(ENEMIES[enemyId]!.maxHp).toBeGreaterThan(0)
     }
   })
 })

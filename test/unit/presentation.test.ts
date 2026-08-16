@@ -8,99 +8,104 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { armyBand, idleFrameMs, idlePose, smashPose } from '../../src/content/enemyPresentation.js'
-import { STAGES, armySize, stageForRound, stanceAt } from '../../src/content/enemies.js'
-import type { SmashRecord } from '../../src/game/state.js'
+import {
+  attackPose,
+  healthBand,
+  idleFrameMs,
+  idlePose,
+} from '../../src/content/enemyPresentation.js'
+import { ENEMIES, STAGES, stageForRound, stanceAt } from '../../src/content/enemies.js'
+import type { AttackRecord } from '../../src/game/state.js'
 
-const record = (over: Partial<SmashRecord> = {}): SmashRecord => ({
-  lanes: [],
-  playerCommonLost: 0,
-  playerSpecialsLost: [],
-  enemyBonesLost: [],
-  heldTies: 0,
+const record = (over: Partial<AttackRecord> = {}): AttackRecord => ({
+  dice: [6, 6, 3, 2, 1, 1],
+  hand: 'pair',
+  sum: 19,
+  multiplier: 1,
+  damage: 19,
+  enemyHpBefore: 180,
+  enemyHpAfter: 161,
+  retaliation: 8,
+  bonesBefore: 30,
+  bonesAfter: 22,
   ...over,
 })
 
-describe('the army band', () => {
+describe('the health band', () => {
   it('is thirds, and the boundary belongs to the lower band', () => {
-    // The honest reading of a count: the moment it drops to the line it has
+    // The honest reading of a total: the moment it drops to the line it has
     // crossed it.
-    expect(armyBand(8, 8)).toBe('full')
-    expect(armyBand(6, 8)).toBe('full')
-    expect(armyBand(5, 8)).toBe('medium')
-    expect(armyBand(3, 8)).toBe('medium')
-    expect(armyBand(2, 8)).toBe('low')
-    expect(armyBand(1, 8)).toBe('low')
+    expect(healthBand(180, 180)).toBe('full')
+    expect(healthBand(121, 180)).toBe('full')
+    expect(healthBand(120, 180)).toBe('medium')
+    expect(healthBand(61, 180)).toBe('medium')
+    expect(healthBand(60, 180)).toBe('low')
+    expect(healthBand(0, 180)).toBe('low')
   })
 
-  it('gives an eight-bone Warden three bands worth having', () => {
-    const start = armySize('warden')
-    expect(start).toBe(8)
-    const bands = Array.from({ length: start }, (_, i) => armyBand(start - i, start))
+  it('gives the Warden three bands worth having', () => {
+    const max = ENEMIES.warden!.maxHp
+    expect(max).toBe(180)
+    const bands = Array.from({ length: max + 1 }, (_, hp) => healthBand(hp, max))
     expect(new Set(bands)).toEqual(new Set(['full', 'medium', 'low']))
   })
 
-  it('survives a zero start rather than dividing by it', () => {
-    expect(armyBand(0, 0)).toBe('full')
+  it('survives a zero total rather than dividing by it', () => {
+    expect(healthBand(0, 0)).toBe('full')
   })
 })
 
 describe('idle plates', () => {
-  it('the Warden stands in the plate its army says', () => {
-    expect(idlePose('warden', 8, 8)).toBe('idle.full.1')
-    expect(idlePose('warden', 4, 8)).toBe('idle.mid.1')
-    expect(idlePose('warden', 1, 8)).toBe('idle.low.1')
+  it('the Warden stands in the plate its health says', () => {
+    expect(idlePose('warden', 180, 180)).toBe('idle.full.1')
+    expect(idlePose('warden', 90, 180)).toBe('idle.mid.1')
+    expect(idlePose('warden', 20, 180)).toBe('idle.low.1')
   })
 
   it('rests on the first plate of a band', () => {
     // A settled paint, a reload and reduced motion all pass no frame, and all
     // three have to land on the plate the band was authored to rest on.
-    expect(idlePose('warden', 8, 8)).toBe(idlePose('warden', 8, 8, 0))
-    expect(idlePose('warden', 8, 8, 2)).toBe(idlePose('warden', 8, 8, 0))
+    expect(idlePose('warden', 180, 180)).toBe(idlePose('warden', 180, 180, 0))
+    expect(idlePose('warden', 180, 180, 2)).toBe(idlePose('warden', 180, 180, 0))
   })
 
   it('cycles the pair, in both directions', () => {
-    expect(idlePose('warden', 8, 8, 1)).toBe('idle.full.2')
-    expect(idlePose('warden', 8, 8, -1)).toBe('idle.full.2')
+    expect(idlePose('warden', 180, 180, 1)).toBe('idle.full.2')
+    expect(idlePose('warden', 180, 180, -1)).toBe('idle.full.2')
   })
 
   it('gives nothing to an enemy with no idle family', () => {
-    expect(idlePose('gnawing', 5, 5)).toBeUndefined()
+    expect(idlePose('gnawing', 70, 70)).toBeUndefined()
     expect(idleFrameMs('gnawing')).toBeUndefined()
     expect(idleFrameMs('warden')).toBe(700)
   })
 })
 
-describe('smash plates', () => {
-  it('a held tie shows the defensive plate', () => {
-    // The boss rule, on the round the player has just paid for it.
-    expect(smashPose('warden', record({ heldTies: 1, playerCommonLost: 1 }))).toBe('defense')
+describe('attack plates', () => {
+  it('a feeble attack shows the defensive plate', () => {
+    // CRAP is the fallback that is never useless and always weak, and the
+    // drawing of a thing shrugging is what running out of shapes looks like.
+    expect(attackPose('warden', record({ hand: 'crap', damage: 9 }))).toBe('defense')
   })
 
-  it('a held tie outranks a casualty', () => {
+  it('a real hit shows the attacking plate', () => {
+    expect(attackPose('warden', record({ hand: 'full-house', damage: 48 }))).toBe('attack')
+    expect(attackPose('warden', record({ hand: 'pair' }))).toBe('attack')
+  })
+
+  it('a killing attack gets no pose: the authored death is the picture', () => {
     expect(
-      smashPose('warden', record({ heldTies: 2, playerCommonLost: 3, enemyBonesLost: ['a'] })),
-    ).toBe('defense')
-  })
-
-  it('casualties with no held tie show the attacking plate', () => {
-    expect(smashPose('warden', record({ playerCommonLost: 2 }))).toBe('attack')
-    expect(smashPose('warden', record({ playerSpecialsLost: ['knuckle#0'] }))).toBe('attack')
-  })
-
-  it('a round that cost nothing gets no pose', () => {
-    // A defensive drawing over a round in which nothing happened to you would
-    // be the picture claiming something the record does not.
-    expect(smashPose('warden', record({ enemyBonesLost: ['a', 'b'] }))).toBeUndefined()
+      attackPose('warden', record({ hand: 'four-kind', enemyHpAfter: 0, retaliation: 0 })),
+    ).toBeUndefined()
   })
 
   it('the Gnawing has a struck plate and no defensive one', () => {
-    expect(smashPose('gnawing', record({ playerCommonLost: 1 }))).toBe('hit')
-    expect(smashPose('gnawing', record({ heldTies: 1 }))).toBeUndefined()
+    expect(attackPose('gnawing', record({ hand: 'pair' }))).toBe('hit')
+    expect(attackPose('gnawing', record({ hand: 'crap' }))).toBe('hit')
   })
 
   it('gives nothing to an enemy with no entry', () => {
-    expect(smashPose('marrow', record({ playerCommonLost: 3 }))).toBeUndefined()
+    expect(attackPose('marrow', record({ hand: 'pair' }))).toBeUndefined()
   })
 })
 
@@ -118,8 +123,8 @@ describe('staging', () => {
 
   it('is staging, not a deadline: nothing about it is in the reducer', () => {
     // The old contact rule killed the player when it arrived. It does not
-    // exist. What decides the fight is the army, and the drawing only says
-    // which round it is.
+    // exist. What decides the fight is the dice, and the drawing only says
+    // which attack it is.
     expect(stageForRound('warden', 5)).toBeUndefined()
     expect(stageForRound('marrow', 5)).toBeUndefined()
   })
@@ -137,9 +142,9 @@ describe('staging', () => {
 
 describe('purity', () => {
   it('every lookup answers the same twice', () => {
-    const facts = record({ heldTies: 1, playerCommonLost: 2 })
-    expect(smashPose('warden', facts)).toBe(smashPose('warden', facts))
-    expect(idlePose('warden', 5, 8)).toBe(idlePose('warden', 5, 8))
-    expect(facts).toEqual(record({ heldTies: 1, playerCommonLost: 2 }))
+    const facts = record({ hand: 'crap', damage: 7 })
+    expect(attackPose('warden', facts)).toBe(attackPose('warden', facts))
+    expect(idlePose('warden', 90, 180)).toBe(idlePose('warden', 90, 180))
+    expect(facts).toEqual(record({ hand: 'crap', damage: 7 }))
   })
 })

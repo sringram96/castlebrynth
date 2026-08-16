@@ -124,7 +124,6 @@ test.describe('the reward screen', () => {
 
     const run = (await state(page)).run!
     if (id === 'vial') expect(run.vials).toBe(1)
-    if (id === 'knuckle' || id === 'cinderbone') expect(run.specials).toHaveLength(1)
   })
 
   test('SKIP leaves it, and changes nothing about the army', async ({ page }) => {
@@ -142,24 +141,24 @@ test.describe('the reward screen', () => {
 
     await expect(page.locator('#screen')).toBeHidden()
     const after = (await state(page)).run!
-    expect(after.commonBones).toBe(before.commonBones)
-    expect(after.specials).toHaveLength(before.specials.length)
+    expect(after.bones).toBe(before.bones)
     expect(after.vials).toBe(before.vials)
     expect(after.offer).toBeUndefined()
     await expect(page.locator('#say')).toContainText('leave it')
   })
 
-  test('warns before a bone replaces a common one at the ceiling', async ({ page }) => {
-    // Thirty bones and a named one offered: taking it transmutes a common
-    // bone rather than adding a thirty-first, and the screen says so first.
+  test('never changes the pile, whichever way it is answered', async ({ page }) => {
+    // The satchel and the pile are separate things. Nothing on the reward
+    // screen may change how many bones a run is carrying.
+    test.slow()
     await boot(page)
     await act(page, 'start').click()
     await act(page, 'go').click()
     await act(page, 'go').click()
     if ((await fightItOut(page)) === 'died') return
     if ((await screenName(page)) !== 'reward') return
-    const full = (await state(page)).run!.commonBones === 30
-    if (!full) return
-    await expect(page.locator('#screen')).toContainText('replaces a common one')
+    const before = (await state(page)).run!.bones
+    await page.locator('[data-act="take"]').first().click()
+    expect((await state(page)).run!.bones).toBe(before)
   })
 })

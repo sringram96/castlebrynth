@@ -3,9 +3,9 @@
  *
  * It owns exactly five things: the current state, the dispatcher, when to
  * repaint, the presentation of a change that has already happened, and the one
- * piece of *draft* the player is editing before they throw — which named bones
- * are standing in the line. It computes no outcome — `reduce` does that — and
- * it draws no pixel; the views do.
+ * piece of *draft* the player is editing before they throw again — which dice
+ * are held. It computes no outcome — `reduce` does that — it evaluates no
+ * hand, it calculates no damage, and it draws no pixel; the views do.
  *
  * There is one dispatcher and one path from a press to a state change, which
  * is the whole answer to the class of bug this reset exists to fix.
@@ -13,34 +13,31 @@
  * ## Motion is downstream of the reducer, always
  *
  * A press reduces, persists, and *then* plays. The authoritative state is
- * already saved before the first frame of any sequence, so a reload mid-throw
+ * already saved before the first frame of any sequence, so a reload mid-attack
  * lands on the settled truth and a replay of the same seed is identical. What
  * a sequence may do is hold the *previous* state on screen for a few hundred
- * milliseconds — see `presenting` — because a throw whose next round paints
- * over it instantly is a throw the player never saw.
+ * milliseconds — see `presenting` — because an attack whose next round paints
+ * over it instantly is an attack the player never saw.
  *
- * ## The draft is not state
+ * ## The hold is not state
  *
- * Lighting a bone in the pouch changes nothing a save can hold. It is a
- * thought in progress, and it reaches the reducer once, whole, on the `THROW`
- * that acts on it. A reload before that press loses the thought and nothing
- * else — which is exactly right, because a half-chosen line is not a position
- * the game should be able to be in.
+ * Lighting a die changes nothing a save can hold. It is a thought in progress,
+ * and it reaches the reducer once, whole, on the `REROLL` that acts on it. A
+ * reload before that press loses the thought and nothing else — it does not
+ * lose the faces, and it does not grant another throw.
  */
 
-import { armySize, enemy, stageForRound, stanceAt } from '../content/enemies.js'
+import { enemy, stageForRound, stanceAt } from '../content/enemies.js'
 import type { Stance } from '../content/enemies.js'
-import { idleFrameMs, idlePose, smashPose } from '../content/enemyPresentation.js'
+import { attackPose, idleFrameMs, idlePose } from '../content/enemyPresentation.js'
 import { defeatOf, defeatStance } from '../content/defeat.js'
 import type { DefeatFrame } from '../content/defeat.js'
-import { totalBones } from '../content/bones.js'
-import type { BoneProfileId, SpecialBoneInstance } from '../content/bones.js'
 import type { RewardId } from '../content/rewards.js'
-import { applyLanes } from '../combat/clash.js'
+import type { ScoreId } from '../combat/hands.js'
 import { reduce } from '../game/reducer.js'
 import type { Action } from '../game/reducer.js'
 import { save } from '../game/save.js'
-import type { CombatState, GameState, SmashRecord } from '../game/state.js'
+import type { CombatState, GameState } from '../game/state.js'
 import { roomAt } from '../game/map.js'
 import { mountWorld, placeEnemy, showProp, showProps } from '../render/compositor.js'
 import type { World } from '../render/compositor.js'
@@ -56,13 +53,12 @@ import {
 import { TRAY_ART, enemyArt, enemyPose, isScenePlate, propArt, url } from '../render/assets.js'
 import { AssetLoader, criticalAssetsForState, likelyNextAssets } from '../render/loader.js'
 import { mountTray, paintTumble, renderTray } from '../ui/trayView.js'
-import type { FieldDraft, Tray } from '../ui/trayView.js'
+import type { HoldDraft, Tray } from '../ui/trayView.js'
 import { renderWorld } from '../ui/worldView.js'
 import { renderOverlay, renderScreen } from '../ui/screens.js'
 import type { Overlay } from '../ui/screens.js'
 import {
   Sequence,
-  boneBreak,
   enemyAdvance,
   enemyHit,
   pileChange,
@@ -74,52 +70,31 @@ import {
 } from '../render/animation.js'
 
 /**
- * The beats of an enemy throw, in milliseconds from the press.
+ * The beats of an attack, in milliseconds from the press.
  *
- * The line is already in the save — it was decided by FIGHT or by ROUND, in
- * the same tick as the press — so every one of these is a reveal. What they
- * buy is the order: the thing throws, the bones land, and *then* there is a
- * decision to make. FIELD arriving on the same frame as the line would be the
- * game asking a question the player has not been shown yet.
- */
-const ENEMY_THROW = {
-  cast: 40,
-  settled: 360,
-  next: 460,
-} as const
-
-/**
- * Your throw, and everything it costs — one uninterrupted beat.
+ * The whole exchange was settled by the reducer before a frame of this ran —
+ * the hand, the sum, the multiplier, the damage, the retaliation and the pile
+ * are all on `lastAttack` — so every one of these is a reveal:
  *
- * This used to be three sequences behind three presses: the throw, then a
- * Charm, then the smash. **They are one press now, so they are one movement**,
- * and the numbers below are the shape of that movement rather than three
- * animations played back to back:
- *
- *   tumble    the bones turn over and show what they rolled
- *   read      a held frame — long enough to see both lines standing
- *   wind      the arm draws back
- *   lanes     one clear beat per resolved lane, high to low
- *   settle    the pile and the counts catch up, then the word band
+ *   read      a held frame with the dice still on the table
+ *   thrust    the arm goes in
+ *   hit       its total falls
+ *   answer    it breaks bones of yours, and the pile catches up
+ *   said      the beats of the exchange, in the word band
  *
  * `read` is the beat that keeps this legible rather than fast. Without it the
- * faces and the breaking arrive together and a player watches an outcome
- * without ever having seen the throw that caused it — which is the whole thing
- * a single step risks, and the reason it is a held frame rather than a gap.
+ * dice and the consequence arrive together and the player watches an outcome
+ * without ever having seen the hand that caused it.
  */
-const THROW = {
-  tumble: 0,
-  read: 300,
-  wind: 0,
-  /** The arm goes in as the first lane lands. */
-  thrust: 90,
-  firstLane: 120,
-  perLane: 130,
-  rest: 240,
-  /** After the last lane: the counts settle, then the word band. */
-  settle: 160,
-  said: 250,
-  next: 420,
+const ATTACK = {
+  read: 260,
+  wind: 40,
+  thrust: 150,
+  hit: 190,
+  rest: 320,
+  answer: 480,
+  said: 720,
+  next: 900,
 } as const
 
 /**
@@ -201,7 +176,7 @@ export class App {
    * What the overlay is showing, if anything.
    *
    * Presentation only, and deliberately not in `GameState`: opening the menu
-   * or looking closely at a bone is not a move, does not survive a reload, and
+   * or looking closely at a Vial is not a move, does not survive a reload, and
    * must never be something a save can be stuck inside.
    */
   private opened: Overlay | undefined
@@ -209,22 +184,21 @@ export class App {
    * A state to paint *instead of* the settled one, while a sequence runs.
    *
    * Never saved, never reduced, and never anything but a frame of a transition
-   * between two real states. It is how the crown can still hold the line you
-   * threw while `this.state` is already the next round.
+   * between two real states. It is how the crown can still hold the dice you
+   * scored while `this.state` is already the next attack.
    */
   private presenting: GameState | undefined
   private sequence: Sequence | undefined
   /**
-   * Which named bones are standing in the line, and which round that is for.
+   * Which dice are held, and which attack that is for.
    *
-   * The round is what makes it self-correcting: a modifier chosen in round two
-   * is not one chosen for round three, so the moment the round moves it is
-   * rebuilt with **every named bone in**. That is the right default — a bone
-   * you are carrying is a bone you are fighting with, and holding one back is
-   * the thing the player has to choose to do.
+   * Keyed by fight and round, so a new attack, a reload and a settled SCORE
+   * all produce an empty one. Holds persist *across* a reroll inside the same
+   * attack, which is what a thumb expects: a six kept through the second throw
+   * is still kept going into the third.
    */
-  private draft: FieldDraft = { specialIds: [] }
-  private draftFor: string | undefined
+  private held: HoldDraft = { indices: [] }
+  private heldFor: string | undefined
   /**
    * The idle loop: which enemy it is running for, its clock, and which plate.
    *
@@ -304,54 +278,47 @@ export class App {
     running.settle()
   }
 
-  // ── the draft ────────────────────────────────────────────────────────
+  // ── the hold ─────────────────────────────────────────────────────────
 
   /**
-   * The draft for the round in front of us, built if it is not there.
+   * The hold for the attack in front of us, rebuilt if it is not there.
    *
-   * Keyed by fight and round, so entering a fight, pressing ROUND, and
-   * reloading all produce a fresh one — and so a draft can never be carried
-   * across a smash that killed the bone it named.
+   * Keyed by fight and round. Indices that no longer exist are dropped rather
+   * than trusted — a narrower roll after a wound cannot carry a stale
+   * position — and the reducer canonicalises the list again on the way in,
+   * because the view is not what makes a reroll legal.
    */
-  private currentDraft(state: GameState): FieldDraft {
-    const run = state.run
-    const combat = run?.combat
-    if (!run || !combat || combat.phase !== 'thrown') return this.draft
+  private currentHeld(state: GameState): HoldDraft {
+    const combat = state.run?.combat
+    if (!combat) return this.held
     const key = `${combat.enemyId}:${combat.round}`
-    if (this.draftFor !== key) {
-      this.draftFor = key
-      this.draft = { specialIds: run.specials.map((s) => s.instanceId) }
+    if (this.heldFor !== key) {
+      this.heldFor = key
+      this.held = { indices: [] }
     }
-    // A special that died in the last smash cannot still be in a line. The
-    // draft is a thought and the pile is the fact, so it is corrected here
-    // rather than trusted — and `fieldFor` corrects it again in the reducer,
-    // because the view is not what makes a throw legal.
-    const alive = new Set(run.specials.map((s) => s.instanceId))
-    const specialIds = this.draft.specialIds.filter((id) => alive.has(id))
-    if (specialIds.length !== this.draft.specialIds.length) this.draft = { specialIds }
-    return this.draft
+    const indices = this.held.indices.filter((i) => i < combat.dice.length)
+    if (indices.length !== this.held.indices.length) this.held = { indices }
+    return this.held
   }
 
   /**
-   * Hold a named bone back, or put it in the line.
+   * Keep this die, or let it go.
    *
-   * The one decision inside a fight. Every named bone is in by default, so
-   * this is always a *withdrawal* — and withdrawing is the interesting half:
-   * a Knuckle in the line is four faces of six-or-better and one more thing
-   * that can break forever, and which of those matters more depends on the
-   * line it is standing against.
+   * The decision inside an attack, and the only one the crown carries. It
+   * changes nothing a save can hold: it is read by the next REROLL and by
+   * nothing else.
    */
-  private toggleSpecial(instance: SpecialBoneInstance): void {
-    const run = this.state.run
-    if (!run || run.combat?.phase !== 'thrown') return
-    const has = this.draft.specialIds.includes(instance.instanceId)
-    this.draft = {
-      specialIds: has
-        ? this.draft.specialIds.filter((id) => id !== instance.instanceId)
-        : [...this.draft.specialIds, instance.instanceId],
+  private toggleHold(index: number): void {
+    const combat = this.state.run?.combat
+    if (!combat || combat.dice.length === 0 || combat.rollsUsed >= 3) return
+    if (index < 0 || index >= combat.dice.length) return
+    const has = this.held.indices.includes(index)
+    this.held = {
+      indices: has
+        ? this.held.indices.filter((i) => i !== index)
+        : [...this.held.indices, index].sort((a, b) => a - b),
     }
     this.render()
-    if (this.opened?.kind === 'pouch') this.open({ kind: 'pouch' })
   }
 
   // ── presentation ─────────────────────────────────────────────────────
@@ -370,11 +337,12 @@ export class App {
     this.stage(after)
 
     switch (action.type) {
-      case 'FIGHT':
-      case 'ROUND':
-        return this.playEnemyThrow(before, after)
-      case 'THROW':
-        return this.playThrow(before, after)
+      case 'ROLL':
+        return this.playThrow(after, undefined)
+      case 'REROLL':
+        return this.playThrow(after, action.held)
+      case 'SCORE':
+        return this.playAttack(before, after)
       case 'DRINK':
         return this.playDrink(before, after)
       case 'RITUAL_ROLL':
@@ -404,110 +372,74 @@ export class App {
   }
 
   /**
-   * The enemy throws, and only then is there a decision to make.
+   * Bones turning over.
    *
-   * State already contains the final line. The bones enter, turn and settle
-   * onto the numbers the reducer drew; no random draw happens anywhere in this
-   * timeline. FIELD becomes visible on the settled frame, which is the point
-   * of the sequence: the threat is public *before* the question is asked.
+   * The faces are already in the save — ROLL and REROLL both drew them in the
+   * same tick as the press — so the tumble is played *over* the truth rather
+   * than towards it. Nothing below can disagree with what has already landed,
+   * and no number is generated here.
+   *
+   * On a reroll only the bones that actually moved tumble. A held six sitting
+   * perfectly still while five others turn over is the whole reason holding
+   * reads as a physical act rather than as a checkbox.
    */
-  private playEnemyThrow(before: GameState, after: GameState): void {
+  private playThrow(after: GameState, held: readonly number[] | undefined): void {
     this.render()
     if (!this.animated) return
 
-    const bones = [...this.tray.enemyLine.querySelectorAll<HTMLElement>('.bone-enemy')]
-    if (bones.length === 0) return
+    const keep = new Set(held ?? [])
+    const bones = [...this.tray.crown.querySelectorAll<HTMLElement>('.bone')].filter(
+      (bone) => !keep.has(Number(bone.dataset['index'])),
+    )
+    if (bones.length === 0) return void this.finish()
 
-    // The verbs are held back until the line has landed. Not disabled: absent,
-    // because the previous round's state is what is on screen and it has no
-    // verb of its own either.
-    this.presenting = before.run?.combat ? { ...after, run: { ...after.run! } } : after
+    this.presenting = after
     const sequence = this.start()
-    for (const bone of bones) bone.classList.add('bone-cast')
-    sequence.at(ENEMY_THROW.cast, () => {
-      for (const bone of bones) bone.classList.add('bone-landing')
-    })
-    sequence.at(ENEMY_THROW.settled, () => {
-      for (const bone of bones) bone.classList.remove('bone-cast', 'bone-landing')
-    })
-    sequence.at(ENEMY_THROW.next, () => this.finish())
+    tumble(sequence, { bones, paint: paintTumble })
+    sequence.at(tumbleDuration(bones.length) + 60, () => this.finish())
   }
 
   /**
-   * The throw and everything it costs, as one movement.
+   * The attack, and everything it costs, as one movement.
    *
-   * The reducer has already thrown, sorted and resolved: `playerLine` and
-   * `lastSmash` are both in the save before a frame of this runs. What plays
-   * here is that record, in order — the bones turn over, both lines stand for
-   * a beat, and then one clear break per resolved lane, high to low.
-   *
-   * The pool on screen at beat *k* is `applyLanes` of the first *k* lanes,
-   * which is arithmetic the combat module owns: the view never counts a
-   * casualty for itself. And `stoppedAtLane` is respected by construction —
-   * it is in the record, the record has no lanes after it, so neither does
-   * the sequence.
+   * The reducer has already scored, hit, and been answered: `lastAttack` holds
+   * every number below and is in the save before a frame of this runs. What
+   * plays here is that record, in order — the dice stay on the table, the arm
+   * goes in, its total falls, and then the pile pays for having left it
+   * standing.
    */
-  private playThrow(before: GameState, after: GameState): void {
+  private playAttack(before: GameState, after: GameState): void {
     const run = before.run!
     const combat = run.combat!
-    const thrown = after.run?.combat
-    const record = thrown?.lastSmash
-    if (!thrown || !record) return void this.finish()
+    const settled = after.run?.combat
+    const record = settled?.lastAttack
+    if (!settled || !record) return void this.finish()
 
-    const start = {
-      commonBones: run.commonBones,
-      specials: run.specials,
-      enemyBones: combat.enemyBones,
-    }
-    const defeated = thrown.defeated === true
+    const defeated = settled.defeated === true
     const dead = after.mode === 'dead'
-    const pose = smashPose(combat.enemyId, record)
+    const pose = attackPose(combat.enemyId, record)
 
-    // One frame: the pile and the army as they stood after `k` lanes, with the
-    // record truncated to the lanes that have been shown. `k = 0` is the throw
-    // itself — both lines standing, nothing broken yet — which only exists
-    // because the phase carries the thrown line rather than a committed field.
-    const frame = (k: number): GameState => {
-      const lanes = record.lanes.slice(0, k)
-      const pool = applyLanes(start, lanes)
-      const partial: SmashRecord = {
-        ...record,
-        lanes,
-        playerCommonLost: start.commonBones - pool.commonBones,
-        playerSpecialsLost: record.playerSpecialsLost.filter((id) =>
-          lanes.some((l) => l.player?.specialInstanceId === id),
-        ),
-        enemyBonesLost: record.enemyBonesLost.filter((id) =>
-          lanes.some((l) => l.enemy?.enemyBoneId === id),
-        ),
-        heldTies: lanes.filter((l) => l.result === 'warden-hold').length,
-      }
-      return {
-        ...before,
-        run: {
-          ...run,
-          say: '',
-          commonBones: pool.commonBones,
-          specials: pool.specials,
-          combat: {
-            ...thrown,
-            enemyBones: pool.enemyBones,
-            lastSmash: partial,
-            log: [],
-          },
-        },
-      }
-    }
+    // One frame of the exchange: the dice still on the table, with the enemy
+    // and the pile put right one at a time. `hp`/`bones` are the two facts
+    // that move, and both come off the record.
+    const frame = (hp: number, bones: number): GameState => ({
+      ...before,
+      run: {
+        ...run,
+        bones,
+        say: '',
+        combat: { ...combat, enemyHp: hp, lastAttack: record, log: [] },
+      },
+    })
 
-    this.presenting = frame(0)
+    this.presenting = frame(record.enemyHpBefore, record.bonesBefore)
     this.render()
 
     if (!this.animated) {
       this.presenting = undefined
       this.render()
-      const lost = record.playerCommonLost + record.playerSpecialsLost.length
-      if (record.enemyBonesLost.length > 0) enemyHit(this.world, record.enemyBonesLost.length)
-      if (lost > 0) shake(this.world, lost)
+      enemyHit(this.world, record.damage)
+      if (record.retaliation > 0) shake(this.world, record.retaliation)
       // A death is a sequence like every other one here: with motion off it
       // resolves in the same tick, and the win screen arrives exactly where it
       // arrived before any of this existed.
@@ -517,80 +449,46 @@ export class App {
 
     const sequence = this.start()
 
-    // The bones turn over. They are already showing the reducer's faces, so
-    // the tumble is played over the truth rather than towards it — nothing
-    // below can disagree with what has already landed.
-    const bones = [...this.tray.crown.querySelectorAll<HTMLElement>('.bone')]
-    if (bones.length > 0) tumble(sequence, { bones, paint: paintTumble })
+    // The arm draws back and goes in. It swings once, for the whole attack,
+    // because the attack is one movement.
+    sequence.at(ATTACK.read + ATTACK.wind, () => weaponThrust(this.world, 'wind'))
+    sequence.at(ATTACK.read + ATTACK.thrust, () => weaponThrust(this.world, 'thrust'))
+    sequence.at(ATTACK.rest, () => weaponThrust(this.world, 'rest'))
 
-    // Then a held frame, and only then the arm. This is the seam where three
-    // presses used to be, and the held frame is what replaces them: both lines
-    // stand, fully readable, before anything breaks.
-    const smashAt = (bones.length > 0 ? tumbleDuration(bones.length) : 0) + THROW.read
-
-    // The arm draws back and goes in. It swings once, for the whole smash,
-    // because the smash is one movement — a thrust per lane would be four
-    // people fighting.
-    sequence.at(smashAt + THROW.wind, () => weaponThrust(this.world, 'wind'))
-    sequence.at(smashAt + THROW.thrust, () => weaponThrust(this.world, 'thrust'))
-    sequence.at(smashAt + THROW.rest, () => weaponThrust(this.world, 'rest'))
-
-    // Only the lanes that actually resolved. A safe lane is a lane in which
-    // nothing happened, so it gets no beat of its own — it is simply still
-    // there, unmarked, when the smash is over.
-    const resolved = record.lanes.filter(
-      (l) => l.result !== 'safe-player' && l.result !== 'safe-enemy',
-    ).length
-
-    let at = smashAt + THROW.firstLane
-    for (let k = 1; k <= resolved; k++) {
-      const lane = record.lanes[k - 1]!
-      sequence.at(at, () => {
-        this.presenting = frame(k)
-        this.render()
-        // The loser cracks where it stands. Both, on a mutual tie.
-        if (lane.player && (lane.result === 'enemy' || lane.result === 'both' || lane.result === 'warden-hold')) {
-          boneBreak(this.tray.crown, lane.player.boneKey)
-        }
-        if (lane.enemy && (lane.result === 'player' || lane.result === 'both')) {
-          boneBreak(this.tray.enemyLine, lane.enemy.boneKey)
-          if (k === 1) enemyHit(this.world, record.enemyBonesLost.length, brightPlate(combat))
-        }
-        if (lane.result === 'enemy' || lane.result === 'warden-hold') shake(this.world, 1)
-      })
-      at += THROW.perLane
-    }
-
-    // Everything settles: the full record, the counts, and the picture of what
-    // the thing just did to you.
-    at += THROW.settle
-    sequence.at(at, () => {
-      this.presenting = frame(record.lanes.length)
+    // It takes the hit. Its total falls to what the reducer already wrote.
+    sequence.at(ATTACK.hit, () => {
+      this.presenting = frame(record.enemyHpAfter, record.bonesBefore)
       this.render()
-      const lost = record.playerCommonLost + record.playerSpecialsLost.length
-      if (lost > 0) pileChange(this.tray.orb, -lost)
+      enemyHit(this.world, record.damage, brightPlate(combat))
+    })
+
+    // And it answers, if there is anything left of it to answer with.
+    sequence.at(ATTACK.answer, () => {
+      this.presenting = frame(record.enemyHpAfter, record.bonesAfter)
+      this.render()
+      if (record.retaliation > 0) {
+        pileChange(this.tray.orb, -record.retaliation)
+        shake(this.world, record.retaliation)
+      }
       if (pose && !defeated) this.showPose(combat.enemyId, pose)
     })
 
-    at += THROW.said
-    sequence.at(at, () => {
-      // The settled fight, said out loud — and deliberately not the room's
+    sequence.at(ATTACK.said, () => {
+      // The settled exchange, said out loud — and deliberately not the room's
       // line. A win writes the cleared room's arrival into `say`, and while
-      // the fight is still on the plate that band belongs to the smash: with
-      // both lines now inside the tray, a word about the empty corridor
-      // arriving over the top of the wreckage is the next screen leaking into
-      // this one. Blanking `say` lets the band fall through to `combat.log`.
-      this.presenting = { ...before, run: { ...after.run!, say: '', combat: thrown } }
+      // the fight is still on the plate that band belongs to the attack, so
+      // blanking `say` lets it fall through to `combat.log`.
+      this.presenting = { ...before, run: { ...after.run!, say: '', combat: settled } }
       this.render()
       if (pose && !defeated) this.showPose(combat.enemyId, pose)
     })
 
-    // A death outranks the beats below it. The run ended on a lane, and no
-    // further picture of the fight belongs on the screen.
-    if (dead) return void sequence.at(at + THROW.next, () => this.finish())
-    if (defeated) return this.playDefeat(sequence, at, combat, after, record)
+    // A death outranks the beats below it. The run ended on this exchange, and
+    // no further picture of the fight belongs on the screen.
+    if (dead) return void sequence.at(ATTACK.next, () => this.finish())
+    if (defeated) return this.playDefeat(sequence, ATTACK.said, combat, after)
 
-    sequence.at(at + THROW.next, () => this.finish())
+    sequence.at(ATTACK.next, () => this.finish())
   }
 
   /**
@@ -601,7 +499,7 @@ export class App {
    * player did.
    */
   private playDrink(before: GameState, after: GameState): void {
-    const gained = totalBones(after.run!) - totalBones(before.run!)
+    const gained = (after.run?.bones ?? 0) - (before.run?.bones ?? 0)
     this.render()
     if (gained > 0) pileChange(this.tray.orb, gained)
   }
@@ -609,12 +507,12 @@ export class App {
   /**
    * The font, as a thing that happens rather than a number that changes.
    *
-   * Built the same way a smash is: from the state *before* the press, with one
-   * fact put right at a time, and the settled state painted last. The frames
-   * are pushed straight at the compositor after each paint — the paint reads
-   * the frame off state, and during the sequence the state does not yet say
-   * the room has been used, so the two would otherwise disagree. Every one of
-   * them is a picture of an answer that is already saved.
+   * Built the same way an attack is: from the state *before* the press, with
+   * one fact put right at a time, and the settled state painted last. The
+   * frames are pushed straight at the compositor after each paint — the paint
+   * reads the frame off state, and during the sequence the state does not yet
+   * say the room has been used, so the two would otherwise disagree. Every one
+   * of them is a picture of an answer that is already saved.
    */
   private playRitual(before: GameState, after: GameState): void {
     const run = before.run!
@@ -649,10 +547,7 @@ export class App {
     // The pile answers. It is driven from the presented state, so the fill and
     // the number move together and both are the reducer's.
     sequence.at(RITUAL.pile, () => {
-      this.presenting = {
-        ...before,
-        run: { ...run, commonBones: after.run!.commonBones, say: '' },
-      }
+      this.presenting = { ...before, run: { ...run, bones: after.run!.bones, say: '' } }
       this.render()
       show(ritual.roll)
       pileChange(this.tray.orb, restored)
@@ -661,7 +556,7 @@ export class App {
     sequence.at(RITUAL.said, () => {
       this.presenting = {
         ...before,
-        run: { ...run, commonBones: after.run!.commonBones, say: after.run!.say },
+        run: { ...run, bones: after.run!.bones, say: after.run!.say },
       }
       this.render()
       show(ritual.roll)
@@ -690,7 +585,7 @@ export class App {
 
     // The pile is the vault's other answer, and the only part of an
     // interaction that is not a picture of a prop. Read off the two states.
-    const lost = totalBones(before.run!) - totalBones(after.run!)
+    const lost = before.run!.bones - after.run!.bones
 
     this.presenting = { ...before, run: { ...before.run!, say: '' } }
     this.render()
@@ -751,12 +646,7 @@ export class App {
       sequence.at(90, () => {
         this.presenting = {
           ...before,
-          run: {
-            ...before.run!,
-            commonBones: after.run!.commonBones,
-            specials: after.run!.specials,
-            say: '',
-          },
+          run: { ...before.run!, bones: after.run!.bones, say: '' },
         }
         this.render()
         show()
@@ -791,11 +681,10 @@ export class App {
     from: number,
     combat: CombatState,
     after: GameState,
-    record: SmashRecord,
   ): void {
     const death = defeatOf(combat.enemyId)
     if (!death) {
-      return void sequence.at(from + THROW.next, () => {
+      return void sequence.at(from + ATTACK.next, () => {
         this.finish()
         this.dispatch({ type: 'DEFEAT_DONE' })
       })
@@ -810,14 +699,11 @@ export class App {
     death.frames.forEach((f, step) => {
       sequence.at(at, () => {
         // The fight, held at the instant of the kill: nothing standing, no
-        // verbs on the tray, and the beats of the round that did it. One flag
+        // verbs on the tray, and the beats of the attack that did it. One flag
         // does the first two — see `trayView.ts`.
         this.presenting = {
           ...after,
-          run: {
-            ...settled,
-            combat: { ...settled.combat!, defeated: true, lastSmash: record },
-          },
+          run: { ...settled, combat: { ...settled.combat!, defeated: true } },
         }
         this.render()
         this.paintDefeat(combat, base, f, step)
@@ -838,7 +724,7 @@ export class App {
   /**
    * A reload that landed in the middle of a death.
    *
-   * The kill is in the save — it was committed by the SMASH that caused it —
+   * The kill is in the save — it was committed by the SCORE that caused it —
    * so there is nothing to recompute and nothing to replay. It snaps to the
    * settled frame, holds it long enough to be seen, and finishes the win.
    */
@@ -929,23 +815,23 @@ export class App {
       return
     }
     this.enemyIdleFrame += 1
-    const pose = idlePose(enemyId, ...this.enemyArmy(enemyId), this.enemyIdleFrame)
+    const pose = idlePose(enemyId, ...this.enemyHealth(enemyId), this.enemyIdleFrame)
     if (pose) this.showPose(enemyId, pose)
   }
 
   /**
-   * How much of a horror's army is left, as the two numbers a band wants.
+   * How much of a horror is left, as the two numbers a band wants.
    *
-   * Off the presented state, so a beat holding the previous round on screen
-   * asks about the army that round showed. Before a fight opens there is no
-   * combat in state and the answer is its whole army, which is what a thing
+   * Off the presented state, so a beat holding the previous frame on screen
+   * asks about the total that frame showed. Before a fight opens there is no
+   * combat in state and the answer is its whole health, which is what a thing
    * waiting at its door is standing there with.
    */
-  private enemyArmy(enemyId: string): [number, number] {
+  private enemyHealth(enemyId: string): [number, number] {
     const combat = (this.presenting ?? this.state).run?.combat
-    if (combat?.enemyId === enemyId) return [combat.enemyBones.length, combat.enemyStartCount]
-    const size = armySize(enemyId)
-    return [size, size]
+    if (combat?.enemyId === enemyId) return [combat.enemyHp, combat.enemyMaxHp]
+    const max = enemy(enemyId).maxHp
+    return [max, max]
   }
 
   /**
@@ -1006,18 +892,16 @@ export class App {
     renderTray(
       this.tray,
       state,
-      { draft: this.currentDraft(state) },
+      { held: this.currentHeld(state) },
       {
         onMenu: () => this.open({ kind: 'menu' }),
         onFight: () => this.dispatch({ type: 'FIGHT' }),
-        onThrow: () =>
-          this.dispatch({ type: 'THROW', specialIds: this.draft.specialIds }),
-        onRound: () => this.dispatch({ type: 'ROUND' }),
+        onRoll: () => this.dispatch({ type: 'ROLL' }),
+        onReroll: () => this.dispatch({ type: 'REROLL', held: this.held.indices }),
+        onHold: (index: number) => this.toggleHold(index),
+        onScore: (hand: ScoreId) => this.dispatch({ type: 'SCORE', hand }),
         onDrink: () => this.dispatch({ type: 'DRINK' }),
-        onPouch: () => this.open({ kind: 'pouch' }),
         onInspectReward: (id) => this.open({ kind: 'reward', id: id as RewardId }),
-        onInspectBone: (profile: BoneProfileId, specialId?: string) =>
-          this.open({ kind: 'bone', profile, ...(specialId ? { specialId } : {}) }),
         onGo: (to) => this.dispatch({ type: 'GO', to }),
       },
     )
@@ -1043,17 +927,7 @@ export class App {
   }
 
   private paintOverlay(view: Overlay, state: GameState): void {
-    const run = state.run
-    const thrown = run?.combat?.phase === 'thrown'
-    renderOverlay(this.overlay, view, state, () => this.close(), {
-      // Every named bone can always come back into the line: it stands inside
-      // the width rather than widening it, so there is never a pile that can
-      // hold the bone but not the choice.
-      fieldable: (instance) =>
-        thrown && !!run && !this.draft.specialIds.includes(instance.instanceId),
-      fielded: (instance) => this.draft.specialIds.includes(instance.instanceId),
-      onToggle: (instance) => this.toggleSpecial(instance),
-    })
+    renderOverlay(this.overlay, view, state, () => this.close())
   }
 
   private open(view: Overlay): void {

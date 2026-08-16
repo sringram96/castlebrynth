@@ -633,93 +633,101 @@ a product decision, not an art one.
 
 ---
 
-## HUMAN ART REQUIRED — The War of Bones
+## HUMAN ART REQUIRED — the dice
 
-The combat system was replaced end to end. **No art was authored for it**, per
-`CLAUDE.md` § *No art in the polish sweep*: `git diff --stat main` touches
-nothing under `public/`, and no new image file exists. What the new system
-needs, and what it is running on until those files land, is written out here.
+The combat system was replaced end to end a second time: the War of Bones is
+gone and an attack is now up to six ordinary d6s, held and rethrown, scored
+against a card of hands. **No art was authored for it**, per `CLAUDE.md` § *No
+art in the polish sweep*: `git diff --stat main` touches nothing under
+`public/`, and no new image file exists. What the new system needs, and what it
+is running on until those files land, is written out here.
+
+This entry supersedes the *War of Bones* entry that stood here. Four bone
+profiles, seven-and-eight faces, a broken state, a Pouch icon and a bay for the
+enemy's line were all asked for by a system that no longer exists; none of them
+is owed any more.
 
 ### What it is running on now
 
 Bones are drawn from the **pip geometry in `src/ui/components.ts`** — the same
-mechanism the game has always drawn a die face with, extended to seven and
-eight. That is not a new stand-in; it is the existing face renderer being given
-two more values. Every bone states its number as text as well as as a pattern
-(`aria-label`, `data-value`, and a printed numeral above six), so nothing about
-the fight is unreadable while the plates are outstanding.
+mechanism the game has always drawn a die face with. That is not a new stand-in;
+it is the existing face renderer, and it got *smaller* rather than larger,
+because a bone is an ordinary d6 again and the seventh and eighth faces are
+gone. Every die states its number as data as well as as a pattern
+(`aria-label`, `data-value`), and whether it is held is in `aria-pressed`, in
+`data-held` and in its position, so nothing about the fight is unreadable while
+the plates are outstanding.
 
 `BONE_ART` and `SATCHEL_ART` in `src/render/assets.ts` are **deliberately
 empty**. A manifest row names a file, and `test/unit/assets.test.ts` holds every
 row to a real file of the declared size — so a table that promised art nobody
 had drawn would fail the build rather than ship a broken `<img>` into the middle
-of a smash. The gates for those families are written and **armed**: they pass
+of an attack. The gates for those families are written and **armed**: they pass
 vacuously on an empty table and bite the moment a row is added, which is what
 stops a family landing half-delivered.
 
-### The bone families
+### The bone family
 
-Four profiles, and each one ships whole or not at all:
+One family now, and it ships whole or not at all:
 
-| profile | faces needed | material note |
-| --- | --- | --- |
-| `common` | back, 1–6, broken | the anonymous pile. It should look like nothing. |
-| `wrong` | back, 2–7, broken | pale, cold, one step off |
-| `cruel` | back, 3–7, broken | the Cinderbone. Visible sigil. |
-| `heavy` | back, 4–8, broken | the Knuckle. Visible sigil. |
+| face | note |
+| --- | --- |
+| `1` … `6` | an ordinary d6. There is only one kind of bone in this baseline. |
+| `back` | not thrown yet |
 
-Duplicate numeric faces may reuse one plate — `cruel` has two sevens and they
-resolve identically — but **the family is back + every distinct value + broken**,
-and a `heavy.8` that ships while `heavy.7` does not silently falls back to a
-drawn face, putting two different kinds of object in one line.
+The **back** is its own state and matters more than it sounds: before the first
+ROLL the crown shows *how many bones this attack has* and no face has been
+decided. It has to be unmistakably **not a face**, because a face there would be
+the picture claiming a number the reducer has not drawn.
 
-**Seven and eight must be readable at arm's length without a tooltip.** No die
-anybody has held has those faces, so there is no pattern to recognise. The
-current renderer prints the numeral over the pips; a painted plate has to solve
-the same problem, not assume it away.
-
-The **back** is its own state and matters more than it sounds: it is the phase
-between FIELD and THROW, the one moment in a round when the player has committed
-and does not yet know to what. It has to be unmistakably *not a face*.
+A **held** state would be welcome and is not required. Today a held bone lifts
+out of its bay and takes a lit rim in CSS, which reads and is not a drawing of
+a bone in a fist.
 
 ### The satchel
 
-Two icons, and both or neither: `vial`, `pouch`. They sit in the first two of
-the three bays on the right of the tray at roughly 32 × 44 CSS px on a phone,
-so they are read as silhouettes. The count badge is drawn over them.
+One icon: `vial`. It sits in the first of the three bays on the right of the
+tray at roughly 32 × 44 CSS px on a phone, so it is read as a silhouette. The
+count badge is drawn over it.
 
-The Charm is gone, so the third bay is now an empty painted recess. That is
-left showing deliberately rather than re-centring the pair on it — the recess
-is part of the picture — but a repaint that re-cuts the right side for two bays
-instead of three would be an improvement, not a regression.
+The Charm and the Pouch are both gone, so **two of the three bays are now empty
+painted recesses**. That is left showing deliberately rather than re-centring
+the one control on the plate — the recesses are part of the picture — but a
+repaint that re-cuts the right side for one bay instead of three would be an
+improvement, not a regression.
 
-### Clash FX
+### The tray, and the one deviation this sweep introduced
 
-One authored collision/shatter family that can be staged over a bone body, or
-per-material shatter states if the art direction wants them. **A CSS fracture is
-not the final broken-bone state** — what ships now is a darkened, dropped face
-with a hard diagonal across it, which reads and is not what a bone breaking
-looks like.
+The well had to grow. The painted recess is 0.444 × 0.404 of the plate — 187 ×
+84 px on a phone — which was enough for two lines of prose and is not enough for
+the scorecard: eight hands, eight multipliers, a running sum, a row of live
+buttons and a prompt. So `WELL` in `src/content/tray.ts` now runs to 0.51 wide
+and 0.486 deep, overhanging the frame's ribs left, right and below, and carries
+its own CSS scrim so the text stays readable over them.
 
-### The tray
+Every edge of it is bounded by **a control it would otherwise collide with**
+rather than by the painting: the top is the six 44 px die targets, which already
+hang below their own bays; the sides are the orb's caption and the first satchel
+bay; the bottom is the beds. `test/browser/tray.spec.ts` asserts all four.
 
-The enemy's line used to float above the plate at `top: -54px`, over the bottom
-of the world, because the painted frame has no bay for it. On a dark floor that
-was four unreadable objects, so it moved **into the well** — the one painted
-recess wide enough to hold a row, already dark, and now the only region the
-fight's two lines both live in.
+A repaint would want: **a well roughly half the plate wide and half again as
+deep**, an orb that reads as a heap of bone rather than a glass of liquid, and
+the right side re-cut for one bay rather than three relic icons. Every
+coordinate in `src/content/tray.ts` was measured off the current 730 × 364 file
+by luminance profile; if the plate is repainted, that table is the only thing
+that needs measuring again.
 
-It is seated at the crown's pitch rather than the well's, because lane N under
-lane N is the whole smash rule and the column is how a player reads a pairing.
-The cost is that the outer two bones overhang the recess by about 18 px a side
-and rest on the painted frame. It reads; it is not what a bay looks like.
+### The scorecard
 
-A repaint would want: **the well widened to 0.532 of the plate** so the enemy's
-six sit inside it at the crown's pitch, an orb that reads as a **heap of bone**
-rather than a glass of liquid, and the right side re-cut for two bays — Vial and
-Pouch — rather than three relic icons. Every coordinate in `src/content/tray.ts`
-was measured off the current 730 × 364 file by luminance profile; if the plate
-is repainted, that table is the only thing that needs measuring again.
+Eight entries in a four-by-two grid, at 7 px, in about 214 × 45 px. It is
+**legible and it is small**, which is the honest state of it: the same table is
+printed at a readable size in MENU precisely because the tray's copy is compact
+by necessity.
+
+Nothing here needs art. What it would want, if the plate is ever repainted, is a
+band the scorecard can sit in — eight shallow recesses, or one recess with seven
+dividers — so the card reads as part of the reliquary rather than as text laid
+over it.
 
 ### The Marrow
 

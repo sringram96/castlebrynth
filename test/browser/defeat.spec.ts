@@ -77,7 +77,7 @@ async function record(page: Page): Promise<void> {
         }
         const dim = enemy?.style.getPropertyValue('--dim')
         if (dim && !seen.dims.includes(dim)) seen.dims.push(dim)
-        for (const name of ['field', 'throw', 'smash', 'round']) {
+        for (const name of ['roll', 'reroll', 'score', 'drink']) {
           if (document.querySelector(`[data-act="${name}"]`) && !seen.verbs.includes(name)) {
             seen.verbs.push(name)
           }
@@ -126,8 +126,8 @@ test.describe('it stops, and you watch it', () => {
     await boot(page, DOOMED, { motion: true })
     await finished(page)
 
-    // Not greyed, not waiting: absent. The reducer refuses all four anyway;
-    // this is the half of that rule the player can see.
+    // Not greyed, not waiting: absent. The reducer refuses all of them
+    // anyway; this is the half of that rule the player can see.
     expect((await seen(page)).verbs).toEqual([])
   })
 
@@ -159,7 +159,7 @@ test.describe('a reload inside a death', () => {
     await record(page)
     await boot(page, DOOMED, { motion: true })
     // Reload before it has finished. The kill is in the save — it was
-    // committed by the smash that caused it — so there is nothing to
+    // committed by the attack that caused it — so there is nothing to
     // recompute and nothing to replay.
     await page.reload()
     await expect(page.locator('body')).toHaveAttribute('data-assets', 'ready')

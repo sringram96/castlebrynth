@@ -149,8 +149,8 @@ test.describe('room state belongs to the room, not to the kind of room', () => {
 
     // The same for a fight: what is filed is the room it happened in, not the
     // authored place it looked like.
-    // `dying=1` stands in the beat after the smash that finished it, and the
-    // kill was committed by that smash — so the record is already written.
+    // `dying=1` stands in the beat after the attack that finished it, and the
+    // kill was committed by that attack — so the record is already written.
     await boot(page, '?room=hollow&dying=1')
     const felled = await state(page)
     expect(felled.run!.cleared).toContain(felled.run!.roomId)

@@ -55,7 +55,7 @@ test.describe('the chapel is a room with one thing in it', () => {
     }
     // Looking costs nothing and rolls nothing.
     const now = await state(page)
-    expect(now.run!.commonBones).toBe(12)
+    expect(now.run!.bones).toBe(12)
     await expect(act(page, 'ritual')).toBeVisible()
   })
 
@@ -106,7 +106,7 @@ test.describe('one press, and the room is spent', () => {
   test('rolls, gives back the face plus two, and opens the way on', async ({ page }) => {
     await inChapel(page, 12)
     const before = await state(page)
-    expect(before.run!.commonBones).toBe(12)
+    expect(before.run!.bones).toBe(12)
 
     await act(page, 'ritual').click()
 
@@ -116,13 +116,13 @@ test.describe('one press, and the room is spent', () => {
     expect(ritual.roll).toBeLessThanOrEqual(6)
     // The face plus two, capped by the room left under the ceiling.
     expect(ritual.restored).toBe(ritual.roll + 2)
-    expect(after.run!.commonBones).toBe(12 + ritual.restored)
-    expect(after.run!.commonBones).toBeLessThanOrEqual(30)
+    expect(after.run!.bones).toBe(12 + ritual.restored)
+    expect(after.run!.bones).toBeLessThanOrEqual(30)
 
     // The orb carries it, the band says it in words, and the basin is left
     // showing the face it landed on — the number is readable off the die
     // rather than only off a sentence.
-    await expect(pile(page)).toHaveAttribute('data-bones', String(after.run!.commonBones))
+    await expect(pile(page)).toHaveAttribute('data-bones', String(after.run!.bones))
     await expect(page.locator('#say')).toContainText(
       `${ritual.restored} bones`,
     )
@@ -150,7 +150,7 @@ test.describe('one press, and the room is spent', () => {
       await page.evaluate(() => window.castlebrynth?.dispatch({ type: 'RITUAL_ROLL' }))
     }
     const twice = await state(page)
-    expect(twice.run!.commonBones).toBe(once.run!.commonBones)
+    expect(twice.run!.bones).toBe(once.run!.bones)
     expect((twice.run as unknown as { ritual: unknown }).ritual).toEqual(
       (once.run as unknown as { ritual: unknown }).ritual,
     )
@@ -179,7 +179,7 @@ test.describe('one press, and the room is spent', () => {
     await act(page, 'ritual').click()
 
     const after = await state(page)
-    expect(after.run!.commonBones).toBe(30)
+    expect(after.run!.bones).toBe(30)
     await expect(page.locator('#say')).toContainText('The pile is already full')
     await expect(act(page, 'go')).toBeVisible()
   })
@@ -210,7 +210,7 @@ test.describe('one press, and the room is spent', () => {
     await act(page, 'continue').click()
 
     const after = await state(page)
-    expect(after.run!.commonBones).toBe(before.run!.commonBones)
+    expect(after.run!.bones).toBe(before.run!.bones)
     expect((after.run as unknown as { ritual: unknown }).ritual).toEqual(
       (before.run as unknown as { ritual: unknown }).ritual,
     )
@@ -224,7 +224,7 @@ test.describe('one press, and the room is spent', () => {
     // And the action itself is refused, which is the exploit this closes: a
     // reload is the one moment a player could hope the room had forgotten.
     await page.evaluate(() => window.castlebrynth?.dispatch({ type: 'RITUAL_ROLL' }))
-    expect((await state(page)).run!.commonBones).toBe(before.run!.commonBones)
+    expect((await state(page)).run!.bones).toBe(before.run!.bones)
   })
 })
 
@@ -237,11 +237,11 @@ test.describe('the throw is a reveal, not a decision', () => {
     // orb is still showing the old number.
     expect(await page.evaluate(() => window.castlebrynth?.animating())).toBe(true)
     const settled = await state(page)
-    expect(settled.run!.commonBones).toBeGreaterThan(12)
+    expect(settled.run!.bones).toBeGreaterThan(12)
     await expect(pile(page)).toHaveAttribute('data-bones', '12')
 
     // And it arrives on its own, without anything being pressed.
-    await expect(pile(page)).toHaveAttribute('data-bones', String(settled.run!.commonBones), { timeout: 4000 })
+    await expect(pile(page)).toHaveAttribute('data-bones', String(settled.run!.bones), { timeout: 4000 })
     await expect(act(page, 'go')).toBeVisible()
   })
 
@@ -256,7 +256,7 @@ test.describe('the throw is a reveal, not a decision', () => {
     expect(await page.evaluate(() => window.castlebrynth?.animating())).toBe(false)
 
     const after = await state(page)
-    expect(after.run!.commonBones).toBe(decided.run!.commonBones)
+    expect(after.run!.bones).toBe(decided.run!.bones)
     expect((after.run as unknown as { ritual: unknown }).ritual).toEqual(
       (decided.run as unknown as { ritual: unknown }).ritual,
     )
@@ -276,8 +276,8 @@ test.describe('the throw is a reveal, not a decision', () => {
 
     const after = await state(page)
     const ritual = (after.run as unknown as { ritual: { roll: number; restored: number } }).ritual
-    expect(after.run!.commonBones).toBe(12 + ritual.restored)
-    await expect(pile(page)).toHaveAttribute('data-bones', String(after.run!.commonBones))
+    expect(after.run!.bones).toBe(12 + ritual.restored)
+    await expect(pile(page)).toHaveAttribute('data-bones', String(after.run!.bones))
     await expect(page.locator('#say')).not.toBeEmpty()
     await expect(act(page, 'go')).toBeVisible()
 

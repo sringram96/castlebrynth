@@ -9,7 +9,7 @@
 import { hideEnemy, hideProp, holdWeapon, placeEnemy, showProp, showProps } from '../render/compositor.js'
 import type { World } from '../render/compositor.js'
 import { enemyArt, handArt, isScenePlate, propArt, roomArt, url } from '../render/assets.js'
-import { STAGES, armySize, enemy as enemyById, stageForRound, stanceAt } from '../content/enemies.js'
+import { STAGES, enemy as enemyById, stageForRound, stanceAt } from '../content/enemies.js'
 import { idlePose } from '../content/enemyPresentation.js'
 import { roomAt } from '../game/map.js'
 import { actionFor, platesFor, stateOf } from '../content/interactions.js'
@@ -66,16 +66,16 @@ export function renderWorld(world: World, state: GameState, handlers: WorldHandl
     // It is staging and nothing else. Being close costs the player nothing.
     const stage = stageForRound(standing, combat?.round ?? 1) ?? (e.staging ? STAGES[0] : undefined)
     const stance = stanceAt(standing, stage)
-    // And how much of its army is left, for a horror painted deteriorating.
+    // And how much of it is left, for a horror painted deteriorating.
     // Recomputed here on every paint and stored nowhere — which is the whole
-    // reason a reload at four of eight shows the middle plate.
+    // reason a reload at half health shows the middle plate.
     //
     // The *first* plate of the band, always. The second is a beat of an idle
     // loop, the loop belongs to `app/app.ts`, and a settled picture is the one
     // every band is authored to rest on.
-    const start = combat?.enemyStartCount ?? armySize(standing)
-    const alive = combat?.enemyBones.length ?? start
-    const pose = idlePose(standing, alive, start) ?? stage
+    const maxHp = combat?.enemyMaxHp ?? e.maxHp
+    const hp = combat?.enemyHp ?? maxHp
+    const pose = idlePose(standing, hp, maxHp) ?? stage
     const art = enemyArt(e.art, pose)
     placeEnemy(world, url(art), {
       width: stance.width,
@@ -215,29 +215,41 @@ function renderHud(world: World, state: GameState, handlers: WorldHandlers): voi
     const bar = el('div', 'enemy-bar')
     bar.id = 'enemy-bar'
 
-    // Its name and how many bones it has left. Not a meter: a count, because a
-    // count is what the fight is made of and a bar would be a health bar
-    // wearing a different label.
+    // Its name, what is left of it, and exactly what it costs to leave it
+    // standing. Both numbers are stated outright and neither is hidden until
+    // it happens: the whole tactical contract of a fight is *I know how many
+    // bones this thing will break if it survives my attack*.
     const name = el('div', 'enemy-name')
     name.append(el('span', 'enemy-title', e.name))
-    const bones = el('span', 'enemy-bones', `${combat.enemyBones.length} BONES`)
-    bones.id = 'enemy-bones'
-    bones.dataset['bones'] = String(combat.enemyBones.length)
-    bones.dataset['start'] = String(combat.enemyStartCount)
-    bones.setAttribute('aria-label', `${e.name}, ${combat.enemyBones.length} bones left`)
-    name.append(bones)
+    const hp = el('span', 'enemy-hp', `${combat.enemyHp} / ${combat.enemyMaxHp}`)
+    hp.id = 'enemy-hp'
+    hp.dataset['hp'] = String(combat.enemyHp)
+    hp.dataset['max'] = String(combat.enemyMaxHp)
+    hp.setAttribute('aria-label', `${e.name}, ${combat.enemyHp} of ${combat.enemyMaxHp} left`)
+    name.append(hp)
     bar.append(name)
 
-    // Its rule, in readable text, before anything can be committed. A boss
-    // rule the player only learns by losing a bone to it is not a rule.
-    // A finished thing declares nothing, so it goes with the fight.
+    if (!combat.defeated) {
+      const hits = el('p', 'enemy-hits', `BREAKS ${e.damage}`)
+      hits.id = 'enemy-hits'
+      hits.dataset['damage'] = String(e.damage)
+      hits.setAttribute(
+        'aria-label',
+        `It breaks ${e.damage} of my bones every attack that does not finish it`,
+      )
+      bar.append(hits)
+    }
+
+    // Its rule, in readable text, before anything can be committed. A rule the
+    // player only learns by losing a bone to it is not a rule. A finished
+    // thing declares nothing, so it goes with the fight.
     if (e.rule && !combat.defeated) {
       const b = button({
         act: 'rule',
-        label: e.tieRule === 'warden-holds' ? 'TIES HOLD.' : 'ITS RULE',
+        label: 'ITS RULE',
         describe: e.rule,
         onPress: handlers.onRule,
-        className: `enemy-rule${e.tieRule === 'warden-holds' ? ' enemy-rule-hard' : ''}`,
+        className: 'enemy-rule',
       })
       b.id = 'enemy-rule'
       bar.append(b)
@@ -245,13 +257,13 @@ function renderHud(world: World, state: GameState, handlers: WorldHandlers): voi
     world.hud.append(bar)
   }
 
-  // The whole turn, not its last line.
+  // The whole exchange, not its last line.
   //
-  // The band used to show `log.at(-1)`, which is always the enemy's answer —
-  // so "Green face: heal 4 HP" and "Red face: lose 7 HP" existed in the state,
-  // were animated on the die that caused them, and were then unreadable a
-  // moment later. Anything that is only legible while moving is missing for
-  // anyone who turned motion off.
+  // Every beat of an attack is written into `combat.log` by the reducer that
+  // settled it — the hand, the arithmetic, what it took off the thing, and
+  // what the thing took off you — so the round can be read back after it is
+  // over rather than only while it is moving. Anything that is only legible
+  // while moving is missing for anyone who turned motion off.
   const say = el('p', 'say')
   say.id = 'say'
   const beats = run.say ? [run.say] : (combat && state.mode === 'combat' ? combat.log : [])

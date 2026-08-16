@@ -10,13 +10,12 @@
  *
  * Two facts get a picture here, and they are different kinds of fact:
  *
- *   - **how much of its army is left**, which is a settled property of the
- *     fight. It is recomputed from `enemyBones.length` on every paint and
- *     never stored, so a reload at four of eight shows the same plate as never
- *     having left.
- *   - **what the last smash did**, which is transient by nature: it is up for
+ *   - **how much of it is left**, which is a settled property of the fight. It
+ *     is recomputed from `enemyHp` on every paint and never stored, so a
+ *     reload at half health shows the same plate as never having left.
+ *   - **what the last attack did**, which is transient by nature: it is up for
  *     a couple of hundred milliseconds in the middle of a round and the
- *     settled picture is the army band again.
+ *     settled picture is the health band again.
  *
  * Neither is in `GameState`, and neither may be. A band is arithmetic on a
  * number the save already holds; a pose is a frame of a transition. Putting
@@ -24,18 +23,18 @@
  * reload an animation clock to recover.
  */
 
-import type { SmashRecord } from '../game/state.js'
+import type { AttackRecord } from '../game/state.js'
 
 /**
- * How much of a horror's army is left, as the three pictures there are of it.
+ * How much of a horror is left, as the three pictures there are of it.
  *
  * Thirds, and no fourth. Two bands would make the change a single event a
  * player could miss; four would put two of them inside the same handful of
- * rounds and none of them would read. For an eight-bone Warden this gives
- * 8–6 full, 5–3 medium, 2–1 low — each of them several rounds long, so each is
- * on screen long enough to be a state rather than a flicker.
+ * attacks and none of them would read. For the Warden's 180 this gives
+ * 180–121 full, 120–61 medium, 60–0 low — each of them several exchanges long,
+ * so each is on screen long enough to be a state rather than a flicker.
  */
-export type ArmyBand = 'full' | 'medium' | 'low'
+export type HealthBand = 'full' | 'medium' | 'low'
 
 /** The two plates of one band's idle, in order. */
 export type IdlePair = readonly [string, string]
@@ -48,11 +47,11 @@ export interface IdleLoop {
   readonly frameMs: number
 }
 
-/** What a smash did, reduced to the thing a drawing can be chosen from. */
-export interface SmashPoses {
-  /** It kept a tie. Its own bone stands and yours does not. */
-  readonly held?: string
-  /** It broke bones of yours, and no tie was held. */
+/** What an attack did, reduced to the thing a drawing can be chosen from. */
+export interface AttackPoses {
+  /** The attack was feeble — CRAP — and it barely felt it. */
+  readonly shrugged?: string
+  /** It took a real hit and answered. */
   readonly struck?: string
 }
 
@@ -65,26 +64,25 @@ export interface EnemyPresentation {
    */
   readonly idle?: IdleLoop
   /**
-   * The plates for what a smash did.
+   * The plates for what an attack did.
    *
-   * Presentation only. Which bones broke is the reducer's; this says which
-   * drawing reveals it. An enemy with no entry gets no pose and the round
-   * plays exactly as it did before.
+   * Presentation only. How much damage landed is the reducer's; this says
+   * which drawing reveals it. An enemy with no entry gets no pose and the
+   * round plays exactly as it did before.
    */
-  readonly smash?: SmashPoses
+  readonly attack?: AttackPoses
 }
 
 /**
  * The Warden, deteriorating.
  *
- * Ten plates and three ideas. It stands, growing visibly worse as its army
- * goes; it throws its arms wide when it has broken bones of yours; it draws
- * itself up when it has **held a tie**.
+ * Ten plates and three ideas. It stands, growing visibly worse as its health
+ * goes; it throws its arms wide when it breaks bones of yours; it draws itself
+ * up when the attack it just took was nothing.
  *
- * That last one is the important one and it is the same drawing the old build
- * used for a telegraph — but it now means something the player can act on.
- * *Ties hold* is the boss's one rule; the defensive plate is what a held tie
- * looks like, and it comes up on the round the player has just paid for it.
+ * That last one is the one the player can act on. CRAP is the fallback that is
+ * never useless but always weak, and the defensive plate is what a fight looks
+ * like when you have run out of shapes to make against it.
  *
  * 700 ms a plate is the slowest an idle can be and still be an idle. The pair
  * is two drawings of a thing standing still, so anything quicker reads as a
@@ -99,17 +97,17 @@ const WARDEN: EnemyPresentation = {
     low: ['idle.low.1', 'idle.low.2'],
     frameMs: 700,
   },
-  smash: { held: 'defense', struck: 'attack' },
+  attack: { shrugged: 'defense', struck: 'attack' },
 }
 
 /**
  * The Gnawing, struck.
  *
  * One plate, and the encounter already ships it: the thing blown out white on
- * the frame its bones break. There is no idle family, so it stands still.
+ * the frame the blow lands. There is no idle family, so it stands still.
  */
 const GNAWING: EnemyPresentation = {
-  smash: { struck: 'hit' },
+  attack: { struck: 'hit' },
 }
 
 /** Keyed by enemy id. An enemy with no entry is presented as it always was. */
@@ -123,21 +121,21 @@ export function presentationOf(enemyId: string): EnemyPresentation | undefined {
 }
 
 /**
- * How much of a horror's army is left, in thirds.
+ * How much of a horror is left, in thirds.
  *
  * The boundaries are inclusive downwards — a band ends *at* its fraction, so
  * exactly two thirds is already `medium` and exactly one third is already
- * `low`. That is the honest reading of a count: the moment it drops to the
+ * `low`. That is the honest reading of a total: the moment it drops to the
  * line it has crossed it.
  *
  * Pure, and takes numbers rather than state, because it has to be callable
  * from the settled paint and from the middle of a transition with the same
  * answer. Nothing here is stored; the band is arithmetic on the save.
  */
-export function armyBand(alive: number, start: number): ArmyBand {
-  if (start <= 0) return 'full'
-  if (alive > (start * 2) / 3) return 'full'
-  if (alive > start / 3) return 'medium'
+export function healthBand(hp: number, maxHp: number): HealthBand {
+  if (maxHp <= 0) return 'full'
+  if (hp > (maxHp * 2) / 3) return 'full'
+  if (hp > maxHp / 3) return 'medium'
   return 'low'
 }
 
@@ -151,32 +149,29 @@ export function armyBand(alive: number, start: number): ArmyBand {
  */
 export function idlePose(
   enemyId: string,
-  alive: number,
-  start: number,
+  hp: number,
+  maxHp: number,
   frame = 0,
 ): string | undefined {
   const idle = presentationOf(enemyId)?.idle
   if (!idle) return undefined
-  const pair = idle[armyBand(alive, start)]
+  const pair = idle[healthBand(hp, maxHp)]
   return pair[((frame % pair.length) + pair.length) % pair.length]
 }
 
 /**
- * The plate for what a smash just did, or nothing because it has none.
+ * The plate for what an attack just did, or nothing because it has none.
  *
- * A held tie outranks a casualty, and deliberately: for the Warden a round
- * that held a tie *and* broke bones is a round whose one memorable fact is the
- * tie, because that is the rule the player is being taught. A smash that cost
- * the player nothing gets no pose — a defensive drawing over a round in which
- * nothing happened to you would be the picture claiming something the record
- * does not.
+ * A feeble attack outranks a heavy one, and deliberately: a round scored as
+ * CRAP is a round whose one memorable fact is that there was nothing left to
+ * make, and the defensive plate says so. An attack that killed it gets no pose
+ * at all — the authored death is the picture of that.
  */
-export function smashPose(enemyId: string, smash: SmashRecord): string | undefined {
-  const poses = presentationOf(enemyId)?.smash
-  if (!poses) return undefined
-  if (smash.heldTies > 0) return poses.held
-  const lost = smash.playerCommonLost + smash.playerSpecialsLost.length
-  return lost > 0 ? poses.struck : undefined
+export function attackPose(enemyId: string, attack: AttackRecord): string | undefined {
+  const poses = presentationOf(enemyId)?.attack
+  if (!poses || attack.enemyHpAfter <= 0) return undefined
+  if (attack.hand === 'crap' && poses.shrugged) return poses.shrugged
+  return poses.struck
 }
 
 /** How long one idle plate is up, or nothing because there is no loop to run. */

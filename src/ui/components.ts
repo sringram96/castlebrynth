@@ -9,18 +9,15 @@
  *
  * ## Every number is readable as text
  *
- * A bone's value is in its accessible name and in a `data-value`, always, and
- * a special's type is part of that name — `Knuckle, rolled 8`. The pips are
- * the picture; they are not the only statement of the number. A seven and an
- * eight exist now, and neither of them has a conventional pip arrangement a
- * player already knows, so relying on the drawing alone would be relying on a
- * convention the game just invented.
+ * A die's value is in its accessible name and in a `data-value`, always, and
+ * so is whether it is held — `Die 3, showing 6, held`. The pips are the
+ * picture; they are not the only statement of the number, and the hold state
+ * is not colour alone.
  */
 
 import type { Point, Rect } from '../content/tray.js'
 import { TRAY } from '../content/tray.js'
-import type { BoneProfileId, SpecialBone, SpecialBoneInstance } from '../content/bones.js'
-import { boneProfile, specialBone } from '../content/bones.js'
+import type { DieValue } from '../combat/roll.js'
 import type { Reward } from '../content/rewards.js'
 
 export function el<K extends keyof HTMLElementTagNameMap>(
@@ -53,7 +50,7 @@ export function place(node: HTMLElement, rect: Rect): void {
  * overhang scale too. The visible thing inside is sized by CSS to sit in the
  * bay.
  *
- * `transform` is deliberately left alone — the fielded lift and the throw
+ * `transform` is deliberately left alone — the held lift and the throw
  * animation own it, and a placement that spent it would have to fight them.
  */
 export function seat(node: HTMLElement, centre: Point, width: number): void {
@@ -101,12 +98,9 @@ export function button(spec: ButtonSpec): HTMLButtonElement {
 /**
  * The pips of one face, so a bone reads as a bone and not as a number.
  *
- * One through six are the arrangements everybody already knows. Seven and
- * eight are not — no die anybody has held has them — so they are drawn as a
- * six with one and two extra pips down the middle, and the numeral is printed
- * on the face alongside. The rule in `docs/ART_DIRECTION.md` is that a seven
- * and an eight must be readable at arm's length without a tooltip, and a
- * pattern nobody can count at a glance is not readable.
+ * One through six, and there is no seventh: a bone is an ordinary d6 in this
+ * baseline, so every face is an arrangement everybody already knows and the
+ * numeral that used to print above six has nothing left to explain.
  */
 const PIPS: Readonly<Record<number, readonly [number, number][]>> = {
   1: [[1, 1]],
@@ -140,155 +134,72 @@ const PIPS: Readonly<Record<number, readonly [number, number][]>> = {
     [0, 2],
     [2, 2],
   ],
-  7: [
-    [0, 0],
-    [2, 0],
-    [0, 1],
-    [1, 1],
-    [2, 1],
-    [0, 2],
-    [2, 2],
-  ],
-  8: [
-    [0, 0],
-    [1, 0],
-    [2, 0],
-    [0, 1],
-    [2, 1],
-    [0, 2],
-    [1, 2],
-    [2, 2],
-  ],
 }
 
-/** Which material a profile is drawn in, so the four are told apart. */
-const MATERIAL: Readonly<Record<BoneProfileId, string>> = {
-  common: 'bone',
-  wrong: 'pale',
-  cruel: 'ash',
-  heavy: 'iron',
-}
-
-export function materialOf(profile: BoneProfileId): string {
-  return MATERIAL[profile] ?? 'bone'
-}
-
-/**
- * One face of one bone.
- *
- * The value is on the element as data *and* as a numeral, because a seven has
- * no arrangement a player recognises and an eight has none either. The numeral
- * is the truth; the pips are the texture.
- */
-export function boneFace(profile: BoneProfileId, value: number): HTMLElement {
-  const box = el('span', `bone-face bone-${materialOf(profile)}`)
+/** One face of one bone. The value is data as well as pips. */
+export function dieFace(value: DieValue): HTMLElement {
+  const box = el('span', 'bone-face')
   box.dataset['value'] = String(value)
-  box.dataset['profile'] = profile
   for (const [gx, gy] of PIPS[value] ?? []) {
     const pip = el('i', 'pip')
     pip.style.left = `${12 + gx * 32}%`
     pip.style.top = `${12 + gy * 32}%`
     box.append(pip)
   }
-  // Above six there is no arrangement anybody knows, so the number is printed.
-  if (value > 6) box.append(el('b', 'bone-numeral', String(value)))
   return box
-}
-
-/** A bone with its back to you: fielded, committed, and not yet thrown. */
-export function boneBack(profile: BoneProfileId): HTMLElement {
-  const box = el('span', `bone-face bone-back bone-${materialOf(profile)}`)
-  box.dataset['profile'] = profile
-  return box
-}
-
-export interface BoneViewState {
-  readonly boneKey: string
-  readonly profile: BoneProfileId
-  /** Absent before the throw: a committed bone with its back showing. */
-  readonly value?: number
-  /** Set when it is a named bone, so the name can be in the accessible one. */
-  readonly specialId?: string
-  readonly broken?: boolean
-  readonly safe?: boolean
-  /** The lane it is standing in, so the DOM order is the visible order. */
-  readonly lane: number
-}
-
-function boneName(view: BoneViewState): string {
-  const named = view.specialId ? specialBone(view.specialId).name : 'Bone'
-  const shown = view.value === undefined ? 'face down' : `rolled ${view.value}`
-  const state = view.broken ? ', broken' : view.safe ? ', safe' : ''
-  return `${named}, ${shown}${state}`
 }
 
 /**
- * One bone in a line, as a button.
+ * A bone that has not been thrown yet.
  *
- * It is a button in every phase, because in `rolled` with a Charm armed it is
- * a target, and a control that becomes pressable only sometimes is a control
- * whose size and position must not change when it does. When there is nothing
- * to do with it, pressing it inspects it — the same rule the old crown had.
+ * The one moment it is used is before the initial ROLL, where the crown shows
+ * *how many bones this attack has* and no face has been decided. It has to be
+ * unmistakably not a face: no pips, and a mark rather than a number.
  */
-export function boneButton(
-  view: BoneViewState,
+export function dieBack(): HTMLElement {
+  return el('span', 'bone-face bone-back')
+}
+
+export interface DieViewState {
+  /** Its position in the roll. Stable across a reroll: a held six stays put. */
+  readonly index: number
+  /** Absent before the initial roll. */
+  readonly value?: DieValue
+  readonly held?: boolean
+}
+
+function dieName(view: DieViewState): string {
+  const place = `Die ${view.index + 1}`
+  if (view.value === undefined) return `${place}, not thrown yet`
+  return `${place}, showing ${view.value}, ${view.held ? 'held' : 'not held'}`
+}
+
+/**
+ * One bone of the attack, as a button.
+ *
+ * It is a button in every position of the attack, because in the two positions
+ * that still have a reroll it toggles HOLD — and a control that becomes
+ * pressable only sometimes is a control whose size and position must not
+ * change when it does. When there is nothing left to throw, pressing it
+ * inspects it instead.
+ */
+export function dieButton(
+  view: DieViewState,
   spec: { readonly act: string; readonly describe?: string; readonly onPress: () => void },
 ): HTMLButtonElement {
   const b = button({
     act: spec.act,
     label: '',
-    describe: spec.describe ?? boneName(view),
+    describe: spec.describe ?? dieName(view),
     onPress: spec.onPress,
     className: 'bone',
   })
-  b.dataset['boneKey'] = view.boneKey
-  b.dataset['profile'] = view.profile
-  b.dataset['lane'] = String(view.lane)
+  b.dataset['index'] = String(view.index)
   if (view.value !== undefined) b.dataset['value'] = String(view.value)
-  if (view.specialId) b.dataset['specialId'] = view.specialId
-  if (view.broken) b.dataset['broken'] = 'yes'
-  if (view.safe) b.dataset['safe'] = 'yes'
-  b.append(view.value === undefined ? boneBack(view.profile) : boneFace(view.profile, view.value))
+  b.dataset['held'] = view.held ? 'yes' : 'no'
+  if (spec.act === 'hold') b.setAttribute('aria-pressed', view.held ? 'true' : 'false')
+  b.append(view.value === undefined ? dieBack() : dieFace(view.value))
   return b
-}
-
-/**
- * A bone's whole truth, in the one layout every bone inspection uses.
- *
- * Six faces in order and one literal sentence. That is the entire card,
- * because that is the entire bone.
- */
-export function boneCard(bone: SpecialBone, count = 1): HTMLElement {
-  const card = el('article', 'card bone-card')
-  card.dataset['boneId'] = bone.id
-  const head = el('h3', 'card-name', bone.name)
-  if (count > 1) head.append(el('span', 'card-count', `×${count}`))
-  card.append(head)
-
-  const faces = el('div', 'card-faces')
-  for (const value of boneProfile(bone.profile).faces) faces.append(boneFace(bone.profile, value))
-  card.append(faces)
-
-  card.append(el('p', 'card-rule', `FACES · ${bone.rule}`))
-  if (bone.flavour) {
-    card.append(el('hr', 'card-rule-line'))
-    card.append(el('p', 'card-flavour', bone.flavour))
-  }
-  return card
-}
-
-/** The common bone's card. It has no name, so the pile is its subject. */
-export function commonCard(count: number): HTMLElement {
-  const card = el('article', 'card bone-card')
-  card.dataset['boneId'] = 'common'
-  const head = el('h3', 'card-name', 'Common bones')
-  head.append(el('span', 'card-count', `×${count}`))
-  card.append(head)
-  const faces = el('div', 'card-faces')
-  for (const value of boneProfile('common').faces) faces.append(boneFace('common', value))
-  card.append(faces)
-  card.append(el('p', 'card-rule', `FACES · ${boneProfile('common').rule}`))
-  return card
 }
 
 /** One carried utility, as its own card. Exact mechanic, then flavour. */
@@ -298,61 +209,10 @@ export function rewardCard(r: Reward, count?: number): HTMLElement {
   const head = el('h3', 'card-name', r.name)
   if (count !== undefined && count > 1) head.append(el('span', 'card-count', `×${count}`))
   card.append(head)
-  if (r.kind === 'bone') {
-    const faces = el('div', 'card-faces')
-    const bone = specialBone(r.id)
-    for (const value of boneProfile(bone.profile).faces) faces.append(boneFace(bone.profile, value))
-    card.append(faces)
-  }
   card.append(el('p', 'card-rule', `EFFECT · ${r.rule}`))
   if (r.flavour) {
     card.append(el('hr', 'card-rule-line'))
     card.append(el('p', 'card-flavour', r.flavour))
   }
   return card
-}
-
-/**
- * One living special in the pouch.
- *
- * Grouped by type in the copy, and *not* grouped in identity: each instance is
- * its own row with its own instance id, because fielding one and losing one
- * are both about a particular object.
- */
-export function pouchRow(
-  instance: SpecialBoneInstance,
-  view: { readonly fieldable: boolean; readonly fielded: boolean; readonly onPress: () => void },
-): HTMLElement {
-  const bone = specialBone(instance.specialId)
-  const row = el('div', 'pouch-row')
-  row.dataset['instanceId'] = instance.instanceId
-  row.dataset['fielded'] = view.fielded ? 'yes' : 'no'
-
-  const faces = el('div', 'card-faces')
-  for (const value of boneProfile(bone.profile).faces) faces.append(boneFace(bone.profile, value))
-
-  const text = el('div', 'pouch-text')
-  text.append(el('h3', 'card-name', bone.name))
-  text.append(el('p', 'card-rule', bone.rule))
-
-  row.append(faces, text)
-
-  if (view.fieldable || view.fielded) {
-    // The two acts are named for what pressing does, not for what the row is.
-    // A bone standing in the line is withdrawn; a bone held back is put in.
-    // Every named bone starts standing, so `withdraw-bone` is the common one.
-    const b = button({
-      act: view.fielded ? 'withdraw-bone' : 'field-bone',
-      label: view.fielded ? 'STANDING' : 'HELD',
-      describe: view.fielded
-        ? `Hold ${bone.name} back, out of the line`
-        : `Stand ${bone.name} in the line`,
-      onPress: view.onPress,
-      className: `act act-pouch${view.fielded ? ' act-on' : ''}`,
-    })
-    b.dataset['instanceId'] = instance.instanceId
-    b.setAttribute('aria-pressed', view.fielded ? 'true' : 'false')
-    row.append(b)
-  }
-  return row
 }

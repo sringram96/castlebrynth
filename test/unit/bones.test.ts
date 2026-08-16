@@ -1,124 +1,121 @@
 /**
- * The bones themselves.
+ * The pile.
  *
- * Four distributions and two named bones, and every number in them is
- * mechanical law: a face table that drifts is a game that plays differently
- * from the one the cards describe. These tests are written out in digits
- * rather than derived from the content, because a test that computes its
- * expectation from the thing it is testing proves nothing.
+ * One number, and the two constants every rule that gives bones back or takes
+ * them away has to agree on. Written out in digits rather than derived from
+ * the content, because a test that computes its expectation from the thing it
+ * is testing proves nothing.
+ *
+ * What a bone *does* in a fight is `combat/roll.ts` and `combat/hands.ts`, and
+ * it is tested in `hands.test.ts` and `combat.test.ts`. There is no profile
+ * table here and there is not to be one: this baseline has one kind of bone.
  */
 
 import { describe, expect, it } from 'vitest'
+import { BONE_CEILING, STARTING_BONES, roomToRecover } from '../../src/content/bones.js'
 import {
-  BONE_CEILING,
-  BONE_PROFILES,
-  SPECIAL_BONES,
-  STARTING_BONES,
-  boneProfile,
-  facesOfSpecial,
-  isSpecialBoneId,
-  newSpecial,
-  roomToRecover,
-  specialBone,
-  totalBones,
-} from '../../src/content/bones.js'
-
-describe('profiles', () => {
-  it('common is an ordinary d6', () => {
-    expect(BONE_PROFILES.common.faces).toEqual([1, 2, 3, 4, 5, 6])
-  })
-
-  it('wrong is every face one step too high', () => {
-    expect(BONE_PROFILES.wrong.faces).toEqual([2, 3, 4, 5, 6, 7])
-  })
-
-  it('cruel has two sevens', () => {
-    expect(BONE_PROFILES.cruel.faces).toEqual([3, 4, 5, 6, 7, 7])
-  })
-
-  it('heavy reaches eight', () => {
-    expect(BONE_PROFILES.heavy.faces).toEqual([4, 5, 6, 6, 7, 8])
-  })
-
-  it('every profile has exactly six faces', () => {
-    for (const profile of Object.values(BONE_PROFILES)) {
-      expect(profile.faces, profile.id).toHaveLength(6)
-    }
-  })
-
-  it('every profile states its faces in digits', () => {
-    // The copy law: a bone's card is its numbers. A rule that describes the
-    // distribution in words is a rule the player has to translate.
-    for (const profile of Object.values(BONE_PROFILES)) {
-      for (const value of new Set(profile.faces)) {
-        expect(profile.rule, profile.id).toContain(String(value))
-      }
-    }
-  })
-
-  it('refuses a profile it does not have', () => {
-    expect(() => boneProfile('nonesuch' as never)).toThrow()
-  })
-})
-
-describe('special bones', () => {
-  it('the Cinderbone is cruel', () => {
-    expect(SPECIAL_BONES.cinderbone.profile).toBe('cruel')
-    expect(facesOfSpecial(newSpecial('cinderbone', 0))).toEqual([3, 4, 5, 6, 7, 7])
-  })
-
-  it('the Knuckle is heavy', () => {
-    expect(SPECIAL_BONES.knuckle.profile).toBe('heavy')
-    expect(facesOfSpecial(newSpecial('knuckle', 0))).toEqual([4, 5, 6, 6, 7, 8])
-  })
-
-  it('states its faces in digits and nothing else', () => {
-    expect(SPECIAL_BONES.cinderbone.rule).toBe('3, 4, 5, 6, 7, 7.')
-    expect(SPECIAL_BONES.knuckle.rule).toBe('4, 5, 6, 6, 7, 8.')
-  })
-
-  it('tells a special id from anything else', () => {
-    expect(isSpecialBoneId('knuckle')).toBe(true)
-    expect(isSpecialBoneId('charm')).toBe(false)
-    expect(isSpecialBoneId('common')).toBe(false)
-  })
-
-  it('refuses a bone it does not have', () => {
-    expect(() => specialBone('plain')).toThrow()
-  })
-
-  it('gives two bones of the same type different identities', () => {
-    // The whole reason a special is an instance. Two Cinderbones may be alive
-    // at once and one of them may break while the other does not.
-    const first = newSpecial('cinderbone', 0)
-    const second = newSpecial('cinderbone', 1)
-    expect(first.instanceId).not.toBe(second.instanceId)
-    expect(first.specialId).toBe(second.specialId)
-  })
-})
+  DIE_FACES,
+  MAX_ACTIVE_DICE,
+  MAX_ROLLS,
+  activeDice,
+  canonicalHeld,
+  rerollDice,
+  rollDice,
+} from '../../src/combat/roll.js'
+import type { DieValue } from '../../src/combat/roll.js'
+import { Rng } from '../../src/game/rng.js'
 
 describe('the pile', () => {
-  it('counts specials', () => {
-    expect(totalBones({ commonBones: 27, specials: [] })).toBe(27)
-    expect(
-      totalBones({ commonBones: 27, specials: [newSpecial('knuckle', 0), newSpecial('knuckle', 1)] }),
-    ).toBe(29)
-  })
-
   it('starts a run at the ceiling', () => {
     expect(STARTING_BONES).toBe(BONE_CEILING)
     expect(BONE_CEILING).toBe(30)
   })
 
-  it('measures room to recover against the total, specials included', () => {
-    // The rule that stops a run stacking named bones on top of a full pile and
-    // then healing back to thirty commons underneath them.
-    expect(roomToRecover({ commonBones: 30, specials: [] })).toBe(0)
-    expect(roomToRecover({ commonBones: 28, specials: [newSpecial('knuckle', 0)] })).toBe(1)
-    expect(roomToRecover({ commonBones: 20, specials: [] })).toBe(10)
+  it('measures room to recover against the ceiling', () => {
+    expect(roomToRecover({ bones: 30 })).toBe(0)
+    expect(roomToRecover({ bones: 29 })).toBe(1)
+    expect(roomToRecover({ bones: 20 })).toBe(10)
   })
 
   it('never offers negative room', () => {
-    expect(roomToRecover({ commonBones: 40, specials: [] })).toBe(0)
+    expect(roomToRecover({ bones: 40 })).toBe(0)
+  })
+})
+
+describe('how wide an attack is', () => {
+  it('is six for anything from six bones up', () => {
+    for (const bones of [30, 12, 7, 6]) expect(activeDice(bones)).toBe(6)
+    expect(MAX_ACTIVE_DICE).toBe(6)
+  })
+
+  it('is the pile itself below six', () => {
+    expect(activeDice(5)).toBe(5)
+    expect(activeDice(4)).toBe(4)
+    expect(activeDice(3)).toBe(3)
+    expect(activeDice(2)).toBe(2)
+    expect(activeDice(1)).toBe(1)
+  })
+
+  it('is nothing at zero, which is the end of the run', () => {
+    expect(activeDice(0)).toBe(0)
+    expect(activeDice(-4)).toBe(0)
+  })
+})
+
+describe('throwing', () => {
+  it('gives an attack one throw and two more', () => {
+    expect(MAX_ROLLS).toBe(3)
+  })
+
+  it('is an ordinary d6 and nothing else', () => {
+    expect(DIE_FACES).toEqual([1, 2, 3, 4, 5, 6])
+    const rolled = rollDice(200, new Rng(12345))
+    for (const die of rolled) {
+      expect(die).toBeGreaterThanOrEqual(1)
+      expect(die).toBeLessThanOrEqual(6)
+    }
+    expect(new Set(rolled).size).toBe(6)
+  })
+
+  it('throws exactly the number asked for', () => {
+    for (const count of [0, 1, 4, 6]) {
+      expect(rollDice(count, new Rng(7))).toHaveLength(count)
+    }
+  })
+
+  it('is a pure function of the generator handed in', () => {
+    expect(rollDice(6, new Rng(99))).toEqual(rollDice(6, new Rng(99)))
+  })
+})
+
+describe('holding', () => {
+  const table: readonly DieValue[] = [6, 1, 5, 2, 4, 3]
+
+  it('keeps a held bone in the position it was standing in', () => {
+    const after = rerollDice(table, [0, 2], new Rng(5))
+    expect(after[0]).toBe(6)
+    expect(after[2]).toBe(5)
+    expect(after).toHaveLength(6)
+  })
+
+  it('throws everything else', () => {
+    const a = rerollDice(table, [0], new Rng(5))
+    const b = rerollDice(table, [0], new Rng(6))
+    // Two different generators, one held position: the rest cannot all agree.
+    expect(a.slice(1)).not.toEqual(b.slice(1))
+  })
+
+  it('canonicalises a list of positions: unique, whole, in range, in order', () => {
+    // 1.5 is not a die, so it is dropped rather than rounded into one.
+    expect(canonicalHeld([2, 0, 0, 2, -1, 99, 6, 1.5], 6)).toEqual([0, 2])
+    expect(canonicalHeld([], 6)).toEqual([])
+    expect(canonicalHeld([0, 1, 2], 0)).toEqual([])
+  })
+
+  it('cannot be corrupted by a stale position from a wider throw', () => {
+    // Four bones left, and a hold list written when there were six.
+    const narrow: readonly DieValue[] = [6, 6, 1, 1]
+    expect(rerollDice(narrow, [0, 4, 5], new Rng(3))[0]).toBe(6)
+    expect(rerollDice(narrow, [0, 4, 5], new Rng(3))).toHaveLength(4)
   })
 })

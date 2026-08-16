@@ -1,4 +1,4 @@
-# The War of Bones
+# Combat
 
 The combat system, in full. This file is the contract: if the code and this
 document disagree, one of them is a bug.
@@ -7,238 +7,253 @@ document disagree, one of them is a bug.
 
 ## The sentence
 
-> It throws first. I decide how many of my bones to risk. I throw once. We line
-> them up highest to lowest and break the losers. Ties break both — except the
-> Warden, who keeps his. Whatever I lose is gone.
+> I have a pile of bones. I throw up to six of them. I can hold what I like and
+> throw the rest again, twice. The numbers themselves are my power; the pattern
+> makes that power hit harder. I can only use each good pattern once against
+> this thing. If I can't make anything I can still hit it badly. If it survives,
+> I know exactly how many bones it is going to break.
 
-A player who has watched one round should be able to say that. It is the design
-test, and it is the reason the system is what it is: the old one asked them to
-hold a six-die loadout, hold state, a reroll, subset selection, seven hand
-classes, multipliers, face riders, relic bonuses, enemy damage and HP in their
-head at once.
+A player who has watched one attack should be able to say that. It is the
+design test. If the implementation needs significantly more explanation than
+that paragraph, simplify it before adding anything else.
 
 ---
 
 ## Life
 
-**A run's life is a pile of bones.** Thirty of them, all common, at the start.
-There is no health, no maximum-health field, and no hit points anywhere in the
-codebase — see `src/game/state.ts`. A bone counter that behaves like a health
-bar is the old game wearing this one's coat, and it is not to be built.
+**A run's life is a pile of bones.** Thirty of them at the start, and one
+number: `run.bones`. There is no separate HP field for the player, no maximum
+health, and no second life bar under another name.
 
-Two kinds of bone:
+The ceiling is **30** (`BONE_CEILING` in `src/content/bones.ts`). Reaching zero
+ends the run.
 
-| | what it is | how it is carried |
-|---|---|---|
-| **common** | an ordinary d6: `1,2,3,4,5,6` | a **count**. It is anonymous; there is no such thing as *that* common bone. |
-| **special** | a named bone with its own faces | an **instance**. Two Cinderbones are two objects and one can break while the other does not. |
+**The pile is also the hand.** An attack throws `min(6, run.bones)` bones, so
+damage does not merely count down — it narrows the dice game:
 
-The pile is `commonBones + specials.length`, and there is exactly one function
-that says so: `totalBones` in `src/content/bones.ts`. Every rule that asks *am
-I alive* or *how much can I recover* calls it. Reaching zero ends the run.
+| pile | dice |
+|---|---|
+| 30 | 6 |
+| 12 | 6 |
+| 6 | 6 |
+| 5 | 5 |
+| 4 | 4 |
+| 3 | 3 |
+| 2 | 2 |
+| 1 | 1 |
+| 0 | dead |
 
-The ceiling is **30 bones in all, specials included** (`BONE_CEILING`).
-
----
+There is **no minimum hand size**. A badly wounded player really does lose
+access to the hands that need the width — a Full House needs five bones, a
+Straight needs five, Six of a Kind needs six — and no rule anywhere says so.
+It falls out of the counting, which is the point.
 
 ## The bones
 
-Four distributions. They are mechanical law; two faces showing the same number
-resolve identically however they are drawn.
-
-| profile | faces | who has it |
-|---|---|---|
-| `common` | 1, 2, 3, 4, 5, 6 | the pile; every enemy's rank and file |
-| `wrong` | 2, 3, 4, 5, 6, 7 | the Marrow's two front bones |
-| `cruel` | 3, 4, 5, 6, 7, 7 | the **Cinderbone**; one of the Warden's |
-| `heavy` | 4, 5, 6, 6, 7, 8 | the **Knuckle**; one of the Warden's |
-
-A bone's card is its numbers and nothing else. `3, 4, 5, 6, 7, 7.` is the whole
-of a Cinderbone, and a player who has read that sentence knows everything the
-game knows about it.
-
-Seven and eight have no pip pattern anybody recognises, so they **print their
-number** as well as their pips. See `docs/ART_DIRECTION.md`.
+An ordinary d6. Six faces, `1,2,3,4,5,6`, and nothing else: no profile table,
+no face effect, no keyword, no modifier hook. Special dice are a future pass
+and are not in this baseline. See *What is not here* below.
 
 ---
 
-## The round
+## The attack
 
-**Choose your modifiers, then throw and watch what it costs.** Two steps, and
-each of them is one of those sentences.
+Each attack is a Yahtzee turn against a thing with a health total.
 
 ```
 FIGHT
   |
   v
-thrown       its line is already rolled, face-up and sorted
-  |          yours is not: the pile throws as wide as it can, and the only
-  |          thing you decide is which named bones stand in it
+dice = []                    nothing on the table
   |
-  | THROW { specialIds }
-  |          fields, rolls, sorts and resolves — one action, one tick
+  | ROLL                     throw min(6, bones) ordinary d6s
   v
-smashed      the casualties are settled and visible
+dice, rollsUsed = 1          may SCORE, or hold and REROLL
   |
-  | ROUND    only while both sides still have bones
+  | REROLL { held }          held bones stay; the rest are thrown
   v
-thrown       its next line
+dice, rollsUsed = 2          the same choice again
+  |
+  | REROLL { held }
+  v
+dice, rollsUsed = 3          must SCORE
+  |
+  | SCORE { hand }           the whole exchange, in one tick
+  v
+dice = [], rollsUsed = 0     the next attack, one round on
 ```
 
-Each phase has **exactly one** verb: THROW, then ROUND. There were four phases
-and four verbs, and `fielded` and `rolled` are gone with the decisions they
-existed to carry — see *What was cut, and why* below.
+**There is no phase field.** The position is derivable from the dice and the
+count of throws, and saying it twice is how two fields come to disagree:
 
-### 1. It throws first
+```
+dice.length === 0                     → waiting for ROLL
+dice.length > 0 && rollsUsed < 3      → may SCORE or REROLL
+dice.length > 0 && rollsUsed === 3    → must SCORE
+```
 
-The enemy fields up to six bones from its army in **authored priority order** —
-a number on the content, not a heuristic — rolls them, and stands them high to
-low. This happens in the same tick as FIGHT or ROUND, and it is public before
-the player throws. That is what makes the round something you answer rather
-than something you start.
+### Holds
 
-### 2. Width is not a decision; composition is
+After a throw, tapping a die toggles whether it is held. Held dice keep both
+their face and their position; everything else is thrown.
 
-The line is `min(6, commonBones + named bones standing)`, always. There is no
-stepper and no width to commit: a run throws everything it can, every round.
+A hold is a **presentation-local draft**. It is not in `GameState`, it does not
+survive a reload, and it reaches the reducer once, whole, as
+`REROLL { held: number[] }`. The reducer canonicalises the list — unique,
+whole, in range, sorted — so a stale index from a wider throw, a repeat, a
+negative or a fraction all reduce to the same answer. A reload may forget which
+dice were lit; it must not forget the faces, and it must not grant another
+throw.
 
-What the player chooses is **which named bones are in it**. Every named bone
-stands by default — a bone you are carrying is a bone you are fighting with —
-and the pouch lets you hold one back. A Knuckle in the line is four faces of
-six-or-better and one more thing that can break forever; against a line it
-cannot beat, holding it back is the better bet. Holding one back costs a lane
-whenever the pile has no spare common to take its place, and the width recomputes
-to say so rather than inventing a bone.
-
-While the phase is `thrown` that selection is a **draft** and none of it is a
-move. It reaches the reducer once, whole, on the `THROW` that acts on it. A
-reload before that loses the thought and nothing else.
-
-### 3. One throw, and no way to take it back
-
-There is no HOLD, no reroll, and no second throw. Not one under any name: the
-Charm was the last rethrow in the game and it is gone with the phase it was
-spent in — a reroll needs a moment between seeing your throw and living with
-it, and the round no longer has one.
-
-### What was cut, and why
-
-The round was `thrown → fielded → rolled → smashed`: four phases, four verbs,
-three presses to get through one exchange. FIELD committed a width, THROW
-rolled it, and SMASH resolved it.
-
-Two of those presses were confirmations. Between THROW and SMASH there was
-exactly one thing a player could do — spend a Charm — and between FIELD and
-THROW there was nothing at all. A phase whose only content is confirming a
-decision already taken is a phase that exists to be pressed through, and three
-taps to resolve one exchange is what a fight felt like from the outside.
-
-So: **throwing and finding out are one press**, and the beat that was spread
-across three of them is spent on showing the throw instead — the bones turn
-over, both lines stand for a moment, and then one clear break per lane.
-
-The honest cost is written down in *Balance* below: the width control was the
-game's skill ceiling, and removing it lowered it. What is left is real but
-smaller.
-
-### 4. Both lines sort themselves
-
-High to low, automatically. There is no manual lane rearrangement, which makes
-the sort a *rule*: which of two equal bones stands earlier decides which meets
-the enemy's higher bone.
-
-- **mine:** value ↓, then **common before special**, then instance id, then key.
-  A special must not die because an array happened to be built one way.
-- **its:** value ↓, then authored priority, then bone id.
-
-### 5. Smash
-
-Paired lanes resolve left to right, which after the sort is highest to lowest.
-
-| | outcome |
-|---|---|
-| mine > its | its bone breaks |
-| mine < its | my bone breaks |
-| equal | **both break** |
-| equal, vs the Warden | **my bone breaks; its bone stands** |
-| unpaired | **safe** — it fought nothing and cannot die |
-
-The pile is tested **after every lane**. If it reaches zero the run ends on that
-lane and the lanes after it *never resolve* — not as a draw, not as a mutual
-wipe. A lane that would have taken the enemy's last bone simply does not happen.
-
-**Zero outranks victory.** If a mutual tie takes my last bone and its last bone
-on the same lane, the run is dead.
-
-Casualties are removed immediately and permanently. A dead special is removed
-**by instance**; it is never converted into a common bone and nothing in the
-game brings it back.
+A REROLL with **everything** held is refused rather than charged. A throw in
+which nothing moves is not a throw.
 
 ---
 
-## The enemies
+## The scorecard
 
-| | army | ties | pays | drops |
+The dice say two things at once, and the interesting decision is that they are
+not the same thing:
+
+- **they add up.** Every die on the table counts, including the ones that took
+  no part in the pattern.
+- **they make a shape.** The shape supplies exactly one multiplier.
+
+```
+damage = max(1, floor(sum(all dice) × multiplier))
+```
+
+That is the whole equation. There is no other bonus anywhere in the game, no
+crit, no accuracy roll and no hidden modifier.
+
+| hand | multiplier | what it takes |
+|---|---|---|
+| **CRAP** | ×0.50 | the fallback. Not a category. |
+| **PAIR** | ×1.00 | two bones alike |
+| **TWO PAIR** | ×1.25 | two different faces, twice each |
+| **TRIPLE** | ×1.50 | three bones alike |
+| **STRAIGHT** | ×1.75 | five distinct consecutive faces: 1–5 or 2–6 |
+| **FULL HOUSE** | ×2.00 | three of one face and two of a *different* one |
+| **FOUR** | ×2.50 | four bones alike |
+| **FIVE** | ×3.00 | five bones alike |
+| **SIX** | ×4.00 | all six alike |
+
+These multipliers are **provisional tuning values**, not product law. They live
+in exactly one place — `HAND_DEFINITIONS` in `src/combat/hands.ts` — and every
+other part of the game reads them from there.
+
+### A roll can be several hands at once
+
+`5 5 5 2 2 4` is a Pair *and* a Two Pair *and* a Triple *and* a Full House. The
+player chooses which one to spend, and **only the chosen one is consumed**. If
+Triple is already spent, Full House is still legal; if Full House is spent,
+Triple is still legal.
+
+A larger group satisfies a smaller one: four alike is also a triple and also a
+pair.
+
+Two edges worth stating outright, because they are the two people get wrong:
+
+- `3 3 3 3 5 5` **is** a Full House. Four threes contain three, and the fives
+  are the distinct pair.
+- `3 3 3 3 3 1` **is not**. There is a triple, but no second face appears
+  twice.
+
+### One use per fight
+
+`combat.usedHands` belongs to the fight and resets when a new one begins. It
+never persists across the run.
+
+A named hand is consumed **only when the player deliberately scores it**. There
+is no scratching, no burning and no forced zero. A bad roll costs a throw and
+nothing else.
+
+### CRAP is a fallback, not a hand to burn
+
+```
+const named = unusedNamedHandsThatMatch(dice)
+return named.length > 0 ? named : ['crap']
+```
+
+CRAP appears **only** when no unspent named hand qualifies, and never alongside
+one. It is never written into `usedHands`, so it can never run out, and the
+ordinary formula applies: `sum × 0.5`, floored, with the minimum of one. A
+single bone showing a 1 still does 1 damage rather than nothing.
+
+---
+
+## The enemy
+
+An enemy has a health total and a fixed damage figure. **It rolls nothing.**
+
+| | HP | breaks | pays | drops |
 |---|---|---|---|---|
-| **The Gnawing** | 5 common | both die | 60%, 2 cards | — |
-| **The Marrow** | 2 wrong, 7 common | both die | 70%, 2 cards | 1 Vial, always |
-| **The Warden** | 1 heavy, 1 cruel, 6 common | **it holds** | nothing | — |
+| **The Gnawing** | 70 | 3 | 60%, 1 card | — |
+| **The Marrow** | 120 | 5 | 70%, 1 card | 1 Vial, always |
+| **The Warden** | 180 | 8 | nothing | — |
 
-The Gnawing is the base war: five bones, all of them fielded, no exception to
-remember. The Marrow teaches **reserves** — nine bones against a six-wide line,
-so killing what is in front of you promotes what is behind it — and puts a
-profile at the top of its line that a common bone cannot beat.
+Both numbers are on screen from the first frame of the fight and are never
+hidden until they land. The entire tactical contract is:
 
-The Warden is the exam. Everything already taught, plus one sentence: **an equal
-lane takes your bone and leaves its own standing.** That sentence is printed in
-its brief, in the room, and in MENU, before anything can be committed. A boss
-rule the player discovers by losing to it is not a boss rule.
+> I know exactly how many bones this thing will break if it survives my attack.
 
-The Warden pays nothing. It is standing at the way out; the open door is the
-reward.
+These figures are **provisional**. Their job is to give three differently paced
+fights so the hand mechanic can be played; `npm run balance` is what says what
+they produce.
+
+### The exchange
+
+`SCORE` settles all of it, in one tick, with no randomness anywhere in it:
+
+1. sum the dice;
+2. take the chosen hand's multiplier;
+3. `damage = max(1, floor(sum × multiplier))`;
+4. subtract it from the enemy's total, floored at zero;
+5. mark the chosen named hand used (CRAP marks nothing);
+6. **if the enemy is dead, it does not retaliate** — however thin the pile is;
+7. otherwise it breaks exactly `enemy.damage` bones;
+8. if the pile reaches zero, the run ends;
+9. otherwise the next attack begins immediately, with a clear table.
+
+There is no ROUND button. The score *is* the commitment, and what follows it is
+another empty table waiting for ROLL.
+
+### Victory
+
+Reaching zero health with an authored death parks the fight on
+`combat.defeated` and plays it; `DEFEAT_DONE` is the single transition out and
+grants the win. An enemy with no authored death settles the victory
+immediately. Both paths draw from the same generator position, so a death that
+is watched and one that is skipped pay identically, and neither can pay twice.
 
 ---
 
 ## Recovery
 
-Nothing resurrects a named bone. That is the whole weight of fielding one.
+**The Font** — one press, once per run. `d6 + 2` bones, capped by the room left
+under the ceiling. The worst face is still worth three bones; at a full pile it
+says so plainly rather than paying nothing and looking broken.
 
-**The Font** — one press, once per run. `d6 + 2` common bones, capped by the
-room left under the ceiling. The worst face is still worth three bones; at a
-full pile it says so plainly rather than paying nothing and looking broken.
+**A Vial** — a satchel consumable. Five bones, capped the same way. Legal in
+`explore` and in a live fight; not over a death, and not at a full pile, which
+is what stops one being wasted. Because the pile is the hand, drinking widens
+the next attack.
 
-**A Vial** — a satchel consumable. Five common bones, capped the same way.
-Legal in `explore` and in any combat phase that still has a decision in it; not
-while a smash is being read, and not at a full pile, which is what stops one
-being wasted. Drunk mid-round it adds reserves and does not touch the line
-already thrown.
-
-**A bone-denominated cost** — the Chain Vault's backlash today — takes a common
-bone first, and the oldest living special when there is nothing anonymous left.
-It can therefore kill a run made entirely of named bones, which is the honest
-reading of *dead stays dead*.
+**A bone-denominated cost** — the Chain Vault's backlash today — takes exactly
+one bone, and can kill a run that has one left.
 
 ---
 
 ## Rewards
 
-Two nouns and no third: **bones** and **Vials**. No new collectible category
-without a product decision. Relics went first — a passive arithmetic modifier
-has nothing to modify in a game whose whole rule is *higher kills lower* — and
-the Charm followed the phase it was spent in.
+One noun for this baseline: **Vials**. Named bones went with the fielding step
+they modified, and nothing was invented to replace them — a boring reward pool
+for one combat prototype is preferable to contaminating the experiment with
+modifiers before the base dice game has been played.
 
-What is left is the shape of the two things a fight lets you decide: a Vial is
-*how long do I last*, and a named bone is *what is standing in the line*.
-
-Taking a named bone at the ceiling **transmutes one common bone** into it: the
-total stays at thirty and there is no replacement picker. The player asked for
-the bone; making them then choose which anonymous one to sacrifice is a
-decision with no information in it. If the pile is thirty named bones and no
-common one, bone rewards drop out of the pool entirely — an offer that cannot
-be taken is not an offer.
-
-**SKIP is a real button.** Taking a bone is a physical change to the army, and
-a screen with no way out would be the game making that change for you.
+The reward-screen machinery stays, because when modifiers return they will need
+somewhere to enter a run. **SKIP is a real button**: a reward screen may never
+force a change on the run.
 
 ---
 
@@ -253,18 +268,25 @@ cannot perturb a result somewhere else:
 
 | channel | drawn by |
 |---|---|
-| `enemyThrow` | FIGHT (round 1) and ROUND |
-| `playerThrow` | THROW |
+| `playerRoll` | ROLL and REROLL |
 | `reward` | the win |
 
-`resolveSmash` draws no random number and takes no generator — it is a pure
-function of two lines and a tie rule. Presentation draws none either: the faces
-that flicker past a tumbling bone come from a counter, not a generator, so a
-replay of the same seed is identical on screen as well as in state.
+The enemy channel is gone with the enemy's dice. A fight's position in the
+stream is `(path length, round, roll number, channel)` — the roll number is
+what the three-throw attack needs, because two draws sharing a salt would make
+a reroll reproduce the throw it was rerolling.
 
-A reload at `thrown` and a press of THROW give the same round. A reload at
-`smashed` rolls nothing at all: the throw and every casualty were written by
-the press that caused them, before a frame of the sequence ran.
+Requirements, and all of them are tested:
+
+- an initial ROLL after a reload produces the same dice;
+- a REROLL after a reload with the same held indices produces the same dice;
+- SCORE draws nothing;
+- retaliation draws nothing;
+- presentation draws nothing — the faces that flicker past a tumbling bone come
+  from a counter, not a generator.
+
+Once a throw is committed its values live in `GameState`. Animation reveals
+them; it does not create them.
 
 ---
 
@@ -272,93 +294,103 @@ the press that caused them, before a frame of the sequence ran.
 
 The list a change has to keep true.
 
-1. A fresh run is exactly thirty common bones.
-2. No health, no damage, no hit points — under any name.
-3. The enemy's line is public before the player throws.
-4. The line is as wide as the pile allows, capped at six. Width is never asked
-   for and never offered.
-5. One player throw, and no rethrow of any kind.
-6. Both lines sort high to low automatically; no manual lane order.
-7. High kills low; ties kill both; the Warden holds ties.
-8. Extras are safe.
-9. Casualties persist; special casualties persist by instance.
-10. Zero bones ends the run mid-smash and cancels the lanes after it.
-11. The reducer alone decides an outcome, and saves it before anything moves.
-12. No animation draws a random number.
-13. No combat rule is imported from `ui/` or `render/`.
+1. A fresh run begins with exactly thirty bones.
+2. The player has no separate HP stat; the bone pile is life.
+3. An attack rolls at most six bones and never more than the player has.
+4. An attack gets one initial throw and at most two rerolls.
+5. Holds affect only the next reroll.
+6. Dice values are ordinary d6 values.
+7. All rolled dice contribute to the additive sum.
+8. The selected hand supplies exactly one multiplier.
+9. Damage is `max(1, floor(sum × multiplier))`.
+10. Each named hand can be scored once per fight.
+11. A named hand is consumed only when deliberately scored.
+12. A bad roll never burns an unused hand.
+13. CRAP is always available when no unused named hand qualifies.
+14. CRAP is reusable.
+15. The player chooses among multiple legal named hands.
+16. Enemies have explicit HP.
+17. Enemies have explicit fixed damage.
+18. Enemy damage contains no RNG.
+19. A dead enemy never retaliates.
+20. A surviving enemy retaliates exactly once after SCORE.
+21. Enemy damage removes bones from the pile.
+22. Zero bones ends the run.
+23. Injury naturally reduces future hand size below six bones.
+24. There are no enemy dice.
+25. There are no enemy armies.
+26. There are no lanes.
+27. There are no tie rules.
+28. There are no special bones in this baseline.
+29. There are no modifiers in this baseline.
+30. The reducer alone decides rolls, legal scores, damage, retaliation, victory
+    and death.
+31. Animation draws no random values and decides no outcomes.
+32. A committed deterministic action replays identically after reload.
+
+---
+
+## What is not here
+
+Deliberately absent from this baseline, and none of it returns without a
+product decision:
+
+exploding damage · enemy dice · enemy bone armies · lane comparisons · tie
+rules · armour · statuses · relic modifiers · special or named dice · crits ·
+hidden accuracy rolls · a minimum hand size · scratching a category
+
+This task exists to find out whether the base dice game is fun before adding
+modifiers.
 
 ---
 
 ## Balance
 
 `npm run balance` runs 400 seeds per cell **through the real reducer** with a
-policy where the thumb goes. It is not a second model of combat.
+policy where the thumb goes. It is not a second model of combat: change a
+multiplier in `combat/hands.ts` and the report changes with it.
 
-Two tiers. **naive** stands every named bone it owns and drinks only when a bad
-round could end the run — the first-time player, and the floor the slice has to
-be winnable from. **heuristic** reads the public line and holds a named bone
-back when the lane it will land in is likely to break it for less than it is
-worth. It is allowed to be better than a first-time human; it is not allowed to
-know anything a human at the same screen does not.
+Two tiers. **naive** throws once and scores the biggest number it can see — it
+never uses the two free rerolls. **heuristic** keeps its best group and its
+high faces, spends the throws it is given, and takes the cheapest hand that
+will finish the thing rather than the biggest.
 
-The report prints **invariants**, which fail the build, and **provisional
-bands**, which print `WATCH` and do not. That split is deliberate: the bands
-were written before this implementation existed, and a target that predates its
-own simulator is a hypothesis rather than a gate.
+**This build measures rather than gates.** The multipliers, the three health
+totals and the three damage figures are all first-pass numbers written before
+the system existed, so the report prints **invariants** (which fail the build)
+and **measurements** (which do not). There are no provisional bands yet;
+turning any measurement into a gate is a product decision and belongs in a
+commit that says so.
 
-### What collapsing the round cost, measured
+### Observed, on the first run of the new system
 
-Worth stating plainly, because it is the price of the two-step round and it is
-not small.
-
-The old invariant was *reading the line is worth something: the solver spends
-fewer bones*, and it held because a solver could narrow against a line it could
-not beat. **That decision is gone**, and with it most of the skill expression:
-the solver now spends about 4.5 bones a fight *more* than the beginner at the
-boss, because the only lever left — holding a named bone back — is paid for in
-common bones.
-
-What it buys is real: across 400 boss fights the solver finishes with **326
-more named bones** than the beginner. That is the trade the game now offers, so
-that is what the invariant measures, and both halves of it print in the report
-where a person can watch them move.
-
-A shallower skill ceiling was the accepted cost of one press per round. If it
-turns out to be too shallow, the lever to reach for is content — enemy armies
-and what a run arrives carrying — not putting the stepper back.
-
-### Observed, after the round collapsed
-
-| | naive | note |
+| | naive | heuristic |
 |---|---|---|
-| Gnawing, bare | 100% win, 2 rounds, **3.1 bones** | band wanted 4–7 |
-| Marrow, bare 24 | 99% win, **9.0 bones** | in band |
-| Marrow, with a Knuckle | 100% win, **6.7 bones** | in band |
-| Warden, developed | **84% win**, 11.4 bones | band wanted 45–60% |
-| Warden, bare 12 | 10% win | in band |
-| safe route | 70% out | in band |
-| deep route | **65% out** | band wanted 20–60% |
+| Gnawing, bare 30 | 100% win, 3.1 attacks, 6.4 bones | 100% win, 2.1 attacks, 3.3 bones |
+| Marrow, 24 | **38% win**, 21.4 bones | 99% win, 12.2 bones |
+| Warden, 26 + a Vial | **1% win** | **25% win** |
+| Warden, bare 12 | 0% win | 0% win |
+| safe route, whole run | **1% out** | 35% out |
+| deep route, whole run | 0% out | 22% out |
 
-**Five bands are open, and they are named rather than quietly moved.**
+Average damage an attack: 21–27 for naive, 31–40 for the solver. Throws per
+attack: 1.0 for naive by construction, 1.8–2.4 for the solver. CRAP is 14–28%
+of naive's scored hands and 0–3% of the solver's.
 
-The Gnawing costs about three bones instead of four to seven. That reads as
-correct rather than wrong: it is the tutorial, it is five common bones against
-thirty, and a first fight that takes a fifth of the run is a first fight that
-punishes not yet knowing the rules.
+**Three things are open, and they are named rather than quietly moved.**
 
-**The Warden is too easy, and this is the one open content question.** 84% at a
-developed pile is not an exam. The cause is legible in the numbers: eight bones
-against a player carrying twenty-six is not enough army for held ties to bite,
-because the fight ends before attrition does. The levers are its army size, its
-profile mix, and how many bones a run arrives with — all three are content
-decisions, and none of them belongs in the commit that built the system.
+1. **The rerolls are not optional, and the numbers say so loudly.** A player
+   who throws once and commits loses the slice almost every time; a player who
+   uses all three throws wins about a third of their runs. That gap is much
+   larger than the old game's skill gap, which is arguably the point — but a
+   naive win rate of 1% on the safe route is a tutorial problem, not a depth
+   one. The levers are the health totals, the damage figures, and how loudly
+   the interface teaches that REROLL is free.
+2. **The Warden may now be too hard**, which is the mirror of the complaint the
+   old build had about it. 25% at a developed pile against an old want of
+   45–60%.
+3. **The deep route is still the harder branch**, which is correct, and it is
+   the one thing in the table nobody needs to argue about.
 
-**The deep route got easier**, from 60% out to 65%, and the two-step round is
-why: forcing a full-width line every round is on average good play, and the
-route that used to punish over-committing no longer can. Whether that makes the
-fork a real choice is a content question, and it is now the second one on the
-list.
-
-Until they are answered the report says `WATCH` on every run, which is the
-point: a number outside its band is a conversation, and a conversation nobody
-can see is a number somebody will quietly nudge.
+None of these numbers were tuned to make a target pass. They are what the
+provisional values produce, printed so a person can decide.

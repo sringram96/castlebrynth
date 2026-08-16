@@ -8,13 +8,13 @@
 
 import { expect, test } from '@playwright/test'
 
-import { act, boot, bones, screenName, state, where } from './helpers.js'
+import { act, boot, dice, screenName, scoresOnOffer, state, where } from './helpers.js'
 
 test.describe('a run that ends', () => {
-  test('dies on the lane it happens, and says what took it', async ({ page }) => {
-    // One bone against the Warden's six. Played, not injected.
-    await boot(page, '?room=gate&bones=1&mode=combat&phase=thrown')
-    await act(page, 'throw').click()
+  test('dies on the exchange it happens, and says what took it', async ({ page }) => {
+    // Five bones against the Warden's eight. Played, not injected.
+    await boot(page, '?room=gate&bones=5&rolls=3')
+    await page.locator(`.score-entry[data-hand="${(await scoresOnOffer(page))[0]}"]`).click()
 
     if ((await screenName(page)) !== 'dead') return
     await expect(page.locator('#screen')).toHaveAttribute('data-screen', 'dead')
@@ -28,7 +28,7 @@ test.describe('a run that ends', () => {
     await expect(act(page, 'title')).toBeVisible()
     // No combat furniture left standing behind the screen.
     await expect(page.locator('#tray')).toBeHidden()
-    await expect(bones(page)).toHaveCount(0)
+    await expect(dice(page)).toHaveCount(0)
   })
 
   test('AGAIN starts a fresh run in one press', async ({ page }) => {
@@ -55,15 +55,15 @@ test.describe('a run that ends', () => {
   })
 
   test('no stale combat UI survives a restart', async ({ page }) => {
-    await boot(page, '?room=gate&bones=1&mode=combat&phase=thrown')
-    await act(page, 'throw').click()
+    await boot(page, '?room=gate&bones=5&rolls=3')
+    await page.locator(`.score-entry[data-hand="${(await scoresOnOffer(page))[0]}"]`).click()
     if ((await screenName(page)) !== 'dead') return
 
     await act(page, 'start').click()
-    await expect(page.locator('#enemy-line')).toBeHidden()
-    await expect(page.locator('#field-read')).toHaveCount(0)
-    await expect(act(page, 'smash')).toHaveCount(0)
-    await expect(act(page, 'round')).toHaveCount(0)
+    await expect(page.locator('#attack-read')).toHaveCount(0)
+    await expect(page.locator('#scorecard')).toHaveCount(0)
+    await expect(act(page, 'roll')).toHaveCount(0)
+    await expect(act(page, 'reroll')).toHaveCount(0)
   })
 })
 
@@ -72,7 +72,7 @@ test.describe('the way out', () => {
     await boot(page, '?mode=complete')
     await expect(page.locator('#screen')).toHaveAttribute('data-screen', 'complete')
     await expect(page.locator('#screen')).toContainText('bones left')
-    await expect(page.locator('#screen')).not.toContainText('health')
+    await expect(page.locator('#screen')).not.toContainText('my health')
     await expect(act(page, 'start')).toBeVisible()
     await expect(act(page, 'title')).toBeVisible()
   })

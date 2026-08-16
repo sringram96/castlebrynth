@@ -4,17 +4,32 @@ import { expect } from '@playwright/test'
 /** Actions are found by intent, never by position on the screen. */
 export const act = (page: Page, name: string): Locator => page.locator(`[data-act="${name}"]`)
 
-/** Your line: the six lanes of the crown. */
-export const bones = (page: Page): Locator => page.locator('#crown .bone')
+/** The attack: up to six bones in the crown, in the order they were thrown. */
+export const dice = (page: Page): Locator => page.locator('#crown .bone')
 
-/** Its line: the strip above the tray, lane-aligned with yours. */
-export const enemyBones = (page: Page): Locator => page.locator('#enemy-line .bone-enemy')
-
-/** The values of a line, in the order they are standing. */
+/** The values on the table, in the order they are standing. */
 export async function valuesOf(line: Locator): Promise<number[]> {
   return (await line.evaluateAll((nodes) =>
     nodes.map((n) => Number((n as HTMLElement).dataset['value'])),
   )) as number[]
+}
+
+/** One entry of the scorecard, by the hand it is for. */
+export const scoreEntry = (page: Page, hand: string): Locator =>
+  page.locator(`.score-entry[data-hand="${hand}"]`)
+
+/** Every hand the scorecard is currently offering as a real button. */
+export async function scoresOnOffer(page: Page): Promise<string[]> {
+  return (await page
+    .locator('button.score-entry')
+    .evaluateAll((nodes) => nodes.map((n) => (n as HTMLElement).dataset['hand']!))) as string[]
+}
+
+/** Every hand the scorecard shows as already spent. */
+export async function scoresSpent(page: Page): Promise<string[]> {
+  return (await page
+    .locator('.score-entry[data-used="yes"]')
+    .evaluateAll((nodes) => nodes.map((n) => (n as HTMLElement).dataset['hand']!))) as string[]
 }
 
 /**
@@ -56,25 +71,29 @@ export async function state(page: Page): Promise<{
   run?: {
     roomId: string
     map: { start: string; nodes: Record<string, { id: string; templateId: string }> }
-    commonBones: number
-    specials: { instanceId: string; specialId: string }[]
+    bones: number
     vials: number
     cleared: string[]
     offer?: string[]
     combat?: {
       enemyId: string
       round: number
-      phase: string
-      enemyBones: { boneId: string }[]
-      enemyLine: { boneKey: string; value: number }[]
-      playerLine?: { boneKey: string; value: number; specialInstanceId?: string }[]
-      field?: { width: number; specialIds: string[] }
-      lastSmash?: {
-        playerCommonLost: number
-        playerSpecialsLost: string[]
-        enemyBonesLost: string[]
-        heldTies: number
-        stoppedAtLane?: number
+      enemyHp: number
+      enemyMaxHp: number
+      usedHands: string[]
+      dice: number[]
+      rollsUsed: number
+      lastAttack?: {
+        dice: number[]
+        hand: string
+        sum: number
+        multiplier: number
+        damage: number
+        enemyHpBefore: number
+        enemyHpAfter: number
+        retaliation: number
+        bonesBefore: number
+        bonesAfter: number
       }
       defeated?: boolean
     }
@@ -140,10 +159,27 @@ export async function wayTo(page: Page, templateId: string): Promise<Locator> {
  * 44 × 44 rule, and it is a property of the plate, not of the code.
  */
 const MIN_WIDTH: Readonly<Record<string, number>> = {
-  'inspect-bone': 34,
+  hold: 34,
   drink: 28,
-  pouch: 28,
   'inspect-reward': 28,
+  // The scorecard is eight entries wide in a region the plate gives about 214
+  // px to, so an entry is roughly 52 px across and shorter than a thumb. It is
+  // stated here rather than silently allowed: the alternative is not showing
+  // the multipliers, and a scorecard the player cannot read is a scorecard
+  // that decides the fight in the dark.
+  score: 44,
+}
+
+/**
+ * Controls that are honestly shorter than the touch floor.
+ *
+ * One region, and it is the scorecard. Eight entries and a fallback in an
+ * 84 px band cannot each be 44 px tall; what they can be is separated, so a
+ * tap lands on the entry it looks like it lands on. `tappable` still checks
+ * the hit test, which is the assertion that actually matters.
+ */
+const MIN_HEIGHT: Readonly<Record<string, number>> = {
+  score: 20,
 }
 
 /**
@@ -159,7 +195,11 @@ export async function tappable(page: Page, locator: Locator): Promise<void> {
   const { x, y, width, height } = box!
   const want = (await locator.getAttribute('data-act')) ?? 'button'
 
-  expect(height, `[${want}] touch target is under 44px tall`).toBeGreaterThanOrEqual(43.5)
+  const floorHeight = MIN_HEIGHT[want] ?? 44
+  expect(
+    height,
+    `[${want}] touch target is under ${floorHeight}px tall`,
+  ).toBeGreaterThanOrEqual(floorHeight - 0.5)
   const floor = MIN_WIDTH[want] ?? 44
   expect(width, `[${want}] touch target is under ${floor}px wide`).toBeGreaterThanOrEqual(floor - 0.5)
 

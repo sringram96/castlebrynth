@@ -33,16 +33,11 @@ const pile = (page: Page) => page.locator('#pile')
 /**
  * What the run is carrying that a chest could have given it.
  *
- * There is no relic row any more: a found thing is either a named bone in the
- * pouch or a charge in the satchel, so "what did the chest pay" is a count
- * across all three rather than one array.
+ * One noun deep for this baseline: everything a chest can pay lands in the
+ * satchel, so this is a count rather than a join across two places.
  */
 function carried(now: Awaited<ReturnType<typeof state>>): string[] {
-  const run = now.run!
-  return [
-    ...run.specials.map((s) => s.specialId),
-    ...Array.from({ length: run.vials }, () => 'vial'),
-  ]
+  return Array.from({ length: now.run!.vials }, () => 'vial')
 }
 
 /** One of the room's objects, by the id the reducer switches on. */
@@ -134,12 +129,8 @@ test.describe('the Reliquary', () => {
     const after = await state(page)
     expect(carried(after)).toHaveLength(1)
     // It is carried, and it is somewhere the player can see without opening
-    // anything: a charge on its satchel bay, or a bone in the pouch count.
-    const found = carried(after)[0]!
-    const bay = found === 'vial' ? found : 'pouch'
-    await expect(page.locator(`.satchel-slot[data-slot-id="${bay}"] .satchel-count`)).toHaveText(
-      '1',
-    )
+    // anything: the count on its satchel bay.
+    await expect(page.locator('.satchel-slot[data-slot-id="vial"] .satchel-count')).toHaveText('1')
   })
 
   test('cannot be made to pay twice by an impatient thumb', async ({ page }) => {

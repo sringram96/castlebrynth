@@ -62,8 +62,8 @@ export class Rng {
  * cannot change what the enemy throws on round four.
  */
 export const RNG_CHANNEL = {
-  enemyThrow: 11,
-  playerThrow: 23,
+  /** The player's dice. The only randomness left inside a fight. */
+  playerRoll: 23,
   reward: 53,
 } as const
 
@@ -74,14 +74,27 @@ export const RITUAL_CHANNEL = 977
 export const RELIQUARY_CHANNEL = 613
 
 /**
- * Where a fight's draw sits: how far into the run, which round, which channel.
+ * Where a fight's draw sits: how far into the run, which round, which roll of
+ * that round, and which channel.
+ *
+ * The fourth term is new and it is what the three-roll attack needs. Under the
+ * old combat each side rolled once a round, so *round plus channel* was an
+ * unambiguous position; an attack now draws up to three times before it is
+ * scored, and two of those draws sharing a salt would make a reroll reproduce
+ * the throw it was rerolling.
  *
  * Derived rather than stored, so a save can never disagree with it. A reload
- * at `fielded` and a press of THROW produce the same player line; a reload at
- * `rolled` rolls nothing at all, because the line is already in the save.
+ * before ROLL and a press of ROLL produce the same dice; a reload with dice
+ * already on the table rolls nothing at all, because they are in the save.
+ * SCORE draws nothing, and neither does retaliation.
  */
-export function combatSalt(pathLength: number, round: number, channel: number): number {
-  return pathLength * 1013 + round * 97 + channel
+export function combatSalt(
+  pathLength: number,
+  round: number,
+  rollNumber: number,
+  channel: number,
+): number {
+  return pathLength * 1013 + round * 97 + rollNumber * 17 + channel
 }
 
 /** A generator positioned at a salt, off the run's seed. */

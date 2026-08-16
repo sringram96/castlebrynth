@@ -40,19 +40,21 @@ npm run balance      # deterministic fight simulation
 - **If a playtest says the game is broken while tests are green, the tests are
   wrong.** Fix the suite, then the bug.
 
-### And, since the War of Bones
+### And, since the dice
 
-- **No hit points, under any name.** Not `hp`, not a compatibility field, not a
-  bone counter that behaves like a health bar. Life is a pile of objects and
-  what happens to it is that objects break.
-- **No damage number.** A lane is won by breaking one of its bones, and that
-  bone is on screen breaking. There is no figure to raise off the enemy.
-- **One player throw, and no rethrow at all.** No HOLD, no REROLL, no Charm.
-  Throwing and finding out is one press.
-- **No width control.** The line is as wide as the pile allows, capped at six.
-  What the player chooses is which named bones stand in it.
-- **No manual lane order.** Both lines sort themselves, and the sort is a rule
-  that lives in `combat/line.ts` — not in DOM order, and not in array order.
+- **No hit points for the player, under any name.** Not `hp`, not a
+  compatibility field, not a second counter beside `run.bones`. The pile is
+  life. The *enemy* has explicit health and explicit damage on purpose, and
+  both are on screen before anything is committed.
+- **No width control.** An attack throws `min(6, run.bones)`, always. What the
+  player chooses is which dice to keep and which hand to spend.
+- **No minimum hand size.** A wounded run really does lose the shapes that need
+  the width, and that falls out of the counting rather than out of a rule.
+- **No scratching a category.** A named hand is spent only when it is scored.
+  A bad roll costs a throw and nothing else, and CRAP is what a roll with
+  nothing in it is worth.
+- **Every multiplier in `HAND_DEFINITIONS`.** One table, and the reducer, the
+  tray, the menu and the balance report all read it.
 - **Art completeness is a feature-completion gate.** Every enemy has a visible
   end; a bone family ships whole or not at all.
 - **Asset bytes are reported, not capped.** There is no global payload ceiling
@@ -83,7 +85,7 @@ src/
   app/           root controller, mode router, action dispatcher
   game/          GameState, the reducer, new runs, saves,
                  the dungeon director and the map it makes
-  combat/        fielding, throwing, sorting, the smash
+  combat/        the dice, the scorecard, and the one damage equation
   exploration/   moving, looking, rewards
   content/       bones, rewards, enemies, room templates, run plans, copy, assets
   render/        the fixed-order compositor and asset loading

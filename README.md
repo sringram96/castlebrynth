@@ -4,12 +4,14 @@ A portrait pixel-horror roguelike for the phone.
 
 You go down with thirty bones.
 
-When something blocks the room, it throws its bones first. You see the line,
-choose how many of your own bones to risk, throw once, and smash the two lines
-together from highest to lowest. High kills low. Ties kill both. Anything that
-dies stays dead.
+When something blocks the room, you throw up to six of them, hold what you
+want, and throw the rest again — twice, at most. The numbers add up; the
+pattern they make multiplies the total; that is the damage. Every named hand
+can be spent once per fight, and when nothing fits there is always CRAP, which
+is weak and never runs out.
 
-Then you decide how much of yourself to risk on the next round.
+If the thing survives, it breaks a fixed number of your bones, and it told you
+which number before you threw. As the pile gets thin, so does your hand.
 
 Then you die, and go down again.
 
@@ -23,21 +25,28 @@ npm run dev
 Open the URL it prints. It is best on a phone, or in a browser window the shape
 of one — 390×844 is what everything is laid out against.
 
-## How a round goes
+## How an attack goes
 
-1. **The enemy throws first.** Its line is face-up and sorted before you touch
-   anything.
-2. Choose **1–6** bones and **FIELD** them. Fewer bones risked is fewer bones
-   lost, and fewer of its broken.
-3. **THROW** once. There is no reroll.
-4. Optionally spend a **CHARM** to throw one bone again — once in a fight.
-5. **SMASH.** The two lines meet lane by lane, highest against highest.
-6. **ROUND**, if both sides still have bones.
+1. **ROLL.** You throw `min(6, bones)` ordinary d6s. Thirty bones or six, you
+   throw six; four bones, you throw four.
+2. **Hold** any of them by tapping. Held bones keep their face and their place.
+3. **REROLL** the rest. Twice, at most — three throws in all.
+4. **Score**, at any point after a throw. The scorecard shows every hand and
+   its multiplier, and only the ones you can actually make right now are
+   buttons.
 
-High kills low. Ties kill both — except the Warden, who keeps his. Bones with
-nothing opposite them are safe. Whatever breaks is gone for the rest of the run.
+```
+damage = max(1, floor(sum of all the dice × the hand's multiplier))
+```
 
-MENU has your army, your satchel, and those four lines.
+Each named hand — pair, two pair, triple, straight, full house, four, five,
+six — can be spent **once per fight**, and a bad roll never burns one. If
+nothing unspent fits, **CRAP** is there at ×0.5, as often as you like.
+
+If the thing survives your attack it breaks a fixed number of your bones. If
+your attack kills it, it breaks none.
+
+MENU has your pile, your satchel, the rules and the whole scorecard.
 
 ## Build and test
 

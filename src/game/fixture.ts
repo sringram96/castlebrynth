@@ -2,7 +2,7 @@
  * Dev fixtures: reach any mode from a URL.
  *
  * Every mode must be reachable without playing to it, or the tests that cover
- * the ends of the game — dying, getting out, a fight one lane from over —
+ * the ends of the game — dying, getting out, a fight one attack from over —
  * become forty presses long and nobody writes them. That is how the old build
  * ended up with a death screen nobody had ever automated.
  *
@@ -11,12 +11,13 @@
  *                               that authored template
  *   ?node=n8                    stand in one exact room of the generated map,
  *                               for when a template is used more than once
- *   ?bones=12                   a thinner pile
- *   ?specials=cinderbone,knuckle  named bones in the pile
+ *   ?bones=12                   a thinner pile — and so a narrower attack
  *   ?vials=2                    a stocked satchel
- *   ?enemyBones=3               a fight with most of its army already broken
- *   ?round=2                    the fight standing on a later round
- *   ?phase=thrown|smashed       before the throw, or standing in its wreckage
+ *   ?round=2                    the fight standing on a later attack
+ *   ?enemyHp=20                 a fight one good hand from over
+ *   ?rolls=1                    the dice down, with two throws still in hand
+ *   ?dice=6,6,6,4,4,3           exactly these faces on the table
+ *   ?used=pair,triple           those two categories already spent
  *   ?mode=combat                open the room's fight, or jump to an ending
  *   ?dying=1                    the room's enemy finished, mid-death — what a
  *                               save written a third of a second before the
@@ -26,27 +27,28 @@
  *   ?vault=weighted             the cage down on the plate, gate still shut
  *   ?vault=open                 the gate up, and the way on with it
  *
- * A fixture builds a real run and hands it to the real reducer. **Every phase
- * below is reached by playing the actions that reach it** — FIELD, THROW,
- * SMASH — so a fixture cannot stand the game in a position it could not reach
- * on its own; it only skips the walk. Nothing here is a cheat worth hiding —
- * the whole game is client-side — and it is inert unless a parameter is
- * present.
+ * A fixture builds a real run and hands it to the real reducer. **Everything
+ * that can be played is played** — FIGHT, ROLL, REROLL, SCORE — so a fixture
+ * cannot stand the game in a position it could not reach on its own; it only
+ * skips the walk. The four escape hatches are `enemyHp`, `dice`, `used` and
+ * the terminal modes, which are exactly the states a bounded journey cannot
+ * reliably reach: no sequence of honest presses puts a named face on a die.
+ *
+ * Nothing here is a cheat worth hiding — the whole game is client-side — and
+ * it is inert unless a parameter is present.
  */
 
-import { BONE_CEILING, isSpecialBoneId, newSpecial } from '../content/bones.js'
-import type { SpecialBoneInstance } from '../content/bones.js'
+import { BONE_CEILING } from '../content/bones.js'
+import { isNamedHandId, legalScores } from '../combat/hands.js'
+import type { NamedHandId } from '../combat/hands.js'
+import { MAX_ROLLS } from '../combat/roll.js'
+import type { DieValue } from '../combat/roll.js'
 import { firstNodeOf, roomAt } from './map.js'
 import { newRun, reduce } from './reducer.js'
-import type { Action } from './reducer.js'
 import { SAVE_VERSION } from './state.js'
-import type { CombatPhase, GameState, Mode } from './state.js'
-
-const play = (state: GameState, ...actions: readonly Action[]): GameState =>
-  actions.reduce((s, a) => reduce(s, a), state)
+import type { GameState, Mode } from './state.js'
 
 const MODES: readonly Mode[] = ['title', 'explore', 'combat', 'reward', 'dead', 'complete']
-const PHASES: readonly CombatPhase[] = ['thrown', 'smashed']
 
 const list = (raw: string | null): string[] =>
   raw ? raw.split(',').map((s) => s.trim()).filter(Boolean) : []
@@ -62,13 +64,12 @@ const KEYS: readonly string[] = [
   'room',
   'node',
   'bones',
-  'specials',
   'vials',
-  'charms',
-  'enemyBones',
   'round',
-  'phase',
-  'width',
+  'enemyHp',
+  'rolls',
+  'dice',
+  'used',
   'mode',
   'dying',
   'reliquary',
@@ -80,35 +81,42 @@ export function hasFixture(search: string): boolean {
   return KEYS.some((k) => p.has(k))
 }
 
-/**
- * Cut an enemy's army down to `keep` bones, army and line together.
- *
- * The army and the fielded line are two views of the same bones, and they have
- * to be cut as one: slicing them independently keeps `gnawing:common:0` in the
- * army while showing whichever bone happened to roll highest, and then killing
- * what is on screen removes nothing. Which is exactly the bug this helper
- * exists to make unwriteable.
- *
- * The bones kept are the ones at the **bottom** of the line, because a fixture
- * that stands a fight one lane from over wants the weakest survivors — and
- * `doomed` puts the last of them on a 1 so a wide line is certain to take it.
- */
-function standArmyAt(state: GameState, keep: number, doomed = false): GameState {
+/** Stand the enemy on an exact total. The one thing an attack cannot aim at. */
+function standEnemyAt(state: GameState, hp: number): GameState {
   const combat = state.run?.combat
   if (!combat) return state
-  const kept = combat.enemyLine.slice(-Math.max(1, Math.min(keep, combat.enemyLine.length)))
-  const ids = new Set(kept.map((b) => b.enemyBoneId))
+  const enemyHp = Math.max(1, Math.min(Math.floor(hp), combat.enemyMaxHp))
+  return { ...state, run: { ...state.run!, combat: { ...combat, enemyHp } } }
+}
+
+/** Put exact faces on the table, with a throw count that admits to it. */
+function standDiceAt(state: GameState, faces: readonly DieValue[]): GameState {
+  const combat = state.run?.combat
+  if (!combat || faces.length === 0) return state
+  const rollsUsed = combat.rollsUsed === 0 ? 1 : combat.rollsUsed
   return {
     ...state,
-    run: {
-      ...state.run!,
-      combat: {
-        ...combat,
-        enemyBones: combat.enemyBones.filter((b) => ids.has(b.boneId)),
-        enemyLine: doomed ? kept.map((b) => ({ ...b, value: 1, faceIndex: 0 })) : kept,
-      },
-    },
+    run: { ...state.run!, combat: { ...combat, dice: faces, rollsUsed } },
   }
+}
+
+/** Spend named categories, as a fight that had already used them would have. */
+function standUsedAt(state: GameState, hands: readonly NamedHandId[]): GameState {
+  const combat = state.run?.combat
+  if (!combat) return state
+  return {
+    ...state,
+    run: { ...state.run!, combat: { ...combat, usedHands: [...new Set(hands)] } },
+  }
+}
+
+/** One whole attack, played: throw once, then score whatever the dice allow. */
+function playAttack(state: GameState): GameState {
+  const rolled = reduce(state, { type: 'ROLL' })
+  const combat = rolled.run?.combat
+  if (!combat || combat.dice.length === 0) return rolled
+  const choice = legalScores(combat.dice, combat.usedHands)[0]
+  return choice ? reduce(rolled, { type: 'SCORE', hand: choice }) : rolled
 }
 
 export function applyFixture(base: GameState, search: string): GameState {
@@ -138,25 +146,9 @@ export function applyFixture(base: GameState, search: string): GameState {
     run = { ...run, say: roomAt(run).arrival }
   }
 
-  // The pile. Specials are instantiated exactly as TAKE would instantiate
-  // them, serial and all, so a fixture's Cinderbone is the same object a found
-  // one is and dies the same way.
-  const specials: SpecialBoneInstance[] = []
-  for (const id of list(p.get('specials'))) {
-    if (isSpecialBoneId(id)) specials.push(newSpecial(id, specials.length))
-  }
-  if (specials.length > 0) {
-    run = { ...run, specials, nextSpecialSerial: specials.length }
-  }
-
   const bones = num(p.get('bones'))
   if (bones !== undefined) {
-    const common = Math.max(0, Math.min(Math.floor(bones), BONE_CEILING) - run.specials.length)
-    run = { ...run, commonBones: Math.max(0, common) }
-  } else if (specials.length > 0) {
-    // Taking a bone at the ceiling transmutes a common one, so a fixture that
-    // adds specials without naming a total keeps the total where it was.
-    run = { ...run, commonBones: Math.max(0, run.commonBones - specials.length) }
+    run = { ...run, bones: Math.max(0, Math.min(Math.floor(bones), BONE_CEILING)) }
   }
 
   const vials = num(p.get('vials'))
@@ -199,54 +191,56 @@ export function applyFixture(base: GameState, search: string): GameState {
 
   // Standing inside a death.
   //
-  // Not assembled: *played*. The fight is opened, the army is stood down to
-  // its last bone and a real round is fought through the reducer — so this is
-  // the state a save holds if the tab is closed in the two-thirds of a second
-  // between the last break and the win.
+  // Not assembled: *played*. The fight is opened, the thing is stood on its
+  // last point of health, and a real attack is scored through the reducer — so
+  // this is the state a save holds if the tab is closed in the two-thirds of a
+  // second between the killing hand and the win.
   if (p.has('dying') && roomAt(run).enemy) {
-    const opened = reduce(state, { type: 'FIGHT' })
-    // One enemy bone left, standing on a 1. Both are positions the fight
-    // reaches on its own — a wide line against a single low bone is an
-    // ordinary last round — so this only skips the rounds that get there.
-    const doomed = standArmyAt(opened, 1, true)
-    return play(doomed, { type: 'THROW' })
+    return playAttack(standEnemyAt(reduce(state, { type: 'FIGHT' }), 1))
   }
 
   const wantsFight =
-    mode === 'combat' || p.has('enemyBones') || p.has('round') || p.has('phase')
+    mode === 'combat' ||
+    p.has('round') ||
+    p.has('enemyHp') ||
+    p.has('rolls') ||
+    p.has('dice') ||
+    p.has('used')
 
   if (wantsFight && roomAt(run).enemy) {
     state = reduce(state, { type: 'FIGHT' })
 
-    // Rounds are *fought*, not set: each one is a real THROW, so the enemy
-    // line a fixture lands on is the line those rounds produced and the round
-    // counter can never disagree with the army standing behind it.
+    // Rounds are *fought*, not set: each one is a real ROLL and a real SCORE,
+    // so the round counter can never disagree with what the fight has spent.
     const rounds = Math.max(1, Math.floor(num(p.get('round')) ?? 1))
     for (let r = 1; r < rounds; r++) {
-      const here = state.run?.combat
-      if (!here || here.defeated || state.mode !== 'combat') break
-      state = play(state, { type: 'THROW' }, { type: 'ROUND' })
+      if (state.mode !== 'combat' || !state.run?.combat || state.run.combat.defeated) break
+      state = playAttack(state)
     }
 
-    // How much of its army is left. Applied after the rounds, because it is the
-    // one thing a fixture cannot honestly play to in a bounded number of steps.
-    const enemyBones = num(p.get('enemyBones'))
-    if (enemyBones !== undefined && state.run?.combat && !state.run.combat.defeated) {
-      state = standArmyAt(state, Math.floor(enemyBones))
+    // The three escape hatches, applied after the rounds, because they are the
+    // things a bounded journey cannot honestly play to.
+    const enemyHp = num(p.get('enemyHp'))
+    if (enemyHp !== undefined && state.run?.combat && !state.run.combat.defeated) {
+      state = standEnemyAt(state, enemyHp)
     }
 
-    // And the phase, walked to by the one action that reaches it.
-    const wantedPhase = p.get('phase')
-    const phase =
-      wantedPhase && (PHASES as readonly string[]).includes(wantedPhase)
-        ? (wantedPhase as CombatPhase)
-        : undefined
-    if (phase === 'smashed' && state.run?.combat && state.mode === 'combat') {
-      state = reduce(state, {
-        type: 'THROW',
-        specialIds: state.run.specials.map((sp) => sp.instanceId),
-      })
+    const used = list(p.get('used')).filter(isNamedHandId)
+    if (used.length > 0 && state.run?.combat) state = standUsedAt(state, used)
+
+    // And the throws, walked to by the presses that reach them. `held: []`
+    // every time, so each reroll is a whole new throw.
+    const rolls = Math.max(0, Math.min(Math.floor(num(p.get('rolls')) ?? 0), MAX_ROLLS))
+    if (rolls > 0 && state.mode === 'combat') {
+      state = reduce(state, { type: 'ROLL' })
+      for (let r = 1; r < rolls; r++) state = reduce(state, { type: 'REROLL', held: [] })
     }
+
+    const faces = list(p.get('dice'))
+      .map((raw) => Number(raw))
+      .filter((n): n is DieValue => Number.isInteger(n) && n >= 1 && n <= 6) as DieValue[]
+    if (faces.length > 0 && state.run?.combat) state = standDiceAt(state, faces)
+
     return state
   }
 
@@ -254,12 +248,7 @@ export function applyFixture(base: GameState, search: string): GameState {
     return {
       ...state,
       mode: 'dead',
-      run: {
-        ...state.run!,
-        commonBones: 0,
-        specials: [],
-        cause: 'A fixture. Nothing killed me.',
-      },
+      run: { ...state.run!, bones: 0, cause: 'A fixture. Nothing killed me.' },
     }
   }
   if (mode === 'complete') {

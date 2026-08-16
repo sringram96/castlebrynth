@@ -6,6 +6,12 @@ The blueprint is authoritative over everything that used to be in `DESIGN.md`,
 
 **Phases 0–6 complete. The full player journey passes in a real browser.**
 
+> **This file is history, and its combat sections are twice superseded.** It
+> records the reset that replaced the six-die scoring game; the War of Bones
+> replaced *that*, and the dice replaced the War of Bones. Anything below about
+> dice, marks, hands, lanes, armies or ties describes a game that is not in the
+> repository. The live contract is `docs/COMBAT.md`.
+
 ---
 
 ## Completed phases
