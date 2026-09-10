@@ -15,14 +15,14 @@ import { describe, expect, it } from 'vitest'
 import { BONE_CEILING, STARTING_BONES, roomToRecover } from '../../src/content/bones.js'
 import {
   DIE_FACES,
-  MAX_ACTIVE_DICE,
+  HAND_DICE,
   MAX_ROLLS,
-  activeDice,
   canonicalHeld,
   rerollDice,
   rollDice,
 } from '../../src/combat/roll.js'
 import type { DieValue } from '../../src/combat/roll.js'
+import * as rollModule from '../../src/combat/roll.js'
 import { Rng } from '../../src/game/rng.js'
 
 describe('the pile', () => {
@@ -43,22 +43,19 @@ describe('the pile', () => {
 })
 
 describe('how wide an attack is', () => {
-  it('is six for anything from six bones up', () => {
-    for (const bones of [30, 12, 7, 6]) expect(activeDice(bones)).toBe(6)
-    expect(MAX_ACTIVE_DICE).toBe(6)
+  it('is six, and there is no other number', () => {
+    // Not a maximum and not a function of anything: the hand is six dice from
+    // the first fight of a run to the last turn of the boss, and nothing in
+    // the codebase reads the pile to work out a width. `min(6, bones)` is
+    // repealed — see docs/COMBAT.md § The hand.
+    expect(HAND_DICE).toBe(6)
   })
 
-  it('is the pile itself below six', () => {
-    expect(activeDice(5)).toBe(5)
-    expect(activeDice(4)).toBe(4)
-    expect(activeDice(3)).toBe(3)
-    expect(activeDice(2)).toBe(2)
-    expect(activeDice(1)).toBe(1)
-  })
-
-  it('is nothing at zero, which is the end of the run', () => {
-    expect(activeDice(0)).toBe(0)
-    expect(activeDice(-4)).toBe(0)
+  it('exports nothing that would compute one from the pile', () => {
+    const roll = rollModule as unknown as Record<string, unknown>
+    for (const gone of ['activeDice', 'MAX_ACTIVE_DICE', 'MIN_HAND', 'handWidth']) {
+      expect(roll, `${gone} survived`).not.toHaveProperty(gone)
+    }
   })
 })
 

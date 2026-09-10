@@ -6,9 +6,10 @@
  *   - **the number is public.** The enemy's health and the bones it will break
  *     are on screen before anything is committed, and neither is ever a
  *     surprise.
- *   - **the pile is the hand.** Damage does not merely count down: it narrows
- *     the attack, and a badly wounded run loses access to the shapes that need
- *     the width.
+ *   - **bones are health, and only health.** Damage counts down and does
+ *     nothing else: the hand is six dice at thirty bones and six dice at one,
+ *     and every shape stays reachable however wounded the run is. What a wound
+ *     costs is exchanges. See docs/COMBAT.md § The hand.
  *   - **zero ends the run**, and never goes below it.
  */
 
@@ -59,42 +60,42 @@ test.describe('the enemy states its numbers before anything is committed', () =>
   })
 })
 
-test.describe('the pile is the hand', () => {
+test.describe('bones are health, and only health', () => {
   test('a healthy run throws six', async ({ page }) => {
     await boot(page, '?room=hollow&bones=30&mode=combat')
     await expect(dice(page)).toHaveCount(6)
   })
 
-  test('a wounded run throws what it has', async ({ page }) => {
-    for (const [bones, count] of [
-      [6, 6],
-      [5, 5],
-      [4, 4],
-      [2, 2],
-      [1, 1],
-    ] as const) {
+  test('a wounded run throws six as well', async ({ page }) => {
+    // The repealed rule. `min(6, bones)` is gone: what a wound costs is
+    // exchanges, not dice. See docs/COMBAT.md § The hand.
+    for (const bones of [6, 5, 4, 2, 1]) {
       await boot(page, `?room=hollow&bones=${bones}&mode=combat`)
-      await expect(dice(page), `${bones} bones`).toHaveCount(count)
+      await expect(dice(page), `${bones} bones`).toHaveCount(6)
     }
   })
 
-  test('loses the shapes that need the width, with nothing saying so', async ({ page }) => {
-    // Four bones, all alike: the best a full hand could make is out of reach
-    // and no line of code anywhere states the rule.
-    await boot(page, '?room=hollow&bones=4&rolls=1&dice=4,4,4,4')
+  test('keeps every shape reachable at one bone', async ({ page }) => {
+    // A single bone left and a Full House still on the card. Nothing about the
+    // pile decides what the scorecard can offer any more.
+    await boot(page, '?room=hollow&bones=1&rolls=1&dice=4,4,4,4,2,2')
     const offered = await scoresOnOffer(page)
     expect(offered).toContain('four-kind')
-    expect(offered).not.toContain('full-house')
+    expect(offered).toContain('full-house')
     expect(offered).not.toContain('five-kind')
     expect(offered).not.toContain('six-kind')
-    // And a straight is impossible with four bones, so it is information.
+    // And these dice make no straight, so it is information rather than a
+    // control — which is the scorecard's rule, not the pile's.
     await expect(page.locator('.score-entry[data-hand="straight"]')).toHaveAttribute(
       'data-legal',
       'no',
     )
   })
 
-  test('says so on the pile itself, once the attack starts narrowing', async ({ page }) => {
+  test('marks the pile low, because the next exchange could end it', async ({ page }) => {
+    // Six is no longer the line the dice game crosses — it crosses none. It is
+    // still the line where an exchange with the Warden ends the run, so the
+    // orb still says so.
     await boot(page, '?room=fork&bones=20')
     await expect(page.locator('#orb')).toHaveAttribute('data-low', 'no')
     await boot(page, '?room=fork&bones=6')

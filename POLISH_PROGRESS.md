@@ -749,3 +749,82 @@ delivery architecture second, byte minimisation third — see
 costs the fight that uses it rather than the title screen: **the bone plates and
 a Marrow death family can land without anybody having a conversation about
 megabytes.**
+
+---
+
+## HUMAN ART REQUIRED — the loadout
+
+The loadout wave added four things to the tray — an iron die, up to two item
+dice, a talisman bay and a caption — and **no art was authored for any of
+them**, per `CLAUDE.md` § *No art in the polish sweep*: `git diff --stat main`
+touches nothing under `public/`, and no new image file exists. What each of
+them is running on, and what is owed, is written out here.
+
+This entry stands alongside *the dice*; nothing in that entry is withdrawn. The
+bone family and the Marrow death family are still owed exactly as written
+there.
+
+### What it is running on now
+
+Every one of the new pieces is **CSS on the existing plate**. Nothing was
+drawn, traced, recoloured or cropped:
+
+| piece | what it is today |
+| --- | --- |
+| the iron die | a CSS die body in cold grey, at the crown's own pitch, one pitch left of the first painted bay |
+| an item die | the same body in violet (or red on a cost face), at the right end of the same rail |
+| the talisman | the second of the three painted relic bays, with a text label and its bonus |
+| the iron caption | a text line at the top of the well |
+| a popped number | a text node, animated up and out, anchored to the thing that made it |
+
+Every one of them states its number as **data and as an accessible name** as
+well as as a colour — `data-block`, `data-face`, `data-talisman-id`,
+`aria-label` — so nothing about the loadout is unreadable while the plates are
+outstanding, and nothing is conveyed by colour alone.
+
+### The plate is painted for six bays and the rail now wants nine
+
+This is the one real geometry debt. `public/assets/ui/tray.png` has **six**
+painted die recesses. The iron die and the two item dice stand on the rail
+either side of them, at the same pitch and the same baseline, **in no recess at
+all**. It reads as a row of nine objects at one height, which is the intent —
+the iron rolls *with* the six — but three of the nine are visibly resting on a
+rib rather than in a bay.
+
+What would fix it, in order of how much it would buy:
+
+1. **Three more bays on the rail** — one at source x ≈ 128 for the iron, two at
+   x ≈ 603 and x ≈ 670 for the items. Same 55 × 36 px interior as the six. The
+   coordinates in `src/content/tray.ts` (`IRON_CENTRES`, `ITEM_CENTRES`) are
+   the fractions those would land on, and they were chosen to fall on the
+   existing pitch so a repaint can hit them exactly.
+2. **A caption plinth under the iron bay.** The ruling is that the iron's
+   caption sits *under the die*; the plate gives a 32 px bay no room for a
+   sentence, so the caption is currently the first line of the well instead.
+   A shallow band under the iron bay, roughly 0.05 of the plate's height and
+   0.19 of its width, would let the caption sit where the ruling says it should.
+   Until then the die carries the same sentence as its accessible name, so
+   nothing is lost to a screen reader.
+3. **Iron and item die faces.** Seven states for the iron (`0`, `3`, `5`, `7`
+   and a back), and per-item faces for the flats, the blank and the cost. Not
+   required — the CSS bodies read — but a piece of rusted plate and a guttering
+   candle would say what the objects *are* rather than what they do.
+
+### The right-hand bays
+
+The Vial is in the first, the talisman is in the second, and the third is still
+an empty painted recess. That is now two of three used rather than one, which
+was the note left in *the dice*; the recut suggested there is less urgent and
+still an improvement.
+
+A **talisman icon** would be welcome and is not required. The bay currently
+reads `PAIR` over `+12`, which is the whole mechanic in two lines and is legible
+at 32 px — but a knuckle-and-wire charm is what the flavour describes and the
+bay is where a player looks for their passive build.
+
+### Nothing else moved
+
+`BONE_ART` and `SATCHEL_ART` in `src/render/assets.ts` are still deliberately
+empty and their gates are still armed: a manifest row names a file, and
+`test/unit/assets.test.ts` holds every row to a real file of the declared size.
+No row was added for any of the above, so nothing promises art nobody has drawn.

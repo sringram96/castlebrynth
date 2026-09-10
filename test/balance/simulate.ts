@@ -17,6 +17,7 @@ import { TITLE } from '../../src/game/state.js'
 import type { GameState, RunState } from '../../src/game/state.js'
 import { enemy } from '../../src/content/enemies.js'
 import type { ScoreId } from '../../src/combat/hands.js'
+import type { IronDieId, ItemDieId, TalismanId } from '../../src/content/dice.js'
 import { firstNodeOf, roomAt } from '../../src/game/map.js'
 import { exitsOpen, legal, stateOf } from '../../src/content/interactions.js'
 import { drinkFor, holdFor, scoreFor, shouldScore } from './policies.js'
@@ -38,6 +39,7 @@ function tableOf(state: GameState): Table {
     enemyDamage: enemy(combat.enemyId).damage,
     bones: run.bones,
     vials: run.vials,
+    talismans: run.talismans,
   }
 }
 
@@ -156,10 +158,22 @@ export function simulateFight(
 export interface Loadout {
   readonly bones?: number
   readonly vials?: number
+  /**
+   * What the run is carrying, when a cell wants to say.
+   *
+   * Omitted means *whatever a fresh run starts with*, which is the six, the
+   * iron die and the talisman. A cell that passes `ironDice: []` and
+   * `talismans: []` is the **bare** reading: the fight with no upside at all,
+   * which is the reading a gate is allowed to be set against. See
+   * `docs/COMBAT.md` § Balance.
+   */
+  readonly ironDice?: readonly IronDieId[]
+  readonly itemDice?: readonly ItemDieId[]
+  readonly talismans?: readonly TalismanId[]
 }
 
 /**
- * Open a fight in a named room, with a chosen pile and satchel.
+ * Open a fight in a named room, with a chosen pile, satchel and loadout.
  *
  * Named by its **authored template** — `hollow`, `deep`, `gate` — because that
  * is what the report's rows are about, and resolved to whichever node of this
@@ -177,6 +191,9 @@ export function fightIn(templateId: string, seed: number, loadout: Loadout = {})
     path: [...run.path, node.id],
     ...(loadout.bones !== undefined ? { bones: loadout.bones } : {}),
     ...(loadout.vials !== undefined ? { vials: loadout.vials } : {}),
+    ...(loadout.ironDice !== undefined ? { ironDice: loadout.ironDice } : {}),
+    ...(loadout.itemDice !== undefined ? { itemDice: loadout.itemDice } : {}),
+    ...(loadout.talismans !== undefined ? { talismans: loadout.talismans } : {}),
   }
   return { ...started, run: next }
 }
@@ -199,8 +216,19 @@ export interface RunResult {
  * The deep way is the harder branch — an extra fight before the boss — so it
  * is the pessimistic reading of whether the slice can be finished.
  */
-export function simulateRun(seed: number, tier: Tier, { deep = true } = {}): RunResult {
+export function simulateRun(
+  seed: number,
+  tier: Tier,
+  { deep = true, bare = false } = {},
+): RunResult {
   let state = reduce(TITLE, { type: 'START_RUN', seed })
+  // The **bare** reading: a run carrying no iron die and no talisman, so the
+  // route can be measured with none of the upside the wave added. Item dice
+  // are already excluded from every reading — the policy cannot see them, and
+  // no target may assume them. See docs/COMBAT.md § Balance.
+  if (bare) {
+    state = { ...state, run: { ...state.run!, ironDice: [], itemDice: [], talismans: [] } }
+  }
   const fights: FightResult[] = []
   let found = 0
 

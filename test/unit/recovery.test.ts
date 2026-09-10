@@ -20,7 +20,7 @@ import type { Action } from '../../src/game/reducer.js'
 import { EMPTY_META, SAVE_VERSION } from '../../src/game/state.js'
 import type { GameState, RitualRoll, RunState } from '../../src/game/state.js'
 import { BONE_CEILING } from '../../src/content/bones.js'
-import { activeDice } from '../../src/combat/roll.js'
+import { HAND_DICE } from '../../src/combat/roll.js'
 import { roomAt } from '../../src/game/map.js'
 import { nodeOf } from './where.js'
 
@@ -123,16 +123,19 @@ describe('a vial', () => {
     expect(reduce(dry, { type: 'DRINK' })).toBe(dry)
   })
 
-  it('widens the attack it is about to throw', () => {
-    // The pile is the width of the hand, so five bones back is up to five more
-    // dice — and the width is recomputed from the pile, so the Vial is not a
-    // number that arrives after the decision it changes.
+  it('buys exchanges rather than dice: the hand was already six', () => {
+    // The pile is no longer the width of the hand. A Vial drunk at three bones
+    // does not widen anything — the attack was throwing six before it and is
+    // throwing six after it. What it buys is another exchange survived, which
+    // is the whole of what bones are for now.
     const facing = play(at('hollow', { bones: 3, vials: 1 }), { type: 'FIGHT' })
-    expect(activeDice(facing.run!.bones)).toBe(3)
+    const thin = reduce(facing, { type: 'ROLL' })
+    expect(thin.run!.combat!.dice).toHaveLength(HAND_DICE)
+
     const after = reduce(facing, { type: 'DRINK' })
     expect(after.run!.bones).toBe(8)
-    expect(activeDice(after.run!.bones)).toBe(6)
     expect(after.run!.combat!.dice).toEqual([])
+    expect(reduce(after, { type: 'ROLL' }).run!.combat!.dice).toHaveLength(HAND_DICE)
   })
 
   it('is refused over a death that is being watched', () => {

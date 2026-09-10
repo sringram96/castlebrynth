@@ -91,9 +91,14 @@ test.describe('the first run', () => {
     await expect(overlay).toContainText('Vial')
     await expect(overlay).toContainText('5 bones back, up to 30 in all')
 
-    // The whole fight, in five lines, and the scorecard under them.
-    await expect(overlay.locator('#rules li')).toHaveCount(5)
+    // The whole fight, in its lines, and the scorecard under them.
+    await expect(overlay.locator('#rules li')).toHaveCount(7)
     await expect(overlay).toContainText('Hold what I want')
+    // And the loadout, which is the only place an item die's faces and a
+    // talisman's line can be read at a size a person can read them at.
+    await expect(overlay.locator('#hand-slots')).toContainText('6 dice')
+    await expect(overlay).toContainText('Rustplate')
+    await expect(overlay).toContainText('Talisman of the Pair')
     await expect(overlay.locator('#hand-table')).toContainText('FULL HOUSE')
     await expect(overlay.locator('#hand-table')).toContainText('×2')
 
@@ -147,9 +152,9 @@ test.describe('the first fight', () => {
     for (const value of await valuesOf(dice(page))) expect(Number.isNaN(value)).toBe(true)
   })
 
-  test('a thin pile throws what it has, and no more', async ({ page }) => {
+  test('a thin pile throws the same six', async ({ page }) => {
     await boot(page, '?room=hollow&bones=2&mode=combat')
-    await expect(dice(page)).toHaveCount(2)
+    await expect(dice(page)).toHaveCount(6)
     await expect(act(page, 'roll')).toBeVisible()
   })
 

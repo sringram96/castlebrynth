@@ -16,9 +16,10 @@ import { newRun, reduce } from '../../src/game/reducer.js'
 import type { Action } from '../../src/game/reducer.js'
 import { EMPTY_META, SAVE_VERSION } from '../../src/game/state.js'
 import type { CombatState, GameState, RunState } from '../../src/game/state.js'
-import { MAX_ACTIVE_DICE, MAX_ROLLS } from '../../src/combat/roll.js'
+import { HAND_DICE, MAX_ROLLS } from '../../src/combat/roll.js'
+import { IRON_DICE } from '../../src/content/dice.js'
 import type { DieValue } from '../../src/combat/roll.js'
-import { legalScores, scoreDice } from '../../src/combat/hands.js'
+import { legalScores } from '../../src/combat/hands.js'
 import type { ScoreId } from '../../src/combat/hands.js'
 import { enemy } from '../../src/content/enemies.js'
 import { nodeOf } from './where.js'
@@ -110,21 +111,48 @@ describe('FIGHT', () => {
 describe('ROLL', () => {
   it('throws six bones for a healthy pile', () => {
     const combat = combatOf(reduce(facing(), { type: 'ROLL' }))
-    expect(combat.dice).toHaveLength(MAX_ACTIVE_DICE)
+    expect(combat.dice).toHaveLength(HAND_DICE)
     expect(combat.rollsUsed).toBe(1)
   })
 
-  it('throws exactly as many bones as the pile has, below six', () => {
-    for (const bones of [5, 4, 3, 2, 1]) {
+  it('throws six however thin the pile is', () => {
+    // The repealed rule, asserted from the other side. `min(6, bones)` is
+    // gone: bones are health and only health, and a run down to one bone
+    // throws the same hand a run at thirty does. See docs/COMBAT.md § The hand.
+    for (const bones of [30, 12, 6, 5, 4, 3, 2, 1]) {
       const combat = combatOf(reduce(facing('hollow', { bones }), { type: 'ROLL' }))
-      expect(combat.dice, `${bones} bones`).toHaveLength(bones)
+      expect(combat.dice, `${bones} bones`).toHaveLength(HAND_DICE)
     }
   })
 
-  it('still throws six at twelve bones and at six', () => {
-    for (const bones of [30, 12, 6]) {
-      expect(combatOf(reduce(facing('hollow', { bones }), { type: 'ROLL' })).dice).toHaveLength(6)
-    }
+  it('throws the same six faces at one bone as at thirty', () => {
+    // Not merely the same *count*. The position in the stream does not depend
+    // on the pile either, so a wound cannot perturb what the dice come up.
+    const thin = combatOf(reduce(facing('hollow', { bones: 1 }, 12), { type: 'ROLL' })).dice
+    const whole = combatOf(reduce(facing('hollow', { bones: 30 }, 12), { type: 'ROLL' })).dice
+    expect(thin).toEqual(whole)
+  })
+
+  it('throws the iron with them, once', () => {
+    const rolled = combatOf(reduce(facing(), { type: 'ROLL' }))
+    expect(rolled.ironRolls).toHaveLength(1)
+    expect(rolled.ironRolls[0]!.id).toBe('rustplate')
+    expect(IRON_DICE.rustplate!.faces).toContain(rolled.ironRolls[0]!.block)
+  })
+
+  it('leaves the iron exactly where it is through a reroll', () => {
+    // It is the turn's terrain, not part of the dice game: REROLL does not
+    // touch it and there is no press that can.
+    const rolled = reduce(facing(), { type: 'ROLL' })
+    const before = combatOf(rolled).ironRolls
+    const again = reduce(rolled, { type: 'REROLL', held: [0] })
+    expect(combatOf(again).ironRolls).toEqual(before)
+    expect(combatOf(reduce(again, { type: 'REROLL', held: [0] })).ironRolls).toEqual(before)
+  })
+
+  it('throws no iron for a run that carries none', () => {
+    const bare = facing('hollow', { ironDice: [] })
+    expect(combatOf(reduce(bare, { type: 'ROLL' })).ironRolls).toEqual([])
   })
 
   it('only ever shows ordinary d6 faces', () => {
@@ -278,16 +306,28 @@ describe('SCORE', () => {
   })
 
   it('records the whole exchange before anything is animated', () => {
-    const table = withDice(facing('hollow', { bones: 30 }), 6, 6, 6, 4, 4, 3)
+    // A bare loadout, so the arithmetic under test is the line's alone. The
+    // iron and the item beat get their own tests below.
+    const bare = { bones: 30, ironDice: [], itemDice: [], talismans: [] }
+    const table = withDice(facing('hollow', bare), 6, 6, 6, 4, 4, 3)
     const record = combatOf(reduce(table, { type: 'SCORE', hand: 'full-house' })).lastAttack!
     expect(record).toEqual({
       dice: [6, 6, 6, 4, 4, 3],
       hand: 'full-house',
       sum: 29,
       multiplier: 2,
+      base: 58,
+      itemRolls: [],
+      itemFlats: 0,
+      itemCost: 0,
+      talismansFired: [],
+      talismanFlat: 0,
       damage: 58,
+      landed: true,
       enemyHpBefore: 70,
       enemyHpAfter: 12,
+      enemyHit: 3,
+      block: 0,
       retaliation: 3,
       bonesBefore: 30,
       bonesAfter: 27,
@@ -296,20 +336,20 @@ describe('SCORE', () => {
 })
 
 describe('what it costs to leave a thing standing', () => {
-  it('breaks exactly the enemy’s own number of bones', () => {
+  it('breaks exactly the enemy’s own number of bones, with no iron in the way', () => {
     for (const [template, enemyId] of [
       ['hollow', 'gnawing'],
       ['deep', 'marrow'],
       ['gate', 'warden'],
     ] as const) {
-      const table = withDice(facing(template, { bones: 30 }), 1, 1, 2, 3, 4, 6)
+      const table = withDice(facing(template, { bones: 30, ironDice: [] }), 1, 1, 2, 3, 4, 6)
       const after = reduce(table, { type: 'SCORE', hand: 'pair' })
       expect(after.run!.bones, enemyId).toBe(30 - enemy(enemyId).damage)
     }
   })
 
   it('is the same number every time, with no draw behind it', () => {
-    let state = facing('deep', { bones: 30 })
+    let state = facing('deep', { bones: 30, ironDice: [] })
     const seen: number[] = []
     for (let attack = 0; attack < 3; attack++) {
       state = reduce(state, { type: 'ROLL' })
@@ -409,20 +449,37 @@ describe('a lethal answer', () => {
 })
 
 describe('a wounded attack', () => {
-  it('narrows with the pile, and loses the shapes that need the width', () => {
+  it('does not narrow: every shape is still reachable at four bones', () => {
+    // The repealed coupling. A wounded run keeps the whole scorecard; what it
+    // has lost is exchanges, not dice.
     const four = reduce(facing('hollow', { bones: 4 }), { type: 'ROLL' })
-    const combat = combatOf(four)
-    expect(combat.dice).toHaveLength(4)
-    expect(legalScores(combat.dice, [])).not.toContain('full-house')
-    expect(legalScores(combat.dice, [])).not.toContain('straight')
-    expect(legalScores(combat.dice, [])).not.toContain('six-kind')
+    expect(combatOf(four).dice).toHaveLength(HAND_DICE)
+    const wide = withDice(facing('hollow', { bones: 4 }), 3, 3, 3, 5, 5, 5)
+    expect(legalScores(combatOf(wide).dice, [])).toContain('full-house')
+    const run = withDice(facing('hollow', { bones: 1 }), 1, 2, 3, 4, 5, 6)
+    expect(legalScores(combatOf(run).dice, [])).toContain('straight')
   })
 
-  it('still does at least one damage with a single bone', () => {
-    const one = withDice(facing('hollow', { bones: 1 }), 1)
-    const after = reduce(one, { type: 'SCORE', hand: 'crap' })
-    expect(scoreDice([1], 'crap').damage).toBe(1)
-    expect(combatOf(after).enemyHp).toBe(enemy('gnawing').maxHp - 1)
+  it('still hurts on the worst table there is', () => {
+    // Six ones with every group already spent leaves CRAP: sum 6, ×0.5, three.
+    // The floor of one is still in the equation and is now unreachable with a
+    // full hand, which is a consequence of the fixed six rather than a rule.
+    const bare = { bones: 1, ironDice: [], itemDice: [], talismans: [] }
+    const spent = withDice(facing('hollow', bare), 1, 1, 1, 1, 1, 1)
+    const used = {
+      ...spent,
+      run: {
+        ...spent.run!,
+        combat: {
+          ...combatOf(spent),
+          usedHands: ['pair', 'triple', 'four-kind', 'five-kind', 'six-kind'] as const,
+        },
+      },
+    }
+    expect(legalScores(combatOf(used).dice, combatOf(used).usedHands)).toEqual(['crap'])
+    const after = reduce(used, { type: 'SCORE', hand: 'crap' })
+    expect(combatOf(after).lastAttack!.damage).toBe(3)
+    expect(combatOf(after).enemyHp).toBe(enemy('gnawing').maxHp - 3)
   })
 })
 

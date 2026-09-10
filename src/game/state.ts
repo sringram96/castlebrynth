@@ -13,14 +13,25 @@
  * ## The pile is the player
  *
  * A run's life is `run.bones`, and there is no second life field: no `hp`, no
- * `maxHp`, no shield, no armour. A hit removes bones from the pile, and
- * because an attack rolls `min(6, bones)`, being hurt directly narrows the
- * dice game. Enemies *do* carry an explicit `enemyHp`, deliberately — see
+ * `maxHp`, no shield, no armour. A hit removes bones from the pile. **Bones
+ * are health and only health** — the hand is six dice from the first fight to
+ * the last turn of the boss, and nothing reads the pile to decide how many are
+ * in the air. Enemies *do* carry an explicit `enemyHp`, deliberately — see
  * `docs/COMBAT.md`.
+ *
+ * ## The loadout is ids, not objects
+ *
+ * `run.hand`, `run.ironDice`, `run.itemDice` and `run.talismans` hold content
+ * ids. A save carries which things a run is carrying and never a copy of what
+ * they do, for the same reason `run.roomId` is a node id rather than a room: a
+ * table changed in `content/dice.ts` must not be able to disagree with a save
+ * written before it.
  */
 
 import type { ScoreId, NamedHandId } from '../combat/hands.js'
+import type { IronRoll, ItemRoll } from '../combat/loadout.js'
 import type { DieValue } from '../combat/roll.js'
+import type { CoreDieId, IronDieId, ItemDieId, TalismanId } from '../content/dice.js'
 import type { RewardId } from '../content/rewards.js'
 import type { RunMap } from './map.js'
 
@@ -28,11 +39,16 @@ import type { RunMap } from './map.js'
  * Bumped whenever the shape below changes. Old saves are not migrated.
  *
  * **9.** The Yahtzee reset changed the run's life from a two-part pile to one
- * number and replaced the whole of `CombatState`, so a save written by 8 has a
- * shape this build cannot read. There is no migration ladder and there is not
+ * number and replaced the whole of `CombatState`.
+ *
+ * **10.** The loadout wave. `RunState` gained `hand`, `ironDice`, `itemDice`
+ * and `talismans`; `CombatState` gained the turn's settled iron; and
+ * `AttackRecord` gained every beat of the cascade. A save written by 9 has
+ * neither the six slots nor an iron die, and a fight resumed out of one would
+ * be a fight with no terrain. There is no migration ladder and there is not
  * going to be one: an old save is detected, discarded, and reported.
  */
-export const SAVE_VERSION = 9
+export const SAVE_VERSION = 10
 
 export type Mode = 'title' | 'explore' | 'combat' | 'reward' | 'dead' | 'complete'
 
@@ -42,6 +58,12 @@ export type Mode = 'title' | 'explore' | 'combat' | 'reward' | 'dead' | 'complet
  * Written by SCORE before a frame of it is shown, and read by the presentation
  * in order. Every number the sequence says out loud is on here: the animation
  * reveals an outcome the reducer already computed, and it recomputes nothing.
+ *
+ * It is written out beat by beat because the cascade is played beat by beat —
+ * the readout resolves `sum × multiplier` before the item dice fire, and the
+ * item dice fire before the blow lands. A presentation that had only the final
+ * damage would have to invent the middle of that, which is exactly the thing
+ * this codebase does not let a presentation do.
  */
 export interface AttackRecord {
   /** The faces that were on the table when the hand was scored. */
@@ -49,12 +71,38 @@ export interface AttackRecord {
   readonly hand: ScoreId
   readonly sum: number
   readonly multiplier: number
+  /** `floor(sum × multiplier)` — the line alone, before anything flat. */
+  readonly base: number
+
+  /** What the item dice rolled, in loadout order. Empty when none are carried. */
+  readonly itemRolls: readonly ItemRoll[]
+  /** What they added to the total. */
+  readonly itemFlats: number
+  /** What they charged, in bones, at the item beat. */
+  readonly itemCost: number
+  /** Talismans whose line matched, and what they added. Flat, always. */
+  readonly talismansFired: readonly TalismanId[]
+  readonly talismanFlat: number
+
+  /** `max(1, base + itemFlats + talismanFlat)`. Zero when the blow never landed. */
   readonly damage: number
+  /**
+   * Whether the blow landed at all.
+   *
+   * False in exactly one case: an item die's cost face emptied the pile at the
+   * item beat, which is *before* the blow. A cost is a cost — the run ends
+   * there and the enemy is untouched. See `docs/COMBAT.md` § Costs.
+   */
+  readonly landed: boolean
 
   readonly enemyHpBefore: number
   readonly enemyHpAfter: number
 
-  /** What it broke in answer. Zero when the attack finished it. */
+  /** The enemy's own fixed number, before the iron stood in front of it. */
+  readonly enemyHit: number
+  /** What the iron die held off it this turn. */
+  readonly block: number
+  /** `max(0, enemyHit − block)`. Zero when the attack finished it. */
   readonly retaliation: number
   readonly bonesBefore: number
   readonly bonesAfter: number
@@ -86,10 +134,23 @@ export interface CombatState {
   /** Named categories deliberately scored during this fight. CRAP is never here. */
   readonly usedHands: readonly NamedHandId[]
 
-  /** The current attack's dice. Empty before the initial roll of a round. */
+  /** The current attack's core dice. Empty before the initial roll of a round. */
   readonly dice: readonly DieValue[]
   /** 0 before rolling, then 1..3. */
   readonly rollsUsed: 0 | 1 | 2 | 3
+
+  /**
+   * The iron, settled for this turn.
+   *
+   * Thrown by ROLL, in the same tick, alongside the six — and never again: a
+   * REROLL leaves it exactly where it is, because what it shows is the turn's
+   * terrain rather than part of the dice game. Empty before the initial roll,
+   * and empty for a run that carries no iron.
+   *
+   * It is here rather than derived because it is a *draw*: recorded once, the
+   * way a ritual's roll is, so a reload reads it instead of throwing it again.
+   */
+  readonly ironRolls: readonly IronRoll[]
 
   /** The last settled exchange, for the copy and the beats. */
   readonly lastAttack?: AttackRecord
@@ -203,11 +264,44 @@ export interface RunState {
   /**
    * The pile. One number, and it is the player's whole life.
    *
-   * It is also the width of the next attack: a hand rolls `min(6, bones)`, so
-   * damage narrows the dice game rather than merely counting down. There is no
-   * second life field anywhere and there is not to be one.
+   * **Bones are health and only health.** They were once the width of the
+   * attack as well; that coupling is repealed, because the run's progression
+   * is replacement — a found die takes one of the six slots below — and a
+   * width that shrank with the pile would spend the fight taking those slots
+   * away again. There is no second life field anywhere and there is not to be
+   * one.
    */
   readonly bones: number
+
+  // ── the loadout ───────────────────────────────────────────────────────
+  /**
+   * The six slots the attack throws. Always six, and never a seventh.
+   *
+   * A found die **replaces** one of these; the player chooses which. That is
+   * the whole of the progression model, and it is why the array has a fixed
+   * length rather than a cap: growth here would be growth in the number of
+   * dice, which is the thing that was ruled out.
+   */
+  readonly hand: readonly CoreDieId[]
+  /**
+   * Armour, and it is a die rather than a stat.
+   *
+   * It rolls each turn on ROLL and blocks what it shows off that turn's
+   * answer. An always-on damage-reduction stat made plate dominate every
+   * loadout it appeared in; that was measured, and moving the effect onto a
+   * die fixed the dominance without touching the numbers. One, this wave.
+   */
+  readonly ironDice: readonly IronDieId[]
+  /**
+   * Upside that fires at Attack, automatically. Two at most, capped in the
+   * reducer.
+   *
+   * **Balance never assumes these.** No gate, target or enemy number may
+   * require one.
+   */
+  readonly itemDice: readonly ItemDieId[]
+  /** Flat per-line bonuses. Optional upside, never a gate. */
+  readonly talismans: readonly TalismanId[]
 
   // ── satchel ───────────────────────────────────────────────────────────
   /** The one consumable. */

@@ -4,30 +4,47 @@
  * The frame is one authored picture and is `pointer-events: none`. Every
  * control on top of it is a real button placed in the tray's own fractions.
  *
- * The geometry is unchanged and the meaning of two regions is not:
- *
  *   the orb        the pile — how many bones are alive
- *   the crown      the attack: up to six bones, held or thrown
- *   the well       the scorecard, and the hands that can be scored right now
- *   the right bays the satchel: the Vial
+ *   the crown      the attack: six dice, held or thrown
+ *   the rail ends  the iron die (left) and up to two item dice (right)
+ *   the well       the running readout, the scorecard, the iron's caption
+ *   the right bays the Vial, and the talisman
  *   the three beds MENU · ROLL or REROLL · a second route out of a room
  *
  * A secondary action that does not exist is **absent**, never disabled. The
  * one verb in the middle bed is whichever throw is left; scoring is not a verb
  * in a bed, because *which hand* is the decision and a bed cannot carry it.
+ *
+ * ## The readout, and where a number is allowed to appear
+ *
+ * There is **one aggregate on screen** — the readout in the well — and it
+ * resolves `sum × line` through the cascade to `sum × line + flats = total`.
+ * Everything else pops on the thing that made it: a core die's value on the
+ * die, an item die's result on the item die, a talisman's flat on the
+ * talisman, the loss on the enemy, a cost on the pile. There is no aggregate
+ * that numbers migrate to and no receipt anywhere: both were built, both were
+ * measured against this, and both lost.
+ *
+ * The reducer settled every one of those numbers before a frame of the cascade
+ * ran. `paintCascade` below is how the app reveals them in order, and it is
+ * handed the record — it derives nothing and it decides nothing.
  */
 
 import {
   ACTION_BEDS,
   DIE_CENTRES,
   DIE_PITCH,
+  IRON_CENTRES,
+  ITEM_CENTRES,
   ORB,
   ORB_TEXT,
   RELIC_CENTRES,
   RELIC_PITCH,
+  TALISMAN_BAY,
+  VIAL_BAY,
   WELL,
 } from '../content/tray.js'
-import { ATTACK_LINE, VERBS, WELL_IDLE } from '../content/text.js'
+import { ATTACK_LINE, IRON_IDLE, VERBS, WELL_IDLE } from '../content/text.js'
 import { BONE_CEILING, roomToRecover } from '../content/bones.js'
 import {
   HAND_DEFINITIONS,
@@ -35,16 +52,24 @@ import {
   CRAP_NAME,
   legalScores,
   matchingHands,
-  scoreDice,
   scoreName,
 } from '../combat/hands.js'
 import type { ScoreId } from '../combat/hands.js'
-import { MAX_ROLLS, activeDice } from '../combat/roll.js'
+import {
+  blockOf,
+  ironBadge,
+  ironCaption,
+  itemBadge,
+  talismanFlatOf,
+  totalsFor,
+} from '../combat/loadout.js'
+import { itemDie, talisman as talismanById } from '../content/dice.js'
+import { HAND_DICE, MAX_ROLLS } from '../combat/roll.js'
 import type { DieValue } from '../combat/roll.js'
 import { enemy as enemyById } from '../content/enemies.js'
 import { roomAt } from '../game/map.js'
 import { exitsOpen, stateOf } from '../content/interactions.js'
-import type { CombatState, GameState, RunState } from '../game/state.js'
+import type { AttackRecord, CombatState, GameState, RunState } from '../game/state.js'
 import { button, dieButton, dieFace, el, place, seat, seatBed } from './components.js'
 
 /**
@@ -73,6 +98,8 @@ export interface TrayHandlers {
   readonly onDrink: () => void
   /** A close look at one satchel utility. No state change. */
   readonly onInspectReward: (id: string) => void
+  /** A close look at one carried talisman. No state change. */
+  readonly onInspectTalisman: (id: string) => void
   readonly onGo: (to: string) => void
 }
 
@@ -86,8 +113,14 @@ export interface Tray {
   readonly orb: HTMLElement
   readonly orbText: HTMLElement
   readonly crown: HTMLElement
+  /** The iron die's end of the rail. Its caption's number pops here. */
+  readonly iron: HTMLElement
+  /** The item dice's end of the rail. Their results pop here. */
+  readonly items: HTMLElement
   readonly well: HTMLElement
   readonly satchel: HTMLElement
+  /** The talisman bay. Its flat pops here, on the thing that made it. */
+  readonly talismans: HTMLElement
   readonly beds: HTMLElement
 }
 
@@ -113,6 +146,15 @@ export function mountTray(root: HTMLElement, frameSrc: string): Tray {
   const crown = el('div', 'crown')
   crown.id = 'crown'
 
+  // Separate hosts rather than more children of the crown. The crown is the
+  // six the hand is made of, and anything reading `#crown .bone` — the suite
+  // does, and so does the throw animation — means those six and nothing else.
+  const iron = el('div', 'iron')
+  iron.id = 'iron'
+
+  const items = el('div', 'items')
+  items.id = 'items'
+
   const well = el('div', 'well')
   well.id = 'well'
   place(well, WELL)
@@ -120,11 +162,14 @@ export function mountTray(root: HTMLElement, frameSrc: string): Tray {
   const satchel = el('div', 'satchel')
   satchel.id = 'satchel'
 
+  const talismans = el('div', 'talismans')
+  talismans.id = 'talismans'
+
   const beds = el('div', 'beds')
   beds.id = 'beds'
 
-  root.append(orb, orbText, crown, well, satchel, beds)
-  return { root, orb, orbText, crown, well, satchel, beds }
+  root.append(orb, orbText, crown, iron, items, well, satchel, talismans, beds)
+  return { root, orb, orbText, crown, iron, items, well, satchel, talismans, beds }
 }
 
 export function renderTray(tray: Tray, state: GameState, view: TrayView, on: TrayHandlers): void {
@@ -135,7 +180,10 @@ export function renderTray(tray: Tray, state: GameState, view: TrayView, on: Tra
   const combat = state.mode === 'combat' ? run.combat : undefined
   renderPile(tray, run)
   renderAttack(tray, run, combat, view, on)
+  renderIron(tray, run, combat)
+  renderItems(tray, run, combat)
   renderSatchel(tray, run, combat, on)
+  renderTalismans(tray, run, on)
   renderWell(tray, state, combat, on)
   renderBeds(tray, state, combat, view, on)
 }
@@ -155,8 +203,10 @@ function renderPile(tray: Tray, run: RunState): void {
   tray.orbText.textContent = `${bones}`
   tray.orbText.dataset['bones'] = String(bones)
   tray.orbText.setAttribute('aria-label', `${bones} living bones`)
-  // Six is the line the dice game itself crosses: below it an attack stops
-  // rolling a full hand and the good shapes start dropping out of reach.
+  // Six is no longer a line the dice game crosses — it crosses none, because
+  // the hand is six dice at thirty bones and six at one. It is still the line
+  // where a single exchange with the thing at the door ends the run, which is
+  // what the orb is warning about.
   tray.orb.dataset['low'] = bones <= 6 ? 'yes' : 'no'
 }
 
@@ -169,18 +219,21 @@ function canReroll(combat: CombatState): boolean {
  * The crown: the attack.
  *
  * Three different things, and each of them is the truth of where the attack
- * stands. Before the first throw it shows *how many bones this attack has* —
- * `min(6, bones)` backs, no faces, because no face has been decided and
- * showing one would be the view inventing a number the reducer has not drawn.
- * With a throw still in hand every die is a real HOLD button. With none left
- * they are faces and nothing else, because there is nothing to do with them.
+ * stands. Before the first throw it shows **six** backs, no faces, because no
+ * face has been decided and showing one would be the view inventing a number
+ * the reducer has not drawn. With a throw still in hand every die is a real
+ * HOLD button. With none left they are faces and nothing else, because there
+ * is nothing to do with them.
  *
- * Out of a fight it is empty: the pile is the loadout now, and six sockets
- * pretending to be a hand would be furniture left standing.
+ * Six, always. Nothing here reads the pile: the hand does not narrow with
+ * damage any more, and there is no width for a view to compute.
+ *
+ * Out of a fight it is empty: six sockets pretending to be a hand would be
+ * furniture left standing.
  */
 function renderAttack(
   tray: Tray,
-  run: RunState,
+  _run: RunState,
   combat: CombatState | undefined,
   view: TrayView,
   on: TrayHandlers,
@@ -205,7 +258,7 @@ function renderAttack(
   // be. These are not controls — there is nothing to hold — so they are not
   // buttons.
   if (combat.dice.length === 0) {
-    const width = activeDice(run.bones)
+    const width = HAND_DICE
     tray.crown.dataset['count'] = String(width)
     for (let index = 0; index < width; index++) {
       const node = el('div', 'bone')
@@ -245,6 +298,117 @@ function renderAttack(
 }
 
 /**
+ * The iron die, at the left end of the rail.
+ *
+ * It is never a control. There is no press for it, no hold, and no reroll —
+ * REROLL leaves it exactly where it is — so it is a `role="img"` and it is
+ * inert. What it is holding this turn is on it as data and in its accessible
+ * name, and stated in words in the caption at the top of the well.
+ *
+ * Out of a fight, or before the throw, it shows a back: nothing has been
+ * decided, and a face there would be the view claiming a block the reducer has
+ * not drawn.
+ */
+function renderIron(tray: Tray, run: RunState, combat: CombatState | undefined): void {
+  tray.iron.replaceChildren()
+  tray.iron.dataset['count'] = String(run.ironDice.length)
+
+  if (run.ironDice.length === 0 || !combat || combat.defeated) return
+
+  run.ironDice.forEach((id, index) => {
+    const roll = combat.ironRolls[index]
+    const node = el('div', 'iron-die')
+    node.dataset['index'] = String(index)
+    node.dataset['ironId'] = id
+    node.setAttribute('role', 'img')
+
+    if (!roll) {
+      node.dataset['thrown'] = 'no'
+      node.append(el('span', 'iron-face iron-back'))
+      node.setAttribute('aria-label', `${IRON_IDLE}`)
+    } else {
+      node.dataset['thrown'] = 'yes'
+      node.dataset['block'] = String(roll.block)
+      node.dataset['badge'] = ironBadge(roll)
+      node.append(el('span', 'iron-face', String(roll.block)))
+      node.setAttribute('aria-label', ironCaption(roll))
+    }
+    seat(node, IRON_CENTRES[index] ?? IRON_CENTRES[IRON_CENTRES.length - 1]!, DIE_PITCH)
+    tray.iron.append(node)
+  })
+}
+
+/**
+ * The item dice, at the right end of the rail.
+ *
+ * They are on screen from the moment they are carried, and they are never
+ * controls: they do not appear at ROLL, they cannot be held, they cannot be
+ * rerolled, and there is no press for them anywhere. They show a back until
+ * the attack fires them, which is the whole of their interface — an item die
+ * is a treat that lands mid-cascade, and the result popping *on the die* is
+ * how it lands.
+ */
+function renderItems(tray: Tray, run: RunState, combat: CombatState | undefined): void {
+  tray.items.replaceChildren()
+  tray.items.dataset['count'] = String(run.itemDice.length)
+  if (run.itemDice.length === 0) return
+
+  // The last attack's faces, while they are the truth on screen. The cascade
+  // paints its own beats over these; this is what a settled table shows and
+  // what a reload lands on.
+  const settled = combat && combat.dice.length === 0 ? combat.lastAttack : undefined
+
+  run.itemDice.forEach((id, index) => {
+    const die = itemDie(id)
+    const fired = settled?.itemRolls[index]
+    const node = el('div', 'item-die')
+    node.dataset['index'] = String(index)
+    node.dataset['itemId'] = id
+    node.setAttribute('role', 'img')
+    if (fired) {
+      node.dataset['face'] = fired.result.kind
+      node.append(el('span', 'item-face', itemBadge(fired.result)))
+      node.setAttribute('aria-label', `${die.name}: ${itemBadge(fired.result)}`)
+    } else {
+      node.append(el('span', 'item-face item-back'))
+      node.setAttribute('aria-label', `${die.name}. ${die.rule}`)
+    }
+    seat(node, ITEM_CENTRES[index] ?? ITEM_CENTRES[ITEM_CENTRES.length - 1]!, DIE_PITCH)
+    tray.items.append(node)
+  })
+}
+
+/**
+ * The talisman bay.
+ *
+ * A real button, because a carried thing whose rule can only be read by losing
+ * a fight to it is not a rule — pressing it inspects it and changes nothing.
+ * Its flat pops here, on the thing that made it, when its line is scored.
+ */
+function renderTalismans(tray: Tray, run: RunState, on: TrayHandlers): void {
+  tray.talismans.replaceChildren()
+  if (run.talismans.length === 0) return
+
+  const id = run.talismans[0]!
+  const t = talismanById(id)
+  const b = button({
+    act: 'inspect-talisman',
+    label: '',
+    describe: `${t.name}. ${t.rule}`,
+    onPress: () => on.onInspectTalisman(id),
+    // Not a `.satchel-slot`: the satchel is what can be spent, and a talisman
+    // cannot be. It is seated on the same rail and styled the same way, and
+    // the two are separately countable.
+    className: 'talisman-slot bay-slot',
+  })
+  b.dataset['talismanId'] = id
+  b.append(el('span', 'bay-label', 'PAIR'))
+  b.append(el('b', 'bay-count', `+${t.bonus}`))
+  seat(b, RELIC_CENTRES[TALISMAN_BAY]!, RELIC_PITCH)
+  tray.talismans.append(b)
+}
+
+/**
  * The bays on the right: the satchel.
  *
  * One thing in it, and it sits in the bay it has always sat in. The other two
@@ -269,15 +433,15 @@ function renderSatchel(
       ? `Drink a Vial: 5 bones back, up to ${BONE_CEILING}`
       : `Vials: ${run.vials}. Inspect`,
     onPress: canDrink ? on.onDrink : () => on.onInspectReward('vial'),
-    className: 'satchel-slot',
+    className: 'bay-slot satchel-slot',
   })
   b.dataset['slotId'] = 'vial'
   b.dataset['live'] = canDrink ? 'yes' : 'no'
-  b.append(el('span', 'satchel-label', 'VIAL'))
-  const badge = el('b', 'satchel-count', String(run.vials))
+  b.append(el('span', 'bay-label satchel-label', 'VIAL'))
+  const badge = el('b', 'bay-count satchel-count', String(run.vials))
   badge.dataset['count'] = String(run.vials)
   b.append(badge)
-  seat(b, RELIC_CENTRES[0]!, RELIC_PITCH)
+  seat(b, RELIC_CENTRES[VIAL_BAY]!, RELIC_PITCH)
   tray.satchel.append(b)
 }
 
@@ -305,6 +469,7 @@ function showMultiplier(multiplier: number): string {
  */
 function renderScorecard(
   host: HTMLElement,
+  run: RunState,
   combat: CombatState,
   on: TrayHandlers,
 ): void {
@@ -314,6 +479,21 @@ function renderScorecard(
   const matched = new Set(matchingHands(combat.dice))
   const legal = new Set(legalScores(combat.dice, combat.usedHands))
 
+  /**
+   * What a line would do, before the item dice have fired.
+   *
+   * The talisman is known — it answers to the line, and the line is what is
+   * being previewed — so it is in the figure. The item dice are **not**: they
+   * have not been thrown, and a preview that included them would be the
+   * scorecard promising a number the reducer has not drawn. That asymmetry is
+   * the honest one, and it is why an item die reads as upside.
+   */
+  const previewOf = (hand: ScoreId): number =>
+    totalsFor(combat.dice, hand, {
+      itemFlats: 0,
+      talismanFlat: talismanFlatOf(run.talismans, hand),
+    }).damage
+
   for (const hand of HAND_DEFINITIONS) {
     const isUsed = used.has(hand.id)
     const isLegal = legal.has(hand.id)
@@ -321,9 +501,7 @@ function renderScorecard(
       ? button({
           act: 'score',
           label: '',
-          describe: `Score ${hand.name}, ${showMultiplier(hand.multiplier)} — ${
-            scoreDice(combat.dice, hand.id).damage
-          }`,
+          describe: `Score ${hand.name}, ${showMultiplier(hand.multiplier)} — ${previewOf(hand.id)}`,
           onPress: () => on.onScore(hand.id),
           className: 'score-entry',
         })
@@ -344,9 +522,7 @@ function renderScorecard(
     const b = button({
       act: 'score',
       label: '',
-      describe: `Score ${CRAP_NAME}, ${showMultiplier(CRAP_MULTIPLIER)} — ${
-        scoreDice(combat.dice, 'crap').damage
-      }`,
+      describe: `Score ${CRAP_NAME}, ${showMultiplier(CRAP_MULTIPLIER)} — ${previewOf('crap')}`,
       onPress: () => on.onScore('crap'),
       className: 'score-entry score-crap',
     })
@@ -364,6 +540,147 @@ function renderScorecard(
 function attackLine(combat: CombatState): string {
   if (combat.dice.length === 0) return ATTACK_LINE.waiting
   return canReroll(combat) ? ATTACK_LINE.open : ATTACK_LINE.last
+}
+
+/**
+ * The iron's caption.
+ *
+ * One line, stating what the iron is holding **before commitment**, in the
+ * words `combat/loadout.ts` writes — the same sentence the die's accessible
+ * name carries, so the two cannot drift. A run with no iron gets nothing here
+ * rather than a line saying it has none: an absent thing is absent.
+ */
+function ironCaptionLine(run: RunState, combat: CombatState): HTMLElement {
+  const line = el('p', 'iron-caption')
+  line.id = 'iron-caption'
+  if (run.ironDice.length === 0) {
+    line.hidden = true
+    return line
+  }
+  const rolls = combat.ironRolls
+  const said = rolls.length > 0 ? rolls.map(ironCaption).join(' ') : IRON_IDLE
+  line.textContent = said
+  line.dataset['block'] = String(blockOf(rolls))
+  line.dataset['thrown'] = rolls.length > 0 ? 'yes' : 'no'
+  return line
+}
+
+/**
+ * The readout. The one aggregate on screen.
+ *
+ * It says the same sentence at every stage of the turn, with more of it filled
+ * in: `29`, then `29 × 2`, then `29 × 2 = 58`, then `29 × 2 = 58 +5 +12`, then
+ * `= 75`. There is no second total anywhere, no fly-away number migrating into
+ * it, and no receipt beside it — the two other versions of this were built and
+ * lost, and reintroducing either is a product decision.
+ *
+ * What it shows here is whatever the **settled** state says. Between a press
+ * and the end of the cascade the app paints the beats over it through
+ * `paintCascade`, and with motion off there are no beats, so this is what a
+ * finished attack lands on and what a reload finds.
+ */
+function readoutOf(run: RunState, combat: CombatState): HTMLElement {
+  const box = el('p', 'readout')
+  box.id = 'readout'
+
+  if (combat.dice.length > 0) {
+    const sum = combat.dice.reduce((total: number, die: DieValue) => total + die, 0)
+    box.dataset['sum'] = String(sum)
+    box.dataset['stage'] = 'sum'
+    box.textContent = String(sum)
+    box.setAttribute('aria-label', `The dice on the table add to ${sum}`)
+    return box
+  }
+
+  const record = combat.lastAttack
+  if (!record) {
+    box.dataset['stage'] = 'idle'
+    box.textContent = '—'
+    box.setAttribute('aria-label', 'Nothing on the table yet')
+    return box
+  }
+
+  paintRecord(box, run, record, 'total')
+  return box
+}
+
+/** Which beats of the cascade the readout has resolved through. */
+export type CascadeStage = 'sum' | 'line' | 'items' | 'talisman' | 'total'
+
+const STAGE_ORDER: readonly CascadeStage[] = ['sum', 'line', 'items', 'talisman', 'total']
+
+const reached = (stage: CascadeStage, at: CascadeStage): boolean =>
+  STAGE_ORDER.indexOf(at) >= STAGE_ORDER.indexOf(stage)
+
+/**
+ * Write one stage of the readout, off the record the reducer settled.
+ *
+ * Nothing is computed here that is not already on the record. The only reason
+ * the stages exist is that the cascade is watched in order, and a readout that
+ * jumped from `29` to `75` would be hiding the middle of the one thing the
+ * player is being shown.
+ */
+function paintRecord(
+  box: HTMLElement,
+  run: RunState,
+  record: AttackRecord,
+  at: CascadeStage,
+): void {
+  const parts: string[] = [String(record.sum)]
+  if (reached('line', at)) parts.push(`× ${showBare(record.multiplier)}`)
+  if (reached('line', at) && at !== 'line') parts.push(`= ${record.base}`)
+  if (reached('items', at) && record.itemFlats > 0) parts.push(`+${record.itemFlats}`)
+  if (reached('talisman', at) && record.talismanFlat > 0) parts.push(`+${record.talismanFlat}`)
+  if (reached('total', at) && record.landed && record.damage !== record.base) {
+    parts.push(`= ${record.damage}`)
+  }
+
+  box.dataset['sum'] = String(record.sum)
+  box.dataset['stage'] = at
+  box.dataset['mult'] = String(record.multiplier)
+  box.dataset['base'] = String(record.base)
+  if (reached('total', at)) box.dataset['total'] = String(record.damage)
+  else delete box.dataset['total']
+
+  // A cost that emptied the pile stops the cascade where it stopped: the blow
+  // never landed, and a total printed here would be a total nothing took.
+  box.textContent = record.landed ? parts.join(' ') : `${parts.join(' ')} — never thrown`
+  box.setAttribute(
+    'aria-label',
+    record.landed
+      ? `${record.sum} times ${showBare(record.multiplier)} is ${record.base}, for ${record.damage}`
+      : `${record.sum} times ${showBare(record.multiplier)}. The blow never landed.`,
+  )
+  void run
+}
+
+/**
+ * Paint one beat of the cascade straight at the tray.
+ *
+ * The same mechanism the font's frames and a death's frames use, and for the
+ * same reason: a paint reads the screen off state, and state says nothing
+ * about which beat of a transition is up. Every number below is read off the
+ * record — this decides nothing and draws nothing at random.
+ */
+export function paintCascade(
+  tray: Tray,
+  run: RunState,
+  record: AttackRecord,
+  at: CascadeStage,
+): void {
+  const box = tray.well.querySelector<HTMLElement>('#readout')
+  if (box) paintRecord(box, run, record, at)
+  tray.root.dataset['cascade'] = at
+}
+
+/** Clear the cascade marker. The turn is over and the table is settled. */
+export function clearCascade(tray: Tray): void {
+  delete tray.root.dataset['cascade']
+}
+
+/** `2`, `1.25`, `0.5` — never `2.00`. */
+function showBare(multiplier: number): string {
+  return String(multiplier)
 }
 
 /** The stage. One reading at a time, and it is always the important one. */
@@ -389,18 +706,12 @@ function renderWell(
     box.dataset['dice'] = String(combat.dice.length)
     box.dataset['rollsUsed'] = String(combat.rollsUsed)
 
-    // What the dice are worth before the multiplier, so the two halves of the
-    // decision — the total and the shape — are both readable at once.
-    if (combat.dice.length > 0) {
-      const sum = combat.dice.reduce((total: number, die: DieValue) => total + die, 0)
-      const total = el('p', 'attack-sum', `${sum}`)
-      total.id = 'attack-sum'
-      total.dataset['sum'] = String(sum)
-      total.setAttribute('aria-label', `The bones on the table add to ${sum}`)
-      box.append(total)
-    }
-
-    renderScorecard(box, combat, on)
+    // What the iron is holding, in words, before anything is committed. It is
+    // the first thing in the well because it is the first thing the turn
+    // settled — the block is terrain, and terrain is read before a decision.
+    box.append(ironCaptionLine(run, combat))
+    box.append(readoutOf(run, combat))
+    renderScorecard(box, run, combat, on)
     box.append(el('p', 'well-line', attackLine(combat)))
     tray.well.append(box)
     return
@@ -497,14 +808,15 @@ function renderBeds(
     if (combat.defeated) return
 
     if (combat.dice.length === 0) {
-      const width = activeDice(run.bones)
-      if (width === 0) return
       bed(
         1,
         button({
           act: 'roll',
           label: VERBS.roll,
-          describe: `Throw ${width} ${width === 1 ? 'bone' : 'bones'}`,
+          describe:
+            run.ironDice.length > 0
+              ? `Throw ${HAND_DICE} dice, and the iron with them`
+              : `Throw ${HAND_DICE} dice`,
           onPress: on.onRoll,
           className: 'act act-primary',
         }),
@@ -520,7 +832,7 @@ function renderBeds(
         button({
           act: 'reroll',
           label: VERBS.reroll,
-          describe: `Throw ${free} ${free === 1 ? 'bone' : 'bones'} again`,
+          describe: `Throw ${free} ${free === 1 ? 'die' : 'dice'} again. The iron stays as it is`,
           onPress: on.onReroll,
           className: 'act act-primary',
         }),

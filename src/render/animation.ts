@@ -138,6 +138,33 @@ export function pileChange(orb: HTMLElement, delta: number): void {
 }
 
 /**
+ * A number, popping on the thing that made it.
+ *
+ * The whole of the v3 readout ruling in one function: feedback stays
+ * *spatially grounded on its source*. A core die's value pops on the die, an
+ * item die's result on the item die, a talisman's flat on the talisman. There
+ * is no aggregate for any of them to fly to — the readout in the well is the
+ * only running total, and nothing here migrates into it.
+ *
+ * Like everything in this file it is handed a string the reducer already
+ * settled. It reads no rule and computes no number.
+ */
+export function popNumber(host: HTMLElement, text: string, kind = 'value'): void {
+  const tag = document.createElement('b')
+  tag.className = `pop pop-${kind}`
+  tag.dataset['pop'] = kind
+  tag.textContent = text
+  host.append(tag)
+  if (reducedMotion()) {
+    // Nothing is lost: with motion off the settled screen already states every
+    // one of these, on the same objects, as text and as data.
+    tag.remove()
+    return
+  }
+  tag.addEventListener('animationend', () => tag.remove(), { once: true })
+}
+
+/**
  * How long the bright frame stays on. Punctuation, not a state.
  *
  * The casualties were decided before any of this ran, so there is nothing

@@ -19,8 +19,17 @@ import {
 import { CRAP_MULTIPLIER, CRAP_NAME, HAND_DEFINITIONS } from '../combat/hands.js'
 import { REWARDS, reward as rewardById } from '../content/rewards.js'
 import type { RewardId } from '../content/rewards.js'
+import {
+  HAND_SLOTS,
+  ITEM_CAP,
+  coreDie,
+  ironDie as ironDieById,
+  itemDie as itemDieById,
+  talisman as talismanById,
+} from '../content/dice.js'
+import type { CoreDieId, TalismanId } from '../content/dice.js'
 import { enemy as enemyById } from '../content/enemies.js'
-import { carriedNames } from '../game/reducer.js'
+import { canTake, carriedNames } from '../game/reducer.js'
 import { roomArt, url } from '../render/assets.js'
 import type { GameState } from '../game/state.js'
 import { button, el, rewardCard } from './components.js'
@@ -118,10 +127,28 @@ function title(state: GameState, on: ScreenHandlers, discarded?: string): HTMLEl
   return box
 }
 
-function offerCard(id: RewardId, on: ScreenHandlers): HTMLElement {
+/**
+ * One thing on offer, and the press that takes it.
+ *
+ * A run already carrying two item dice cannot take a third, so TAKE is
+ * **absent** and the card says why in words. Not disabled: an unavailable
+ * action is hidden, and the explanation is a sentence rather than a grey
+ * button.
+ */
+function offerCard(id: RewardId, state: GameState, on: ScreenHandlers): HTMLElement {
   const wrap = el('div', 'offer')
   wrap.dataset['offerId'] = id
   wrap.append(rewardCard(rewardById(id)))
+
+  const run = state.run
+  if (run && !canTake(run, id)) {
+    wrap.dataset['full'] = 'yes'
+    wrap.append(
+      el('p', 'screen-note', `I am already carrying ${ITEM_CAP}. There is nowhere to put it.`),
+    )
+    return wrap
+  }
+
   const b = button({
     act: 'take',
     label: VERBS.take,
@@ -150,7 +177,7 @@ function reward(state: GameState, on: ScreenHandlers): HTMLElement {
   const run = state.run
   const list = el('div', 'offers')
   list.id = 'offers'
-  for (const id of run?.offer ?? []) list.append(offerCard(id, on))
+  for (const id of run?.offer ?? []) list.append(offerCard(id, state, on))
   panel.append(list)
 
   panel.append(
@@ -256,6 +283,7 @@ function complete(state: GameState, on: ScreenHandlers): HTMLElement {
 export type Overlay =
   | { readonly kind: 'menu' }
   | { readonly kind: 'reward'; readonly id: RewardId }
+  | { readonly kind: 'talisman'; readonly id: TalismanId }
 
 export function renderOverlay(
   host: HTMLElement,
@@ -265,7 +293,12 @@ export function renderOverlay(
 ): void {
   host.replaceChildren()
   host.dataset['overlay'] = view.kind
-  const panel = view.kind === 'menu' ? menuPanel(state) : focusPanel(view)
+  const panel =
+    view.kind === 'menu'
+      ? menuPanel(state)
+      : view.kind === 'talisman'
+        ? talismanPanel(view)
+        : focusPanel(view)
   if (!panel) return
   panel.append(
     button({ act: 'close', label: VERBS.close, onPress: onClose, className: 'act act-big act-primary' }),
@@ -284,6 +317,38 @@ function focusPanel(view: Overlay & { kind: 'reward' }): HTMLElement {
   panel.dataset['focus'] = view.id
   panel.append(rewardCard(rewardById(view.id)))
   return panel
+}
+
+/** The same, for a talisman — which is carried but never taken as a reward. */
+function talismanPanel(view: Overlay & { kind: 'talisman' }): HTMLElement {
+  const panel = el('div', 'screen-panel screen-focus')
+  panel.dataset['focus'] = view.id
+  panel.append(loadoutCard(talismanById(view.id)))
+  return panel
+}
+
+/**
+ * One carried loadout thing, as its own card.
+ *
+ * The same shape a reward card has, built from the same fields, so a player
+ * never has to reconcile two descriptions of one object. Exact mechanic first,
+ * flavour under a rule.
+ */
+function loadoutCard(thing: {
+  readonly id: string
+  readonly name: string
+  readonly rule: string
+  readonly flavour?: string
+}): HTMLElement {
+  const card = el('article', 'card reward-card reward-loadout')
+  card.dataset['rewardId'] = thing.id
+  card.append(el('h3', 'card-name', thing.name))
+  card.append(el('p', 'card-rule', `EFFECT · ${thing.rule}`))
+  if (thing.flavour) {
+    card.append(el('hr', 'card-rule-line'))
+    card.append(el('p', 'card-flavour', thing.flavour))
+  }
+  return card
 }
 
 /**
@@ -318,7 +383,22 @@ function scorecardTable(state: GameState): HTMLElement {
   return table
 }
 
-/** MENU: the pile, the satchel, the rules, and the scorecard. */
+/**
+ * The six slots, named and counted.
+ *
+ * `Bone ×6` while every slot holds the same thing, and each named once they do
+ * not — which is what a replacement economy will produce, and is why the count
+ * is derived rather than assumed.
+ */
+function handSummary(hand: readonly CoreDieId[]): string {
+  const counts = new Map<CoreDieId, number>()
+  for (const id of hand) counts.set(id, (counts.get(id) ?? 0) + 1)
+  return [...counts]
+    .map(([id, n]) => (n > 1 ? `${coreDie(id).name} ×${n}` : coreDie(id).name))
+    .join(' · ')
+}
+
+/** MENU: the pile, the loadout, the satchel, the rules, and the scorecard. */
 function menuPanel(state: GameState): HTMLElement | null {
   const run = state.run
   if (!run) return null
@@ -334,7 +414,29 @@ function menuPanel(state: GameState): HTMLElement | null {
     el(
       'p',
       'screen-line',
-      `An attack throws ${Math.min(6, run.bones)} of them. Thirty is as many as I can carry.`,
+      'Bones are what I have left, not what I throw. Thirty is as many as I can carry.',
+    ),
+  )
+
+  // The loadout, in full. It is the one place an item die's faces and a
+  // talisman's line can be read at a size a person can read them at, and it is
+  // built from the same tables the cascade fires off.
+  panel.append(el('h2', 'screen-head', 'THE LOADOUT'))
+  const loadout = el('div', 'offers')
+  loadout.id = 'loadout'
+  const hand = el('p', 'screen-line', `${HAND_SLOTS} dice: ${handSummary(run.hand)}`)
+  hand.id = 'hand-slots'
+  hand.dataset['slots'] = String(run.hand.length)
+  panel.append(hand)
+  for (const id of run.ironDice) loadout.append(loadoutCard(ironDieById(id)))
+  for (const id of run.itemDice) loadout.append(loadoutCard(itemDieById(id)))
+  for (const id of run.talismans) loadout.append(loadoutCard(talismanById(id)))
+  if (loadout.childElementCount > 0) panel.append(loadout)
+  panel.append(
+    el(
+      'p',
+      'screen-line',
+      `Item dice: ${run.itemDice.length} of ${ITEM_CAP}. They fire on their own when I attack.`,
     ),
   )
 

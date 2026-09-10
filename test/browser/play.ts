@@ -20,6 +20,7 @@ import { drinkFor, holdFor, scoreFor, shouldScore } from '../balance/policies.js
 import type { Table } from '../balance/policies.js'
 import type { NamedHandId, ScoreId } from '../../src/combat/hands.js'
 import type { DieValue } from '../../src/combat/roll.js'
+import type { TalismanId } from '../../src/content/dice.js'
 import { act, dice, screenName, scoreEntry } from './helpers.js'
 
 /** Exactly what the screen is showing. Nothing the player cannot see. */
@@ -42,6 +43,14 @@ async function table(page: Page): Promise<Table> {
     enemyDamage: await read('#enemy-hits', 'data-damage'),
     bones: await read('#pile', 'data-bones'),
     vials: await read('.satchel-count', 'data-count'),
+    // Off the bay it is standing in, like everything else here. The item dice
+    // are deliberately not read: they have not been thrown when the decision
+    // is due, and the policy may not know anything the screen does not show.
+    talismans: (await page
+      .locator('.talisman-slot')
+      .evaluateAll((nodes) =>
+        nodes.map((n) => (n as HTMLElement).dataset['talismanId']!),
+      )) as TalismanId[],
   }
 }
 

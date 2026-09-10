@@ -53,27 +53,45 @@ test.describe('before anything is committed', () => {
 })
 
 test.describe('eight bones an exchange', () => {
-  test('takes exactly eight for leaving it standing', async ({ page }) => {
-    await boot(page, '?room=gate&bones=30&rolls=3&dice=1,1,2,3,4,6')
+  test('takes exactly eight for leaving it standing, with no iron in the way', async ({ page }) => {
+    await boot(page, '?room=gate&bones=30&rolls=3&dice=1,1,2,3,4,6&iron=0')
     expect(await livingBones(page)).toBe(30)
     await page.locator('.score-entry[data-hand="pair"]').click()
     expect(await livingBones(page)).toBe(22)
     expect((await state(page)).run!.combat!.lastAttack!.retaliation).toBe(8)
   })
 
-  test('compounds: two exchanges narrow the attack itself', async ({ page }) => {
-    // Twenty bones in, sixteen broken over two exchanges, four left — and at
-    // four the hand is four dice wide and the big shapes are out of reach.
-    await boot(page, '?room=gate&bones=20&rolls=3&dice=1,1,2,3,4,6')
+  test('takes eight less what the iron came up holding', async ({ page }) => {
+    // The enemy's number is unchanged and still public. What changed is that
+    // the iron stands in front of it, for this turn and no other.
+    await boot(page, '?room=gate&bones=30&rolls=3&dice=1,1,2,3,4,6&iron=5')
+    await expect(page.locator('#enemy-hits')).toHaveAttribute('data-damage', '8')
+    await expect(page.locator('#iron-caption')).toContainText('blocks 5 this turn')
+    await page.locator('.score-entry[data-hand="pair"]').click()
+    expect(await livingBones(page)).toBe(27)
+    const record = (await state(page)).run!.combat!.lastAttack!
+    expect(record.enemyHit).toBe(8)
+    expect(record.block).toBe(5)
+    expect(record.retaliation).toBe(3)
+  })
+
+  test('takes all of it when the iron came up on a seven', async ({ page }) => {
+    await boot(page, '?room=gate&bones=30&rolls=3&dice=1,1,2,3,4,6&iron=7')
+    await page.locator('.score-entry[data-hand="pair"]').click()
+    expect(await livingBones(page)).toBe(29)
+  })
+
+  test('does not narrow the attack, however far down it takes you', async ({ page }) => {
+    // The rule this replaced. Four bones left, and the hand is still six dice
+    // with every shape on the card.
+    await boot(page, '?room=gate&bones=20&rolls=3&dice=1,1,2,3,4,6&iron=0')
     await page.locator('.score-entry[data-hand="pair"]').click()
     await expect(dice(page)).toHaveCount(6)
 
     await boot(page, '?room=gate&bones=4&mode=combat')
-    await expect(dice(page)).toHaveCount(4)
-    await act(page, 'roll').click()
-    const offered = await scoresOnOffer(page)
-    expect(offered).not.toContain('full-house')
-    expect(offered).not.toContain('straight')
+    await expect(dice(page)).toHaveCount(6)
+    await boot(page, '?room=gate&bones=4&rolls=1&dice=3,3,3,5,5,2')
+    expect(await scoresOnOffer(page)).toContain('full-house')
   })
 
   test('does not answer an attack that finishes it', async ({ page }) => {

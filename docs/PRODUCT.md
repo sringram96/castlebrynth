@@ -26,14 +26,18 @@ as support for one of them, it is out of scope.
 | --- | --- |
 | **LOOK** | Tap a visible thing in the room. Always answers. Never commits. |
 | **GO** | Choose the next room. |
-| **ROLL** | Throw `min(6, bones)` ordinary d6s. The first press of an attack. |
+| **ROLL** | Throw six ordinary d6s, and the iron die with them. The first press of an attack. |
 | **HOLD** | Tap a die to keep it. A draft; nothing is committed. |
 | **REROLL** | Throw the unheld ones again. Twice at most. |
-| **SCORE** | Commit the dice as one hand. The whole exchange, in one press. |
+| **SCORE** | Commit the dice as one hand. The whole cascade, in one press. |
 | **DRINK** | Spend a Vial: five bones back. |
 | **TAKE** | Choose a reward. |
 | **SKIP** | Leave a reward where it fell. |
 | **RESTART** | Begin a new run after death. |
+
+There is deliberately **no verb for an item die**. Item dice fire automatically
+at SCORE, as a beat in the cascade; adding a press for them was explicitly
+rejected. See `COMBAT.md` § Item dice.
 
 ## The slice
 

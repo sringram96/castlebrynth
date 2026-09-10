@@ -25,6 +25,7 @@
 import { fightIn, simulateFight, simulateRun } from './simulate.js'
 import type { AttackLog, FightResult, Loadout, RunResult } from './simulate.js'
 import { NAMED_HANDS, scoreName } from '../../src/combat/hands.js'
+import { HAND_DICE } from '../../src/combat/roll.js'
 import type { ScoreId } from '../../src/combat/hands.js'
 import { ENEMY_LIST, enemy } from '../../src/content/enemies.js'
 import type { Tier } from './policies.js'
@@ -89,11 +90,19 @@ console.log(`\nCASTLEBRYNTH — the dice — balance, ${SEEDS.length} seeds per 
 // The Gnawing is met bare at thirty; the Marrow after one fight; the Warden
 // after two fights and a Font, with a Vial in the satchel. The bare boss row
 // is the pessimistic reading of a run that found nothing.
+//
+// **Every cell is bare.** No iron die, no talisman, no item dice — because the
+// ratified rule of the loadout wave is that *no gate, target or enemy number
+// may require upside*, and the only honest way to hold that is to set every
+// figure against a run carrying none of it. What the loadout adds is measured
+// separately, in § THE LOADOUT below, and is never a target.
+const BARE: Loadout = { ironDice: [], itemDice: [], talismans: [] }
+
 const CELLS: readonly { name: string; room: string; loadout: Loadout }[] = [
-  { name: 'THE GNAWING — bare, 30 bones', room: 'hollow', loadout: {} },
-  { name: 'THE MARROW — 24 bones', room: 'deep', loadout: { bones: 24 } },
-  { name: 'THE WARDEN — 26 bones, a Vial', room: 'gate', loadout: { bones: 26, vials: 1 } },
-  { name: 'THE WARDEN — 12 bones, nothing else', room: 'gate', loadout: { bones: 12 } },
+  { name: 'THE GNAWING — bare, 30 bones', room: 'hollow', loadout: { ...BARE } },
+  { name: 'THE MARROW — 24 bones', room: 'deep', loadout: { ...BARE, bones: 24 } },
+  { name: 'THE WARDEN — 26 bones, a Vial', room: 'gate', loadout: { ...BARE, bones: 26, vials: 1 } },
+  { name: 'THE WARDEN — 12 bones, nothing else', room: 'gate', loadout: { ...BARE, bones: 12 } },
 ]
 
 const measured = CELLS.map((c) => ({
@@ -136,6 +145,54 @@ for (const row of measured) {
   console.log('')
 }
 
+// ── what the loadout is worth ──────────────────────────────────────────
+//
+// Measured, never targeted. Every cell above is bare; these rows say what a
+// run *carrying things* gets on top of that, so a reader can see the size of
+// the upside without any figure above depending on it.
+//
+// The item dice are the strongest statement of the rule: the policy cannot see
+// them — they have not been thrown when a decision is due — so the model plays
+// as if they are not there and whatever they add is pure upside.
+console.log('THE LOADOUT — upside, measured against the bare rows above')
+const LOADOUT_ROWS: readonly { name: string; room: string; loadout: Loadout }[] = [
+  { name: 'Warden, 26 + Vial · bare', room: 'gate', loadout: { ...BARE, bones: 26, vials: 1 } },
+  {
+    name: 'Warden, 26 + Vial · iron',
+    room: 'gate',
+    loadout: { ...BARE, bones: 26, vials: 1, ironDice: ['rustplate'] },
+  },
+  {
+    name: 'Warden, 26 + Vial · iron + talisman',
+    room: 'gate',
+    loadout: { bones: 26, vials: 1, ironDice: ['rustplate'], talismans: ['pair-talisman'], itemDice: [] },
+  },
+  {
+    name: 'Warden, 26 + Vial · everything',
+    room: 'gate',
+    loadout: {
+      bones: 26,
+      vials: 1,
+      ironDice: ['rustplate'],
+      talismans: ['pair-talisman'],
+      itemDice: ['grave-candle', 'splinter-fetish'],
+    },
+  },
+]
+for (const row of LOADOUT_ROWS) {
+  const c = fightStats(row.room, 'heuristic', row.loadout)
+  console.log(
+    [
+      `  ${row.name.padEnd(36)}`,
+      `win ${pct(c.win).padStart(4)}`,
+      `attacks ${one(c.rounds).padStart(4)} (median ${c.roundsMedian})`,
+      `bones lost ${one(c.cost).padStart(5)}`,
+      `damage/attack ${one(c.damage).padStart(5)}`,
+    ].join('  '),
+  )
+}
+console.log('')
+
 // ── what the content says ──────────────────────────────────────────────
 console.log('THE ENEMIES, AS AUTHORED')
 for (const e of ENEMY_LIST) {
@@ -144,13 +201,13 @@ for (const e of ENEMY_LIST) {
 console.log('')
 
 // ── whole runs ─────────────────────────────────────────────────────────
-function runStats(tier: Tier, deep: boolean): {
+function runStats(tier: Tier, deep: boolean, bare = true): {
   escape: number
   bones: number
   found: number
   died: Map<string, number>
 } {
-  const results: RunResult[] = SEEDS.map((seed) => simulateRun(seed, tier, { deep }))
+  const results: RunResult[] = SEEDS.map((seed) => simulateRun(seed, tier, { deep, bare }))
   const died = new Map<string, number>()
   for (const r of results) {
     if (r.diedIn) died.set(r.diedIn, (died.get(r.diedIn) ?? 0) + 1)
@@ -168,19 +225,27 @@ const safeSolver = runStats('heuristic', false)
 const deepNaive = runStats('naive', true)
 const deepSolver = runStats('heuristic', true)
 
-console.log('WHOLE RUNS')
+// And the same two routes with the run carrying what it actually starts with.
+// Printed beside the bare rows rather than instead of them, so the gap is the
+// measurement: nothing in the bare rows depends on the loadout existing.
+const safeCarried = runStats('heuristic', false, false)
+const deepCarried = runStats('heuristic', true, false)
+
+console.log('WHOLE RUNS — the first four bare, the last two carrying the loadout')
 for (const [name, s] of [
   ['safe · naive', safeNaive],
   ['safe · heuristic', safeSolver],
   ['deep · naive', deepNaive],
   ['deep · heuristic', deepSolver],
+  ['safe · heuristic · carried', safeCarried],
+  ['deep · heuristic · carried', deepCarried],
 ] as const) {
   const graves = [...s.died]
     .sort((a, b) => b[1] - a[1])
     .map(([roomId, n]) => `${roomId} ${pct(n / SEEDS.length)}`)
     .join(', ')
   console.log(
-    `  ${name.padEnd(18)} out ${pct(s.escape).padStart(4)}  ` +
+    `  ${name.padEnd(27)} out ${pct(s.escape).padStart(4)}  ` +
       `bones left ${one(s.bones).padStart(5)}  found ${one(s.found)}  ` +
       `died: ${graves || 'never'}`,
   )
@@ -217,9 +282,41 @@ invariant(
   'the solver never uses more than three throws an attack',
   everyCell.every((c) => c.rolls <= 3),
 )
+// **Re-based by the loadout wave.** It used to hold for two reasons — fewer
+// bones meant fewer exchanges *and* a narrower hand — and the second is
+// repealed. What it measures now is exchanges alone, and it still holds,
+// which is the interesting half of the finding: the width coupling was not
+// what made a wound matter.
 invariant(
-  'a wounded run is a worse run: the bare boss is harder than the developed one',
+  'a wounded run is a worse run: the bare boss is harder than the developed one'
+    + ' [re-based: exchanges only, the hand no longer narrows]',
   measured[3]!.naive.win <= measured[2]!.naive.win,
+)
+
+// **Added by the loadout wave**, and it is the ratified rule stated as a gate:
+// the report's own targets are set against a run carrying nothing, so the
+// loadout can only ever be upside on top of them.
+invariant(
+  'no figure above assumes the loadout: every cell is bare',
+  CELLS.every(
+    (c) =>
+      c.loadout.ironDice?.length === 0 &&
+      c.loadout.itemDice?.length === 0 &&
+      c.loadout.talismans?.length === 0,
+  ),
+)
+invariant(
+  'the loadout is upside: carrying things is never worse than carrying nothing',
+  safeCarried.escape >= safeSolver.escape && deepCarried.escape >= deepSolver.escape,
+)
+
+// **Re-based by the loadout wave.** The old form of this measured the
+// *hand-width* consequence of the throw count; with the hand fixed at six,
+// what is left to state is that six is what is thrown, everywhere.
+invariant(
+  'the hand is six dice, at every pile, in every cell'
+    + ' [re-based: was "an attack rolls at most six and never more than the pile"]',
+  HAND_DICE === 6,
 )
 invariant(
   'the deep route costs more than the safe one',
@@ -234,11 +331,31 @@ invariant(
 )
 console.log('')
 
+// ── the standing concern ───────────────────────────────────────────────
+//
+// Reported, not tuned. The wave that added the loadout was told to print this
+// and leave it alone, so it is printed and left alone.
+const medians = measured.flatMap((r) => [r.naive.roundsMedian, r.heuristic.roundsMedian])
+const meanFight = mean(measured.flatMap((r) => [r.naive.rounds, r.heuristic.rounds]))
+console.log('MEDIAN FIGHT LENGTH')
+console.log(
+  `  medians ${medians.join(' / ')}   mean across cells ${one(meanFight)} attacks\n` +
+    '  The standing concern is fights ending near three and a half attacks,\n' +
+    '  which starves anything that wants to escalate over a fight. Reported\n' +
+    '  rather than tuned: changing it is a product decision about the three\n' +
+    '  health totals, and belongs in a commit that says so.\n',
+)
+
 console.log(
   'No bands. The multipliers and the three health totals are first-pass\n' +
     'numbers; this run is here to say what they produce. Turning any of the\n' +
     'measurements above into a gate is a product decision and belongs in a\n' +
-    'commit that says so. See docs/COMBAT.md § Balance.\n',
+    'commit that says so.\n' +
+    '\n' +
+    'Two gates were re-based by the loadout wave and are named as such in the\n' +
+    'list above; one was added. Every cell is bare, because no target may\n' +
+    'require the iron die, a talisman or an item die. See docs/COMBAT.md\n' +
+    '§ Balance.\n',
 )
 
 // Referenced so a content change that removes an enemy fails loudly here
