@@ -1,8 +1,8 @@
 # Castlebrynth
 
 A portrait pixel-horror roguelike: descend through hand-authored rooms carrying
-a pile of thirty bones, fight grotesque things by throwing up to six of those
-bones, holding and rerolling them into Yahtzee-like hands, and turning the
+a pile of thirty bones, fight grotesque things by throwing six dice and a piece
+of iron, holding and rerolling the six into Yahtzee-like hands, and turning the
 total through the hand's multiplier into damage — and decide how far to push
 before the dungeon kills you.
 
@@ -82,11 +82,24 @@ that produces a `GameState`.
 - **The player has no separate HP field: `run.bones` is life.** Enemies
   intentionally *do* have explicit HP and explicit fixed damage, and both are
   on screen before anything is committed. Combat complexity belongs in the six
-  rolled bones and the hand they make, not in armour, status or attack-script
-  subsystems.
-- **The pile is the hand.** An attack throws `min(6, run.bones)`, so being hurt
-  narrows the dice game rather than only counting down. Never add a minimum
-  hand size to soften that.
+  rolled dice, the hand they make and the loadout that rolls beside them — not
+  in status or attack-script subsystems.
+- **Bones are health, and only health.** An attack throws **six**, always, at
+  thirty bones and at one. `min(6, run.bones)` is repealed: what a wound costs
+  is exchanges, not dice, because the run's progression is *replacement* — a
+  found die takes one of six slots and never adds a seventh.
+- **Armour is a die, never a stat.** The iron die rolls each turn on ROLL,
+  cannot be held or rerolled, and blocks what it shows off that turn's answer.
+  Never reintroduce an always-on damage-reduction stat under any name.
+- **An item die has no press, ever.** It fires automatically at SCORE, as a beat
+  in the cascade. A fourth press, or an item reroll, is explicitly rejected.
+- **Everything the loadout adds is flat**, and it is added after the multiply.
+  Global or compounding multipliers were measured and rejected.
+- **Balance never assumes upside.** No gate, target or enemy number may require
+  an item die, a talisman or the iron die.
+- **One aggregate on screen.** The readout in the well, and nothing else. Every
+  other number pops on the thing that made it — no fly-away figures migrating
+  into a total, no receipt region.
 - **A named hand is spent only when the player scores it.** No scratching, no
   burning, no forced zero. When nothing unspent fits there is CRAP, which is
   weak, reusable, and not a category.
@@ -110,7 +123,8 @@ that does not need it continues.
 
 Any mode is reachable from a URL, which is what keeps the ends of the game
 testable: `?room=gate&bones=4&mode=combat`, `?mode=dead`, `?rolls=1`,
-`?dice=6,6,6,4,4,3`, `?used=pair,triple`, `?enemyHp=20`. `?room=` names an
+`?dice=6,6,6,4,4,3`, `?used=pair,triple`, `?enemyHp=20`, `?iron=5`,
+`?iron=none`, `?items=splinter-fetish`, `?talismans=none`. `?room=` names an
 authored template and stands you in the first room of the run that used it;
 `?node=n8` names one exact room.
 See `src/game/fixture.ts`.

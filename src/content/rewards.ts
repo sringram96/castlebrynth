@@ -1,23 +1,27 @@
 /**
  * Everything the labyrinth can hand you.
  *
- * One noun, for this baseline: **Vials**. Named bones went with the fielding
- * step they modified, and nothing has been invented to replace them — a boring
- * reward pool for one combat prototype is preferable to contaminating the
- * experiment with modifiers before the base dice game has been played.
+ * Two nouns now: **Vials**, and **item dice**. The Vial is the consumable it
+ * has always been; an item die is a thing that goes into the loadout and fires
+ * automatically at every Attack from then on. The reward screen is where a
+ * loadout thing enters a run, which is the machinery this file kept through
+ * the baseline that had nothing to put in it.
  *
- * The screen infrastructure stays. When modifiers return they need somewhere
- * to enter a run, and this is that somewhere; what is gone is the contents,
- * not the machinery.
+ * Item dice are drawn from `content/dice.ts` and their card prints that table
+ * verbatim: a reward card has to state its exact mechanic before TAKE is
+ * pressed. Not a hint, not a category — the faces.
  *
- * A reward card has to state its exact mechanic before TAKE is pressed. Not a
- * hint, not a category: the numbers. `Restore 5 bones, up to 30.` is the whole
- * card for a Vial, and a player who has read it cannot be surprised by it.
+ * **The cap is the reducer's**, not the pool's. TAKE on a third item die is
+ * refused there, and the offer screen says so rather than the draw quietly
+ * pretending the thing was never there.
  */
 
-export type RewardId = 'vial'
+import { ITEM_DICE, ITEM_DIE_LIST, itemDie } from './dice.js'
+import type { ItemDieId } from './dice.js'
 
-export type RewardKind = 'vial'
+export type RewardId = 'vial' | ItemDieId
+
+export type RewardKind = 'vial' | 'item-die'
 
 export interface Reward {
   readonly id: RewardId
@@ -38,6 +42,25 @@ export interface Reward {
   readonly weight: number
 }
 
+/**
+ * One item die, as a card.
+ *
+ * Built from the die's own table rather than restated, so the card and the
+ * cascade cannot disagree about what the thing does — the same rule
+ * `HAND_DEFINITIONS` is held to.
+ */
+const itemDieReward = (id: ItemDieId, weight: number): Reward => {
+  const die = itemDie(id)
+  return {
+    id,
+    name: die.name,
+    kind: 'item-die',
+    rule: die.rule,
+    ...(die.flavour ? { flavour: die.flavour } : {}),
+    weight,
+  }
+}
+
 const REWARD_LIST: readonly Reward[] = [
   {
     id: 'vial',
@@ -47,6 +70,10 @@ const REWARD_LIST: readonly Reward[] = [
     flavour: 'Thick, and still warm. Best not to ask.',
     weight: 6,
   },
+  // Item dice are upside and are drawn less often than the consumable that
+  // keeps a run alive. No balance target assumes either of them.
+  itemDieReward('grave-candle', 3),
+  itemDieReward('splinter-fetish', 2),
 ]
 
 export const REWARDS: Readonly<Record<RewardId, Reward>> = Object.fromEntries(
@@ -65,3 +92,11 @@ export function reward(id: RewardId): Reward {
 export function isRewardId(id: string): id is RewardId {
   return id in REWARDS
 }
+
+/** Whether a reward is an item die, and which. */
+export function itemDieOf(id: RewardId): ItemDieId | undefined {
+  return id in ITEM_DICE ? (id as ItemDieId) : undefined
+}
+
+/** Referenced so a die added to the table without a card fails loudly here. */
+export const ITEM_DIE_REWARDS: readonly RewardId[] = ITEM_DIE_LIST

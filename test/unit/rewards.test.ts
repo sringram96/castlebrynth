@@ -13,7 +13,8 @@ import { newRun, offerFor, reduce } from '../../src/game/reducer.js'
 import type { Action } from '../../src/game/reducer.js'
 import { EMPTY_META, SAVE_VERSION } from '../../src/game/state.js'
 import type { GameState, RunState } from '../../src/game/state.js'
-import { LOOT_REWARDS, isRewardId, reward } from '../../src/content/rewards.js'
+import { LOOT_REWARDS, isRewardId, itemDieOf, reward } from '../../src/content/rewards.js'
+import { ITEM_DICE } from '../../src/content/dice.js'
 import { enemy } from '../../src/content/enemies.js'
 import { legalScores } from '../../src/combat/hands.js'
 import { Rng } from '../../src/game/rng.js'
@@ -40,12 +41,28 @@ function payRate(enemyId: string, trials = 600): number {
 }
 
 describe('the reward pool', () => {
-  it('is one noun for this baseline, and no second', () => {
+  it('is two nouns, and no third', () => {
     // No new collectible category without a product decision. See CLAUDE.md.
-    // Named bones went with the fielding step; nothing was invented to replace
-    // them, because a boring pool is better than contaminating the experiment.
-    expect(LOOT_REWARDS).toEqual(['vial'])
-    expect(new Set(LOOT_REWARDS.map((id) => reward(id).kind))).toEqual(new Set(['vial']))
+    // The second noun is the **item die**, which is a ratified ruling of the
+    // loadout wave: an item die enters a run through the reward flow, which is
+    // the machinery this pool kept through the baseline that had nothing to
+    // put in it. Nothing else was invented alongside it.
+    expect(LOOT_REWARDS).toEqual(['vial', 'grave-candle', 'splinter-fetish'])
+    expect(new Set(LOOT_REWARDS.map((id) => reward(id).kind))).toEqual(
+      new Set(['vial', 'item-die']),
+    )
+  })
+
+  it('prints an item die’s own faces on its card, rather than restating them', () => {
+    // The card and the cascade read one table, for the same reason every
+    // multiplier lives in HAND_DEFINITIONS: a rule written down twice is a
+    // rule that will disagree with itself.
+    for (const id of LOOT_REWARDS) {
+      const die = itemDieOf(id)
+      if (!die) continue
+      expect(reward(id).rule).toBe(ITEM_DICE[die]!.rule)
+      expect(reward(id).name).toBe(ITEM_DICE[die]!.name)
+    }
   })
 
   it('states an exact mechanic on every card', () => {

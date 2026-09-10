@@ -29,7 +29,9 @@ const SCREENS: readonly [string, string][] = [
   ['a fight, one throw in', '?room=deep&rolls=1'],
   ['a fight, out of throws', '?room=deep&rolls=3'],
   ['a fight with nothing that fits', '?room=deep&rolls=3&dice=1,2,3,4,6,6&used=pair'],
-  ['carrying everything', '?room=fork&vials=2'],
+  ['carrying everything', '?room=fork&vials=2&items=grave-candle,splinter-fetish'],
+  ['a fight with the whole loadout', '?room=deep&rolls=1&items=grave-candle,splinter-fetish'],
+  ['a fight with nothing carried', '?room=deep&rolls=1&iron=none&items=none&talismans=none'],
 ]
 
 interface Box {
@@ -88,11 +90,64 @@ test.describe('the crown', () => {
     }
   })
 
-  test('draws exactly what the pile can throw, and no ghost positions', async ({ page }) => {
-    for (const [pile, count] of [[1, 1], [3, 3], [30, 6]] as const) {
+  test('draws six at every pile, and no ghost positions', async ({ page }) => {
+    for (const pile of [1, 3, 30]) {
       await boot(page, `?room=deep&bones=${pile}&mode=combat`)
-      await expect(dice(page)).toHaveCount(count)
+      await expect(dice(page)).toHaveCount(6)
     }
+  })
+
+  test('keeps the iron and the item dice out of the six', async ({ page }) => {
+    // `#crown .bone` means the hand and nothing else. The iron and the items
+    // sit on the same rail in hosts of their own, so anything counting the
+    // hand — this suite, and the throw animation — counts six.
+    await boot(page, '?room=deep&rolls=1&items=grave-candle,splinter-fetish')
+    await expect(dice(page)).toHaveCount(6)
+    await expect(page.locator('#iron .iron-die')).toHaveCount(1)
+    await expect(page.locator('#items .item-die')).toHaveCount(2)
+  })
+
+  test('seats the whole rail at one height, without overlapping', async ({ page }) => {
+    await boot(page, '?room=deep&rolls=1&items=grave-candle,splinter-fetish')
+    // Sorted left to right rather than taken in document order: the three
+    // hosts are separate elements, so the DOM order is crown-then-rail-ends
+    // and what is under test is the row as a thumb reads it.
+    const rail = (await boxes(page, '#iron .iron-die, #crown .bone, #items .item-die')).sort(
+      (a, b) => a.x - b.x,
+    )
+    expect(rail).toHaveLength(9)
+    const viewport = page.viewportSize()!
+    for (let i = 0; i < rail.length; i++) {
+      expect(rail[i]!.y, `rail piece ${i} is off the baseline`).toBeCloseTo(rail[0]!.y, 0)
+      expect(rail[i]!.x, `rail piece ${i} runs off the left`).toBeGreaterThanOrEqual(-0.5)
+      expect(rail[i]!.right, `rail piece ${i} runs off the right`).toBeLessThanOrEqual(
+        viewport.width + 0.5,
+      )
+      if (i > 0) {
+        expect(rail[i]!.x, `rail pieces ${i - 1} and ${i} overlap`).toBeGreaterThanOrEqual(
+          rail[i - 1]!.right - 0.5,
+        )
+      }
+    }
+  })
+
+  test('never lets the rail sit over the well', async ({ page }) => {
+    await boot(page, '?room=deep&rolls=1&items=grave-candle,splinter-fetish')
+    const well = (await boxes(page, '#well'))[0]!
+    for (const piece of await boxes(page, '#iron .iron-die, #items .item-die')) {
+      const clear = piece.right <= well.x + 0.5 || piece.x >= well.right - 0.5
+      expect(clear, 'a loadout die sits over the well').toBe(true)
+    }
+  })
+
+  test('leaves the iron and the item rail empty when nothing is carried', async ({ page }) => {
+    await boot(page, '?room=deep&rolls=1&iron=none&items=none&talismans=none')
+    await expect(dice(page)).toHaveCount(6)
+    await expect(page.locator('#iron .iron-die')).toHaveCount(0)
+    await expect(page.locator('#items .item-die')).toHaveCount(0)
+    await expect(page.locator('.talisman-slot')).toHaveCount(0)
+    // An absent thing is absent — not a bay saying it has none.
+    await expect(page.locator('#iron-caption')).toBeHidden()
   })
 
   test('is empty out of a fight', async ({ page }) => {

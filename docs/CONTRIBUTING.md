@@ -46,10 +46,26 @@ npm run balance      # deterministic fight simulation
   compatibility field, not a second counter beside `run.bones`. The pile is
   life. The *enemy* has explicit health and explicit damage on purpose, and
   both are on screen before anything is committed.
-- **No width control.** An attack throws `min(6, run.bones)`, always. What the
-  player chooses is which dice to keep and which hand to spend.
-- **No minimum hand size.** A wounded run really does lose the shapes that need
-  the width, and that falls out of the counting rather than out of a rule.
+- **No width control, and no width at all.** An attack throws **six**, always,
+  at thirty bones and at one. `min(6, run.bones)` is repealed: bones are health
+  and only health, and what a wound costs is exchanges rather than dice. What
+  the player chooses is which dice to keep and which hand to spend.
+- **Replacement, not growth.** The run carries six slots. A found die replaces
+  one of them and never adds a seventh; there is no ADD_DIE and there is
+  nowhere to write one.
+- **Armour is a die, never a stat.** It rolls each turn and blocks what it
+  shows. An always-on damage-reduction stat is not to be reintroduced under any
+  name — the dominance it caused was measured.
+- **An item die has no press, ever.** It fires automatically at SCORE. A fourth
+  press or an item reroll is explicitly rejected.
+- **Everything the loadout adds is flat.** Multipliers live in
+  `HAND_DEFINITIONS` and nowhere else; global or compounding multipliers were
+  measured and rejected.
+- **Balance never assumes upside.** No gate, target or enemy number may require
+  an item die, a talisman or the iron die.
+- **One aggregate on screen.** The readout, and nothing else. No fly-away
+  numbers migrating into a total, and no receipt region: every other figure
+  pops on the thing that made it.
 - **No scratching a category.** A named hand is spent only when it is scored.
   A bad roll costs a throw and nothing else, and CRAP is what a roll with
   nothing in it is worth.

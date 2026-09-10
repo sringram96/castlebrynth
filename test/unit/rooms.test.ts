@@ -52,9 +52,18 @@ const onwardFrom = (state: GameState): string => roomAt(state.run!).exits[0]!.to
 const towards = (state: GameState, label: string): string =>
   roomAt(state.run!).exits.find((e) => e.label === label)!.to
 
-/** What the run is carrying that a chest could have given it. */
+/**
+ * What the run is carrying that a chest could have given it.
+ *
+ * Vials and item dice, which is the whole loot pool. The iron die and the
+ * talisman a run starts with are not in it: they are provisional starting
+ * content, not something a chest ever hands out.
+ */
 function carried(state: GameState): readonly string[] {
-  return Array.from({ length: state.run!.vials }, () => 'vial')
+  return [
+    ...Array.from({ length: state.run!.vials }, () => 'vial'),
+    ...state.run!.itemDice,
+  ]
 }
 
 const press = (state: GameState, ...ids: readonly string[]): GameState =>
@@ -190,11 +199,12 @@ describe('the Reliquary', () => {
     expect(carried(solve(standingIn('reliquary', 99)))).toEqual(
       carried(solve(standingIn('reliquary', 99))),
     )
-    // The pool is one noun deep for this baseline, so every seed draws the
-    // same thing — what is under test is that it draws *exactly one*, off the
-    // run's own generator, and never twice.
+    // The pool is three deep now, so what is under test is that the chest
+    // draws *exactly one* of it, off the run's own generator, and never twice.
     for (let seed = 1; seed <= 24; seed++) {
-      expect(carried(solve(standingIn('reliquary', seed)))).toEqual(['vial'])
+      const found = carried(solve(standingIn('reliquary', seed)))
+      expect(found, `seed ${seed}`).toHaveLength(1)
+      expect(LOOT_REWARDS, `seed ${seed}`).toContain(found[0])
     }
   })
 
@@ -412,7 +422,7 @@ describe('what a save carries', () => {
   })
 
   it('was bumped, because the shape of a run changed', () => {
-    expect(SAVE_VERSION).toBe(9)
+    expect(SAVE_VERSION).toBe(10)
     // And the policy is unchanged: an older save is discarded, never migrated.
     // 8 is the War of Bones, whose run carried a two-part pile and whose fight
     // carried two lines of thrown bones. Neither shape can be read here, and

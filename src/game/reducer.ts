@@ -12,19 +12,41 @@
  */
 
 import { STARTING_BONES, roomToRecover } from '../content/bones.js'
-import { LOOT_REWARDS, reward } from '../content/rewards.js'
+import { LOOT_REWARDS, itemDieOf, reward } from '../content/rewards.js'
 import type { RewardId } from '../content/rewards.js'
+import {
+  HAND_SLOTS,
+  ITEM_CAP,
+  STARTING_HAND,
+  STARTING_IRON,
+  STARTING_TALISMANS,
+  ironDie,
+  isCoreDieId,
+  itemDie,
+  talisman,
+} from '../content/dice.js'
+import type { CoreDieId } from '../content/dice.js'
 import { enemy } from '../content/enemies.js'
 import type { Enemy } from '../content/enemies.js'
 import { defeatOf } from '../content/defeat.js'
 import { exitsOpen, legal, stateOf } from '../content/interactions.js'
 import {
   legalScores,
-  scoreDice,
   scoreName,
 } from '../combat/hands.js'
 import type { NamedHandId, ScoreId } from '../combat/hands.js'
-import { MAX_ROLLS, activeDice, canonicalHeld, rerollDice, rollDice } from '../combat/roll.js'
+import {
+  answerAfterBlock,
+  blockOf,
+  itemCostOf,
+  itemFlatsOf,
+  rollItems,
+  rollIron,
+  talismanFlatOf,
+  talismansFor,
+  totalsFor,
+} from '../combat/loadout.js'
+import { HAND_DICE, MAX_ROLLS, canonicalHeld, rerollDice, rollDice } from '../combat/roll.js'
 import { roomAt } from './map.js'
 import { generateRun } from './runGenerator.js'
 import { RELIQUARY_CHANNEL, RITUAL_CHANNEL, RNG_CHANNEL, combatSalt, rngAt } from './rng.js'
@@ -66,6 +88,19 @@ export type Action =
   | { readonly type: 'REROLL'; readonly held: readonly number[] }
   /** Commit the dice as one hand. The whole attack, in one tick. */
   | { readonly type: 'SCORE'; readonly hand: ScoreId }
+  /**
+   * Put a found die into one of the six slots, in place of what was there.
+   *
+   * The whole of the progression model, as one action: the run carries six
+   * slots and a found die **replaces** one of them. There is no ADD_DIE and
+   * there is nowhere to write one — the array is six long and this action
+   * cannot lengthen it.
+   *
+   * The economy that finds a die is the next wave's, and deliberately not
+   * here. What lands now is the shape, the transition and its coverage; see
+   * `docs/COMBAT.md` § Open questions.
+   */
+  | { readonly type: 'REPLACE_DIE'; readonly slot: number; readonly die: CoreDieId }
   | { readonly type: 'DRINK' }
   | { readonly type: 'TAKE'; readonly id: RewardId }
   /** Leave it. A reward screen may never force a change on the run. */
@@ -265,6 +300,15 @@ export function newRun(seed: number): RunState {
     map,
     roomId: map.start,
     bones: STARTING_BONES,
+    // Six ordinary bones, one iron die and one talisman. The iron and the
+    // talisman are **provisional starting content** for this wave — the
+    // replacement economy that would otherwise hand them out is the next
+    // wave's — and they are recorded as such in `docs/COMBAT.md`. Item dice
+    // start empty and are found: they enter a run through the reward flow.
+    hand: [...STARTING_HAND],
+    ironDice: [...STARTING_IRON],
+    itemDice: [],
+    talismans: [...STARTING_TALISMANS],
     vials: 0,
     looked: [],
     cleared: [],
@@ -289,6 +333,8 @@ function beginCombat(run: RunState): CombatState {
     usedHands: [],
     dice: [],
     rollsUsed: 0,
+    // The iron has not been thrown yet. It is thrown by ROLL, with the six.
+    ironRolls: [],
     log: e.rule ? [e.tell, e.rule] : [e.tell],
   }
 }
@@ -303,19 +349,53 @@ function showMultiplier(multiplier: number): string {
   return String(multiplier)
 }
 
-/** What an exchange did, in beats, for the word band. */
+/**
+ * What an exchange did, in beats, for the word band.
+ *
+ * The same order the cascade plays in, so the band is a transcript rather than
+ * a summary: the line, then what the items and the talisman added to it, then
+ * what it took off the thing, then what the thing took off you and what the
+ * iron held back.
+ */
 function attackSay(e: Enemy, record: AttackRecord): readonly string[] {
-  const beats: string[] = [
-    `${scoreName(record.hand)}. ${record.sum} × ${showMultiplier(record.multiplier)} — ${record.damage}.`,
-    `${e.name}: ${record.enemyHpBefore} → ${Math.max(0, record.enemyHpAfter)}.`,
-  ]
+  const beats: string[] = []
+
+  const flats: string[] = []
+  if (record.itemFlats > 0) flats.push(`+${record.itemFlats}`)
+  if (record.talismanFlat > 0) flats.push(`+${record.talismanFlat}`)
+  const line = `${scoreName(record.hand)}. ${record.sum} × ${showMultiplier(record.multiplier)}`
+
+  if (record.itemCost > 0) {
+    beats.push(
+      `The ${record.itemCost === 1 ? 'die takes a bone' : `dice take ${record.itemCost} bones`}.`,
+    )
+  }
+
+  // A cost that emptied the pile ends the run at the item beat, before the
+  // blow. There is no hit to narrate, and pretending there was one would be
+  // the band contradicting the record.
+  if (!record.landed) {
+    beats.push('That was all of them. The blow never lands.')
+    return beats
+  }
+
+  beats.push(
+    flats.length > 0
+      ? `${line} = ${record.base}${flats.join('')} — ${record.damage}.`
+      : `${line} — ${record.damage}.`,
+  )
+  beats.push(`${e.name}: ${record.enemyHpBefore} → ${Math.max(0, record.enemyHpAfter)}.`)
+
   if (record.enemyHpAfter <= 0) {
     beats.push('It stops.')
+  } else if (record.block > 0 && record.retaliation === 0) {
+    beats.push(`It swings ${record.enemyHit}. The iron takes all of it.`)
   } else if (record.bonesAfter === 0) {
     beats.push(`It breaks ${record.retaliation}. That was all of them.`)
   } else {
+    const held = record.block > 0 ? ` The iron held ${record.block}.` : ''
     beats.push(
-      `It breaks ${record.retaliation} of mine. ${record.bonesBefore} → ${record.bonesAfter} bones.`,
+      `It breaks ${record.retaliation} of mine. ${record.bonesBefore} → ${record.bonesAfter} bones.${held}`,
     )
   }
   return beats
@@ -393,8 +473,29 @@ function victory(state: GameState, run: RunState, combat: CombatState): GameStat
   return { ...state, mode: 'reward', meta, run: { ...cleared, offer } }
 }
 
-/** Put one reward where it belongs. The only place a TAKE means anything. */
+/**
+ * Whether a found thing can still go anywhere.
+ *
+ * One question with one answer, asked by the reducer before a TAKE is honoured
+ * and by the view before the button is drawn — so a full loadout is a reward
+ * that plainly cannot be taken rather than a press that silently does nothing.
+ */
+export function canTake(run: RunState, id: RewardId): boolean {
+  return itemDieOf(id) === undefined || run.itemDice.length < ITEM_CAP
+}
+
+/**
+ * Put one reward where it belongs. The only place a TAKE means anything.
+ *
+ * **The item cap is enforced here**, in the reducer, and not in the pool that
+ * offered it or the screen that drew it: a third item die changes nothing.
+ */
 function grant(run: RunState, id: RewardId): RunState {
+  const die = itemDieOf(id)
+  if (die) {
+    if (run.itemDice.length >= ITEM_CAP) return run
+    return { ...run, itemDice: [...run.itemDice, die] }
+  }
   return reward(id).kind === 'vial' ? { ...run, vials: run.vials + 1 } : run
 }
 
@@ -496,12 +597,16 @@ export function reduce(state: GameState, action: Action): GameState {
     }
 
     /**
-     * The bones the pile can put up, thrown.
+     * Six dice, thrown. And the iron, thrown with them.
      *
-     * `min(6, bones)` of them, and never more than are alive — which is the
-     * whole of the wounded rule. A player down to four bones rolls four dice,
-     * a Full House stops being reachable, and no line of code anywhere says so
-     * on purpose.
+     * **Six from the first fight to the last turn of the boss.** Nothing here
+     * reads the pile: `min(6, bones)` is repealed, and there is no width rule
+     * left to hide anywhere. What being hurt costs is exchanges, not dice.
+     *
+     * The iron is thrown here and only here. A REROLL does not touch it, and
+     * there is no press that can: what it shows is the turn's terrain, settled
+     * before the first hold and stated in a caption before anything can be
+     * committed.
      */
     case 'ROLL': {
       const run = state.run
@@ -509,13 +614,18 @@ export function reduce(state: GameState, action: Action): GameState {
       if (!live(state, run) || !combat) return state
       if (combat.dice.length > 0 || combat.rollsUsed !== 0) return state
 
-      const width = activeDice(run.bones)
-      if (width === 0) return state
-
-      const dice = rollDice(width, fightRng(run, combat.round, 1, RNG_CHANNEL.playerRoll))
+      const dice = rollDice(HAND_DICE, fightRng(run, combat.round, 1, RNG_CHANNEL.playerRoll))
+      const ironRolls = rollIron(
+        run.ironDice,
+        fightRng(run, combat.round, 1, RNG_CHANNEL.ironRoll),
+      )
       return {
         ...state,
-        run: { ...run, say: '', combat: { ...combat, dice, rollsUsed: 1, log: [] } },
+        run: {
+          ...run,
+          say: '',
+          combat: { ...combat, dice, rollsUsed: 1, ironRolls, log: [] },
+        },
       }
     }
 
@@ -553,13 +663,26 @@ export function reduce(state: GameState, action: Action): GameState {
     }
 
     /**
-     * The attack, committed.
+     * The attack, committed — the whole cascade, in one tick.
      *
      * The legal set is recomputed here and the request is checked against it,
      * because the UI's claim that a score is legal is not what makes it legal.
-     * Everything after that is arithmetic with no randomness in it at all:
-     * damage is `max(1, floor(sum × multiplier))`, the hit lands, and a thing
-     * still standing breaks exactly `enemy.damage` bones in answer.
+     * The one draw in the whole of it is the item dice; everything else is
+     * arithmetic, and the order it happens in is a ruling rather than an
+     * accident:
+     *
+     *   1. the six core dice add up and the chosen line multiplies them;
+     *   2. the item dice fire — flats add, and **costs charge here, before the
+     *      blow lands.** If a cost empties the pile the run ends at this beat
+     *      and the enemy is never touched. A cost is a cost;
+     *   3. a talisman whose line matched adds its flat;
+     *   4. `damage = max(1, floor(sum × mult) + itemFlats + talismanFlat)`
+     *      comes off the enemy;
+     *   5. a thing still standing swings its fixed number, and the iron die
+     *      holds off what it rolled: `answer = max(0, hit − block)`.
+     *
+     * A dead enemy never answers, however thin the pile is. That is unchanged
+     * law and it outranks everything below it.
      */
     case 'SCORE': {
       const run = state.run
@@ -569,32 +692,66 @@ export function reduce(state: GameState, action: Action): GameState {
       if (!legalScores(combat.dice, combat.usedHands).includes(action.hand)) return state
 
       const e = enemy(combat.enemyId)
-      const { sum, multiplier, damage } = scoreDice(combat.dice, action.hand)
-      const enemyHp = Math.max(0, combat.enemyHp - damage)
-      const killed = enemyHp === 0
+
+      // The item beat. The only draw in a SCORE, and it is positioned by the
+      // fight's round with a channel of its own, so adding it cannot perturb
+      // what the core dice or the iron rolled.
+      const itemRolls = rollItems(
+        run.itemDice,
+        fightRng(run, combat.round, 1, RNG_CHANNEL.itemRoll),
+      )
+      const itemFlats = itemFlatsOf(itemRolls)
+      const itemCost = itemCostOf(itemRolls)
+      const talismansFired = talismansFor(run.talismans, action.hand)
+      const talismanFlat = talismanFlatOf(run.talismans, action.hand)
+
+      const totals = totalsFor(combat.dice, action.hand, { itemFlats, talismanFlat })
+      const block = blockOf(combat.ironRolls)
+
+      // Costs are charged before the blow. If they take the last bone, that is
+      // where the run stops — and nothing after this point happens.
+      const afterCost = Math.max(0, run.bones - itemCost)
+      const landed = afterCost > 0
+
+      const damage = landed ? totals.damage : 0
+      const enemyHp = landed ? Math.max(0, combat.enemyHp - damage) : combat.enemyHp
+      const killed = landed && enemyHp === 0
 
       // A dead thing does not answer. The kill happened first, and it happened
-      // whatever the pile was down to.
-      const retaliation = killed ? 0 : e.damage
-      const bones = Math.max(0, run.bones - retaliation)
+      // whatever the pile was down to. What a living one swings is its own
+      // fixed number, less whatever the iron came up holding.
+      const enemyHit = landed && !killed ? e.damage : 0
+      const retaliation = answerAfterBlock(enemyHit, block)
+      const bones = Math.max(0, afterCost - retaliation)
 
       const record: AttackRecord = {
         dice: combat.dice,
         hand: action.hand,
-        sum,
-        multiplier,
+        sum: totals.sum,
+        multiplier: totals.multiplier,
+        base: totals.base,
+        itemRolls,
+        itemFlats,
+        itemCost,
+        talismansFired,
+        talismanFlat,
         damage,
+        landed,
         enemyHpBefore: combat.enemyHp,
         enemyHpAfter: enemyHp,
+        enemyHit,
+        block,
         retaliation,
         bonesBefore: run.bones,
         bonesAfter: bones,
       }
 
       // CRAP is never written down. It is what the legal set *is* when nothing
-      // named qualifies, so it cannot be spent and cannot run out.
+      // named qualifies, so it cannot be spent and cannot run out. A line the
+      // blow never reached is not spent either: the cost killed the run before
+      // the line was played.
       const usedHands: readonly NamedHandId[] =
-        action.hand === 'crap' ? combat.usedHands : [...combat.usedHands, action.hand]
+        action.hand === 'crap' || !landed ? combat.usedHands : [...combat.usedHands, action.hand]
 
       const settled: RunState = { ...run, bones }
       const after: CombatState = {
@@ -603,8 +760,16 @@ export function reduce(state: GameState, action: Action): GameState {
         usedHands,
         dice: [],
         rollsUsed: 0,
+        // The turn's terrain went with the turn. The next ROLL throws it again.
+        ironRolls: [],
         lastAttack: record,
         log: attackSay(e, record),
+      }
+
+      // The pile emptied at the item beat. The run ends here, with the fight
+      // still on the plate so the death has a cause to show.
+      if (!landed) {
+        return died(state, settled, after, `A cost. ${scoreName(action.hand)} was never thrown.`)
       }
 
       if (killed) {
@@ -781,6 +946,9 @@ export function reduce(state: GameState, action: Action): GameState {
     case 'TAKE': {
       const run = state.run
       if (!run || state.mode !== 'reward' || !run.offer || !run.offer.includes(action.id)) return state
+      // A full loadout has nowhere to put a third item die, so the press is
+      // refused rather than swallowed — and the view does not draw it.
+      if (!canTake(run, action.id)) return state
       const { offer: _taken, ...rest } = run
       const taken = reward(action.id)
       const paid = grant(rest, action.id)
@@ -804,6 +972,26 @@ export function reduce(state: GameState, action: Action): GameState {
       const { offer: _left, ...rest } = run
       return { ...state, mode: 'explore', run: { ...rest, say: 'I leave it where it fell.' } }
     }
+
+    /**
+     * One of the six, swapped for another.
+     *
+     * The array cannot get longer here and there is no action that can make it
+     * longer: a slot outside `0..5` is refused, and what is written back is
+     * the same six positions with one of them changed. Replacement is the
+     * progression model, so this is the whole of the progression model.
+     */
+    case 'REPLACE_DIE': {
+      const run = state.run
+      if (!run) return state
+      if (!Number.isInteger(action.slot) || action.slot < 0 || action.slot >= HAND_SLOTS) {
+        return state
+      }
+      if (!isCoreDieId(action.die)) return state
+      if (run.hand[action.slot] === action.die) return state
+      const hand = run.hand.map((id, index) => (index === action.slot ? action.die : id))
+      return { ...state, run: { ...run, hand } }
+    }
   }
 
   // Total, including for an action the union does not contain.
@@ -824,5 +1012,10 @@ export function livingBones(state: GameState): number {
 
 /** Everything the run is carrying, named, for a summary screen. */
 export function carriedNames(run: RunState): readonly string[] {
-  return run.vials > 0 ? [run.vials > 1 ? `Vial ×${run.vials}` : 'Vial'] : []
+  const names: string[] = []
+  if (run.vials > 0) names.push(run.vials > 1 ? `Vial ×${run.vials}` : 'Vial')
+  for (const id of run.ironDice) names.push(ironDie(id).name)
+  for (const id of run.itemDice) names.push(itemDie(id).name)
+  for (const id of run.talismans) names.push(talisman(id).name)
+  return names
 }

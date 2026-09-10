@@ -27,26 +27,33 @@ of one — 390×844 is what everything is laid out against.
 
 ## How an attack goes
 
-1. **ROLL.** You throw `min(6, bones)` ordinary d6s. Thirty bones or six, you
-   throw six; four bones, you throw four.
-2. **Hold** any of them by tapping. Held bones keep their face and their place.
+1. **ROLL.** You throw six ordinary d6s — six at thirty bones and six at one.
+   Bones are what you have left, not what you throw. The **iron die** throws
+   with them, once; you cannot hold it and you cannot throw it again, and a
+   caption says what it came up holding before you commit to anything.
+2. **Hold** any of the six by tapping. Held dice keep their face and their place.
 3. **REROLL** the rest. Twice, at most — three throws in all.
 4. **Score**, at any point after a throw. The scorecard shows every hand and
    its multiplier, and only the ones you can actually make right now are
    buttons.
 
 ```
-damage = max(1, floor(sum of all the dice × the hand's multiplier))
+damage = max(1, floor(sum of the six × the hand's multiplier) + flats)
 ```
+
+The flats are your **item dice**, which fire on their own when you attack —
+there is no press for them, ever — and your **talisman**, which adds a flat when
+its line is the one you scored. Nothing in the loadout is a multiplier.
 
 Each named hand — pair, two pair, triple, straight, full house, four, five,
 six — can be spent **once per fight**, and a bad roll never burns one. If
 nothing unspent fits, **CRAP** is there at ×0.5, as often as you like.
 
-If the thing survives your attack it breaks a fixed number of your bones. If
-your attack kills it, it breaks none.
+If the thing survives your attack it breaks a fixed number of your bones, less
+whatever the iron came up holding. If your attack kills it, it breaks none.
 
-MENU has your pile, your satchel, the rules and the whole scorecard.
+MENU has your pile, your loadout, your satchel, the rules and the whole
+scorecard.
 
 ## Build and test
 

@@ -96,6 +96,32 @@ export const DIE_CENTRES: readonly Point[] = [
 export const DIE_BAY = { width: 0.07534, height: 0.0989 } as const
 
 /**
+ * The iron die, and the item dice, on the same rail as the six.
+ *
+ * The plate was painted with **six** bays and the loadout wave needs nine
+ * positions, so three of them stand on the rail rather than in a recess: the
+ * iron die one pitch to the left of the first bay, the two item dice one and
+ * two pitches to the right of the last. They keep the crown's pitch and its
+ * baseline, so the row reads as one row of dice at one height, which is the
+ * whole point of putting them there — the iron rolls *with* the six and the
+ * items are visibly the same kind of object.
+ *
+ * The iron sits at 0.175 rather than at a clean 0.18722 (one exact pitch out)
+ * so that its box clears the well's left edge at 0.225 at every width. Nothing
+ * here is a control: none of the three is ever pressable, all three are
+ * `pointer-events: none`, and the two rules that govern controls — the 44 px
+ * floor and the no-overlap rule — are about controls.
+ *
+ * **A painted bay for each of them is owed.** See `POLISH_PROGRESS.md`
+ * § HUMAN ART REQUIRED — the loadout. No art was authored for this wave.
+ */
+export const IRON_CENTRES: readonly Point[] = [{ x: 0.175, y: 0.19231 }]
+export const ITEM_CENTRES: readonly Point[] = [
+  { x: 0.82648, y: 0.19231 },
+  { x: 0.9178, y: 0.19231 },
+]
+
+/**
  * The dark recess in the middle. The stage: the scorecard, or the room's line.
  *
  * **It is wider and deeper than the painted recess, and that is deliberate.**
@@ -123,6 +149,11 @@ export const WELL: Rect = { x: 0.225, y: 0.2967, width: 0.51, height: 0.4863 }
 /**
  * Three small bays on the right. Relics sit here, and are the one place the
  * player can see their passive build without opening anything.
+ *
+ * The first is the Vial and never moves. The second is the talisman, which is
+ * where its flat pops when its line is the one scored — the number appears on
+ * the thing that made it, which is the whole readout ruling in one place. The
+ * third is left as a painted recess.
  */
 export const RELIC_PITCH = 0.0753
 export const RELIC_CENTRES: readonly Point[] = [
@@ -130,6 +161,10 @@ export const RELIC_CENTRES: readonly Point[] = [
   { x: 0.85137, y: 0.57967 },
   { x: 0.92877, y: 0.57967 },
 ]
+
+/** Which bay each carried thing sits in. Stable: the thumb learns the plate. */
+export const VIAL_BAY = 0
+export const TALISMAN_BAY = 1
 
 export const RELIC_BAY = { width: 0.0452, height: 0.2473 } as const
 

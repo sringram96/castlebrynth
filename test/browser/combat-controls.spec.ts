@@ -201,7 +201,8 @@ test.describe('the scorecard', () => {
   test('states what a live choice would actually do', async ({ page }) => {
     // 6 6 6 4 4 3 sums to 29. Full House is ×2, so 58.
     await boot(page, '?room=deep&rolls=1&dice=6,6,6,4,4,3')
-    await expect(page.locator('#attack-sum')).toHaveAttribute('data-sum', '29')
+    await expect(page.locator('#readout')).toHaveAttribute('data-sum', '29')
+    await expect(page.locator('#readout')).toHaveText('29')
     await expect(page.locator('button.score-entry[data-hand="full-house"]')).toHaveAttribute(
       'aria-label',
       /58/,

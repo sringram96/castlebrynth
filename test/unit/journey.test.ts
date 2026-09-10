@@ -310,13 +310,13 @@ describe('the save', () => {
     const store = storage()
     // Every earlier shape, including the War of Bones at 8. There is no
     // migration ladder: an old save is detected, discarded, and reported.
-    for (const version of [6, 7, 8]) {
+    for (const version of [6, 7, 8, 9]) {
       store.setItem('castlebrynth', JSON.stringify({ version, mode: 'combat', meta: {} }))
       const { state, discarded } = load(store)
       expect(discarded, `version ${version}`).toBe('incompatible')
       expect(state.run).toBeUndefined()
     }
-    expect(SAVE_VERSION).toBe(9)
+    expect(SAVE_VERSION).toBe(10)
   })
 
   it('survives an empty and a corrupt store', () => {

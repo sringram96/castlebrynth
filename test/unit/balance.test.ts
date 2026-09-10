@@ -18,7 +18,7 @@ import { drinkFor, holdFor, scoreFor, shouldScore } from '../balance/policies.js
 import type { Table } from '../balance/policies.js'
 import { ENEMIES } from '../../src/content/enemies.js'
 import { BONE_CEILING } from '../../src/content/bones.js'
-import { MAX_ACTIVE_DICE, MAX_ROLLS } from '../../src/combat/roll.js'
+import { HAND_DICE, MAX_ROLLS } from '../../src/combat/roll.js'
 import type { DieValue } from '../../src/combat/roll.js'
 
 const SEEDS = [1, 7, 23, 91, 404, 2029, 55501, 900001]
@@ -41,6 +41,9 @@ const table = (over: Partial<Table> = {}): Table => ({
   enemyDamage: 3,
   bones: 30,
   vials: 0,
+  // The model plays as if the loadout is not there unless a case says
+  // otherwise, which is the rule: no balance figure may assume upside.
+  talismans: [],
   ...over,
 })
 
@@ -208,7 +211,7 @@ describe('the content the simulation reads', () => {
     // A thing that empties a full pile in one exchange is not a fight.
     for (const e of Object.values(ENEMIES)) {
       expect(e.damage, `${e.id} ends a fresh run outright`).toBeLessThan(BONE_CEILING)
-      expect(e.damage).toBeLessThan(MAX_ACTIVE_DICE * 2)
+      expect(e.damage).toBeLessThan(HAND_DICE * 2)
     }
   })
 })

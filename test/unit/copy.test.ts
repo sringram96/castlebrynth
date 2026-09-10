@@ -104,9 +104,14 @@ describe('the enemies say what they are about to do', () => {
 })
 
 describe('the rules card is the whole fight', () => {
-  it('states the five sentences it runs on', () => {
+  it('states the sentences it runs on', () => {
     const all = HOW_A_FIGHT_GOES.join(' ')
-    expect(all).toMatch(/six bones/i)
+    expect(all).toMatch(/six dice/i)
+    // And it says outright that bones are not the width, because that is the
+    // rule the game most recently stopped having.
+    expect(all).toMatch(/not what I throw/i)
+    expect(all).toMatch(/iron/i)
+    expect(all).toMatch(/item dice/i)
     expect(all).toMatch(/hold/i)
     expect(all).toMatch(/again/i)
     expect(all).toMatch(/add up/i)
@@ -115,8 +120,8 @@ describe('the rules card is the whole fight', () => {
   })
 
   it('is short enough to be read', () => {
-    expect(HOW_A_FIGHT_GOES.length).toBeLessThanOrEqual(6)
-    for (const line of HOW_A_FIGHT_GOES) expect(line.length).toBeLessThan(70)
+    expect(HOW_A_FIGHT_GOES.length).toBeLessThanOrEqual(8)
+    for (const line of HOW_A_FIGHT_GOES) expect(line.length).toBeLessThan(90)
   })
 
   it('asks for a decision at every position of an attack, in one line', () => {

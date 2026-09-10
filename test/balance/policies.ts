@@ -29,8 +29,10 @@
 
 import { MAX_ROLLS } from '../../src/combat/roll.js'
 import type { DieValue } from '../../src/combat/roll.js'
-import { legalScores, multiplierOf, scoreDice } from '../../src/combat/hands.js'
+import { legalScores, multiplierOf } from '../../src/combat/hands.js'
 import type { NamedHandId, ScoreId } from '../../src/combat/hands.js'
+import { talismanFlatOf, totalsFor } from '../../src/combat/loadout.js'
+import type { TalismanId } from '../../src/content/dice.js'
 import { BONE_CEILING } from '../../src/content/bones.js'
 
 export type Tier = 'naive' | 'heuristic'
@@ -46,6 +48,18 @@ export interface Table {
   readonly enemyDamage: number
   readonly bones: number
   readonly vials: number
+  /**
+   * What the talisman would add, per line. On the scorecard before the press,
+   * so a policy is allowed to see it.
+   *
+   * The **item dice are deliberately absent** from this. They have not been
+   * thrown when the decision is due, and a policy that reasoned about their
+   * expected value would be reasoning about something the screen does not
+   * show — which is the one rule this file exists to keep. It is also why no
+   * balance figure may assume them: the model plays as if they are not there,
+   * and whatever they add is upside on top of what the report prints.
+   */
+  readonly talismans: readonly TalismanId[]
 }
 
 interface Option {
@@ -56,7 +70,10 @@ interface Option {
 function options(t: Table): readonly Option[] {
   return legalScores(t.dice, t.usedHands).map((id) => ({
     id,
-    damage: scoreDice(t.dice, id).damage,
+    damage: totalsFor(t.dice, id, {
+      itemFlats: 0,
+      talismanFlat: talismanFlatOf(t.talismans, id),
+    }).damage,
   }))
 }
 
@@ -87,10 +104,11 @@ export function scoreFor(t: Table, tier: Tier): ScoreId | undefined {
 /**
  * How good a hand has to be before it is not worth throwing again.
  *
- * Per die on the table, because a wounded attack rolls fewer of them and its
- * ceiling falls with it. `5.5 × n` is a shade above what an ordinary Pair on
- * an average roll pays, so the solver throws again on anything mediocre and
- * stops on anything that is actually working.
+ * `5.5 × 6` is a shade above what an ordinary Pair on an average roll pays, so
+ * the solver throws again on anything mediocre and stops on anything that is
+ * actually working. It is stated per die and multiplied by the hand rather
+ * than by `dice.length`, which is now always six — kept in that form because
+ * the number was calibrated per die and reads as what it is.
  */
 const WORTH_KEEPING = 5.5
 
@@ -155,9 +173,10 @@ export function holdFor(t: Table, tier: Tier): readonly number[] {
  *
  * Both drink when the pile is thin, because a Vial saved through a death is a
  * Vial wasted. Naive waits until a single exchange could end things; the
- * solver tops up whenever a full Vial would not be spilled — and it watches
- * the six-bone line, because below it the attack itself gets narrower and the
- * fight starts compounding.
+ * solver tops up whenever a full Vial would not be spilled — and it still
+ * watches the eight-bone line, which is now simply *the pile is thin* rather
+ * than *the attack is about to narrow*. Nothing about the hand depends on it
+ * any more.
  */
 export function drinkFor(t: Table, tier: Tier): boolean {
   if (t.vials <= 0) return false

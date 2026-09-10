@@ -33,6 +33,7 @@ import { attackPose, idleFrameMs, idlePose } from '../content/enemyPresentation.
 import { defeatOf, defeatStance } from '../content/defeat.js'
 import type { DefeatFrame } from '../content/defeat.js'
 import type { RewardId } from '../content/rewards.js'
+import type { TalismanId } from '../content/dice.js'
 import type { ScoreId } from '../combat/hands.js'
 import { reduce } from '../game/reducer.js'
 import type { Action } from '../game/reducer.js'
@@ -52,8 +53,9 @@ import {
 } from '../content/interactions.js'
 import { TRAY_ART, enemyArt, enemyPose, isScenePlate, propArt, url } from '../render/assets.js'
 import { AssetLoader, criticalAssetsForState, likelyNextAssets } from '../render/loader.js'
-import { mountTray, paintTumble, renderTray } from '../ui/trayView.js'
+import { clearCascade, mountTray, paintCascade, paintTumble, renderTray } from '../ui/trayView.js'
 import type { HoldDraft, Tray } from '../ui/trayView.js'
+import { itemBadge } from '../combat/loadout.js'
 import { renderWorld } from '../ui/worldView.js'
 import { renderOverlay, renderScreen } from '../ui/screens.js'
 import type { Overlay } from '../ui/screens.js'
@@ -62,6 +64,7 @@ import {
   enemyAdvance,
   enemyHit,
   pileChange,
+  popNumber,
   reducedMotion,
   shake,
   tumble,
@@ -73,29 +76,42 @@ import {
  * The beats of an attack, in milliseconds from the press.
  *
  * The whole exchange was settled by the reducer before a frame of this ran —
- * the hand, the sum, the multiplier, the damage, the retaliation and the pile
- * are all on `lastAttack` — so every one of these is a reveal:
+ * the line, the sum, the multiplier, every item face, the talisman, the
+ * damage, the block, the answer and the pile are all on `lastAttack` — so
+ * every one of these is a reveal, in the order the cascade was ruled to
+ * happen in:
  *
- *   read      a held frame with the dice still on the table
- *   thrust    the arm goes in
- *   hit       its total falls
- *   answer    it breaks bones of yours, and the pile catches up
+ *   dice      each core die pops its own value, on itself
+ *   line      the readout resolves `sum × line`
+ *   items     the item dice roll and fire; flats add, costs charge
+ *   talisman  the talisman's flat fires, on the talisman
+ *   blow      the total lands on the enemy
+ *   answer    it swings, less what the iron held, and the pile catches up
  *   said      the beats of the exchange, in the word band
  *
- * `read` is the beat that keeps this legible rather than fast. Without it the
+ * `dice` is the beat that keeps this legible rather than fast. Without it the
  * dice and the consequence arrive together and the player watches an outcome
  * without ever having seen the hand that caused it.
+ *
+ * A loadout with nothing in it skips its beats rather than holding an empty
+ * frame: a run carrying no item die does not wait for one to not happen.
  */
 const ATTACK = {
-  read: 260,
-  wind: 40,
-  thrust: 150,
-  hit: 190,
-  rest: 320,
-  answer: 480,
-  said: 720,
-  next: 900,
+  dice: 200,
+  line: 380,
+  items: 520,
+  talisman: 660,
+  wind: 720,
+  thrust: 800,
+  blow: 840,
+  rest: 950,
+  answer: 1040,
+  said: 1240,
+  next: 1420,
 } as const
+
+/** The stagger between one core die popping its value and the next. */
+const DIE_POP = 34
 
 /**
  * The beats of the font, in milliseconds from the press.
@@ -418,6 +434,8 @@ export class App {
     const defeated = settled.defeated === true
     const dead = after.mode === 'dead'
     const pose = attackPose(combat.enemyId, record)
+    /** The pile after the item beat charged, and before the answer. */
+    const afterCost = Math.max(0, record.bonesBefore - record.itemCost)
 
     // One frame of the exchange: the dice still on the table, with the enemy
     // and the pile put right one at a time. `hp`/`bones` are the two facts
@@ -438,7 +456,8 @@ export class App {
     if (!this.animated) {
       this.presenting = undefined
       this.render()
-      enemyHit(this.world, record.damage)
+      if (record.itemCost > 0) pileChange(this.tray.orb, -record.itemCost)
+      if (record.landed) enemyHit(this.world, record.damage)
       if (record.retaliation > 0) shake(this.world, record.retaliation)
       // A death is a sequence like every other one here: with motion off it
       // resolves in the same tick, and the win screen arrives exactly where it
@@ -449,23 +468,79 @@ export class App {
 
     const sequence = this.start()
 
+    // (a) Every core die pops its own value, on itself. Staggered, so the six
+    // read as six objects rather than one row lighting up.
+    sequence.at(ATTACK.dice, () => paintCascade(this.tray, run, record, 'sum'))
+    record.dice.forEach((value, index) => {
+      sequence.at(ATTACK.dice + index * DIE_POP, () => {
+        const die = this.tray.crown.querySelector<HTMLElement>(`.bone[data-index="${index}"]`)
+        if (die) popNumber(die, String(value), 'die')
+      })
+    })
+
+    // (b) The readout resolves the line. Nothing has been added to it yet, and
+    // the beat exists so that the player sees the multiply happen.
+    sequence.at(ATTACK.line, () => paintCascade(this.tray, run, record, 'line'))
+
+    // (c) The item dice fire. Each result pops on its own die, and a cost
+    // lands on the pile — which is where a cost is paid from.
+    if (record.itemRolls.length > 0) {
+      sequence.at(ATTACK.items, () => {
+        this.presenting = frame(record.enemyHpBefore, afterCost)
+        this.render()
+        paintCascade(this.tray, run, record, 'items')
+        record.itemRolls.forEach((roll, index) => {
+          const die = this.tray.items.querySelector<HTMLElement>(`.item-die[data-index="${index}"]`)
+          if (die) popNumber(die, itemBadge(roll.result), roll.result.kind)
+        })
+        if (record.itemCost > 0) {
+          pileChange(this.tray.orb, -record.itemCost)
+          shake(this.world, record.itemCost)
+        }
+      })
+    }
+
+    // The cost took the last bone. The run ended at that beat and the blow
+    // never lands, so nothing below it belongs on the screen.
+    if (!record.landed) {
+      sequence.at(ATTACK.talisman, () => {
+        this.presenting = { ...before, run: { ...after.run!, say: '', combat: settled } }
+        this.render()
+        paintCascade(this.tray, run, record, 'items')
+      })
+      return void sequence.at(ATTACK.next, () => this.finish())
+    }
+
+    // (d) The talisman fires, on the talisman.
+    if (record.talismanFlat > 0) {
+      sequence.at(ATTACK.talisman, () => {
+        paintCascade(this.tray, run, record, 'talisman')
+        const bay = this.tray.talismans.querySelector<HTMLElement>('.talisman-slot')
+        if (bay) popNumber(bay, `+${record.talismanFlat}`, 'flat')
+      })
+    }
+
     // The arm draws back and goes in. It swings once, for the whole attack,
     // because the attack is one movement.
-    sequence.at(ATTACK.read + ATTACK.wind, () => weaponThrust(this.world, 'wind'))
-    sequence.at(ATTACK.read + ATTACK.thrust, () => weaponThrust(this.world, 'thrust'))
+    sequence.at(ATTACK.wind, () => weaponThrust(this.world, 'wind'))
+    sequence.at(ATTACK.thrust, () => weaponThrust(this.world, 'thrust'))
     sequence.at(ATTACK.rest, () => weaponThrust(this.world, 'rest'))
 
-    // It takes the hit. Its total falls to what the reducer already wrote.
-    sequence.at(ATTACK.hit, () => {
-      this.presenting = frame(record.enemyHpAfter, record.bonesBefore)
+    // (e) The total lands on the thing. Its number falls to what the reducer
+    // already wrote, and the readout resolves to the total in the same frame.
+    sequence.at(ATTACK.blow, () => {
+      this.presenting = frame(record.enemyHpAfter, afterCost)
       this.render()
+      paintCascade(this.tray, run, record, 'total')
       enemyHit(this.world, record.damage, brightPlate(combat))
     })
 
-    // And it answers, if there is anything left of it to answer with.
+    // (f) And it answers, if there is anything left of it to answer with —
+    // less whatever the iron came up holding.
     sequence.at(ATTACK.answer, () => {
       this.presenting = frame(record.enemyHpAfter, record.bonesAfter)
       this.render()
+      paintCascade(this.tray, run, record, 'total')
       if (record.retaliation > 0) {
         pileChange(this.tray.orb, -record.retaliation)
         shake(this.world, record.retaliation)
@@ -480,6 +555,7 @@ export class App {
       // blanking `say` lets it fall through to `combat.log`.
       this.presenting = { ...before, run: { ...after.run!, say: '', combat: settled } }
       this.render()
+      paintCascade(this.tray, run, record, 'total')
       if (pose && !defeated) this.showPose(combat.enemyId, pose)
     })
 
@@ -860,6 +936,7 @@ export class App {
   private finish(): void {
     this.presenting = undefined
     this.sequence = undefined
+    clearCascade(this.tray)
     weaponThrust(this.world, 'rest')
     enemyAdvance(this.world, 'arrive')
     this.render()
@@ -902,6 +979,7 @@ export class App {
         onScore: (hand: ScoreId) => this.dispatch({ type: 'SCORE', hand }),
         onDrink: () => this.dispatch({ type: 'DRINK' }),
         onInspectReward: (id) => this.open({ kind: 'reward', id: id as RewardId }),
+        onInspectTalisman: (id) => this.open({ kind: 'talisman', id: id as TalismanId }),
         onGo: (to) => this.dispatch({ type: 'GO', to }),
       },
     )

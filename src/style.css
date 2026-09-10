@@ -853,7 +853,10 @@ button {
 }
 
 #crown,
+#iron,
+#items,
 #satchel,
+#talismans,
 #beds {
   inset: 0;
 }
@@ -1086,6 +1089,130 @@ button {
   }
 }
 
+/* ── the iron die, and the item dice ─────────────────────────────────── */
+
+/* Neither is ever a control. There is no press for an iron die and none for an
+   item die — an item die is a treat that lands mid-cascade, not a fourth
+   decision — so both are inert, and the two rules about controls (the 44px
+   floor, the no-overlap rule) are about controls. They keep the crown's pitch
+   and baseline so the rail reads as one row of objects.
+
+   A painted bay for each is owed: see POLISH_PROGRESS.md § HUMAN ART REQUIRED
+   — the loadout. Nothing here is a drawing; it is the same CSS die body the
+   crown has always used, in a different metal. */
+.iron-die,
+.item-die {
+  position: absolute;
+  pointer-events: none;
+  display: grid;
+  place-items: center;
+}
+
+.iron-face,
+.item-face {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 62%;
+  aspect-ratio: 1;
+  border-radius: 14%;
+  font-size: clamp(9px, 2.6vw, 12px);
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* Iron. Cold, dull and plainly not bone: it is not one of the six and must not
+   read as one. */
+.iron-face {
+  background: linear-gradient(150deg, #8d949c, #4a5158);
+  color: #10161b;
+  box-shadow:
+    inset 0 -2px 3px rgb(0 0 0 / 0.45),
+    0 2px 4px rgb(0 0 0 / 0.7);
+}
+
+/* Empty is a real result and it says so rather than reading as broken. */
+.iron-die[data-block="0"] .iron-face {
+  background: linear-gradient(150deg, #4c5158, #24282c);
+  color: #9aa2aa;
+}
+
+.iron-die[data-thrown="no"] .iron-face,
+.iron-face.iron-back,
+.item-face.item-back {
+  background: linear-gradient(150deg, #4a4740, #26241f);
+  color: transparent;
+  box-shadow:
+    inset 0 2px 4px rgb(0 0 0 / 0.6),
+    0 2px 4px rgb(0 0 0 / 0.7);
+}
+
+/* An item die, waiting. Warm, and unmistakably not bone either. */
+.item-face {
+  background: linear-gradient(150deg, #6d4a86, #33203f);
+  color: #f0e2ff;
+  box-shadow:
+    inset 0 -2px 3px rgb(0 0 0 / 0.45),
+    0 2px 4px rgb(0 0 0 / 0.7);
+}
+
+.item-die[data-face="cost"] .item-face {
+  background: linear-gradient(150deg, #8a3f3f, #3a1a1a);
+  color: #ffd9d5;
+}
+
+.item-die[data-face="blank"] .item-face {
+  background: linear-gradient(150deg, #4c4652, #241f29);
+  color: #9d94a6;
+}
+
+/* ── a number popping on the thing that made it ──────────────────────── */
+
+/* The whole v3 readout ruling, in one rule: a value appears *on its source*
+   and stays there. Nothing flies to an aggregate, because there is no
+   aggregate for it to fly to — the readout in the well is the one running
+   total and nothing migrates into it. */
+.pop {
+  position: absolute;
+  left: 50%;
+  top: -2px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  color: var(--gold);
+  text-shadow: 0 1px 4px #000;
+  animation: pop-rise 760ms ease-out forwards;
+}
+
+.pop-flat {
+  color: #ffe9a8;
+}
+
+.pop-cost {
+  color: #ff9a92;
+}
+
+.pop-blank {
+  color: var(--ink-dim);
+}
+
+@keyframes pop-rise {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 6px) scale(0.7);
+  }
+  22% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1.15);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -22px) scale(1);
+  }
+}
+
 /* ── the well ────────────────────────────────────────────────────────── */
 
 .well {
@@ -1116,8 +1243,8 @@ button {
  */
 .attack-read {
   display: grid;
-  grid-template-rows: auto 1fr auto;
-  gap: 2px;
+  grid-template-rows: auto auto 1fr auto;
+  gap: 1px;
   justify-items: center;
   align-content: stretch;
   width: 100%;
@@ -1128,20 +1255,48 @@ button {
 }
 
 /*
- * What the bones add up to.
+ * What the iron is holding, before anything is committed.
  *
- * Half of the decision, and the half a pattern-shaped scorecard would hide:
- * the multiplier is on the card, the total is here, and damage is the two of
- * them multiplied. A player weighing a Triple against a Full House is weighing
- * this number as much as the shape.
+ * The first line of the well, because it is the first thing the turn settled:
+ * the block is terrain, and terrain is read before a decision rather than
+ * discovered after one. The die itself is on the left of the rail above and
+ * carries the same sentence as its accessible name — the geometry could not
+ * put a full sentence under a 32px bay, and a painted plinth for it is owed.
+ * See POLISH_PROGRESS.md § HUMAN ART REQUIRED — the loadout.
  */
-.attack-sum {
+.iron-caption {
   margin: 0;
-  font-size: 13px;
+  font-size: 8px;
+  line-height: 1.15;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: #b9c2ca;
+}
+
+.iron-caption[data-block="0"] {
+  color: var(--ink-dim);
+}
+
+/*
+ * The readout. The one aggregate on screen.
+ *
+ * `29`, then `29 × 2`, then `29 × 2 = 58 +5 +12`, then `= 75` — one line that
+ * fills in rather than five numbers appearing in five places. There is no
+ * receipt beside it and no total anywhere else: both alternatives were built
+ * and both lost.
+ */
+.readout {
+  margin: 0;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
   line-height: 1.1;
+  white-space: nowrap;
   color: var(--gold);
+}
+
+.readout[data-stage="idle"] {
+  color: var(--ink-dim);
 }
 
 /*
@@ -1270,21 +1425,23 @@ button.score-crap {
   color: #e2837c;
 }
 
-/* ── the satchel ─────────────────────────────────────────────────────── */
+/* ── the three bays on the right ─────────────────────────────────────── */
 
 /*
  * The bay, and it never moves.
  *
  * The Vial sits in the first of the three painted recesses whatever is carried
- * — a control that changes bay depending on the inventory is a control the
- * thumb has to look for. The other two recesses are left empty rather than the
- * one control being re-centred: the recesses are part of the picture.
+ * and the talisman in the second — a control that changes bay depending on the
+ * inventory is a control the thumb has to look for. The third is left empty
+ * rather than the others being re-centred: the recesses are part of the
+ * picture.
  *
  * A bay whose action is live now reads as live; a bay whose action is not is
  * still pressable, and pressing it inspects the thing rather than doing
- * nothing.
+ * nothing. The talisman is always the second case — it cannot be spent, and
+ * pressing it says what it does.
  */
-.satchel-slot {
+.bay-slot {
   position: absolute;
   pointer-events: auto;
   display: grid;
@@ -1296,7 +1453,7 @@ button.score-crap {
   transition: transform 120ms ease-out;
 }
 
-.satchel-label {
+.bay-label {
   font-size: clamp(7px, 2.1vw, 9px);
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -1305,14 +1462,14 @@ button.score-crap {
   text-shadow: 0 0 3px #000;
 }
 
-.satchel-slot[data-live="yes"] .satchel-label {
+.bay-slot[data-live="yes"] .bay-label {
   color: var(--gold);
   text-shadow:
     0 0 3px #000,
     0 0 10px rgb(207 166 82 / 0.85);
 }
 
-.satchel-count {
+.bay-count {
   font-style: normal;
   font-size: clamp(11px, 3.4vw, 16px);
   font-weight: 700;
@@ -1323,9 +1480,16 @@ button.score-crap {
 
 /* An empty bay is visibly empty. It is still a button, and it still explains
    what would go there. */
-.satchel-count[data-count="0"] {
+.bay-count[data-count="0"] {
   color: var(--ink-dim);
   opacity: 0.5;
+}
+
+/* The talisman's bonus, standing in its bay. It is where the flat pops when
+   its line is the one scored: the number appears on the thing that made it. */
+.talisman-slot .bay-count {
+  font-size: clamp(9px, 2.8vw, 13px);
+  color: var(--gold);
 }
 
 /* ── the three beds ──────────────────────────────────────────────────── */

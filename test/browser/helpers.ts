@@ -162,6 +162,10 @@ const MIN_WIDTH: Readonly<Record<string, number>> = {
   hold: 34,
   drink: 28,
   'inspect-reward': 28,
+  // The talisman sits in the second of the same three painted bays and is the
+  // same exception for the same reason: the plate's relic pitch is 55 of 730,
+  // which is 32px on a phone. Growing it to 44 would overlap its neighbour.
+  'inspect-talisman': 28,
   // The scorecard is eight entries wide in a region the plate gives about 214
   // px to, so an entry is roughly 52 px across and shorter than a thumb. It is
   // stated here rather than silently allowed: the alternative is not showing
@@ -237,4 +241,90 @@ export async function screenName(page: Page): Promise<string | null> {
 export async function trayControls(page: Page): Promise<Locator[]> {
   const found = await page.locator('#tray button:visible').all()
   return found
+}
+
+/**
+ * Watch an attribute change, and record every value it takes, in order.
+ *
+ * The cascade is a **sequence** — the dice pop, then the readout resolves the
+ * line, then the item dice fire, then the talisman, then the blow, then the
+ * answer — and a poll would only ever catch whichever beat happened to be up
+ * when it looked. A `MutationObserver` catches all of them, so a test can
+ * assert what happened *before* what rather than only what the screen ended on.
+ *
+ * The watch is installed before the press and read after it. It survives the
+ * element being replaced, because it observes a stable ancestor and reads the
+ * attribute off whichever node currently carries it.
+ *
+ * Nothing here can affect an outcome: every beat it records is a picture of a
+ * record the reducer settled before the first of them was scheduled.
+ */
+export async function watch(page: Page, selector: string, attribute: string): Promise<void> {
+  await page.evaluate(
+    ([sel, attr]) => {
+      const seen: string[] = []
+      const read = (): void => {
+        const node = document.querySelector(sel as string) as HTMLElement | null
+        const value = node?.getAttribute(attr as string) ?? ''
+        if (value && seen[seen.length - 1] !== value) seen.push(value)
+      }
+      read()
+      const observer = new MutationObserver(read)
+      observer.observe(document.body, {
+        attributes: true,
+        childList: true,
+        subtree: true,
+        attributeFilter: [attr as string],
+      })
+      const store = window as unknown as Record<string, unknown>
+      store['__watched'] = seen
+      store['__watcher'] = observer
+    },
+    [selector, attribute],
+  )
+}
+
+/** Everything the watch has seen since it was installed, oldest first. */
+export async function watched(page: Page): Promise<string[]> {
+  return (await page.evaluate(() => {
+    const store = window as unknown as Record<string, unknown>
+    return (store['__watched'] as string[] | undefined) ?? []
+  })) as string[]
+}
+
+/**
+ * Watch for numbers popping, and record what popped and what it popped on.
+ *
+ * The other half of the readout ruling: a number appears **on the thing that
+ * made it**, and it is gone again inside a second. A poll cannot see that, and
+ * a screenshot cannot say which element it was anchored to — so this records
+ * every `.pop` as it is inserted, with the id of the host it was inserted into.
+ */
+export async function watchPops(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const seen: { on: string; text: string }[] = []
+    const observer = new MutationObserver((records) => {
+      for (const record of records) {
+        for (const node of record.addedNodes) {
+          if (!(node instanceof HTMLElement) || !node.classList.contains('pop')) continue
+          const host = node.parentElement
+          const on =
+            host?.dataset['index'] !== undefined
+              ? `${host.className.split(' ')[0]}:${host.dataset['index']}`
+              : (host?.className.split(' ')[0] ?? '?')
+          seen.push({ on, text: node.textContent ?? '' })
+        }
+      }
+    })
+    observer.observe(document.body, { childList: true, subtree: true })
+    ;(window as unknown as Record<string, unknown>)['__pops'] = seen
+  })
+}
+
+/** Every number that popped since the watch was installed, oldest first. */
+export async function pops(page: Page): Promise<{ on: string; text: string }[]> {
+  return (await page.evaluate(() => {
+    const store = window as unknown as Record<string, unknown>
+    return (store['__pops'] as { on: string; text: string }[] | undefined) ?? []
+  })) as { on: string; text: string }[]
 }

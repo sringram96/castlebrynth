@@ -36,11 +36,12 @@ test.describe('the Vial', () => {
     await expect(act(page, 'inspect-reward')).toBeVisible()
   })
 
-  test('widens the attack it is about to throw', async ({ page }) => {
-    // The pile is the hand, so five bones back is up to five more dice. That
-    // is a better consumable than it used to be, not a worse one.
+  test('buys exchanges rather than dice', async ({ page }) => {
+    // The pile is not the hand any more. Six dice before the Vial and six
+    // after it: what five bones back buys is another exchange survived, which
+    // is the whole of what bones are for now.
     await boot(page, '?room=hollow&bones=3&vials=1&mode=combat')
-    await expect(dice(page)).toHaveCount(3)
+    await expect(dice(page)).toHaveCount(6)
 
     await act(page, 'drink').click()
     expect(await livingBones(page)).toBe(8)

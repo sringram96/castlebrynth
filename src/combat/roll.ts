@@ -1,43 +1,62 @@
 /**
- * Throwing bones, and nothing else.
+ * Throwing dice, and nothing else.
  *
- * A bone is an ordinary d6 for this baseline. There is no profile, no face
+ * A core die is an ordinary d6 for this baseline. There is no profile, no face
  * effect, no keyword and no modifier hook: six faces, each of them a number
- * between one and six, and the only thing that varies is *how many* of them
- * are in the air. That is the whole file, on purpose — the pattern the dice
- * land in is `hands.ts`, and what it costs is the reducer's.
+ * between one and six. That is the whole file, on purpose — the pattern the
+ * dice land in is `hands.ts`, what the loadout adds is `loadout.ts`, and what
+ * any of it costs is the reducer's.
  *
  * Everything here is pure and deterministic. A generator is handed in; none is
  * made. Nothing in this file reads game state and nothing in it decides an
  * outcome.
+ *
+ * ## The hand is six dice, always
+ *
+ * `min(6, bones)` is **repealed**. An attack throws six from the first fight
+ * of a run to the last turn of the boss; bones are health and only health.
+ * Damage no longer narrows the dice game, because the run's progression is
+ * *replacement* — a found die takes one of the six slots — and a width that
+ * shrank with the pile would keep taking those slots away again.
  */
 
 import type { Rng } from '../game/rng.js'
 
-/** What a bone can land on. Ordinary, for this baseline, and deliberately. */
+/** What a core die can land on. Ordinary, for this baseline, and deliberately. */
 export type DieValue = 1 | 2 | 3 | 4 | 5 | 6
 
 export const DIE_FACES: readonly DieValue[] = [1, 2, 3, 4, 5, 6]
 
-/** The most bones one attack may have in the air. */
-export const MAX_ACTIVE_DICE = 6
+/**
+ * How many dice an attack throws. Six. Not a maximum — the number.
+ *
+ * There is no width control and no width rule: nothing anywhere reads the pile
+ * to decide how many dice are in the air.
+ */
+export const HAND_DICE = 6
 
 /** One throw plus two rerolls. There is no fourth. */
 export const MAX_ROLLS = 3
 
-/** How many bones an attack throws, given what is left of the pile. */
-export function activeDice(bones: number): number {
-  return Math.max(0, Math.min(MAX_ACTIVE_DICE, Math.floor(bones)))
-}
-
-/** One bone, thrown. The only place a face is chosen. */
+/** One core die, thrown. The only place a face is chosen. */
 export function rollDie(rng: Rng): DieValue {
   return (rng.int(6) + 1) as DieValue
 }
 
-/** `count` bones, thrown together, in the order they were drawn. */
+/** `count` core dice, thrown together, in the order they were drawn. */
 export function rollDice(count: number, rng: Rng): readonly DieValue[] {
   return Array.from({ length: Math.max(0, Math.floor(count)) }, () => rollDie(rng))
+}
+
+/**
+ * Which face of a die with `sides` faces came up. Zero-based.
+ *
+ * The one draw an iron die and an item die share, so a die whose faces are
+ * blocks and a die whose faces are effects are the same act of throwing and
+ * differ only in what their table says a face means.
+ */
+export function rollFace(sides: number, rng: Rng): number {
+  return rng.int(Math.max(1, Math.floor(sides)))
 }
 
 /**

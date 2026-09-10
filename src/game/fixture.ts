@@ -18,6 +18,13 @@
  *   ?rolls=1                    the dice down, with two throws still in hand
  *   ?dice=6,6,6,4,4,3           exactly these faces on the table
  *   ?used=pair,triple           those two categories already spent
+ *   ?iron=5                     the iron standing on an exact block this turn
+ *   ?iron=none                  a run carrying no iron die at all
+ *   ?items=splinter-fetish      that item die in the loadout (two at most)
+ *   ?items=none                 an empty item loadout
+ *   ?talismans=none             a run carrying no talisman
+ *   ?hand=bone,bone,bone,bone,bone,bone
+ *                               exact contents of the six slots
  *   ?mode=combat                open the room's fight, or jump to an ending
  *   ?dying=1                    the room's enemy finished, mid-death — what a
  *                               save written a third of a second before the
@@ -43,8 +50,20 @@ import { isNamedHandId, legalScores } from '../combat/hands.js'
 import type { NamedHandId } from '../combat/hands.js'
 import { MAX_ROLLS } from '../combat/roll.js'
 import type { DieValue } from '../combat/roll.js'
+import { rollIron } from '../combat/loadout.js'
+import type { IronRoll } from '../combat/loadout.js'
+import {
+  HAND_SLOTS,
+  ITEM_CAP,
+  isCoreDieId,
+  isItemDieId,
+  isTalismanId,
+  ironDie,
+} from '../content/dice.js'
+import type { CoreDieId, IronDieId, ItemDieId, TalismanId } from '../content/dice.js'
 import { firstNodeOf, roomAt } from './map.js'
 import { newRun, reduce } from './reducer.js'
+import { RNG_CHANNEL, combatSalt, rngAt } from './rng.js'
 import { SAVE_VERSION } from './state.js'
 import type { GameState, Mode } from './state.js'
 
@@ -74,6 +93,10 @@ const KEYS: readonly string[] = [
   'dying',
   'reliquary',
   'vault',
+  'iron',
+  'items',
+  'talismans',
+  'hand',
 ]
 
 export function hasFixture(search: string): boolean {
@@ -89,15 +112,49 @@ function standEnemyAt(state: GameState, hp: number): GameState {
   return { ...state, run: { ...state.run!, combat: { ...combat, enemyHp } } }
 }
 
-/** Put exact faces on the table, with a throw count that admits to it. */
+/**
+ * Put exact faces on the table, with a throw count that admits to it.
+ *
+ * The iron is thrown here too when it has not been thrown, off the same
+ * generator position a real ROLL would have drawn it at — so a `?dice=`
+ * fixture stands in a turn with real terrain rather than in one with the
+ * armour mysteriously absent.
+ */
 function standDiceAt(state: GameState, faces: readonly DieValue[]): GameState {
   const combat = state.run?.combat
-  if (!combat || faces.length === 0) return state
+  const run = state.run
+  if (!combat || !run || faces.length === 0) return state
   const rollsUsed = combat.rollsUsed === 0 ? 1 : combat.rollsUsed
-  return {
-    ...state,
-    run: { ...state.run!, combat: { ...combat, dice: faces, rollsUsed } },
-  }
+  const ironRolls =
+    combat.ironRolls.length > 0
+      ? combat.ironRolls
+      : rollIron(
+          run.ironDice,
+          rngAt(run.seed, combatSalt(run.path.length, combat.round, 1, RNG_CHANNEL.ironRoll)),
+        )
+  return { ...state, run: { ...run, combat: { ...combat, dice: faces, rollsUsed, ironRolls } } }
+}
+
+/**
+ * Stand the iron on an exact block for this turn.
+ *
+ * The fifth escape hatch, and it is one for the same reason `?dice=` is: no
+ * sequence of honest presses puts a named face on a die, and a browser test of
+ * the block — or of an iron blank — should not have to search seeds for one.
+ * The face index is resolved back out of the die's own table where it can be,
+ * so the fixture cannot claim a block the die does not have.
+ */
+function standIronAt(state: GameState, block: number): GameState {
+  const combat = state.run?.combat
+  const run = state.run
+  if (!combat || !run || run.ironDice.length === 0) return state
+  const rolls: IronRoll[] = run.ironDice.map((id, index) => {
+    const die = ironDie(id)
+    const wanted = index === 0 ? Math.max(0, Math.floor(block)) : (combat.ironRolls[index]?.block ?? 0)
+    const face = die.faces.indexOf(wanted)
+    return { id, face: face >= 0 ? face : 0, block: face >= 0 ? wanted : (die.faces[0] ?? 0) }
+  })
+  return { ...state, run: { ...run, combat: { ...combat, ironRolls: rolls } } }
 }
 
 /** Spend named categories, as a fight that had already used them would have. */
@@ -154,6 +211,36 @@ export function applyFixture(base: GameState, search: string): GameState {
   const vials = num(p.get('vials'))
   if (vials !== undefined) run = { ...run, vials: Math.max(0, Math.floor(vials)) }
 
+  // The loadout, set outright.
+  //
+  // These are escape hatches like `?dice=` and they are stated as such: the
+  // acquisition economy for a core die does not exist yet, and the item dice
+  // that do have one enter through a reward screen a bounded journey cannot
+  // reliably reach twice. Each is still held to its own rule — six slots, at
+  // most two item dice, ids that exist — so a fixture cannot stand the game in
+  // a loadout the reducer would refuse.
+  const wantedHand = list(p.get('hand')).filter(isCoreDieId) as CoreDieId[]
+  if (wantedHand.length > 0) {
+    run = {
+      ...run,
+      hand: Array.from({ length: HAND_SLOTS }, (_, i) => wantedHand[i] ?? run.hand[i] ?? 'bone'),
+    }
+  }
+
+  const wantedItems = p.get('items')
+  if (wantedItems !== null) {
+    const ids = list(wantedItems).filter(isItemDieId) as ItemDieId[]
+    run = { ...run, itemDice: ids.slice(0, ITEM_CAP) }
+  }
+
+  const wantedTalismans = p.get('talismans')
+  if (wantedTalismans !== null) {
+    run = { ...run, talismans: list(wantedTalismans).filter(isTalismanId) as TalismanId[] }
+  }
+
+  const wantedIron = p.get('iron')
+  if (wantedIron === 'none') run = { ...run, ironDice: [] as readonly IronDieId[] }
+
   // Standing in a half-worked room.
   //
   // *Played*, not assembled: every one of these presses goes through the real
@@ -205,7 +292,8 @@ export function applyFixture(base: GameState, search: string): GameState {
     p.has('enemyHp') ||
     p.has('rolls') ||
     p.has('dice') ||
-    p.has('used')
+    p.has('used') ||
+    p.has('iron')
 
   if (wantsFight && roomAt(run).enemy) {
     state = reduce(state, { type: 'FIGHT' })
@@ -240,6 +328,11 @@ export function applyFixture(base: GameState, search: string): GameState {
       .map((raw) => Number(raw))
       .filter((n): n is DieValue => Number.isInteger(n) && n >= 1 && n <= 6) as DieValue[]
     if (faces.length > 0 && state.run?.combat) state = standDiceAt(state, faces)
+
+    // Last, so it wins over whatever the throws above rolled — the point of
+    // the hatch is an exact block, including a deliberate blank.
+    const block = num(wantedIron)
+    if (block !== undefined && state.run?.combat) state = standIronAt(state, block)
 
     return state
   }

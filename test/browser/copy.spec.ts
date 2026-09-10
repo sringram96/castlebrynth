@@ -30,21 +30,27 @@ test.describe('the scorecard explains itself where the fight is', () => {
     await expect(table.locator('[data-hand="crap"]')).toContainText('never spent')
   })
 
-  test('MENU states the pile, the satchel and the five lines a fight runs on', async ({ page }) => {
+  test('MENU states the pile, the loadout, the satchel and the lines a fight runs on', async ({ page }) => {
     await boot(page, '?room=fork&vials=2')
 
     await act(page, 'menu').click()
     const overlay = page.locator('#overlay')
 
     await expect(overlay.locator('#pile-total')).toContainText('BONES')
-    await expect(overlay).toContainText('An attack throws 6 of them')
+    await expect(overlay).toContainText('Bones are what I have left, not what I throw')
 
     await expect(overlay).toContainText('Vial')
     await expect(overlay).toContainText('5 bones back, up to 30 in all')
 
-    await expect(overlay.locator('#rules li')).toHaveCount(5)
-    await expect(overlay).toContainText('six bones')
+    await expect(overlay.locator('#rules li')).toHaveCount(7)
+    await expect(overlay).toContainText('six dice')
     await expect(overlay).toContainText('CRAP')
+
+    // The loadout is in here too, with each thing's exact mechanic.
+    await expect(overlay.locator('#hand-slots')).toContainText('6 dice')
+    await expect(overlay).toContainText('Blocks what it shows off the answer this turn')
+    await expect(overlay).toContainText('+12 damage when the line I score is PAIR or TWO PAIR')
+    await expect(overlay).toContainText('Item dice: 0 of 2')
 
     // The game this replaced is not in here.
     await expect(overlay).not.toContainText('High kills low')

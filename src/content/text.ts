@@ -58,13 +58,18 @@ export const ATTACK_LINE = {
   last: 'Nothing left to throw. Score it.',
 } as const
 
-/** The whole fight, in five lines, for MENU. */
+/** What the iron says before it has been thrown. */
+export const IRON_IDLE = 'The iron has not been thrown yet.'
+
+/** The whole fight, in seven lines, for MENU. */
 export const HOW_A_FIGHT_GOES: readonly string[] = [
-  'I throw up to six bones. Never more than I have left.',
-  'Hold what I want, throw the rest again. Twice at most.',
-  'The bones add up. The pattern they make multiplies it.',
+  'I throw six dice. Six, always — bones are what I have left, not what I throw.',
+  'The iron throws with them, once. I cannot hold it and I cannot throw it again.',
+  'Hold what I want of the six, throw the rest again. Twice at most.',
+  'The dice add up. The line they make multiplies it. Everything else is flat.',
   'Each named hand can be scored once per fight.',
   'Nothing left that fits? CRAP, at half, as often as I like.',
+  'Item dice fire on their own when I attack. There is no press for them.',
 ]
 
 /** What the well says out of a fight, when there is nothing else to carry. */

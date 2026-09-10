@@ -62,8 +62,12 @@ export class Rng {
  * cannot change what the enemy throws on round four.
  */
 export const RNG_CHANNEL = {
-  /** The player's dice. The only randomness left inside a fight. */
+  /** The player's core dice. ROLL and REROLL. */
   playerRoll: 23,
+  /** The iron die, thrown once a turn alongside the six, on ROLL only. */
+  ironRoll: 31,
+  /** The item dice, fired automatically at the item beat of an Attack. */
+  itemRoll: 41,
   reward: 53,
 } as const
 
