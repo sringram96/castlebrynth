@@ -22,7 +22,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { REWARDS, reward } from '../../src/content/rewards.js'
-import { stripFor } from '../../src/content/faces.js'
+import { ladderChips, stripFor } from '../../src/content/faces.js'
 import { ENEMIES } from '../../src/content/enemies.js'
 import { ROOM_LIBRARY } from '../../src/content/rooms.js'
 import { WAYS, way } from '../../src/content/runPlans.js'
@@ -105,11 +105,31 @@ describe('the enemies say what they are about to do', () => {
     }
   })
 
-  it('states its damage in the rule when it prints one', () => {
-    // A rule the player only learns by losing a bone to it is not a rule, it
-    // is a trick. The Warden's eight is the loudest thing in its brief.
+  it('prints every rung of every ladder before the first ROLL', () => {
+    // A rule the player only learns by losing a bone to it is not a rule, it is
+    // a trick — and since every monster now has one, *every* number it can break
+    // has to be on the card.
+    //
+    // **Re-based.** It used to read the damage out of the prose: the Warden's
+    // EIGHT and the Marrow's Five. A break is a ladder now, and a ladder written
+    // once as chips and once as a sentence is a ladder that will disagree with
+    // itself — so the prose says what the rule *is* and the chips carry the
+    // numbers. The chips are what this asserts.
+    for (const e of Object.values(ENEMIES)) {
+      const chips = ladderChips(e.id)
+      expect(chips.length, `${e.name} has no ladder`).toBeGreaterThan(1)
+      for (const rung of e.breakRule!.rungs) {
+        expect(
+          chips.some((c) => c.text.includes(String(rung.breaks))),
+          `${e.name} does not print the rung that breaks ${rung.breaks}`,
+        ).toBe(true)
+      }
+      expect(e.rule, `${e.name} prints no rule at all`).toBeDefined()
+    }
+    // And the Warden's is still the loudest thing in its brief, because the
+    // condition is the rule and a condition cannot be a chip on its own.
     expect(ENEMIES.warden!.rule).toMatch(/EIGHT/)
-    expect(ENEMIES.marrow!.rule).toMatch(/Five/)
+    expect(ENEMIES.warden!.rule).toMatch(/CRAP/)
   })
 
   it('never gives the player a health bar, under any name', () => {

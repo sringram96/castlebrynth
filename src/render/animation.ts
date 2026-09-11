@@ -277,6 +277,27 @@ export function enemyAdvance(world: World, phase: 'gather' | 'arrive'): void {
 }
 
 /**
+ * The tray, jarred by the answer.
+ *
+ * One pixel, in steps, on the beat the enemy's number comes back. The world
+ * shaking is the player's head; this is the pile and the dice in his hands
+ * taking the same blow, and it is an order of magnitude smaller on purpose — a
+ * tray that shook as hard as the frame would read as the interface breaking.
+ *
+ * It reveals nothing that is not already on screen as text: the pile's own
+ * count, its delta, and every beat of the exchange in the word band are all
+ * settled before this runs. With motion off it never runs and nothing is lost.
+ */
+export function trayJolt(tray: HTMLElement): void {
+  if (reducedMotion()) return
+  tray.classList.remove('jolted')
+  // Reading offsetWidth restarts it when two answers land in a row.
+  void tray.offsetWidth
+  tray.classList.add('jolted')
+  window.setTimeout(() => tray.classList.remove('jolted'), 320)
+}
+
+/**
  * The blow that landed on you.
  *
  * The frame is the player's body, so this is the one effect that moves the

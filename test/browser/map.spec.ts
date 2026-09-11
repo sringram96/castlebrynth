@@ -15,7 +15,7 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 
-import { act, boot, state, wayTo, where } from './helpers.js'
+import { act, boot, state, walkOn, wayLabelled, wayTo, where } from './helpers.js'
 
 /** Every destination the tray is currently offering. */
 async function offered(page: Page): Promise<string[]> {
@@ -81,13 +81,19 @@ test.describe('a run carries its map', () => {
   })
 
   test('walking the deep way and walking the stair arrive at the same room', async ({ page }) => {
-    await boot(page, '?room=fork&seed=3')
-    await (await wayTo(page, 'gate')).click()
+    // **Both legs carry a room of their own now**, so this is walked rather than
+    // read one hop ahead: take the stair to the door, then take the deep way to the
+    // door, and assert it is the same node both times. The Warden's room is one
+    // room, not two pictures of one.
+    await boot(page, '?room=fork')
+    await wayLabelled(page, 'STAIR').click()
+    await walkOn(page, 'gate')
     const short = (await state(page)).run!.roomId
 
-    await boot(page, '?room=chain-vault&vault=open&seed=3')
-    await act(page, 'go').click()
-    expect(await where(page)).toBe('deep')
+    await boot(page, '?room=chain-vault&vault=open')
+    await walkOn(page, 'deep')
+    // The Marrow holds the tunnel shut until it is finished, so the last hop is
+    // the map's rather than a press — which is what `rejoin` promises.
     const inTheTunnel = await state(page)
     const long = inTheTunnel.run!.map.nodes[inTheTunnel.run!.roomId]!.exits[0]!.to
 

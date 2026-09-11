@@ -61,6 +61,14 @@ test.describe('the left branch, and the stair', () => {
     // The Split. Take the stair, by the label the map put on the hotspot.
     expect(await where(page)).toBe('fork')
     await page.locator('[data-act="go"]').filter({ hasText: 'STAIR' }).click()
+    // **The stair carries a room of its own now.** An alcove with something
+    // chained in it: the short way has one certain thing in it, against the
+    // deep's certain iron. The die is read, the price is read, and nothing here
+    // pays for it — walking past is legal and this walk does.
+    expect(await where(page)).toBe('niche')
+    await expect(page.locator('[data-act="look-die"]')).toHaveCount(1)
+    await expect(page.locator('[data-act="claim"]')).toHaveCount(1)
+    await act(page, 'go').click()
     expect(await where(page)).toBe('gate')
 
     // The Warden, and the door behind it.
@@ -135,6 +143,10 @@ test.describe('the right branch, and the deep way', () => {
     await clearReward(page)
     expect((await state(page)).run!.ironDice).toEqual(['rustplate'])
 
+    await act(page, 'go').click()
+    // And the deep leg carries an alcove too, between the gate and the Marrow.
+    expect(await where(page)).toBe('niche')
+    await expect(page.locator('[data-act="look-die"]')).toHaveCount(1)
     await act(page, 'go').click()
     expect(await where(page)).toBe('deep')
 

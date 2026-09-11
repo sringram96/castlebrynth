@@ -1127,3 +1127,38 @@ what dragged. Until that exists, every number this wave introduced —
 `TERRITORY_HOLD`, the four grade strengths, the chip and name type sizes — is
 a **first-pass value, reported rather than tuned**, exactly as the balance
 report's figures are.
+
+---
+
+# The crooked bones wave
+
+## The hand pass — pre-registered, before a line of this wave was built
+
+The standing rule is that a pass which cannot settle something says so rather
+than inventing a value in its place, and that the cuts are named *before* the
+phone so a later result is a measurement rather than a preference wearing a
+measurement's coat. These five questions were written down first. What the pass
+actually found is recorded at the end of this section.
+
+1. **Does the picker read at a glance, or does it need a second beat?** Taking a
+   core die opens the six current dice as strips and asks which one goes. It is
+   the only new overlay in the game that is a *decision* rather than a read, and
+   it arrives in the middle of a room. If the six strips cannot be compared in
+   one look, the fix is the strip's type size and the row spacing — not a
+   tutorial line, and not a confirm step.
+2. **Is 3 bones a price or a formality at 30?** The sweep says in numbers
+   whether always-take dominates; the hand says whether handing over three of
+   thirty *feels* like paying. If it is a formality the lever is the price, and
+   it is a product decision rather than a tuning pass.
+3. **Does the Gnawing's ladder read as dread or as a tax?** FAR 2 · MID 4 ·
+   CLOSE 8 is printed from frame one and the tray number moves as it closes. The
+   question is whether the third round feels like being caught or like a bill
+   arriving.
+4. **Does the Warden's CRAP rule feel like an exam or an ambush?** The card says
+   it in capitals before the first ROLL. If it still lands as an ambush the
+   problem is that the card is read once and the tray never restates it, and the
+   fix is on the tray rather than in the number.
+5. **Does the treasure hint make anyone look for it?** Two lines of prose, one in
+   the entry hall and one at the transition, and nothing anywhere says where.
+   If nobody looks, the hint is decoration and the next lever is the strip — the
+   untaken mouth is already drawn there.

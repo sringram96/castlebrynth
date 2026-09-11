@@ -26,6 +26,7 @@
  * a map existed would be a view that could be given a wrong one.
  */
 
+import type { CoreDieId } from '../content/dice.js'
 import { exitsOpen, stateOf } from '../content/interactions.js'
 import { template } from '../content/rooms.js'
 import type { RoomRole, RoomTemplate, Territory } from '../content/roomTypes.js'
@@ -62,6 +63,43 @@ export interface MapExit {
 }
 
 /**
+ * Why a core die is standing in a room.
+ *
+ * Three words, and the only thing they change is the copy and whether there is a
+ * price: the transaction is identical in all three, which is what keeps the
+ * picker the one place a core die is ever swapped.
+ */
+export type OfferKind = 'carver' | 'bargain' | 'treasure'
+
+/**
+ * One core die lying in a room, priced.
+ *
+ * **A bargain is a specific die, with its strip shown and its price printed
+ * before the press.** That is the whole definition and it is the law: there is
+ * no field here for generic power, no percentage, no "choose one of", and
+ * nowhere to write one. The Carver's table and a chained alcove are the same
+ * object seen twice, which is why they are one type.
+ *
+ * It is **generated**, so it lives on the map rather than in `RunState`: which
+ * die is on the table is a fact about the descent, settled once at the press of
+ * START, exactly as which room is in a slot is. What the run records is only
+ * which of them have been claimed — see `RunState.claimed`.
+ *
+ * `price` is absent for exactly one thing, and that absence is the treasure's
+ * whole design: it costs what it cost to get there.
+ */
+export interface DieOffer {
+  readonly die: CoreDieId
+  /** Bones, printed on the verb before it charges. Absent for the treasure. */
+  readonly price?: number
+  readonly kind: OfferKind
+  /** Which seat in the room's picture it is standing on. */
+  readonly seat: string
+  /** Where that seat is, in fractions of the world box. */
+  readonly at: { readonly x: number; readonly y: number }
+}
+
+/**
  * One room of one run.
  *
  * It holds generated facts and nothing else: who it is, which authored place it
@@ -87,6 +125,23 @@ export interface RunRoom {
 
   /** What is standing here, if anything is. */
   readonly enemyId?: string
+
+  /**
+   * Core dice lying in this room, in seat order.
+   *
+   * Seated by the generator into the template's `spareSeats`, from the room's
+   * own `exchange` and from the plan's placements. Empty for nearly every room.
+   */
+  readonly dice?: readonly DieOffer[]
+
+  /**
+   * Prose cut into the wall of this room by the plan.
+   *
+   * A `hint-carving` consumes no seat: it is a detail with a line, seated at the
+   * template's `carvingAt`. It is on the node rather than in the template because
+   * *which* rooms carry a hint is the grammar's business.
+   */
+  readonly carvings?: readonly string[]
 }
 
 export interface RunMap {
@@ -109,6 +164,10 @@ export interface ResolvedRoom extends RoomTemplate {
   readonly depth: number
   readonly exits: readonly MapExit[]
   readonly enemy?: string
+  /** The core dice the director seated here, already joined to their seats. */
+  readonly dice: readonly DieOffer[]
+  /** What the plan cut into this room's wall. */
+  readonly carvings: readonly string[]
 }
 
 /**
@@ -152,6 +211,8 @@ export function roomAt(run: RunState, nodeId: string = run.roomId): ResolvedRoom
     instanceId: node.id,
     depth: node.depth,
     exits: node.exits,
+    dice: node.dice ?? [],
+    carvings: node.carvings ?? [],
     ...(node.enemyId ? { enemy: node.enemyId } : {}),
   }
 }

@@ -69,6 +69,7 @@ import {
   popNumber,
   reducedMotion,
   shake,
+  trayJolt,
   tumble,
   tumbleDuration,
   weaponThrust,
@@ -217,6 +218,14 @@ export interface AppOptions {
   readonly motion?: boolean
   /** Injected so a test can watch what was asked for and when. */
   readonly loader?: AssetLoader
+  /**
+   * Which seed a press of DESCEND uses, when a URL asked for one.
+   *
+   * The three grammars are chosen by seed, so a journey that walks a descent room
+   * by room has to be able to say which descent. Absent in the game, which is the
+   * whole point: a run that was not asked for gets a seed off the clock.
+   */
+  readonly startSeed?: number
 }
 
 export class App {
@@ -229,6 +238,7 @@ export class App {
   private readonly discarded: string | undefined
   private readonly persist: boolean
   private readonly motion: boolean
+  private readonly startSeed: number | undefined
   readonly assets: AssetLoader
   /**
    * What the overlay is showing, if anything.
@@ -280,6 +290,7 @@ export class App {
     this.discarded = options.discarded
     this.persist = options.persist ?? true
     this.motion = options.motion ?? true
+    this.startSeed = options.startSeed
     this.assets = options.loader ?? new AssetLoader()
 
     const root = options.root
@@ -605,6 +616,9 @@ export class App {
       if (record.retaliation > 0) {
         pileChange(this.tray.orb, -record.retaliation)
         shake(this.world, record.retaliation)
+        // And the tray takes it too, a pixel of it. The frame is his head and the
+        // tray is what is in his hands; one blow moves both.
+        trayJolt(this.tray.root)
       }
       if (pose && !defeated) this.showPose(combat.enemyId, pose)
     })
@@ -1136,6 +1150,12 @@ export class App {
       onInteract: (interactionId: string) => this.dispatch({ type: 'INTERACT', interactionId }),
       onGo: (to: string) => this.dispatch({ type: 'GO', to }),
       onTake: (index: number) => this.dispatch({ type: 'TAKE', index }),
+      // Taking a core die opens the picker and commits **nothing**. The hand is
+      // six and nothing sits outside it, so which one goes is the decision, and
+      // the decision is a beat of its own — presentation-local, exactly as the
+      // hold draft is, so a reload here loses the picker and leaves the die on
+      // its seat, uncharged.
+      onClaim: (index: number) => this.open({ kind: 'picker', index }),
     })
 
     // The room keeps breathing under all of it. Idempotent for the same room,
@@ -1173,7 +1193,7 @@ export class App {
       this.screen,
       state,
       {
-        onStart: () => this.dispatch({ type: 'START_RUN' }),
+        onStart: () => this.dispatch({ type: 'START_RUN', ...(this.startSeed !== undefined ? { seed: this.startSeed } : {}) }),
         onContinue: () => this.dispatch({ type: 'CONTINUE' }),
         onTitle: () => this.dispatch({ type: 'TITLE' }),
       },
@@ -1188,7 +1208,18 @@ export class App {
   }
 
   private paintOverlay(view: Overlay, state: GameState): void {
-    renderOverlay(this.overlay, view, state, () => this.close())
+    renderOverlay(this.overlay, view, state, {
+      onClose: () => this.close(),
+      // The one press in an overlay that changes the run, and it changes it in
+      // one transition: the price charges, the slot is swapped, the seat is
+      // marked claimed. The picker closes after it because there is nothing left
+      // in it to decide.
+      onPick: (slot: number) => {
+        if (view.kind !== 'picker') return
+        this.dispatch({ type: 'CLAIM_DIE', index: view.index, slot })
+        this.close()
+      },
+    })
   }
 
   private open(view: Overlay): void {

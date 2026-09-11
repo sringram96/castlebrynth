@@ -43,8 +43,11 @@ test.describe('before anything is committed', () => {
       await page.locator('#enemy-hp').getAttribute('data-max'),
       await page.locator('#enemy-hits').getAttribute('data-damage'),
     ]
+    // The figure is the rung each of them opens on, because a break is a ladder
+    // now: the Gnawing starts far away and cheap, the Marrow starts whole and
+    // expensive, the Warden is the Warden.
     await boot(page, '?room=hollow&mode=combat')
-    expect(await figures()).toEqual(['70', '3'])
+    expect(await figures()).toEqual(['70', '2'])
     await boot(page, '?room=deep&mode=combat')
     expect(await figures()).toEqual(['120', '5'])
     await boot(page, '?room=gate&mode=combat')

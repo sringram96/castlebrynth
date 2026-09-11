@@ -33,9 +33,10 @@ import {
   talisman as talismanById,
 } from '../content/dice.js'
 import type { CoreDieId } from '../content/dice.js'
-import { carried } from '../content/faces.js'
+import { carried, stripSaid } from '../content/faces.js'
 import { enemy as enemyById } from '../content/enemies.js'
-import { carriedNames } from '../game/reducer.js'
+import { roomAt } from '../game/map.js'
+import { carriedNames, claimedIn, refusalForDie } from '../game/reducer.js'
 import { roomArt, url } from '../render/assets.js'
 import type { GameState } from '../game/state.js'
 import { button, el, faceStripFor, rewardCard } from './components.js'
@@ -234,12 +235,32 @@ export type Overlay =
   /** One thing in a tray slot: the iron die, an item die, the talisman. */
   | { readonly kind: 'carried'; readonly id: string }
   | { readonly kind: 'map' }
+  /**
+   * **The picker**: which of the six goes, so this one can come in.
+   *
+   * The only overlay in the game that is a *decision* rather than a read, and it
+   * is the one place a core die is ever swapped. It is presentation-local like
+   * every other overlay — opening it charges nothing, reloading out of it loses
+   * the picker and nothing else, and the die stays on its seat until a slot is
+   * pressed. The press is `CLAIM_DIE`, which charges, swaps and claims in one
+   * tick; CLOSE is cancel, and cancel is legal.
+   *
+   * `index` is the die's position in the room's offer list, exactly as TAKE
+   * addresses loot by position.
+   */
+  | { readonly kind: 'picker'; readonly index: number }
+
+export interface OverlayHandlers {
+  readonly onClose: () => void
+  /** A slot chosen in the picker. The one press that swaps a core die. */
+  readonly onPick: (slot: number) => void
+}
 
 export function renderOverlay(
   host: HTMLElement,
   view: Overlay,
   state: GameState,
-  onClose: () => void,
+  on: OverlayHandlers,
 ): void {
   host.replaceChildren()
   host.dataset['overlay'] = view.kind
@@ -250,12 +271,101 @@ export function renderOverlay(
         ? mapPanel(state)
         : view.kind === 'carried'
           ? carriedPanel(view)
-          : focusPanel(view)
+          : view.kind === 'picker'
+            ? pickerPanel(state, view, on.onPick)
+            : focusPanel(view)
   if (!panel) return
   panel.append(
-    button({ act: 'close', label: VERBS.close, onPress: onClose, className: 'act act-big act-primary' }),
+    button({
+      act: 'close',
+      // Cancel. It is the same word on the same button the other overlays close
+      // with, because it does the same thing: nothing. The die is still on its
+      // seat and the pile has not been touched.
+      label: VERBS.close,
+      describe: view.kind === 'picker' ? 'Leave it where it is' : VERBS.close,
+      onPress: on.onClose,
+      className: 'act act-big act-primary',
+    }),
   )
   host.append(panel)
+}
+
+/**
+ * The picker: the six current dice, and which one you are giving up.
+ *
+ * Every row is the **whole** of what a slot holds — its name and its faces as a
+ * strip — because the decision is a comparison and a comparison needs both sides
+ * on the screen at once. The die coming in is at the top, as its own card, with
+ * its price.
+ *
+ * It decides nothing. Each row dispatches a slot number and the reducer does the
+ * rest in one transition; if the run cannot afford the die, there is no row at
+ * all and the panel says so, which is the same refusal the verb in the room was
+ * already hiding behind.
+ */
+function pickerPanel(
+  state: GameState,
+  view: Overlay & { kind: 'picker' },
+  onPick: (slot: number) => void,
+): HTMLElement | null {
+  const run = state.run
+  if (!run) return null
+  const offer = roomAt(run).dice[view.index]
+  if (!offer || claimedIn(run).includes(view.index)) return null
+
+  const die = coreDie(offer.die)
+  const panel = el('div', 'screen-panel screen-scroll screen-picker')
+  panel.dataset['focus'] = 'picker'
+  panel.dataset['picking'] = offer.die
+
+  panel.append(el('h2', 'screen-head', 'WHICH ONE GOES'))
+  const card = el('article', 'card reward-card reward-loadout')
+  card.dataset['rewardId'] = offer.die
+  card.append(el('h3', 'card-name', die.name))
+  const strip = faceStripFor(offer.die)
+  if (strip) card.append(strip)
+  card.append(
+    el(
+      'p',
+      'card-rule',
+      offer.price === undefined
+        ? 'EFFECT · Treasure. It costs what it cost to get here.'
+        : `EFFECT · ${offer.price} bones, and one of my six.`,
+    ),
+  )
+  card.append(el('hr', 'card-rule-line'))
+  card.append(el('p', 'card-flavour', die.flavour))
+  panel.append(card)
+
+  const refused = refusalForDie(run, offer)
+  if (refused) {
+    panel.append(el('p', 'screen-line', refused))
+    return panel
+  }
+
+  const rows = el('div', 'picker-slots')
+  rows.id = 'picker-slots'
+  run.hand.forEach((id, slot) => {
+    const held = coreDie(id)
+    const row = button({
+      act: 'pick-slot',
+      label: '',
+      describe: `Put the ${die.name} in slot ${slot + 1}, in place of the ${held.name}. ${stripSaid(id)}`,
+      onPress: () => onPick(slot),
+      className: 'picker-slot',
+    })
+    row.dataset['slot'] = String(slot)
+    row.dataset['slotDie'] = id
+    row.append(el('b', 'picker-name', held.name))
+    const held_strip = faceStripFor(id)
+    if (held_strip) row.append(held_strip)
+    rows.append(row)
+  })
+  panel.append(rows)
+  // The line the swap will write, said before the press. The hand is six and
+  // nothing sits outside it: what leaves the slot is gone.
+  panel.append(el('p', 'screen-line', 'Whichever I put down stays here.'))
+  return panel
 }
 
 /**

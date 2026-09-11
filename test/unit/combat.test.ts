@@ -22,12 +22,14 @@ import type { DieValue } from '../../src/combat/roll.js'
 import { legalScores } from '../../src/combat/hands.js'
 import type { ScoreId } from '../../src/combat/hands.js'
 import { enemy } from '../../src/content/enemies.js'
-import { nodeOf } from './where.js'
+import { nodeOf, seedWith } from './where.js'
 
 
 /** Standing in a room, named by its authored template. */
-function at(templateId: string, run: Partial<RunState> = {}, seed = 4): GameState {
-  const base = newRun(seed)
+function at(templateId: string, run: Partial<RunState> = {}, from = 4): GameState {
+  // A descent that actually contains the room. The three grammars disagree about
+  // which rooms exist, and a spec about a fight is not a spec about grammars.
+  const base = newRun(seedWith(templateId, from))
   const roomId = nodeOf(base, templateId)
   return {
     version: SAVE_VERSION,
@@ -38,8 +40,8 @@ function at(templateId: string, run: Partial<RunState> = {}, seed = 4): GameStat
 }
 
 /** In a fight, before the first throw. */
-const facing = (templateId = 'hollow', run: Partial<RunState> = {}, seed = 4): GameState =>
-  reduce(at(templateId, run, seed), { type: 'FIGHT' })
+const facing = (templateId = 'hollow', run: Partial<RunState> = {}, from = 4): GameState =>
+  reduce(at(templateId, run, from), { type: 'FIGHT' })
 
 const combatOf = (state: GameState): CombatState => state.run!.combat!
 
@@ -328,11 +330,14 @@ describe('SCORE', () => {
       landed: true,
       enemyHpBefore: 70,
       enemyHpAfter: 12,
-      enemyHit: 3,
+      // **The Gnawing's own rule, on round one: FAR, which breaks two.** It used
+      // to be a flat three; a break is a ladder now and `breakFor` is the one
+      // authority on which rung a turn is standing on.
+      enemyHit: 2,
       block: 0,
-      retaliation: 3,
+      retaliation: 2,
       bonesBefore: 30,
-      bonesAfter: 27,
+      bonesAfter: 28,
     })
   })
 })

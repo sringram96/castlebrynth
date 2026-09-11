@@ -64,14 +64,14 @@ import {
   totalsFor,
 } from '../combat/loadout.js'
 import { itemDie, talisman as talismanById } from '../content/dice.js'
-import { stripSaid } from '../content/faces.js'
+import { ladderChips, stripSaid } from '../content/faces.js'
 import { HAND_DICE, MAX_ROLLS } from '../combat/roll.js'
 import type { DieValue } from '../combat/roll.js'
 import { enemy as enemyById } from '../content/enemies.js'
 import { roomAt } from '../game/map.js'
 import { exitsOpen, stateOf } from '../content/interactions.js'
 import type { AttackRecord, CombatState, GameState, RunState } from '../game/state.js'
-import { button, dieButton, dieFace, el, place, seat, seatBed } from './components.js'
+import { button, dieButton, dieFace, el, faceStripView, place, seat, seatBed } from './components.js'
 
 /**
  * Which dice the player is holding, and for which throw.
@@ -798,13 +798,24 @@ function renderWell(
   // would spend the one region that can make a fork legible.
   const here = roomAt(run)
 
-  if (here.enemy && !run.cleared.includes(run.roomId)) {
+  if (here.enemy && !run.cleared.includes(here.instanceId)) {
     const e = enemyById(here.enemy)
     const box = el('div', 'brief')
     box.id = 'brief'
     box.append(el('span', 'brief-name', e.name))
     box.append(el('p', 'well-line', e.tell))
     if (e.rule) box.append(el('p', 'well-rule', e.rule))
+    // **The card prints the ladder before the first ROLL.** Every rule a monster
+    // has is on screen before anything is committed, and a ladder is numbers, so
+    // it is drawn as chips rather than written out — the same statement the tray's
+    // live figure is a position on.
+    const ladder = ladderChips(here.enemy)
+    if (ladder.length > 0) {
+      const strip = faceStripView(ladder)
+      strip.classList.add('ladder')
+      strip.id = 'brief-ladder'
+      box.append(strip)
+    }
     tray.well.append(box)
     return
   }

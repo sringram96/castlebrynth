@@ -55,6 +55,19 @@ export const TERRITORY_CARD: Readonly<Record<string, string>> = {
   deep: 'THE DEEP',
 }
 
+/**
+ * What a hint cut into a wall says.
+ *
+ * The second of the game's two lines about the treasure, and like the first it
+ * says **that** rather than **where**. *We hide places, never rules*: what the
+ * Hand of Saint Orrin does is printed on it where it lies, and which of two
+ * alcoves it is chained in is the one thing a run is allowed not to know.
+ *
+ * One string, so the grammars cannot each write their own version of it.
+ */
+export const HINT_CARVING =
+  'A hand scratched into the stone with too many fingers. Somebody came down here for it.'
+
 /** The strip's own two lines. It is a record, and it says so. */
 export const STRIP_HEAD = 'THE WAY DOWN'
 export const STRIP_AHEAD = 'Ahead of me: nothing I have seen.'

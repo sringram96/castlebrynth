@@ -45,10 +45,25 @@ export interface RoomRequest {
   readonly recentTemplates?: readonly string[]
 }
 
+/**
+ * Every stretch of the descent a template belongs in.
+ *
+ * One statement of it, read by `fits` and by `validateRunMap`, so a room allowed
+ * to stand in the chapel cannot be a room the validator then calls misplaced.
+ * A template that declares nothing belongs in exactly one territory, which is
+ * every room authored before the carver.
+ */
+export function territoriesOf(template: RoomTemplate): readonly Territory[] {
+  return template.territories ?? [template.territory]
+}
+
 /** Whether one authored place can take one request. Pure, and total. */
 export function fits(template: RoomTemplate, request: RoomRequest): boolean {
   if (template.role !== request.role) return false
-  if (template.territory !== request.territory) return false
+  // Membership, not equality. The extension is what lets one honest painting
+  // stand in two stretches of the descent; it is not a loosening, because a
+  // template with no `territories` still names exactly one.
+  if (!territoriesOf(template).includes(request.territory)) return false
 
   const { topology } = template
   if (request.entrances < topology.minEntrances || request.entrances > topology.maxEntrances) return false

@@ -23,14 +23,17 @@
  * roll and a chest's relic: record the result, never recompute the event.
  */
 
+import { BARGAIN_POOL, CARVER_POOL, DIE_PRICE, TREASURE_DIE } from '../content/dice.js'
+import type { CoreDieId } from '../content/dice.js'
 import { resolveEncounter, resolveRoom } from '../content/roomResolver.js'
 import type { RoomRequest } from '../content/roomResolver.js'
-import { DESCENT, way } from '../content/runPlans.js'
-import type { PlanEdge, RoomSlot, RunPlan } from '../content/runPlans.js'
-import type { Territory } from '../content/roomTypes.js'
+import { GRAMMARS, way } from '../content/runPlans.js'
+import type { PlacementId, PlanEdge, RoomSlot, RunPlan } from '../content/runPlans.js'
+import type { RoomTemplate, Territory } from '../content/roomTypes.js'
+import { HINT_CARVING } from '../content/text.js'
 import { Rng } from './rng.js'
 import { validateRun } from './mapValidation.js'
-import type { MapExit, RunMap, RunRoom } from './map.js'
+import type { DieOffer, MapExit, RunMap, RunRoom } from './map.js'
 
 /**
  * Where the map's draws sit, clear of every other stream in the run.
@@ -42,20 +45,102 @@ import type { MapExit, RunMap, RunRoom } from './map.js'
 const MAP_SALT = 0x5b2d_0f11
 
 /**
+ * Where the choice of grammar sits, clear of every room draw.
+ *
+ * A salt of its own, so that adding a fourth grammar — or changing how the
+ * treasure is chosen — cannot perturb which rooms a seed lands on.
+ */
+const GRAMMAR_SALT = 0x2f91_77c3
+
+/**
  * The shape of a run.
  *
- * One authored grammar today, and the seed is not yet consulted: the first
- * director's job is to reproduce the descent the slice already had, so that
- * the architecture is what changed and the game is not. The parameter is here
- * because the *next* thing this function does is choose among grammars, and a
- * signature that had to change for that would mean every caller did too.
+ * **Three grammars, and the seed chooses.** The parameter was put here by the
+ * first director against exactly this day: a run is no longer one shape with two
+ * branches in it, it is one of three descents that agree on almost nothing
+ * except that the keeper and the way out are in the threshold.
+ *
+ * Drawn off a salt of its own rather than off the map's generator, so that the
+ * grammar choice and the room draws cannot move each other.
  */
-export function generateRunPlan(_seed: number): RunPlan {
-  return DESCENT
+export function generateRunPlan(seed: number): RunPlan {
+  const rng = new Rng(((seed >>> 0) ^ GRAMMAR_SALT) >>> 0)
+  return GRAMMARS[rng.int(GRAMMARS.length)]!
 }
 
 /** How many rooms back the resolver tries not to repeat itself. */
 const RECENT = 2
+
+/**
+ * Draw `count` distinct dice out of a pool, without replacement.
+ *
+ * Seeded, never shuffled, and without replacement inside one room: the Carver
+ * never has the same die twice on one table, because two of a thing at one price
+ * is not a choice. A pool shorter than `count` simply offers fewer, which is the
+ * same answer `drawWeighted` gives a reward pool that runs dry.
+ */
+function drawDice(pool: readonly CoreDieId[], count: number, rng: Rng): readonly CoreDieId[] {
+  const left = [...pool]
+  const out: CoreDieId[] = []
+  while (out.length < count && left.length > 0) out.push(left.splice(rng.int(left.length), 1)[0]!)
+  return out
+}
+
+/**
+ * Everything standing in one room, seated.
+ *
+ * Two sources and one seating rule. The room's own `exchange` is a fact about the
+ * place — the Bone Carver has two dice on the altar because that is what it is —
+ * and the plan's `placements` are the director's. Both take **spare seats**, in
+ * that order, and a `hint-carving` takes none because it is prose.
+ *
+ * Nothing here invents a position. If a room was asked to hold more than its
+ * picture has seats for, the extras are dropped and `validateRunMap` fails the
+ * run by name — a seat the view had to make up would be a press on a wall.
+ */
+function seatThings(
+  chosen: RoomTemplate,
+  placements: readonly PlacementId[],
+  rng: Rng,
+): { readonly dice: readonly DieOffer[]; readonly carvings: readonly string[] } {
+  const seats = chosen.spareSeats ?? []
+  const wanted: { readonly die: CoreDieId; readonly price?: number; readonly kind: DieOffer['kind'] }[] = []
+  const carvings: string[] = []
+
+  // What the room sells, first, so the Carver's own table is seated before
+  // anything a plan stands beside it.
+  if (chosen.exchange) {
+    for (const die of drawDice(CARVER_POOL, chosen.exchange.count, rng)) {
+      wanted.push({ die, price: chosen.exchange.price, kind: 'carver' })
+    }
+  }
+
+  for (const placement of placements) {
+    switch (placement) {
+      case 'bargain-die':
+        // One specific die, chained, priced. **Never generic power** — there is
+        // no shape of placement that could express it.
+        wanted.push({ die: drawDice(BARGAIN_POOL, 1, rng)[0] ?? 'bone', price: DIE_PRICE, kind: 'bargain' })
+        break
+      case 'treasure':
+        // Unpriced, and the one die that is never in either pool. Its price is
+        // the road to it.
+        wanted.push({ die: TREASURE_DIE, kind: 'treasure' })
+        break
+      case 'hint-carving':
+        carvings.push(HINT_CARVING)
+        break
+    }
+  }
+
+  const dice: DieOffer[] = []
+  wanted.forEach((thing, index) => {
+    const seat = seats[index]
+    if (!seat) return
+    dice.push({ ...thing, seat: seat.id, at: seat.at })
+  })
+  return { dice, carvings }
+}
 
 /**
  * The plan, filled with authored places.
@@ -74,11 +159,22 @@ export function materializeRunPlan(plan: RunPlan, seed: number): RunMap {
   const nodes: Record<string, RunRoom> = {}
   const recent: string[] = []
 
+  // **Which of the two candidates is the treasure, for this seed.** Drawn first,
+  // before any room, so the answer is a property of the descent rather than of
+  // how many dice happened to be drawn on the way to it. The loser keeps the
+  // ordinary chained bargain it declared — so one mouth of that fork holds the
+  // Hand and the other holds a die, and nothing on screen says which.
+  const treasure = plan.treasureCandidates[rng.int(plan.treasureCandidates.length)]!
+
   for (const slot of plan.nodes) {
     const ways = outgoing(slot.id)
     const request = requestFor(slot, incoming(slot.id).length, ways.length, recent)
     const chosen = resolveRoom(request, rng)
     const enemyId = resolveEncounter(chosen, slot, rng)
+    const placements = (slot.placements ?? []).map((p) =>
+      slot.id === treasure && p === 'bargain-die' ? ('treasure' as PlacementId) : p,
+    )
+    const { dice, carvings } = seatThings(chosen, placements, rng)
 
     // The ways out, in the plan's order, each bound to the anchor at the same
     // position in the room's picture. First out of a junction is the primary
@@ -101,10 +197,16 @@ export function materializeRunPlan(plan: RunPlan, seed: number): RunMap {
       id: slot.id,
       templateId: chosen.id,
       role: chosen.role,
-      territory: chosen.territory,
+      // What the **slot** asked for, not the template's first territory: a
+      // picture that honestly reads in two stretches of the descent is standing
+      // in the one this moment is in. `territoriesOf` is what holds the two
+      // together, in `mapValidation.ts`.
+      territory: slot.territory ?? chosen.territory,
       depth: slot.depth,
       exits,
       ...(enemyId ? { enemyId } : {}),
+      ...(dice.length > 0 ? { dice } : {}),
+      ...(carvings.length > 0 ? { carvings } : {}),
     }
 
     recent.unshift(chosen.id)

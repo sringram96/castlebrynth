@@ -26,8 +26,10 @@
  */
 
 import { scoreName } from '../combat/hands.js'
+import { enemy } from './enemies.js'
 import {
   CORE_DICE,
+  CORE_RULE,
   IRON_DICE,
   ITEM_DICE,
   TALISMANS,
@@ -45,10 +47,10 @@ import type { CoreDieId, IronDieId, ItemDieId, TalismanId } from './dice.js'
  * how a cost looks, and it is the only place that decides it. `value` is an
  * ordinary d6 pip count, `block` is iron held off the answer, `flat` is added
  * after the multiply, `cost` is paid in bones, `blank` is a real face and the
- * reason an item die is upside rather than a tax, and `line` is a named hand a
- * talisman answers to.
+ * reason an item die is upside rather than a tax, `line` is a named hand a
+ * talisman answers to, and `rung` is one step of a monster's break ladder.
  */
-export type FaceChipKind = 'value' | 'block' | 'flat' | 'blank' | 'cost' | 'line'
+export type FaceChipKind = 'value' | 'block' | 'flat' | 'blank' | 'cost' | 'line' | 'rung'
 
 export interface FaceChip {
   readonly kind: FaceChipKind
@@ -91,6 +93,29 @@ const talismanStrip = (id: TalismanId): readonly FaceChip[] => {
     ...t.lines.map((line) => ({ kind: 'line', text: scoreName(line) }) as const),
     { kind: 'flat', text: `+${t.bonus}` } as const,
   ]
+}
+
+/**
+ * A monster's break ladder, as chips.
+ *
+ * **The strip system, extended rather than a second one invented.** A ladder is
+ * the same kind of statement a die's faces are — *these are the numbers this
+ * thing can do to you* — so it is drawn the same way, in the same component, from
+ * the same shape of data. What it replaces is prose: `FAR 2 · MID 4 · CLOSE 8`
+ * written out as a sentence would be the ladder said twice, and a number written
+ * twice is a number that will disagree with itself.
+ *
+ * An enemy with no rule gets nothing rather than a one-chip strip of its plain
+ * damage: the figure is already on the tray, and a ladder with one rung is not a
+ * ladder.
+ */
+export function ladderChips(id: string): readonly FaceChip[] {
+  const rule = enemy(id).breakRule
+  if (!rule) return []
+  return rule.rungs.map((rung) => ({
+    kind: 'rung' as const,
+    text: rung.label ? `${rung.label} ${rung.breaks}` : String(rung.breaks),
+  }))
 }
 
 /** The strip for one carried thing, whatever kind of thing it is. */
@@ -144,8 +169,13 @@ export interface CarriedThing {
 
 export function carried(id: string): CarriedThing | undefined {
   switch (familyOf(id)) {
-    case 'core':
-      return CORE_DICE[id as CoreDieId]
+    case 'core': {
+      // A core die has **no rule field** — see `content/dice.ts` — so its card
+      // is built here from the one sentence every core die shares. The strip
+      // beside it is what differs, which is the whole of what a crooked die is.
+      const die = CORE_DICE[id as CoreDieId]
+      return die ? { id: die.id, name: die.name, rule: CORE_RULE, flavour: die.flavour } : undefined
+    }
     case 'iron':
       return IRON_DICE[id as IronDieId]
     case 'item':
@@ -173,4 +203,26 @@ export function stripSaid(id: string): string {
   const chips = stripFor(id)
   if (!chips) return ''
   return chips.map((chip) => (chip.kind === 'blank' ? 'blank' : chip.text)).join(', ')
+}
+
+/**
+ * Which carried thing a say line is about, if it is about one.
+ *
+ * The same seam `rewards.ts` opens for a found reward, widened to **everything
+ * with faces** — because a crooked die lying on the Carver's table is not a
+ * reward, and the law is still that a found thing states its exact mechanic
+ * where it lies. A match against the four tables, longest name first, never a
+ * parse of English: the name it looks for is the string the reducer printed out
+ * of the same record.
+ */
+export function carriedSaidIn(say: string): string | undefined {
+  const everything = [
+    ...Object.values(CORE_DICE),
+    ...Object.values(IRON_DICE),
+    ...Object.values(ITEM_DICE),
+    ...Object.values(TALISMANS),
+  ]
+  return [...everything]
+    .sort((a, b) => b.name.length - a.name.length)
+    .find((thing) => say.startsWith(thing.name))?.id
 }

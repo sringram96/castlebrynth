@@ -40,18 +40,23 @@
  * it is is written beside it.
  */
 
+import { DIE_PRICE } from './dice.js'
 import type { RoomTemplate } from './roomTypes.js'
 
 export type {
   Composition,
   Detail,
+  ExchangeOffer,
   ExitAnchor,
+  Furniture,
   Interactable,
   LootAnchor,
+  PlacementId,
   Ritual,
   RoomRole,
   RoomTemplate,
   RoomTopology,
+  Seat,
   Territory,
   ThreatBand,
 } from './roomTypes.js'
@@ -79,9 +84,13 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
         says: 'Candles. Fresh ones, burning. Something down here still keeps a schedule.',
       },
       {
+        // The first of the two hints, and the quieter one. It says a thing
+        // exists and it does not say where — which is the whole contract: *we
+        // hide places, never rules*, and where the treasure is standing is a
+        // place. The other hint is cut at the transition, by the plan.
         id: 'skull',
         at: { x: 0.42, y: 0.86 },
-        says: 'A skull on the floor. Small. It has been here longer than the candles.',
+        says: 'A skull on the floor. Small. It has been here longer than the candles. Under the skull, the same hand, scratched smaller.',
       },
       {
         id: 'far-door',
@@ -122,6 +131,10 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
     // Under the arch of skulls and above the worn step: the gap the passage
     // actually goes through, between the two things you can look at.
     exitAnchors: [{ id: 'under-the-arch', at: { x: 0.5, y: 0.5 } }],
+    // Low on the left wall, clear of the arch above and the step below. A
+    // carving is prose and a tap, so it is sized as a LOOK ring and seated like
+    // one; a room with no `carvingAt` simply cannot carry a hint.
+    carvingAt: { x: 0.2, y: 0.62 },
     topology: THROUGH,
   },
 
@@ -402,6 +415,9 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
       },
     ],
     exitAnchors: [{ id: 'on-together', at: { x: 0.5, y: 0.8 } }],
+    // Above the meeting, on the pillar the two ways divide around — the one
+    // piece of wall in this picture nothing else is standing on.
+    carvingAt: { x: 0.5, y: 0.3 },
     topology: { minEntrances: 2, maxEntrances: 2, minExits: 1, maxExits: 1 },
   },
 
@@ -468,6 +484,122 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
     exitAnchors: [{ id: 'chapel-out', at: { x: 0.5, y: 0.3 } }],
     lootAt: [{ id: 'in-the-recess', at: { x: 0.823, y: 0.62 } }],
     find: 'grave-candle',
+    topology: THROUGH,
+  },
+
+  /**
+   * The Bone Carver: the first room in the game where the **hand** is sold.
+   *
+   * Its role is `exchange`, which is a new word and earns it: a `find` is a
+   * thing lying there, a `toll` is a price for the way on, and this is a price
+   * for *a specific object you can read before you pay for it*. The bargain law
+   * is the same law — never generic power, only a particular die that fits the
+   * build or does not — and this is the law with a shopkeeper.
+   *
+   * It declares **two territories**. A table of sorted bones reads in the
+   * ossuary and it reads in a dead chapel, and `territories` is what lets the
+   * one honest painting stand in either rather than be copied under two names.
+   *
+   * **Built entirely from plates that already exist**: the Choir's backdrop and
+   * the Reliquary's altar, standing in for a worktable. The two dice on it are
+   * nameplates, which is the pattern every unpainted in-world object in this
+   * game uses. Nothing was authored, generated, traced, recoloured or cropped —
+   * a composed Carver painting is owed, and is recorded under
+   * `POLISH_PROGRESS.md` § HUMAN ART REQUIRED.
+   *
+   * It holds nothing shut and it has no press of its own. Walking away is legal
+   * at every moment and both dice stay on the table, which is the whole of what
+   * makes the price a decision rather than a gate.
+   */
+  carver: {
+    id: 'carver',
+    name: 'The Bone Carver',
+    role: 'exchange',
+    territory: 'ossuary',
+    territories: ['ossuary', 'chapel'],
+    composition: 'altar',
+    tags: [],
+    art: 'choir',
+    arrival:
+      'Somebody works here. Bones on the table, sorted by what they are good for. A price scratched beside each.',
+    details: [
+      {
+        id: 'table',
+        at: { x: 0.18, y: 0.78 },
+        says: 'A table of sorted bones. Longest on the left, split ones on the right. Somebody has a system.',
+      },
+      {
+        id: 'prices',
+        at: { x: 0.82, y: 0.78 },
+        says: 'Numbers scratched into the stone beside each one. Three strokes, over and over. Three bones apiece.',
+      },
+      {
+        id: 'knife',
+        at: { x: 0.5, y: 0.86 },
+        focal: true,
+        says: 'The carver is not here. The knife is.',
+      },
+    ],
+    // The altar, standing in for the worktable. Furniture: nothing in the game
+    // can move it, so there is no state behind it and no record of it.
+    furniture: [{ id: 'carver-table', art: 'altar', frame: 'still' }],
+    // Two dice on the table, and the generator decides which two. Seats rather
+    // than `lootAt`, because what stands here is the director's rather than the
+    // room's own machinery's — and the budget counts them whether filled or not.
+    spareSeats: [
+      { id: 'on-the-table-left', at: { x: 0.36, y: 0.6 } },
+      { id: 'on-the-table-right', at: { x: 0.64, y: 0.6 } },
+    ],
+    exchange: { count: 2, price: DIE_PRICE },
+    exitAnchors: [{ id: 'past-the-table', at: { x: 0.5, y: 0.3 } }],
+    topology: THROUGH,
+  },
+
+  /**
+   * The niche: a shell room whose contents are entirely the director's.
+   *
+   * It authors no find, no fight and no machinery. What is in it is a
+   * **placement** — a chained bargain on most runs, and on one branch of one
+   * fork per run, the treasure. That is the point of it: the room is a place the
+   * plan can put something, and which something is what makes two runs through
+   * the same alcove two different rooms.
+   *
+   * `placed` is the tag that keeps it apart from the Reliquary, which is the
+   * other chapel `find`. A plan that wants a worked paying room asks for
+   * `worked`; a plan that wants a shell asks for `placed`.
+   *
+   * **Built from the Deep Way's backdrop and the vault's chain plate.** The
+   * chain has never been painted, so the midground is empty and the room runs as
+   * every unpainted room in this game runs: the verb is a press on the object,
+   * the price is on the verb, and the outcome is in the word band. A composed
+   * niche painting and a chain-in-niche seating are owed, and recorded.
+   */
+  niche: {
+    id: 'niche',
+    name: 'The Niche',
+    role: 'find',
+    territory: 'threshold',
+    territories: ['threshold', 'chapel', 'deep'],
+    composition: 'cramped',
+    tags: ['placed'],
+    art: 'deep',
+    arrival:
+      'A niche cut into the wall and something chained in it. Whoever chained it did not want it walking off.',
+    details: [
+      {
+        id: 'chain',
+        at: { x: 0.2, y: 0.5 },
+        says: 'A short chain, set into the stone at both ends. Somebody meant this to stay exactly here.',
+      },
+      {
+        id: 'plates',
+        at: { x: 0.8, y: 0.5 },
+        says: 'Two iron plates over the mouth of the alcove. They have been forced at and they held.',
+      },
+    ],
+    furniture: [{ id: 'niche-chain', art: 'chain', frame: 'off' }],
+    spareSeats: [{ id: 'in-the-niche', at: { x: 0.5, y: 0.52 } }],
+    exitAnchors: [{ id: 'past-the-niche', at: { x: 0.5, y: 0.26 } }],
     topology: THROUGH,
   },
 

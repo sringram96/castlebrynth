@@ -56,13 +56,13 @@ const animating = (page: Page): Promise<boolean> =>
  * honest shape: every one of them is a thing the run found somewhere.
  */
 const CARRYING = 'items=splinter-fetish&talismans=pair-talisman'
-const FLAT = `?seed=5&room=deep&bones=26&rolls=3&dice=6,6,6,4,4,3&${CARRYING}&iron=5`
+const FLAT = `?seed=1&room=deep&bones=26&rolls=3&dice=6,6,6,4,4,3&${CARRYING}&iron=5`
 
 /** The same, on a seed whose Splinter Fetish comes up on a **cost** face. */
-const COST = `?seed=2&room=deep&bones=26&rolls=3&dice=6,6,6,4,4,3&${CARRYING}&iron=5`
+const COST = `?seed=3&room=deep&bones=26&rolls=3&dice=6,6,6,4,4,3&${CARRYING}&iron=5`
 
 /** The same, with the iron come up **empty**. */
-const BLANK = `?seed=5&room=deep&bones=26&rolls=3&dice=6,6,6,4,4,3&${CARRYING}&iron=0`
+const BLANK = `?seed=4&room=deep&bones=26&rolls=3&dice=6,6,6,4,4,3&${CARRYING}&iron=0`
 
 test.describe('the beats, in order', () => {
   test('resolves the line before the items fire, and answers after the blow', async ({ page }) => {
@@ -185,7 +185,7 @@ test.describe('a cost is a cost', () => {
     // Two bones and a cost face. The pile empties before the blow, so the
     // enemy is untouched and the line is not spent. Revisable ruling,
     // asserted: see docs/COMBAT.md § Costs.
-    await boot(page, `?seed=2&room=deep&bones=2&rolls=3&dice=6,6,6,4,4,3&${CARRYING}&iron=5`)
+    await boot(page, `?seed=3&room=deep&bones=2&rolls=3&dice=6,6,6,4,4,3&${CARRYING}&iron=5`)
     const full = (await state(page)).run!.combat!.enemyHp
 
     await page.locator('.score-entry[data-hand="pair"]').click()

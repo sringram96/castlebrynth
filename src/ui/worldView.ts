@@ -9,16 +9,17 @@
 import { hideEnemy, hideProp, holdWeapon, placeEnemy, showProp, showProps } from '../render/compositor.js'
 import type { World } from '../render/compositor.js'
 import { enemyArt, handArt, isScenePlate, propArt, roomArt, url } from '../render/assets.js'
-import { STAGES, enemy as enemyById, stageForRound, stanceAt } from '../content/enemies.js'
+import { STAGES, breakFor, enemy as enemyById, stageForRound, stanceAt } from '../content/enemies.js'
 import { idlePose } from '../content/enemyPresentation.js'
 import { exitsAvailable, roomAt } from '../game/map.js'
 import { actionFor, platesFor, stateOf } from '../content/interactions.js'
 import { reward, thingSaidIn } from '../content/rewards.js'
-import { stripSaid } from '../content/faces.js'
+import { carriedSaidIn, ladderChips, stripSaid } from '../content/faces.js'
+import { coreDie } from '../content/dice.js'
 import { VERBS } from '../content/text.js'
-import { canTake, lootIn, refusalFor } from '../game/reducer.js'
+import { canClaim, canTake, diceOnOffer, lootIn, refusalFor, refusalForDie } from '../game/reducer.js'
 import type { GameState } from '../game/state.js'
-import { button, el, faceStripFor } from './components.js'
+import { button, el, faceStripFor, faceStripView } from './components.js'
 
 /**
  * How far under a found thing's name its TAKE sits.
@@ -52,6 +53,14 @@ export interface WorldHandlers {
   readonly onGo: (to: string) => void
   /** One of the things lying in this room, picked up. */
   readonly onTake: (index: number) => void
+  /**
+   * A core die on a table or a chain, taken.
+   *
+   * It opens the **picker** rather than committing anything: the hand is six and
+   * nothing sits outside it, so taking a die is choosing which one goes, and that
+   * choice is a beat of its own. Cancel is legal and leaves the die where it lay.
+   */
+  readonly onClaim: (index: number) => void
 }
 
 /**
@@ -140,19 +149,21 @@ export function renderWorld(world: World, state: GameState, handlers: WorldHandl
   // them, in content's order, off the same settled state. Nothing here
   // remembers a frame: the picture is `platesFor` of the save and nothing
   // else, so a reload mid-puzzle and never having left are the same room.
+  // Furniture first, then the worked objects. Furniture is a plate a room simply
+  // has — the Carver's table, the chain across a niche — with no state behind it
+  // and nothing in the game that can move it; declaring it beside the room's copy
+  // is honest, and a `RoomInteractionState` with no transitions in it would not be.
   const worked = stateOf(run.rooms, run.roomId, here.id)
   showProps(
     world,
-    worked
-      ? platesFor(worked)
-          .map((p) => ({ plate: p, art: propArt(p.art, p.frame) }))
-          .filter((x): x is { plate: typeof x.plate; art: NonNullable<typeof x.art> } => x.art !== undefined)
-          .map(({ plate, art }) => ({
-            id: plate.id,
-            src: url(art),
-            ...(plate.look !== undefined ? { look: plate.look } : {}),
-          }))
-      : [],
+    [...(here.furniture ?? []), ...(worked ? platesFor(worked) : [])]
+      .map((p) => ({ plate: p, art: propArt(p.art, p.frame) }))
+      .filter((x): x is { plate: typeof x.plate; art: NonNullable<typeof x.art> } => x.art !== undefined)
+      .map(({ plate, art }) => ({
+        id: plate.id,
+        src: url(art),
+        ...(plate.look !== undefined ? { look: plate.look } : {}),
+      })),
   )
 
   // The knife comes out for the thing in the room, not for the room. Both
@@ -276,6 +287,77 @@ function renderHits(world: World, state: GameState, handlers: WorldHandlers): vo
     world.hits.append(take)
   })
 
+  // The core dice lying in this room, and what each one costs.
+  //
+  // The same two presses a found thing has, and for the same reason: a pill that
+  // names it and reads its faces and its price, and a verb under it that is the
+  // only press that changes the run. What differs is the verb's consequence —
+  // TAKE here opens the **picker**, because the hand is six and nothing sits
+  // outside it, so taking a die is choosing which one goes.
+  //
+  // **A bargain is never lethal.** When the pile is not strictly bigger than the
+  // price there is *no verb at all* — not greyed, absent — and the pill's own
+  // name carries the refusal, which is the sentence that replaces the button.
+  for (const { index, offer } of diceOnOffer(run)) {
+    const die = coreDie(offer.die)
+    const refused = refusalForDie(run, offer)
+    const priced =
+      offer.price === undefined
+        ? 'Not priced. It cost what it cost to get here.'
+        : `${offer.price} bones.`
+
+    const name = button({
+      act: 'look-die',
+      label: die.short,
+      describe: `${die.name}. ${stripSaid(offer.die)}. ${refused ?? priced}`,
+      onPress: () => handlers.onLook(`die:${index}`),
+      className: 'hit hit-focal hit-loot hit-die',
+    })
+    name.dataset['die'] = offer.die
+    name.dataset['dieIndex'] = String(index)
+    name.dataset['offer'] = offer.kind
+    if (offer.price !== undefined) name.dataset['price'] = String(offer.price)
+    name.style.left = `${offer.at.x * 100}%`
+    name.style.top = `${offer.at.y * 100}%`
+    world.hits.append(name)
+
+    if (!canClaim(run, offer)) continue
+    const take = button({
+      act: 'claim',
+      label: VERBS.take,
+      // The price is on the verb before the verb charges. The same contract the
+      // Offertory's slot is held to, said about an object rather than a toll.
+      describe:
+        offer.price === undefined
+          ? `Take the ${die.name} in place of one of my six`
+          : `Break ${offer.price} bones. Take the ${die.name} in place of one of my six`,
+      onPress: () => handlers.onClaim(index),
+      className: 'hit hit-focal hit-take hit-claim',
+    })
+    take.dataset['claimIndex'] = String(index)
+    take.dataset['claimId'] = offer.die
+    take.style.left = `${offer.at.x * 100}%`
+    take.style.top = `${(offer.at.y + LOOT_TAKE_DROP) * 100}%`
+    world.hits.append(take)
+  }
+
+  // What the plan cut into this room's wall. Prose, one tap, no seat, and it
+  // names nowhere: it says somebody came down here for a thing.
+  const carving = here.carvings[0]
+  if (carving && here.carvingAt) {
+    const b = button({
+      act: 'look',
+      label: '',
+      describe: 'Inspect the carving',
+      onPress: () => handlers.onLook('carving'),
+      className: `hit${run.looked.includes('carving') ? ' hit-seen' : ''}`,
+    })
+    b.dataset['detail'] = 'carving'
+    b.style.left = `${here.carvingAt.x * 100}%`
+    b.style.top = `${here.carvingAt.y * 100}%`
+    world.hits.append(b)
+  }
+
   // The ways out, seated on the painted feature each one passes through.
   //
   // **A held exit renders nothing.** Not a greyed arch, not a dimmed label:
@@ -367,14 +449,36 @@ function renderHud(world: World, state: GameState, handlers: WorldHandlers): voi
     bar.append(track)
 
     if (!combat.defeated) {
-      const hits = el('p', 'enemy-hits', `BREAKS ${e.damage}`)
+      // **The live number, off `breakFor`.** Not `e.damage`: a monster's break is
+      // a ladder now, and what the tray prints is the rung the turn in front of
+      // the player is standing on — the Gnawing's as it closes, the Marrow's as
+      // it is worn down. It is derived on every paint and stored nowhere, which
+      // is why it moves the moment the rule does and why a reload finds the same
+      // figure.
+      //
+      // No line has been scored for the turn that is about to happen, so a rule
+      // that reads the line reads as its ordinary rung here — which is exactly
+      // what the Warden's card promises in capitals.
+      const breaks = breakFor(e, combat)
+      const hits = el('p', 'enemy-hits', `BREAKS ${breaks}`)
       hits.id = 'enemy-hits'
-      hits.dataset['damage'] = String(e.damage)
+      hits.dataset['damage'] = String(breaks)
+      if (e.breakRule) hits.dataset['rule'] = e.breakRule.kind
       hits.setAttribute(
         'aria-label',
-        `It breaks ${e.damage} of my bones every attack that does not finish it`,
+        `It breaks ${breaks} of my bones every attack that does not finish it`,
       )
       bar.append(hits)
+
+      // And the whole ladder, as chips, so the number above is a position on
+      // something the player has already read rather than a figure that moved.
+      const ladder = ladderChips(combat.enemyId)
+      if (ladder.length > 0) {
+        const strip = faceStripView(ladder)
+        strip.classList.add('ladder')
+        strip.id = 'enemy-ladder'
+        bar.append(strip)
+      }
     }
 
     // Its rule, in readable text, before anything can be committed. A rule the
@@ -414,7 +518,12 @@ function renderHud(world: World, state: GameState, handlers: WorldHandlers): voi
   // Which thing is derived from the say the reducer wrote, against the reward
   // table itself — see `thingSaidIn`. Nothing here decides anything, and a
   // line about no thing at all gets no chips.
-  const about = run.say ? thingSaidIn(run.say) : undefined
+  // A found reward first, then anything else with faces — which since this wave
+  // includes a crooked die lying on a table. A core die is not a reward and never
+  // will be (fights pay item dice and vials; the build is bought in places), so
+  // the second lookup is what keeps the law true for it: *a found thing states its
+  // exact mechanic where it lies.*
+  const about = run.say ? (thingSaidIn(run.say) ?? carriedSaidIn(run.say)) : undefined
   const strip = about ? faceStripFor(about) : undefined
   if (strip) say.append(strip)
 

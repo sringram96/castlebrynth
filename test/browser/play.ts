@@ -138,6 +138,37 @@ export async function fightItOut(page: Page, maxAttacks = 30): Promise<FightEnd>
 }
 
 /**
+ * Work whatever machinery this room has, in the order it offers it.
+ *
+ * **Real presses, and each verb pressed once.** A room's objects are offered as
+ * the room's state allows — the Reliquary's handle only appears once the bell has
+ * rung and the flame is out, and the Offertory's slot only once the candles are
+ * dark — so one pass over the DOM can never reach the last of them. Several passes
+ * can, and pressing each object at most once is what stops the second pass
+ * relighting what the first put out.
+ *
+ * It is deliberately not clever: it does not know any room's order, it reads what
+ * is on screen and presses it. A room whose clues do not actually lead anywhere
+ * would leave the way shut here, which is the failure worth catching.
+ */
+export async function workTheRoom(page: Page, passes = 4): Promise<void> {
+  const pressed = new Set<string>()
+  for (let pass = 0; pass < passes; pass++) {
+    const ids = (await page
+      .locator('[data-act="interact"]')
+      .evaluateAll((els) => els.map((el) => (el as HTMLElement).dataset['interact']!))) as string[]
+    const left = ids.filter((id) => !pressed.has(id))
+    if (left.length === 0) return
+    for (const id of left) {
+      const button = page.locator(`[data-interact="${id}"]`)
+      if ((await button.count()) === 0) continue
+      pressed.add(id)
+      await button.click()
+    }
+  }
+}
+
+/**
  * Pick up whatever is lying in this room, or walk away from it.
  *
  * There is no reward screen to clear. What a fight paid is on the floor of the

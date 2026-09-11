@@ -6,7 +6,7 @@
  */
 
 import { App } from './app/app.js'
-import { applyFixture, hasFixture } from './game/fixture.js'
+import { applyFixture, hasFixture, pinnedSeed } from './game/fixture.js'
 import { load } from './game/save.js'
 import { AssetLoader, criticalAssetsForState } from './render/loader.js'
 
@@ -30,8 +30,23 @@ const motion = new URLSearchParams(search).get('motion') !== '0'
 // `prefers-reduced-motion` is handled beside it, in the stylesheet.
 if (!motion) document.body.dataset['motion'] = 'off'
 
+// And `?plan=` is a third kind of switch again: not a fixture, because on its own
+// it leaves the game at the title with the one press still to make, and not
+// presentation, because it decides what that press builds. There are three
+// grammars now and a journey that walks rooms in order has to be able to say
+// which descent it is walking. See `pinnedSeed`.
+const startSeed = pinnedSeed(search)
+
 const loader = new AssetLoader()
-const app = new App({ root, initial, discarded, persist: !hasFixture(search), motion, loader })
+const app = new App({
+  root,
+  initial,
+  discarded,
+  persist: !hasFixture(search),
+  motion,
+  loader,
+  ...(startSeed !== undefined ? { startSeed } : {}),
+})
 
 // **Only what the first screen needs.** The rest of the game's art is fetched
 // as the player walks towards it — see `render/loader.ts` — so a fifth

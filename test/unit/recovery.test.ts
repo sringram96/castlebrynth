@@ -22,7 +22,7 @@ import type { GameState, RitualRoll, RunState } from '../../src/game/state.js'
 import { BONE_CEILING } from '../../src/content/bones.js'
 import { HAND_DICE } from '../../src/combat/roll.js'
 import { roomAt } from '../../src/game/map.js'
-import { nodeOf } from './where.js'
+import { nodeOf, seedWith } from './where.js'
 
 const play = (state: GameState, ...actions: readonly Action[]): GameState =>
   actions.reduce((s, a) => reduce(s, a), state)
@@ -34,8 +34,10 @@ const play = (state: GameState, ...actions: readonly Action[]): GameState =>
  * of this run's map used it — a test may not invent a room the director did
  * not build.
  */
-const at = (templateId: string, run: Partial<RunState> = {}, seed = 4): GameState => {
-  const base = newRun(seed)
+const at = (templateId: string, run: Partial<RunState> = {}, from = 4): GameState => {
+  // A descent that actually contains the room: there is no Font at all in THE
+  // TITHE, so a spec about the Font asks for a grammar that has one.
+  const base = newRun(seedWith(templateId, from))
   const roomId = nodeOf(base, templateId)
   return {
     version: SAVE_VERSION,
