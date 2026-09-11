@@ -29,6 +29,12 @@ is for. So the run forks, twice, and both mouths are painted in the room you are
 standing in with their labels on them and what is behind them written under
 them.
 
+**Amended: the castle has something you want.** For three waves everything down
+there was payment — a toll, a fight, a price on a verb — and a reel whose every
+room is an invoice is a reel nobody goes *looking* through. So one thing per run
+is put somewhere a run has to choose to go, two lines of prose say it exists, and
+nothing anywhere says where. Descending is no longer only surviving.
+
 Choices are irreversible, and their stakes are **printed before the press**:
 
 > **We hide places, never rules.**
@@ -98,10 +104,51 @@ There is deliberately **no verb for an item die**. Item dice fire automatically
 at SCORE, as a beat in the cascade; adding a press for them was explicitly
 rejected. See `COMBAT.md` § Item dice.
 
+## Three grammars
+
+**A run is one of three descents, and the seed chooses.** They agree on almost
+nothing: where the Font is, whether there is a Font at all, where the place that
+sells dice sits, how many rooms the legs of the last fork carry. The one fixed law
+is that the keeper and the way out are in the threshold.
+
+| | what it is |
+|---|---|
+| **DESCENT** | the slice's original shape, with a room cut into each leg of the Split so the short way carries a certain thing too |
+| **THE LONG WAY** | the Font **first**, before either fight, and the Bone Carver late: you are told your budget before you have spent anything, and then there is nothing to top up with |
+| **THE TITHE** | **no Font at all.** Thirty bones are the whole budget and a bought die is the only way to change fate |
+
+A **fourth** grammar is explicitly not in this build. Three is what makes a run
+stop being one shape with two branches in it; a fourth is a product decision.
+
+### Placements, and the treasure law
+
+A plan may stand things in a room the room knows nothing about. Templates declare
+**spare seats** — pre-measured places in a picture, counted against the
+negative-space budget whether they are filled or not — and the generator seats
+each placement into one. What is seated is then an ordinary in-world object under
+the existing LOOK/TAKE contract.
+
+Three kinds and no framework: a **chained die**, the **treasure**, and a
+**hint carving**, which is prose, takes no seat, and says a thing exists without
+saying where.
+
+**The treasure law**, and all four clauses are asserted:
+
+1. Every grammar names **two candidates**, and they are always on different
+   branches of a fork.
+2. Per seed, **one** of them holds the Hand of Saint Orrin; the other resolves as
+   an ordinary chained bargain.
+3. A treasure is **never on a spine** — some route to a way out does not pass it.
+   A thing every run gets is a step, not a treasure.
+4. It is **unpriced**. Its price is the road to it.
+
+So sometimes the treasure is behind the mouth you did not take, and the strip
+will show you that mouth for the rest of the run.
+
 ## The slice
 
-Thirteen rooms, three fights, one font, three worked rooms, two decision points,
-one ending each way — and four reels through it.
+Thirteen rooms per descent, three fights, two decision points, one ending each
+way — and four reels through each grammar.
 
 ```
                         ┌→ hollow(FIGHT: the Gnawing) ──┐
@@ -225,14 +272,24 @@ engineering one — and note what the reel wave added, which is *placement* and
 not vocabulary: the iron and the talisman already existed and stopped being
 starting equipment.
 
+The crooked bones wave added **no fifth noun either**, and that is the point of
+how it was built. A core die was already one of the four things a run carries; what
+changed is that there are eight of them rather than one, and a core die is still
+**its faces and nothing else** — no rule, no trigger, no keyword. Eight dice are
+eight distributions, not eight mechanics. Likewise an enemy's one rule bends the
+number it already had; it adds no status, no part to tear off and no threshold on
+the player's damage.
+
 **A fresh run starts with six bare bones and nothing else.** Every carried thing
 in the game is now a thing that was found somewhere, which is what makes the
 route the build.
 
-Named bones are gone with the fielding step they modified. When modifiers
-return — unusual dice that change Yahtzee probabilities — they will be built
-for the combat that actually exists, and they will come in through the reward
-screen, which is why that machinery stayed.
+Named bones are gone with the fielding step they modified, and what replaced them
+is **not** a rider taxonomy: the crooked dice change Yahtzee probabilities and
+nothing else, and they come in through the world rather than a screen — a table
+that sells them, an alcove that chains one, and one treasure per run. Fights pay
+item dice and Vials and never a core die, because the build is found in places and
+paid for in bones.
 
 Relics and Charms were already gone. Nothing has been invented to replace any
 of them: a boring reward pool for one combat prototype is preferable to
@@ -257,10 +314,24 @@ contaminating the experiment. See `docs/COMBAT.md` § *What is not here*.
   tutorial problem rather than a depth one. See `docs/COMBAT.md` § *Balance*.
 - **The Warden may now be too hard**, at 25% for the solver at a developed
   pile. Its health total and its damage figure are both first-pass values.
-- **A third fork.** The Cleft and the Split are two decision points and the
-  descent could plainly carry a third. It is **not** in this build. Adding one
-  is a product decision about how much of a run should be unseen, not a
-  director change, and the plan is data so it costs one edit when it is made.
+- **A third fork.** Each grammar has two decision points and could plainly carry
+  a third. It is **not** in this build. Adding one is a product decision about how
+  much of a run should be unseen, not a director change, and the plan is data so
+  it costs one edit when it is made. The same is true of a **fourth grammar**,
+  which is explicitly rejected by the wave that wrote the first three.
+- **The Hand of Saint Orrin measures as a loss at one copy.** `1 1 1 1 6 6` has a
+  lower mean than a plain bone, so the one thing a run goes out of its way for is
+  worth three points *less* than the bone it replaces. It is an archetype piece in
+  a game that can only ever hand you one. Reported and not tuned; the levers are
+  its faces and whether a run may ever hold two, and both are product decisions.
+  See `docs/COMBAT.md` § Balance.
+- **Three bones may be a formality.** The sweep says always-take dominates on two
+  of three grammars at thirty bones. Whether it *feels* like paying is a hand
+  question, pre-registered in `POLISH_PROGRESS.md`.
+- **THE LONG WAY shows the Split's painting twice.** Both of its junctions are
+  chapel junctions and the Split is the only chapel junction painted, so one
+  descent reuses one picture at two moments. Recorded as owed art rather than
+  hidden by a content edit.
 - **The acyclicity assertion is written to be repealed.** Forward-only is this
   wave's law, and `cyclesIn` in `game/mapValidation.ts` plus one `problem` call
   is the whole of it. A loop wave deletes those and argues with the product,
@@ -268,10 +339,11 @@ contaminating the experiment. See `docs/COMBAT.md` § *What is not here*.
 - **Dual-purpose relics.** A found thing does one thing today. Whether a
   talisman should also, say, change what a room offers is the next design
   conversation and is deliberately not started here.
-- **Two rooms are standing in a painting drawn for another one.** The Cleft and
-  the Confluence reuse the Split's picture and the Offertory reuses the Choir's
-  with the Reliquary's furniture in it. Recorded as owed art, gated by a list in
-  `test/unit/assets.test.ts`, and not a licence for a fourth.
+- **Five rooms are standing in a painting drawn for another one.** The Cleft and
+  the Confluence reuse the Split's picture, the Offertory and the Bone Carver reuse
+  the Choir's with the Reliquary's furniture in them, and the niche reuses the Deep
+  Way's with the vault's chain across it. Recorded as owed art, gated by a list in
+  `test/unit/assets.test.ts`, and not a licence for a sixth.
 - **A second worked room per branch.** The right-hand branch has one worked room
   and one press-and-leave transition; the left has a fight and a transition.
   Whether the reel wants more machinery or more fights is a playtest question.

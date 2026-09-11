@@ -1162,3 +1162,137 @@ actually found is recorded at the end of this section.
    the entry hall and one at the transition, and nothing anywhere says where.
    If nobody looks, the hint is decoration and the next lever is the strip — the
    untaken mouth is already drawn there.
+
+---
+
+## What landed
+
+| gate | before (`fd62878`) | after |
+| --- | --- | --- |
+| `npm run typecheck` | clean | clean |
+| `npm test` | 499 tests, 20 files | 564 tests, 21 files |
+| `npm run build` | 103 kB js / 23 kB css | 118 kB js / 24 kB css |
+| `npx playwright test` | 302 passed | 328 passed, 0 skipped |
+| `npm run balance` | 12 invariants green | 16 invariants green, 4 added |
+
+`CHROMIUM_PATH=/opt/pw-browsers/chromium` in this container, as before.
+
+`git diff --stat main -- public/` is empty and `test/unit/untouched.test.ts`
+asserts it against the base on every run. **No pixel was authored.**
+
+### The one defect the harness found
+
+The crooked dice were authored, priced, bought, swapped, seated, validated and
+covered — and then thrown as plain d6s. `ROLL` called `rollDice(6, rng)` and
+never looked at `run.hand`, so every die in the swing table came back at exactly
+the floor and every build measured identically. A distribution does not produce
+that number; a table nobody reads does.
+
+`rollSlot` / `rollHand` / `rerollHand` in `src/combat/roll.ts` read each slot's
+own `faces` table. One draw per slot, the same as before, so a hand of six plain
+bones replays a seed byte for byte — `rng.int(6)` is `rng.int(6)` whichever table
+it indexes. It is recorded here because the *reason* it was caught is worth more
+than the fix: the balance harness is the only thing in the repository that would
+have noticed, and it noticed because its rows are differences rather than
+absolutes.
+
+### Three grammars broke every spec that counted doors
+
+Forty-odd unit tests and sixteen browser tests asserted against a single
+descent's room order — reasonably, because there was one. The fix was not to pin
+a seed everywhere; it was to make each spec say **what it is about**:
+
+- `seedFor(planId)` and `seedWith(templateId)` in `test/unit/where.ts` ask the
+  real generator for a seed that deals the grammar, or a descent that has the
+  room. A loop over seeds still loops over genuinely different runs.
+- `boot()` pins `?plan=descent` by default, which is not a fixture — it changes
+  nothing but the seed a press of DESCEND uses, so the run is still one the game
+  could deal. A spec about another grammar names it.
+- `walkOn` and `wayLabelled` replaced *the room behind this door* with *the word
+  on this mouth*, which is what a player actually has. Both legs of the Split
+  carry a room of their own now, so STAIR and DEEP are stable and what is
+  immediately behind either of them is the grammar's business.
+
+One latent dead test surfaced on the way: the deep-route journey asserted the
+Marrow's Vial raised the count, and only passed because the run died in that
+fight and returned before the assertion ran. The Marrow breaks less the more of
+it is gone now, the run survives, and the claim was finally reached — and was
+wrong, because a dropped Vial lies on the floor until it is picked up.
+
+---
+
+# HUMAN ART REQUIRED — the crooked bones
+
+Four entries. Every one of them is a thing the wave needed and **stopped rather
+than drawing**, per `CLAUDE.md` § *No art in the polish sweep*. The rules, the
+state, the tests and the balance are finished and green; the pictures are not.
+
+## A composed Bone Carver painting
+
+The first room in the game where the **hand** is sold. It is built from the
+Choir's backdrop with the Reliquary's altar standing in for a worktable, and the
+two dice on it are nameplates — the pattern every unpainted in-world object in
+this game uses.
+
+What is wanted is one 480 × 720 scene: a low table or bench of sorted bones,
+longest on the left and split ones on the right, a knife left in the wood, and
+somewhere obvious for two objects to be lying in the middle of it at
+`(0.36, 0.60)` and `(0.64, 0.60)` of the frame. The carver is **not in it**; the
+focal line is *The carver is not here. The knife is.*
+
+Until it lands the room reads — the altar is a plausible table and the verbs sit
+on the objects — and it is recorded in `test/unit/assets.test.ts`'s borrowed-art
+list, which is the gate that keeps the debt from growing quietly.
+
+## A composed niche painting, with the chain seated in it
+
+A shell room whose contents are entirely the director's: a chained die on most
+runs and, on one branch of one fork per run, the treasure. It is built from the
+Deep Way's backdrop, and the `chain` prop family **has never been painted at
+all**, so the midground is empty and the alcove is prose.
+
+What is wanted is one 480 × 720 scene with a cut alcove at `(0.5, 0.52)` deep
+enough to hold an object, two forced iron plates over its mouth, and a short
+chain set into the stone at both ends — and a `chain.off` plate registered to the
+same scene box so the chain can be seated over it.
+
+## In-world die plates
+
+A core die lying on a table or on a chain is a pill with a word on it: `KNUCKLE`,
+`JAW`, `CRACKED`, `HAND`. Eight of them now, and they are the only objects in the
+game a player is asked to *compare* before buying.
+
+What is wanted is eight 64 × 64 transparent plates, one per core die, each
+readable as a bone with its own silhouette — the Knucklebone short and two-lobed,
+the Long Bone long, the Jawbone a jaw. They would be `dice/<id>.png` and the
+nameplate pill stays as the accessible name over them.
+
+Note what is **not** wanted: a plate per face. A core die in the world is an
+object you pick up, not a die mid-throw; its faces are the strip beside it, and
+that strip is already drawn from the die's own table.
+
+## The Hand of Saint Orrin's own plate
+
+The one thing in the game a run goes out of its way for, and it currently wears
+the same pill as everything else. It wants its own 64 × 64 plate and it wants to
+look like treasure: a reliquary hand, too many fingers, the same hand the two
+hint carvings describe.
+
+It is listed separately from the other seven on purpose. The hints say *somebody
+came down here for it*, and a player who walks into the right alcove should know
+from the picture that they found the thing the hints meant.
+
+## Ladder chip housings
+
+`FAR 2 · MID 4 · CLOSE 8` is three palette boxes on a pitch, in the pre-fight
+brief and on the enemy's bar. It is the same owed housing the face chips have
+wanted since the legibility wave, at the same size, and it is named again here
+because a ladder is now on screen for the whole of every fight rather than on a
+card that is read once.
+
+## A second chapel junction painting
+
+`THE LONG WAY` forks twice in the chapel and the Split is the only chapel
+junction anybody has painted, so that grammar shows one picture at two moments.
+Recorded quality debt. A second dividing-passage composition at 480 × 720 closes
+it, and nothing was recoloured or cropped to hide it in the meantime.

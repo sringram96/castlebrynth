@@ -97,10 +97,19 @@ that produces a `GameState`.
 - **No new gameplay noun** — collectible species, status family, screen mode,
   UI panel — without a product decision.
 - **The player has no separate HP field: `run.bones` is life.** Enemies
-  intentionally *do* have explicit HP and explicit fixed damage, and both are
-  on screen before anything is committed. Combat complexity belongs in the six
-  rolled dice, the hand they make and the loadout that rolls beside them — not
-  in status or attack-script subsystems.
+  intentionally *do* have explicit HP and explicit damage, and both are on
+  screen before anything is committed — damage as a **printed ladder** with one
+  rung live, and `breakFor` in `content/enemies.ts` is the only thing that may
+  compute which rung a turn is on. Combat complexity belongs in the six rolled
+  dice, the hand they make and the loadout that rolls beside them — not in
+  status or attack-script subsystems.
+- **A core die is its faces and nothing else.** No rule, no trigger, no keyword,
+  and every face an integer 1–6. There are eight of them; nothing outside
+  `content/dice.ts` knows how many. A crooked die changes what the throw comes
+  up with and never what the throw means.
+- **A bargain is a specific die, priced before the press, and never lethal.** The
+  hand is six and nothing sits outside it: taking one means giving one up, in the
+  same transition. The picker is presentation-local and cancel charges nothing.
 - **Bones are health, and only health.** An attack throws **six**, always, at
   thirty bones and at one. `min(6, run.bones)` is repealed: what a wound costs
   is exchanges, not dice, because the run's progression is *replacement* — a
@@ -148,4 +157,7 @@ testable: `?room=gate&bones=4&mode=combat`, `?mode=dead`, `?rolls=1`,
 `?offertory=paid`, `?vault=solved`. `?room=` names an authored template and
 stands you in the first room of the run that used it; `?node=a8b` names one
 exact room.
+`?plan=descent|long-way|tithe` pins which of the three **grammars** a press of
+DESCEND builds, by choosing the lowest seed that produces it. It is not a fixture
+on its own: the run is still one the game could have dealt.
 See `src/game/fixture.ts`.
