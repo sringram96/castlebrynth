@@ -32,7 +32,17 @@ describe('the save is untouched', () => {
   })
 })
 
-/** The base this wave was cut from, whichever name the checkout has for it. */
+/**
+ * The base this wave was cut from, whichever name the checkout has for it.
+ *
+ * CI checks out a pull request **shallow**, so neither `origin/main` nor
+ * `main` exists there and the assertion below would quietly become a no-op on
+ * the one machine everybody reads the verdict from. So a shallow fetch of the
+ * base is the last resort: diffing two trees needs both commits present and
+ * nothing else, not a shared history. A checkout that cannot reach the base at
+ * all — offline, or no remote — answers nothing, and the tests say so rather
+ * than pretending to have checked.
+ */
 function baseRef(): string | undefined {
   for (const ref of ['origin/main', 'main']) {
     try {
@@ -42,7 +52,13 @@ function baseRef(): string | undefined {
       continue
     }
   }
-  return undefined
+  try {
+    execSync('git fetch --depth=1 origin main', { stdio: ['ignore', 'ignore', 'ignore'] })
+    execSync('git rev-parse --verify --quiet FETCH_HEAD', { stdio: ['ignore', 'pipe', 'ignore'] })
+    return 'FETCH_HEAD'
+  } catch {
+    return undefined
+  }
 }
 
 describe('no pixel was authored', () => {
