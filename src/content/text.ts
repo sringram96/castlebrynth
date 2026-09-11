@@ -7,11 +7,36 @@
  * or fewer, and they live next to the code that dispatches them.
  */
 
-export const TITLE_LINE = 'Down there somewhere. He went down there.'
+/**
+ * The premise, and it is stated exactly once here and once in the first room.
+ *
+ * **Bone remembers.** That is the only strange thing about this place. The
+ * thirty in the pile are what he still knows; what breaks them takes what was
+ * in them; and at zero he does not die, he stops knowing why he came down and
+ * walks back to the stair.
+ *
+ * It is the reason three otherwise arbitrary laws are the way they are — a
+ * throw is always six because the pile was never the ammunition, the pile and
+ * the loadout are separate because tools are not memory, and there is no way
+ * back up because the descent is what costs him. None of that is said out
+ * loud anywhere: the lines below state the situation and the mechanics state
+ * themselves, which is the same division of labour the rest of this file keeps.
+ */
+export const TITLE_LINE = 'I am looking for someone. I still know that much.'
+/** A save from a build that no longer exists. It reads as the same affliction. */
 export const TITLE_STALE = 'Whatever I was doing before, I have lost the thread of it. Start again.'
 
-export const DEATH_LINE = 'Dark. Then nothing. Then the stair again.'
-export const COMPLETE_LINE = 'Out. Carrying more than I came in with, and I am going back down.'
+/**
+ * Zero bones, and **it is not a death**.
+ *
+ * Nothing killed him. He ran out of the thing he was using to know why he was
+ * down there, and he went back up. The screen it sits on is headed with what
+ * actually happened rather than with a death, because a game that says *you
+ * died* when nobody died is lying in the one place it cannot afford to.
+ */
+export const DEATH_LINE = 'I cannot remember what I came down for. Dark, and then the stair again.'
+/** Out of the door, which is not the same as having found him. */
+export const COMPLETE_LINE = 'Out. I did not find him, and I still know to look.'
 
 /** Controls. Plain verbs, two words or fewer. */
 export const VERBS = {

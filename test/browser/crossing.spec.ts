@@ -333,6 +333,27 @@ test.describe('a crossing is one movement, not an animation and a cut', () => {
     expect(frames[frames.length - 1]!.scale).toBe(1)
   })
 
+  test('comes to rest before the sequence takes the class off it', async ({ page }) => {
+    // The margin, asserted rather than assumed. `still` removes `.arriving`,
+    // and if the settle is still running when that happens the transform drops
+    // to none in one frame — a snap, under no black, in plain sight. It is not
+    // theoretical: at the original 420ms against a 470ms window it reproduced
+    // about once in four hundred browser tests.
+    //
+    // So: by the last frame that still carries the class, the movement must
+    // already be over. That holds the CSS duration and the two beats in
+    // `CROSSING` to each other from the outside, wherever either one is edited.
+    await boot(page, '?room=entry', { motion: true })
+    await recordCrossing(page)
+    await act(page, 'go').click()
+    await settled(page)
+
+    const frames = await framesOf(page)
+    const last = frames.filter((f) => f.cls.includes('arriving')).at(-1)
+    expect(last, 'the arrival never took over the movement').toBeDefined()
+    expect(last!.scale, 'the settle was still running when the class was pulled').toBe(1)
+  })
+
   test('closes the void over frames rather than in one', async ({ page }) => {
     // A cut through black, still — the two rooms are never on screen together —
     // but a cut does not have to arrive as a pop. The void used to be a
@@ -347,17 +368,32 @@ test.describe('a crossing is one movement, not an animation and a cut', () => {
     // exist somewhere passes on a void that slams shut and then fades open,
     // which is half the defect and reads as the worse half: the moment the room
     // is taken away is the one the eye is already on.
-    let closing = 0
-    let lifting = 0
-    for (let i = 1; i < frames.length; i++) {
-      const now = frames[i]!.veil
-      const before = frames[i - 1]!.veil
-      if (now <= 0 || now >= 1) continue
-      if (now > before) closing++
-      if (now < before) lifting++
-    }
-    expect(closing, 'the void slammed shut in a single frame').toBeGreaterThan(2)
-    expect(lifting, 'the void vanished in a single frame').toBeGreaterThan(2)
+    // **A partial frame is the discriminator, and one is enough.** Counting
+    // several is a bet on frame rate that a loaded four-worker run loses: a
+    // 240ms fade sampled at 100ms frames yields two partial frames, not four,
+    // and the test starts failing for the browser's reasons rather than the
+    // page's. With `transition: none` the computed opacity is only ever exactly
+    // 0 or 1 — a hard cut cannot produce a fractional sample at any frame rate —
+    // so one in each direction separates a fade from a cut completely.
+    const partial = (rising: boolean): typeof frames =>
+      frames.filter((f, i) => {
+        if (i === 0 || f.veil <= 0 || f.veil >= 1) return false
+        return rising ? f.veil > frames[i - 1]!.veil : f.veil < frames[i - 1]!.veil
+      })
+
+    const closing = partial(true)
+    const lifting = partial(false)
+    expect(closing.length, 'the void slammed shut in a single frame').toBeGreaterThanOrEqual(1)
+    expect(lifting.length, 'the void vanished in a single frame').toBeGreaterThanOrEqual(1)
+
+    // And the second, independent signal: the lift takes real time on the frame
+    // clock. Nominally 240ms, so half of it is a floor a hard cut could never
+    // clear however badly the browser is behaving.
+    const opaque = frames.filter((f) => f.veil >= 1).at(-1)
+    const clear = frames.find((f, i) => i > 0 && f.veil <= 0 && frames[i - 1]!.veil > 0)
+    expect(opaque, 'the void never went solid').toBeDefined()
+    expect(clear, 'the void never came off').toBeDefined()
+    expect(clear!.t - opaque!.t, 'the void came off faster than a fade could').toBeGreaterThan(120)
   })
 
   test('and motion off still has no crossing at all', async ({ page }) => {

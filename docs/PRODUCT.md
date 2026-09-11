@@ -6,16 +6,59 @@ Read time: five minutes.
 ## The pitch
 
 > Castlebrynth is a portrait pixel-horror roguelike where you descend through
-> hand-authored rooms carrying a pile of thirty bones. In a fight you throw up
-> to six at a time, hold and reroll them into Yahtzee-like hands, and turn the
-> total of the dice through the hand's multiplier into damage. Every named hand
-> can be spent once per fight. If the thing survives, it breaks a fixed number
-> of your bones. As the pile gets thin, so does your hand.
+> hand-authored rooms carrying a pile of thirty bones. In a fight you throw
+> **six**, hold and reroll them into Yahtzee-like hands, and turn the total of
+> the dice through the hand's multiplier into damage. Every named hand can be
+> spent once per fight. If the thing survives, it breaks a fixed number of your
+> bones — and the pile is what you have left, never what you throw.
 
 The whole of the fight is four sentences. **The numbers are my power. The
 pattern makes that power hit harder. Each good pattern goes once. If it
 survives, I know exactly what it costs me.** Everything else in the system
 exists to make those four legible.
+
+Two sentences of that pitch were stale and are corrected above: a throw is
+**six, always**, and the hand does not narrow as the pile thins — `min(6,
+run.bones)` was repealed when the run's progression became *replacement*. The
+old wording survived here after the code stopped being true, which is the
+failure mode this document exists to prevent.
+
+## The errand
+
+**Bone remembers.** That is the only strange thing about this place, it is
+stated once on the title screen and once in the first room, and everything else
+follows from it.
+
+You came down looking for someone. The thirty bones in the pile are what you
+still know — and what breaks one takes what was in it. **At zero you do not
+die. You stop knowing why you came down, and you walk back to the stair.**
+
+This is a re-reading of the machinery rather than an addition to it, and it
+adds no gameplay noun, no screen and no mechanic. What it buys is that three
+laws stop being assertions and start being consequences:
+
+- **A throw is always six**, at thirty bones and at one, because the pile was
+  never the ammunition. The six are casting-bones — tools, kept as a set,
+  swapped one-for-one at the Carver. The thirty are what you have left to lose.
+  `src/content/text.ts` has said *"bones are what I have left, not what I
+  throw"* since the pile was built; the story is what that sentence means.
+- **There is no way back up**, because the descent is what costs you. Going
+  deeper is how you find him and going deeper is what makes you forget him,
+  and that tension is the only question the run ever asks.
+- **The map shows what you walked and nothing else.** *"Ahead of me: nothing I
+  have seen"* is not a missing minimap. It is the affliction, on screen.
+
+Two pieces of copy that predate the story now carry it and must not be
+softened: the Font's *"never one that had a name"*, and the ending screens,
+which say whether the **errand** survived rather than whether the run did.
+`test/unit/copy.test.ts` § *the run says what it is for* and
+`test/browser/errand.spec.ts` hold both.
+
+Three things are deliberately unanswered, and are recorded here so that
+answering one is a decision rather than a drift: **you never find him** in this
+slice, **he is never named** — the narrator cannot remember, which is the
+difference between eerie and confusing — and the Vial gives back somebody
+else's, where the Font gives back yours.
 
 ## The run is a reel
 

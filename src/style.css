@@ -741,8 +741,22 @@ button {
   transform: scale(var(--lean));
 }
 
+/*
+ * The settle, and **it must finish before `still` takes the class off it.**
+ *
+ * `land` is at 430 and `still` at 900, so the settle has a 470ms window. It was
+ * 420ms, which left fifty milliseconds of margin — and fifty milliseconds is
+ * nothing once the machine is loaded and the sequence's beats drift. Pull
+ * `.arriving` while the animation is still mid-flight and the transform drops
+ * to none in a single frame, which is precisely the snap this whole change
+ * exists to remove. It reproduced about once in four hundred browser tests and
+ * the frame recorder is what caught it.
+ *
+ * 340ms lands at 770, a 130ms margin, and the reveal at `open` still finds the
+ * room a fifth of the way through its settle rather than at rest.
+ */
 #world.arriving {
-  animation: world-settle 420ms ease-out forwards;
+  animation: world-settle 340ms ease-out forwards;
 }
 
 /*

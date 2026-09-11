@@ -104,7 +104,11 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
     composition: 'long-axis',
     tags: [],
     art: 'entry',
-    arrival: 'The stair ends in a long hall. Fresh candles are burning down here.',
+    // The premise, in the room rather than on a screen, and the only place it is
+    // said outside the title. Two plain facts and no riddle: he has been here,
+    // and he does not have it any more.
+    arrival:
+      'The stair ends in a long hall. Fresh candles, burning. I have been down here before and I do not remember any of it.',
     // One LOOK, and the skull and the door fold into it. The door especially:
     // it was a LOOK sitting on the same painted feature as the way out, which
     // is the room offering to describe the thing it is also asking you to walk
@@ -530,12 +534,12 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
     tags: [],
     art: 'choir',
     arrival:
-      'Somebody works here. Bones on the table, sorted by what they are good for. A price scratched beside each.',
+      'Somebody works here. Bones on the table, sorted by what they are good for — and by whose they were. A price scratched beside each.',
     details: [
       {
         id: 'table',
         at: { x: 0.18, y: 0.78 },
-        says: 'A table of sorted bones. Longest on the left, split ones on the right. Somebody has a system.',
+        says: 'A table of sorted bones, cut so they fall true. Longest on the left, split ones on the right. Somebody has a system.',
       },
       {
         id: 'prices',
