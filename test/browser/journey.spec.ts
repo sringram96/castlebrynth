@@ -142,13 +142,23 @@ test.describe('the right branch, and the deep way', () => {
     const report = await fight(page)
     if (report.end === 'died') return
     // The Marrow always leaves a Vial, offer or no offer — and it leaves it on
-    // the floor rather than on a screen.
-    expect(await lootOnScreen(page)).toContain('vial')
+    // the floor rather than on a screen. That is the guarantee, and it is
+    // asserted on the floor rather than on the count.
+    const fell = await lootOnScreen(page)
+    expect(fell).toContain('vial')
+
+    // How many it *actually* left, because the guaranteed drop and the rolled
+    // offer are two objects and the offer is often a second Vial. There is no
+    // reward screen paying one card any more: walking the room picks up
+    // everything lying in it, so the arithmetic has to count what fell rather
+    // than assume one. (This is what CI caught: the assertion read `+ 1` and
+    // passed on every seed where the Marrow rolled nothing.)
+    const dropped = fell.filter((id) => id === 'vial').length
     await clearReward(page)
     // **Net of whatever the fight drank.** A round that spends one and then
     // wins one leaves the satchel where it started, and a bare count would read
     // that as a missing drop rather than as the fight being expensive.
-    expect((await state(page)).run!.vials).toBe(vials - report.drank + 1)
+    expect((await state(page)).run!.vials).toBe(vials - report.drank + dropped)
   })
 })
 
