@@ -1296,3 +1296,67 @@ card that is read once.
 junction anybody has painted, so that grammar shows one picture at two moments.
 Recorded quality debt. A second dividing-passage composition at 480 × 720 closes
 it, and nothing was recoloured or cropped to hide it in the meantime.
+
+---
+
+## The phone pass — the crooked bones
+
+**Not done.** This wave was built in a remote container with no phone in it, and
+the standing rule is that a pass which could not settle something says so rather
+than inventing a value in its place. The five questions were pre-registered at the
+top of this section, before a line of the wave was written; they are still open,
+and they are the honest form of the answer.
+
+What ran instead is Chromium at 390 × 844 with real presses — 328 of them, every
+branch of every grammar walked end to end, every ladder read before a press, the
+picker opened, paid, cancelled and reloaded. That can prove a beat fires in order
+with the right numbers, and it did. It cannot answer whether six strips can be
+compared in one look under a thumb, or whether handing over three bones out of
+thirty *feels* like paying.
+
+1. **Device and OS.** None. Served commit: the head of
+   `claude/crooked-bones-wave-146yns`; `version.txt` was never fetched from a
+   phone because there was no phone to fetch it from.
+2. **What read.** Unverifiable in the hand. In Chromium at phone geometry: the
+   ladder chips read as a row of three, the picker's six rows fit the panel
+   without scrolling at 390 px, and every new press clears the 44 px floor —
+   `test/unit/anchors.test.ts` does that arithmetic over every seat in the
+   library, filled or not, and `tappable` hit-tests each of them in the browser.
+3. **What lied.** Nothing the frame said disagreed with the record — the motion-off
+   parity specs assert that the settled screen states every number the beats would
+   have shown. The one thing that *did* lie was not presentation: the crooked dice
+   were thrown as plain bones for most of this wave. The balance harness caught it;
+   no amount of looking at a screen would have.
+4. **What dragged.** Unmeasured. No beat was added to the attack, so the
+   pre-registered cut order from the reel wave stands unchanged and the card is
+   still first. The four new pieces of motion are all sub-frame punctuation —
+   2 px of recoil, one white frame, 1 px of tray jolt, 1 px of die bounce — and
+   none of them is on the critical path of a press.
+5. **What is still owed.** The whole of it. Specifically, and in the order it
+   matters:
+   - **question 2**, whether 3 bones is a price or a formality. The sweep says
+     always-take dominates on two of three grammars, which is what a formality
+     looks like in numbers; the hand is what says whether it *feels* like one, and
+     the lever is the price rather than a tuning pass.
+   - **question 1**, whether the picker reads at a glance. Six strips of six chips
+     is the densest comparison the game has ever asked for, and the fallback if it
+     does not read is the strip's type size and the row spacing — **not** a
+     tutorial line and **not** a confirm step.
+   - **questions 3 and 4**, dread versus tax and exam versus ambush. Both are about
+     a number the player has already been shown, so if either lands wrong the fix
+     is on the tray — restating the rule where the turn is — rather than in the
+     ladder.
+   - **question 5**, whether anybody looks for the treasure. If nobody does, the
+     hint is decoration and the next lever is the strip, where the untaken mouth is
+     already drawn.
+
+Until that exists, every number this wave introduced — `DIE_PRICE`, the eight
+face tables, the three ladders, the recoil and jolt distances — is a **first-pass
+value, reported rather than tuned**, exactly as the balance report's figures are.
+
+> *On the skill's own checklist:* its walk still names the Crossing's candles, a
+> rider firing and `CASCADE` in `src/content/render.ts`. Those are the pre-reset
+> design stack's and `archive/` binds nothing — the form of the record is what was
+> followed, and the beats that exist today are the ones in `src/app/app.ts`. The
+> record lives here rather than in `CHRONICLE.md` for the same reason: this file is
+> the active ledger.
