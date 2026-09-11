@@ -122,6 +122,12 @@ test.describe('rooms of one territory share air', () => {
 
     await act(page, 'go').click()
     await expect.poll(() => animating(page), { timeout: 8000 }).toBe(false)
+    // **And wait for the transition to be off the world.** `animating` reports
+    // the presentation frame, which clears on the crossing's `land` beat — but
+    // the dark is not lifted until `open`, a beat later. Reading the record in
+    // between catches a frame that is still dark and calls the settled air a
+    // failure. It was a real flake, about one run in three.
+    await expect(page.locator('#world')).not.toHaveClass(/crossing|dark|arriving/)
 
     const seen = await air(page)
     const arrived = seen.findIndex((s) => s.endsWith(':ossuary'))
@@ -143,6 +149,12 @@ test.describe('rooms of one territory share air', () => {
     await (await wayTo(page, 'offertory')).click()
     await expect.poll(() => where(page)).toBe('offertory')
     await expect.poll(() => animating(page), { timeout: 8000 }).toBe(false)
+    // **And wait for the transition to be off the world.** `animating` reports
+    // the presentation frame, which clears on the crossing's `land` beat — but
+    // the dark is not lifted until `open`, a beat later. Reading the record in
+    // between catches a frame that is still dark and calls the settled air a
+    // failure. It was a real flake, about one run in three.
+    await expect(page.locator('#world')).not.toHaveClass(/crossing|dark|arriving/)
 
     const seen = await air(page)
     expect(seen.some((s) => s.startsWith('dark:')), seen.join(' → ')).toBe(true)

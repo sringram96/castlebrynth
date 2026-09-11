@@ -136,6 +136,7 @@ as support for one of them, it is out of scope.
 | **DRINK** | Spend a Vial: five bones back. |
 | **TAKE** | Pick up a thing lying in the room. |
 | **MAP** | Read the run back: where it has been, and the roads it left. Explore only, and it changes nothing. |
+| **HIDE / SHOW** | Take the words off the picture, and put them back. Explore only, and it changes nothing. |
 | **RESTART** | Begin a new run after death. |
 
 There is no **SKIP**. Leaving a thing where it fell is walking to the exit
@@ -146,6 +147,24 @@ the word band says so on the way through.
 There is deliberately **no verb for an item die**. Item dice fire automatically
 at SCORE, as a beat in the cascade; adding a press for them was explicitly
 rejected. See `COMBAT.md` § Item dice.
+
+**HIDE is the one control that produces no `GameState`.** A room is a painting
+and the game spends most of its time writing on it, so the words come off on
+request: the band, the tray, the hotspots and the HUD all go, and the picture
+takes the whole screen. It is presentation-local — not in the save, not a
+fixture key, not a mode — and it is cleared the instant a sequence or an
+overlay wants the picture, because a beat played under hidden chrome is a beat
+shown to nobody.
+
+It is **explore only**, and that is the same ruling the right bed already keeps
+for MAP: *a fight is the room.* What the HUD carries in a fight — the name,
+what is left of it, which rung of the ladder the turn is on — is the tactical
+contract, printed before anything is committed precisely so it cannot be taken
+off the screen. In a fight there is simply no such press.
+
+The toggle sits in the same corner in both directions and recedes rather than
+disappears. A control that hides itself once pressed strands the player in a
+blank room, and the one thing this feature must never do is take the game away.
 
 ## Three grammars
 

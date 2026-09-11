@@ -261,6 +261,23 @@ export class App {
    * or looking closely at a Vial is not a move, does not survive a reload, and
    * must never be something a save can be stuck inside.
    */
+  /**
+   * Whether the words are off the picture.
+   *
+   * **Presentation-local, and deliberately not a mode.** It produces no
+   * `GameState`, reaches no reducer and is in no save — the game is in exactly
+   * the same run with the chrome up or down, and a reload comes back dressed.
+   * It is also not a fixture key, for the same reason `?plan=` is not one: the
+   * ends of the game are testable without it, and a URL that could boot into a
+   * blank picture is a URL that could make a broken screen look intentional.
+   *
+   * It is cleared rather than remembered whenever something else claims the
+   * picture — see `sequenceStarted` and `open` — because every beat in this
+   * game exists to show the player an outcome, and a beat played under hidden
+   * chrome is a beat that did not happen.
+   */
+  private viewing = false
+
   private opened: Overlay | undefined
   /**
    * A state to paint *instead of* the settled one, while a sequence runs.
@@ -416,6 +433,10 @@ export class App {
   }
 
   private start(): Sequence {
+    // Every beat in this game exists to show an outcome the reducer already
+    // computed. Playing one under hidden chrome would be showing it to nobody,
+    // so the picture comes back before the sequence does.
+    this.viewing = false
     const sequence = new Sequence(this.animated)
     this.sequence = sequence
     return sequence
@@ -1159,6 +1180,25 @@ export class App {
   private render(): void {
     const state = this.presenting ?? this.state
     const run = state.run
+
+    // The words come off the picture only where there is a picture to look at
+    // and nothing else is claiming it. Derived on every paint rather than
+    // trusted from the flag, so a sequence or an overlay that starts by any
+    // route at all cannot leave a beat playing under a cleared screen.
+    const viewing =
+      this.viewing &&
+      run !== undefined &&
+      state.mode === 'explore' &&
+      this.presenting === undefined &&
+      this.opened === undefined
+    // Written only when it changes. Every paint setting it unconditionally is a
+    // body attribute mutation per frame, and `air.spec.ts` watches the body's
+    // subtree to prove the grade crosses over *inside* the dark rather than at
+    // the cut — so an unconditional write does not just waste a DOM touch, it
+    // adds samples to somebody else's ordering test and makes it flaky.
+    const want = viewing ? 'yes' : 'no'
+    if (document.body.dataset['viewing'] !== want) document.body.dataset['viewing'] = want
+
     renderWorld(this.world, state, {
       onLook: (detailId: string) => this.dispatch({ type: 'LOOK', detailId }),
       onRule: () => {
@@ -1175,6 +1215,11 @@ export class App {
       // hold draft is, so a reload here loses the picker and leaves the die on
       // its seat, uncharged.
       onClaim: (index: number) => this.open({ kind: 'picker', index }),
+      viewing,
+      onView: () => {
+        this.viewing = !this.viewing
+        this.render()
+      },
     })
 
     // The room keeps breathing under all of it. Idempotent for the same room in
@@ -1285,6 +1330,9 @@ export class App {
    * than each reaching for the ticker themselves.
    */
   private open(view: Overlay): void {
+    // An overlay is the screen. Coming back out of one onto a blank picture
+    // with no controls would be the game losing its own thread.
+    this.viewing = false
     this.opened = view
     this.overlay.hidden = false
     this.render()
