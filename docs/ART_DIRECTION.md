@@ -162,10 +162,24 @@ So, for every piece of chrome in the combat tray and the fight's own HUD:
 - **Colours come from the existing palette tokens** in `src/style.css` — not
   from new hex.
 
-Two things are under it today: the enemy's health bar, which is forty-eight
-cells of six pixels, and the pile orb's fill, which is a count of objects and
-now settles in steps rather than sliding. `test/browser/chrome.spec.ts` asserts
-the integer widths across a real drain.
+Four things are under it today: the enemy's health bar, which is forty-eight
+cells of six pixels; the pile orb's fill, which is a count of objects and now
+settles in steps rather than sliding; and — since the legibility wave — **the
+face chips and the strip's frames**. `test/browser/chrome.spec.ts` asserts the
+integer widths across a real drain.
+
+A **chip** is the unit the law extends to. A carried thing's faces are drawn
+rather than described — `+3 +3 +5 +5 · ·` — and a strip of them is chrome over
+pixel art like any other: a chip is a fixed box on a fixed pitch, its corners
+are square, its colours are the palette's tokens, and there is no smooth width
+anywhere in it for a transition to interpolate through. The same is true of the
+strip of visited rooms behind MAP: frames and mouths are boxes on a pitch.
+
+**Colour is never the only statement.** A cost chip carries its own minus sign
+and a `data-face` of its kind; a blank is a dim pip and never a gap; the strip
+says the current frame in a border as well as in a tone. Painted furniture for
+both — a chip housing, a strip frame, a MAP glyph — is owed and recorded in
+`POLISH_PROGRESS.md` § HUMAN ART REQUIRED. No pixel was authored for either.
 
 The **scope is the combat tray and the fight's HUD.** The title, death and
 victory screens are typography on a backdrop and are not chrome over art; they
@@ -180,6 +194,46 @@ reduced-motion block at the end of the stylesheet already stops them.
 A painted housing for the health bar is owed — see `POLISH_PROGRESS.md`
 § HUMAN ART REQUIRED. Until it lands the bar is CSS on the palette, and no
 pixel was authored for it.
+
+## Shared air: one grade per territory
+
+**The oldest open item on the visual list**, and it was real: every room lived
+in its own light, so crossing from bone country into the chapel read as
+changing decks rather than as going further down.
+
+Each of the four territories binds to **one ambient grade** — a CSS tint laid
+over the world box, above the art and below the word band. It is a *treatment*,
+not a repaint: no file in `public/` is touched by it, the plates underneath are
+the plates that were painted, and the whole of it is four colours and two blend
+modes in `src/style.css`.
+
+Every colour was **measured off that territory's own backdrops** — the mean of
+the brightest three per cent of each painting, which is the light source in it
+— and then used as the tint. They are **provisional first-pass values,
+reported rather than tuned**:
+
+| territory | tint | blend | what the measurement found |
+| --- | --- | --- | --- |
+| `threshold` | `#996b33` | soft-light | amber; the doorway's own firelight |
+| `ossuary` | `#967541` | soft-light | ochre, the yellowest of the four: bone country |
+| `chapel` | `#926230` | soft-light | the reddest and the warmest |
+| `deep` | `#604f3b` | hard-light, 55% | desaturated and cold — the only stretch whose shadows measure blue rather than brown |
+
+Two rules go with them:
+
+- **The crossing carries the change.** The grade is written from the room being
+  painted, so during `playGo` it crosses over in the same frame the picture
+  does — which is the frame under the dark. Ambient A → dark → ambient B, one
+  movement. A palette change under a cut reads as travel; the same change under
+  a slide reads as a slideshow advancing.
+- **A territory names itself once.** On first entry to a stretch this run — a
+  fact derived from the path, with nothing stored — the arrival beat carries a
+  card: `THE THRESHOLD`, `THE OSSUARY`, `THE CHAPEL`, `THE DEEP`. It is type
+  over the picture, it is never a press, and **with motion off it never appears
+  at all**: there is no crossing beat to carry it, and the say line and the
+  strip say where you are without it.
+
+A painted treatment for the card is owed; see `POLISH_PROGRESS.md`.
 
 ## Motion budget
 

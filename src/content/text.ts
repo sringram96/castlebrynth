@@ -36,7 +36,28 @@ export const VERBS = {
   drink: 'DRINK',
   take: 'TAKE',
   close: 'CLOSE',
+  /** The strip: where this run has been, and the roads it did not take. */
+  map: 'MAP',
 } as const
+
+/**
+ * What a territory is called, on the card that names it on first entry.
+ *
+ * Four words for the four stretches of the descent, and they are the same four
+ * `Territory` names the rooms are classified by — so a fifth territory cannot
+ * be added without a card for it, and a card cannot name a place the game does
+ * not have. Shown once per territory per run, derived from the path.
+ */
+export const TERRITORY_CARD: Readonly<Record<string, string>> = {
+  threshold: 'THE THRESHOLD',
+  ossuary: 'THE OSSUARY',
+  chapel: 'THE CHAPEL',
+  deep: 'THE DEEP',
+}
+
+/** The strip's own two lines. It is a record, and it says so. */
+export const STRIP_HEAD = 'THE WAY DOWN'
+export const STRIP_AHEAD = 'Ahead of me: nothing I have seen.'
 
 /**
  * What the well says at each position of an attack.

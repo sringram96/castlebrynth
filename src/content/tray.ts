@@ -73,7 +73,18 @@ export const ZONES = {
 
 /** The dark glass on the left. Health lives inside it. */
 export const ORB: Rect = { x: 0.0534, y: 0.2802, width: 0.1425, height: 0.3654 }
-export const ORB_TEXT: Rect = { x: 0.045, y: 0.665, width: 0.175, height: 0.085 }
+
+/**
+ * The count under the glass.
+ *
+ * **Centred on the orb, not on the plate.** It used to run 0.045 → 0.220, whose
+ * middle is 0.1325, while the glass's middle is 0.12465 — five pixels of drift
+ * on a phone, which is exactly the kind of thing the seating audit was opened
+ * to find: a word that is *nearly* on its plate reads as a word that was put
+ * there by a layout rather than painted there. The box is now the orb's own
+ * width, centred on the orb's own centre, and `SEATED` below asserts it.
+ */
+export const ORB_TEXT: Rect = { x: ORB.x - 0.016, y: 0.665, width: ORB.width + 0.032, height: 0.085 }
 
 /**
  * The six bays along the top. The hand, and nothing else, ever.
@@ -200,3 +211,100 @@ export const TRAY_MAX = 620
 export function trayWidthFor(viewportWidth: number): number {
   return Math.min(TRAY_MAX, (viewportWidth - TRAY_SAFETY) / CONTENT_SPAN)
 }
+
+/**
+ * ── the seating audit ─────────────────────────────────────────────────
+ *
+ * **Every word on the plate is measured against the painted region it lives
+ * in, and never against the viewport.** That is the whole of it, and it is
+ * written down because the failure it fixes is invisible in code review: a
+ * label centred in a flex row that happens to be a few pixels wider than its
+ * recess reads as a word that drifted off its plate, and nothing in the
+ * stylesheet says it is wrong.
+ *
+ * Each entry names a selector, the region it belongs to, and how it is seated
+ * in it. `centre` means the element's middle sits on the region's middle in
+ * both axes. `left` is the one declared exception — the ways out of a room are
+ * a list and a ragged left edge is how a list reads — and it means the
+ * element's left edge sits on the region's left edge, with its middle still on
+ * the region's middle vertically.
+ *
+ * `fits` is the honest half. Several of the painted regions are **smaller than
+ * the words they carry**: the relic bays are 0.0452 of a 730 px plate, which is
+ * 19 px on a phone, and `VIAL` is not 19 px. The answer to that is not a
+ * squeezed font — it is a painted housing, and it is recorded as owed art in
+ * `POLISH_PROGRESS.md` § HUMAN ART REQUIRED. What is asserted here is that the
+ * word is **on its plate's centre**, which is the part the code can be held to.
+ *
+ * `test/browser/tray.spec.ts` walks this table across every screen the tray is
+ * up on. Adding a text element to the plate without adding it here is caught
+ * there too: the audit asserts that every seated-looking node it finds in the
+ * well, the bays and the beds is one this table names.
+ */
+export interface SeatedText {
+  /** A CSS selector, unique on any screen it appears on. */
+  readonly id: string
+  /** The painted region, in the plate's own fractions. */
+  readonly region: Rect
+  readonly align: 'centre' | 'left'
+  /** Whether the painted region is wide enough to hold the words. */
+  readonly fits: boolean
+  readonly note?: string
+}
+
+const bayRegion = (index: number): Rect => ({
+  x: RELIC_CENTRES[index]!.x - RELIC_BAY.width / 2,
+  y: RELIC_CENTRES[index]!.y - RELIC_BAY.height / 2,
+  width: RELIC_BAY.width,
+  height: RELIC_BAY.height,
+})
+
+export const SEATED: readonly SeatedText[] = [
+  { id: '#pile', region: ORB_TEXT, align: 'centre', fits: true },
+  { id: '#iron-caption', region: WELL, align: 'centre', fits: true },
+  { id: '#readout', region: WELL, align: 'centre', fits: true },
+  { id: '#scorecard', region: WELL, align: 'centre', fits: true },
+  { id: '#attack-line', region: WELL, align: 'centre', fits: true },
+  {
+    id: '#routes',
+    region: WELL,
+    align: 'left',
+    fits: true,
+    note: 'A list of ways on. Ragged left, because that is how a list reads.',
+  },
+  { id: '#brief', region: WELL, align: 'centre', fits: true },
+  {
+    id: '.satchel-slot .satchel-label',
+    region: bayRegion(VIAL_BAY),
+    align: 'centre',
+    fits: false,
+    note: 'The painted recess is 19px on a phone. VIAL is not. Owed art.',
+  },
+  { id: '.satchel-slot .satchel-count', region: bayRegion(VIAL_BAY), align: 'centre', fits: true },
+  {
+    id: '.talisman-slot .bay-label',
+    region: bayRegion(TALISMAN_BAY),
+    align: 'centre',
+    fits: false,
+    note: 'The same recess, the same width, the same owed housing.',
+  },
+  { id: '.talisman-slot .bay-count', region: bayRegion(TALISMAN_BAY), align: 'centre', fits: true },
+  { id: '[data-act="menu"]', region: ACTION_BEDS[0]!, align: 'centre', fits: true },
+  { id: '[data-act="roll"]', region: ACTION_BEDS[1]!, align: 'centre', fits: true },
+  { id: '[data-act="reroll"]', region: ACTION_BEDS[1]!, align: 'centre', fits: true },
+  { id: '[data-act="fight"]', region: ACTION_BEDS[1]!, align: 'centre', fits: true },
+  { id: '[data-act="map"]', region: ACTION_BEDS[2]!, align: 'centre', fits: true },
+]
+
+/**
+ * The same audit for the chrome over the world.
+ *
+ * There is no plate here — the region is the world box itself — so the rects
+ * are fractions of it. The word band and the enemy's line are centred in the
+ * box and nowhere else, which is what stops a say line drifting under a
+ * hotspot when a room's art changes.
+ */
+export const SEATED_WORLD: readonly SeatedText[] = [
+  { id: '#say', region: { x: 0, y: 0.78, width: 1, height: 0.22 }, align: 'centre', fits: true },
+  { id: '#enemy-bar', region: { x: 0, y: 0, width: 1, height: 0.26 }, align: 'centre', fits: true },
+]

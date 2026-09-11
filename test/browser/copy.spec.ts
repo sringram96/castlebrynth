@@ -43,16 +43,24 @@ test.describe('the scorecard explains itself where the fight is', () => {
     await expect(overlay).toContainText('Bones are what I have left, not what I throw')
 
     await expect(overlay).toContainText('Vial')
-    await expect(overlay).toContainText('5 bones back, up to 30 in all')
+    await expect(overlay).toContainText('5 bones back, never past 30')
 
     await expect(overlay.locator('#rules li')).toHaveCount(7)
     await expect(overlay).toContainText('six dice')
     await expect(overlay).toContainText('CRAP')
 
-    // The loadout is in here too, with each thing's exact mechanic.
+    // The loadout is in here too, with each thing's exact mechanic — and the
+    // mechanic is **the faces**, drawn as a strip, rather than a sentence
+    // restating them. The prose beside it says the two things a strip cannot:
+    // when the thing fires, and whether there is a press.
     await expect(overlay.locator('#hand-slots')).toContainText('6 dice')
-    await expect(overlay).toContainText('0, 0, 3, 3, 5 or 7 held off the answer this turn')
-    await expect(overlay).toContainText('+12 damage when the line I score is PAIR or TWO PAIR')
+    const iron = overlay.locator('[data-reward-id="rustplate"]')
+    await expect(iron.locator('.face-chip')).toHaveText(['0', '0', '3', '3', '5', '7'])
+    await expect(iron).toContainText('Rolls with your six at ROLL')
+    await expect(iron).toContainText('No press.')
+    const charm = overlay.locator('[data-reward-id="pair-talisman"]')
+    await expect(charm.locator('.face-chip')).toHaveText(['PAIR', 'TWO PAIR', '+12'])
+    await expect(charm).toContainText('Fires when the line I score is PAIR or TWO PAIR')
     await expect(overlay).toContainText('Item dice: 0 of 2')
 
     // The game this replaced is not in here.

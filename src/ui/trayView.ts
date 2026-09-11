@@ -9,7 +9,7 @@
  *   the rail ends  the iron die (left) and up to two item dice (right)
  *   the well       the running readout, the scorecard, the iron's caption
  *   the right bays the Vial, and the talisman
- *   the two beds  MENU · ROLL or REROLL or FIGHT
+ *   the three beds MENU · ROLL or REROLL or FIGHT · MAP, out of a fight
  *
  * A secondary action that does not exist is **absent**, never disabled. The
  * one verb in the middle bed is whichever throw is left; scoring is not a verb
@@ -64,6 +64,7 @@ import {
   totalsFor,
 } from '../combat/loadout.js'
 import { itemDie, talisman as talismanById } from '../content/dice.js'
+import { stripSaid } from '../content/faces.js'
 import { HAND_DICE, MAX_ROLLS } from '../combat/roll.js'
 import type { DieValue } from '../combat/roll.js'
 import { enemy as enemyById } from '../content/enemies.js'
@@ -98,13 +99,27 @@ export interface TrayHandlers {
   readonly onDrink: () => void
   /** A close look at one satchel utility. No state change. */
   readonly onInspectReward: (id: string) => void
-  /** A close look at one carried talisman. No state change. */
-  readonly onInspectTalisman: (id: string) => void
+  /**
+   * A close look at one thing in a slot — the iron die, an item die, the
+   * talisman. Read-only, always: it opens a card and writes nothing.
+   */
+  readonly onInspectCarried: (id: string) => void
+  /** The strip: where this run has been. Explore only, and read-only. */
+  readonly onMap: () => void
 }
 
 /** What the tray needs to know that is not in the save. */
 export interface TrayView {
   readonly held: HoldDraft
+  /**
+   * Whether a sequence is on screen.
+   *
+   * Presentation-local, exactly as the hold is. It exists for one rule: a slot
+   * inspection may never interrupt a cascade. While the attack is being
+   * revealed the slots are pictures rather than presses — **hidden, not
+   * disabled** — and they come back the instant the screen settles.
+   */
+  readonly busy: boolean
 }
 
 export interface Tray {
@@ -179,10 +194,10 @@ export function renderTray(tray: Tray, state: GameState, view: TrayView, on: Tra
   const combat = state.mode === 'combat' ? run.combat : undefined
   renderPile(tray, run)
   renderAttack(tray, run, combat, view, on)
-  renderIron(tray, run, combat)
-  renderItems(tray, run, combat)
+  renderIron(tray, run, combat, view, on)
+  renderItems(tray, run, combat, view, on)
   renderSatchel(tray, run, combat, on)
-  renderTalismans(tray, run, on)
+  renderTalismans(tray, run, view, on)
   renderWell(tray, state, combat, on)
   renderBeds(tray, state, combat, view, on)
 }
@@ -297,40 +312,80 @@ function renderAttack(
 }
 
 /**
+ * A slot, as a thing that can be read.
+ *
+ * **There is still no press that changes anything.** The iron cannot be held,
+ * cannot be rerolled and cannot be fired; an item die has no verb, ever. What
+ * this adds is the press that was always missing from the other direction: a
+ * carried thing whose faces can only be learned by watching them happen is not
+ * a stated mechanic, and the talisman bay has answered that with an inspection
+ * since it was built. This is the same inspection, on the rail.
+ *
+ * It is read-only, it opens a card, and mid-cascade it is not offered at all —
+ * a slot that swallowed a tap while the attack was resolving would be exactly
+ * the interruption the item dice were kept press-free to avoid.
+ */
+function slotNode(
+  className: string,
+  id: string,
+  describe: string,
+  busy: boolean,
+  on: () => void,
+): HTMLElement {
+  if (busy) {
+    const node = el('div', className)
+    node.setAttribute('role', 'img')
+    node.setAttribute('aria-label', describe)
+    return node
+  }
+  const b = button({ act: 'inspect-slot', label: '', describe, onPress: on, className })
+  b.dataset['slot'] = id
+  return b
+}
+
+/**
  * The iron die, at the left end of the rail.
  *
- * It is never a control. There is no press for it, no hold, and no reroll —
- * REROLL leaves it exactly where it is — so it is a `role="img"` and it is
- * inert. What it is holding this turn is on it as data and in its accessible
- * name, and stated in words in the caption at the top of the well.
+ * There is no press for it in the attack: no hold, no reroll — REROLL leaves it
+ * exactly where it is. What it is holding this turn is on it as data and in its
+ * accessible name, and stated in words in the caption at the top of the well;
+ * pressing it reads its card, and changes nothing.
  *
  * Out of a fight, or before the throw, it shows a back: nothing has been
  * decided, and a face there would be the view claiming a block the reducer has
- * not drawn.
+ * not drawn. It is **on the rail out of a fight too**, exactly as the item
+ * dice are — a carried thing the player cannot see between fights is a carried
+ * thing they cannot read, and reading it is the one press it has.
  */
-function renderIron(tray: Tray, run: RunState, combat: CombatState | undefined): void {
+function renderIron(
+  tray: Tray,
+  run: RunState,
+  combat: CombatState | undefined,
+  view: TrayView,
+  on: TrayHandlers,
+): void {
   tray.iron.replaceChildren()
   tray.iron.dataset['count'] = String(run.ironDice.length)
 
-  if (run.ironDice.length === 0 || !combat || combat.defeated) return
+  if (run.ironDice.length === 0 || combat?.defeated) return
 
   run.ironDice.forEach((id, index) => {
-    const roll = combat.ironRolls[index]
-    const node = el('div', 'iron-die')
+    const roll = combat?.ironRolls[index]
+    const said = roll ? ironCaption(roll) : IRON_IDLE
+    const node = slotNode('iron-die', id, `${said} ${stripSaid(id)}. Inspect`, view.busy, () =>
+      on.onInspectCarried(id),
+    )
     node.dataset['index'] = String(index)
     node.dataset['ironId'] = id
-    node.setAttribute('role', 'img')
 
     if (!roll) {
       node.dataset['thrown'] = 'no'
       node.append(el('span', 'iron-face iron-back'))
-      node.setAttribute('aria-label', `${IRON_IDLE}`)
     } else {
       node.dataset['thrown'] = 'yes'
       node.dataset['block'] = String(roll.block)
       node.dataset['badge'] = ironBadge(roll)
       node.append(el('span', 'iron-face', String(roll.block)))
-      node.setAttribute('aria-label', ironCaption(roll))
     }
     seat(node, IRON_CENTRES[index] ?? IRON_CENTRES[IRON_CENTRES.length - 1]!, DIE_PITCH)
     tray.iron.append(node)
@@ -347,7 +402,13 @@ function renderIron(tray: Tray, run: RunState, combat: CombatState | undefined):
  * is a treat that lands mid-cascade, and the result popping *on the die* is
  * how it lands.
  */
-function renderItems(tray: Tray, run: RunState, combat: CombatState | undefined): void {
+function renderItems(
+  tray: Tray,
+  run: RunState,
+  combat: CombatState | undefined,
+  view: TrayView,
+  on: TrayHandlers,
+): void {
   tray.items.replaceChildren()
   tray.items.dataset['count'] = String(run.itemDice.length)
   if (run.itemDice.length === 0) return
@@ -360,17 +421,17 @@ function renderItems(tray: Tray, run: RunState, combat: CombatState | undefined)
   run.itemDice.forEach((id, index) => {
     const die = itemDie(id)
     const fired = settled?.itemRolls[index]
-    const node = el('div', 'item-die')
+    const said = fired ? `${die.name}: ${itemBadge(fired.result)}` : `${die.name}. ${die.rule}`
+    const node = slotNode('item-die', id, `${said} ${stripSaid(id)}. Inspect`, view.busy, () =>
+      on.onInspectCarried(id),
+    )
     node.dataset['index'] = String(index)
     node.dataset['itemId'] = id
-    node.setAttribute('role', 'img')
     if (fired) {
       node.dataset['face'] = fired.result.kind
       node.append(el('span', 'item-face', itemBadge(fired.result)))
-      node.setAttribute('aria-label', `${die.name}: ${itemBadge(fired.result)}`)
     } else {
       node.append(el('span', 'item-face item-back'))
-      node.setAttribute('aria-label', `${die.name}. ${die.rule}`)
     }
     seat(node, ITEM_CENTRES[index] ?? ITEM_CENTRES[ITEM_CENTRES.length - 1]!, DIE_PITCH)
     tray.items.append(node)
@@ -384,17 +445,31 @@ function renderItems(tray: Tray, run: RunState, combat: CombatState | undefined)
  * a fight to it is not a rule — pressing it inspects it and changes nothing.
  * Its flat pops here, on the thing that made it, when its line is scored.
  */
-function renderTalismans(tray: Tray, run: RunState, on: TrayHandlers): void {
+function renderTalismans(tray: Tray, run: RunState, view: TrayView, on: TrayHandlers): void {
   tray.talismans.replaceChildren()
   if (run.talismans.length === 0) return
 
   const id = run.talismans[0]!
   const t = talismanById(id)
+  if (view.busy) {
+    // Mid-cascade it is a picture, like every other slot — and it is the one
+    // the talisman's own flat pops on, so a press here would land on the
+    // number the cascade is in the middle of showing.
+    const node = el('div', 'talisman-slot bay-slot')
+    node.dataset['talismanId'] = id
+    node.setAttribute('role', 'img')
+    node.setAttribute('aria-label', `${t.name}. ${t.rule}`)
+    node.append(el('span', 'bay-label', 'PAIR'))
+    node.append(el('b', 'bay-count', `+${t.bonus}`))
+    seat(node, RELIC_CENTRES[TALISMAN_BAY]!, RELIC_PITCH)
+    tray.talismans.append(node)
+    return
+  }
   const b = button({
     act: 'inspect-talisman',
     label: '',
     describe: `${t.name}. ${t.rule}`,
-    onPress: () => on.onInspectTalisman(id),
+    onPress: () => on.onInspectCarried(id),
     // Not a `.satchel-slot`: the satchel is what can be spent, and a talisman
     // cannot be. It is seated on the same rail and styled the same way, and
     // the two are separately countable.
@@ -711,7 +786,9 @@ function renderWell(
     box.append(ironCaptionLine(run, combat))
     box.append(readoutOf(run, combat))
     renderScorecard(box, run, combat, on)
-    box.append(el('p', 'well-line', attackLine(combat)))
+    const line = el('p', 'well-line', attackLine(combat))
+    line.id = 'attack-line'
+    box.append(line)
     tray.well.append(box)
     return
   }
@@ -724,6 +801,7 @@ function renderWell(
   if (here.enemy && !run.cleared.includes(run.roomId)) {
     const e = enemyById(here.enemy)
     const box = el('div', 'brief')
+    box.id = 'brief'
     box.append(el('span', 'brief-name', e.name))
     box.append(el('p', 'well-line', e.tell))
     if (e.rule) box.append(el('p', 'well-rule', e.rule))
@@ -735,6 +813,7 @@ function renderWell(
   // still up: the thing in the middle of it, named, and what it will do.
   if (here.ritual && run.ritual?.roomId !== run.roomId) {
     const box = el('div', 'brief')
+    box.id = 'brief'
     box.append(el('span', 'brief-name', here.ritual.name))
     box.append(el('p', 'well-line', here.ritual.prompt))
     tray.well.append(box)
@@ -745,6 +824,7 @@ function renderWell(
   // does — the exits are not offered, so the well has to carry the reason.
   if (!exitsOpen(stateOf(run.rooms, run.roomId, here.id))) {
     const box = el('div', 'brief')
+    box.id = 'brief'
     box.append(el('span', 'brief-name', here.name))
     box.append(el('p', 'well-line', run.say))
     tray.well.append(box)
@@ -753,6 +833,7 @@ function renderWell(
 
   // Each way on, and what it smells like. This is the whole of the fork.
   const routes = el('div', 'routes')
+  routes.id = 'routes'
   for (const exit of here.exits) {
     const line = el('p', 'route')
     line.append(el('b', 'route-label', exit.label))
@@ -767,11 +848,12 @@ function renderWell(
  * The beds.
  *
  * Left is MENU, always, in both modes. Centre is whichever press the fight is
- * waiting for. The right bed is empty, and that is the wave's ruling rather
- * than an oversight: **it used to carry the second way out of a room**, which
- * put the most important verb in the game in the one region of the screen that
- * is not the world. Movement moved into the picture, so GO left the tray
- * entirely — there is no `onGo` here and there is nowhere to write one.
+ * waiting for. The right bed **used to carry the second way out of a room**,
+ * which put the most important verb in the game in the one region of the
+ * screen that is not the world; movement moved into the picture, so GO left
+ * the tray entirely — there is no `onGo` here and there is nowhere to write
+ * one. What sits there now is MAP, out of a fight only, and it is allowed to
+ * because it is not a move: it reads the run back and changes nothing.
  *
  * There is no verb for scoring either. Which hand to spend *is* the decision,
  * so the choice itself is the commitment and it lives on the scorecard where
@@ -854,6 +936,25 @@ function renderBeds(
   if (here.enemy && !run.cleared.includes(run.roomId) && run.bones > 0) {
     bed(1, button({ act: 'fight', label: VERBS.fight, onPress: on.onFight, className: 'act act-primary' }))
   }
+
+  // The right bed carries the strip, and only out of a fight.
+  //
+  // It is the bed GO used to sit in, and the reason it is free is that
+  // movement moved into the picture — so what goes back into it has to be
+  // something that is *not* a move. MAP is exactly that: it reads the run's
+  // own reel back, changes nothing, writes nothing, and shows only rooms that
+  // have been stood in. Inside a fight the bed stays empty: the fight is the
+  // room, and a map of the corridor behind you is not a decision in it.
+  bed(
+    2,
+    button({
+      act: 'map',
+      label: VERBS.map,
+      describe: 'Where I have been, and the ways I did not take',
+      onPress: on.onMap,
+      className: 'act act-side',
+    }),
+  )
 }
 
 /**

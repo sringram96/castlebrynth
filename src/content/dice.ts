@@ -21,6 +21,18 @@
  * - **A talisman** names a line and adds a flat `+N` when that line is the one
  *   scored. Flat, never a multiplier.
  *
+ * ## What a `rule` is for, now that the faces are drawn
+ *
+ * A card **shows the faces** — `content/faces.ts` derives a strip of chips from
+ * the `faces` table below, and every place a thing is read prints it. So the
+ * prose is no longer a sentence restating six numbers in words, which is how a
+ * rule string comes to disagree with the table beside it. It says the two
+ * things a strip cannot:
+ *
+ *   **when it fires**, and **whether there is a press.**
+ *
+ * `Rolls itself at every ATTACK. No press.` — and the digits are on the chips.
+ *
  * ## What is deliberately not expressible here
  *
  * No multiplier faces on an item die, and no global multiplier anywhere but
@@ -98,7 +110,7 @@ const RUSTPLATE: IronDie = {
   id: 'rustplate',
   name: 'Rustplate',
   faces: [0, 0, 3, 3, 5, 7],
-  rule: 'Rolls with the hand: 0, 0, 3, 3, 5 or 7 held off the answer this turn.',
+  rule: 'Rolls with your six at ROLL. Blocks its face off the answer. No press.',
   flavour: 'Two thirds of a breastplate and most of a century of rain.',
 }
 
@@ -156,7 +168,7 @@ const GRAVE_CANDLE: ItemDie = {
   id: 'grave-candle',
   name: 'Grave Candle',
   faces: [FLAT(3), FLAT(3), FLAT(5), FLAT(5), BLANK, BLANK],
-  rule: 'Fires with every attack: +3, +3, +5, +5, or nothing twice.',
+  rule: 'Rolls itself at every ATTACK. No press.',
   flavour: 'It only burns over the dead. It has never once gone out on me.',
 }
 
@@ -164,7 +176,7 @@ const SPLINTER_FETISH: ItemDie = {
   id: 'splinter-fetish',
   name: 'Splinter Fetish',
   faces: [FLAT(8), FLAT(8), BLANK, BLANK, COST(2), COST(2)],
-  rule: 'Fires with every attack: +8, +8, nothing twice, or 2 of my bones twice.',
+  rule: 'Rolls itself at every ATTACK. No press.',
   flavour: 'It wants a splinter. It is not fussy about whose.',
 }
 
@@ -215,7 +227,7 @@ const PAIR_TALISMAN: Talisman = {
   name: 'Talisman of the Pair',
   lines: ['pair', 'two-pair'],
   bonus: 12,
-  rule: '+12 damage when the line I score is PAIR or TWO PAIR.',
+  rule: 'Fires when the line I score is PAIR or TWO PAIR. No press.',
   flavour: 'Two knuckles on one wire. They were not from the same hand.',
 }
 

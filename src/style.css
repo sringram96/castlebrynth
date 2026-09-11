@@ -69,6 +69,10 @@ button {
   min-height: 0;
   overflow: hidden;
   background: var(--void);
+  /* A stacking context, always. The territory's grade blends with the picture
+     under it, and "the picture" has to mean the world's own layers whether or
+     not a crossing happens to be scaling the box at the time. */
+  isolation: isolate;
   /* The world zone is art. Its buttons switch pointer events back on for
      themselves; the container never eats a press meant for something else. */
   pointer-events: none;
@@ -1293,11 +1297,13 @@ body[data-motion='off'] .orb-fill {
 
 /* ── the iron die, and the item dice ─────────────────────────────────── */
 
-/* Neither is ever a control. There is no press for an iron die and none for an
-   item die — an item die is a treat that lands mid-cascade, not a fourth
-   decision — so both are inert, and the two rules about controls (the 44px
-   floor, the no-overlap rule) are about controls. They keep the crown's pitch
-   and baseline so the rail reads as one row of objects.
+/* Neither has a press in the attack. There is no hold and no reroll for the
+   iron and no verb at all for an item die — an item die is a treat that lands
+   mid-cascade, not a fourth decision. What each of them *is* a press for is
+   being read: pressing a filled slot opens its card, changes nothing, and is
+   not offered while a cascade is running. The two rules about controls (the
+   44px floor, the no-overlap rule) are about the crown's pitch, which the rail
+   keeps so the row reads as one row of objects.
 
    A painted bay for each is owed: see POLISH_PROGRESS.md § HUMAN ART REQUIRED
    — the loadout. Nothing here is a drawing; it is the same CSS die body the
@@ -1308,6 +1314,15 @@ body[data-motion='off'] .orb-fill {
   pointer-events: none;
   display: grid;
   place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+/* A slot that can be read answers the thumb; the face inside it never does. */
+button.iron-die,
+button.item-die {
+  pointer-events: auto;
 }
 
 .iron-face,
@@ -1414,6 +1429,31 @@ body[data-motion='off'] .orb-fill {
   color: var(--gold);
   text-shadow: 0 1px 4px #000;
   animation: pop-rise 760ms ease-out forwards;
+}
+
+/*
+ * The name over the number.
+ *
+ * A `+8` over an unlabelled object is a number whose cause the player has to
+ * have memorised. The name is printed every time — repetition is how a face
+ * gets welded to the card that stated it — and it stays **on the source**: the
+ * pop is still anchored to the die that made it and still migrates nowhere.
+ */
+.pop-name {
+  display: block;
+  font-size: 6.5px;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.1;
+  /* Wrapping, not shrinking: the Talisman of the Pair is a long name in a
+     narrow bay, and a name squeezed under its own legibility floor says
+     nothing at all. */
+  white-space: normal;
+  max-width: 80px;
+  margin: 0 auto;
+  color: var(--ink-dim);
+  text-shadow: 0 1px 3px #000;
 }
 
 .pop-flat {
@@ -2122,6 +2162,304 @@ button.score-crap {
 
 @keyframes fade {
   to {
+    opacity: 0;
+  }
+}
+
+/* ── the faces, drawn ────────────────────────────────────────────────── */
+
+/*
+ * A thing's six faces, as chips.
+ *
+ * The card used to carry a **sentence about** the faces; this is the faces. It
+ * is chrome over pixel art, so it is held to the same law the health bar and
+ * the orb are: whole cells, square corners, palette colours, no smooth width
+ * anywhere. A chip is a fixed box on a fixed pitch and there is nothing here
+ * for a transition to interpolate through.
+ *
+ * Colour is never the only statement of what a face does: every chip carries
+ * its kind as `data-face`, and a cost carries its own minus sign.
+ */
+.faces {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 3px;
+  margin: 0;
+}
+
+/* In the word band the strip sits under the sentence that named the thing, so
+   it takes the sentence's own edge rather than the band's middle. */
+.say .faces {
+  justify-content: flex-start;
+  margin-top: 5px;
+}
+
+.face-chip {
+  display: grid;
+  place-items: center;
+  min-width: 26px;
+  min-height: 20px;
+  padding: 2px 4px;
+  /* Square. The art has no rounded chrome anywhere in it. */
+  border: 1px solid rgb(207 166 82 / 0.4);
+  background: rgb(18 13 8 / 0.9);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
+
+/* An ordinary d6 face, and the iron's block. Plain figures. */
+.face-value {
+  color: var(--ink);
+}
+
+.face-block {
+  border-color: rgb(154 162 170 / 0.5);
+  color: #d6dde3;
+}
+
+/* What is added after the multiply. */
+.face-flat {
+  border-color: rgb(207 166 82 / 0.75);
+  color: #ffe9a8;
+}
+
+/* What it charges, in bones, before the blow lands. */
+.face-cost {
+  border-color: rgb(163 48 42 / 0.8);
+  color: #ff9a92;
+}
+
+/* A blank is a real face and reads as one: dim, and never a gap. */
+.face-blank {
+  border-color: rgb(157 144 122 / 0.28);
+  color: var(--ink-dim);
+}
+
+/* A line a talisman answers to. Not a face — the honest equivalent of one. */
+.face-line {
+  min-width: auto;
+  border-color: rgb(207 166 82 / 0.55);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--gold);
+}
+
+/* ── the strip ───────────────────────────────────────────────────────── */
+
+/*
+ * Where this run has been, and nothing else.
+ *
+ * Frames run oldest to newest down the page, because a descent runs down. The
+ * current frame is bordered. Beside a frame the run walked out of, the mouths
+ * it did not take — dark, unlit, carrying the label that was on the hotspot.
+ *
+ * **Below the last frame there is nothing.** No sockets, no count, no
+ * silhouette: we hide places, never rules, and the road not walked is the one
+ * thing a run is allowed not to know.
+ *
+ * Chips again, and owed art again: painted strip furniture is recorded under
+ * POLISH_PROGRESS.md § HUMAN ART REQUIRED. No pixel was authored for this.
+ */
+.strip-box {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  width: 100%;
+}
+
+.strip {
+  display: grid;
+  gap: 4px;
+  width: min(100%, 320px);
+}
+
+.strip-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.strip-frame {
+  display: grid;
+  align-items: center;
+  min-height: 26px;
+  padding: 4px 8px;
+  border: 1px solid rgb(157 144 122 / 0.3);
+  background: linear-gradient(to bottom, rgb(24 20 14 / 0.9), rgb(10 8 6 / 0.9));
+  text-align: left;
+}
+
+.strip-name {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--ink-dim);
+}
+
+/* Where the run is standing. Bordered, and lit, and exactly one of them. */
+.strip-row[data-current="yes"] .strip-frame {
+  border-color: rgb(207 166 82 / 0.85);
+  background: linear-gradient(to bottom, rgb(58 41 18 / 0.9), rgb(18 13 8 / 0.92));
+}
+
+.strip-row[data-current="yes"] .strip-name {
+  color: #f6e6bd;
+}
+
+.strip-mouths {
+  display: flex;
+  gap: 4px;
+}
+
+/* A road whose mouth was read and not taken. Dark: it is not a way on. */
+.strip-mouth {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  padding: 4px 6px;
+  border: 1px solid rgb(157 144 122 / 0.25);
+  background: rgb(6 5 4 / 0.92);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--ink-dim);
+}
+
+.strip-ahead {
+  margin: 0;
+  font-size: 11px;
+  color: var(--ink-dim);
+  text-align: center;
+}
+
+/* Held in the middle of the screen, like every other inspection. A short run
+   pinned to the top of a phone with six hundred pixels of nothing under it
+   reads as a page that failed to load. */
+.screen-strip {
+  align-content: center;
+  overflow-y: auto;
+}
+
+/* ── the air of a territory ──────────────────────────────────────────── */
+
+/*
+ * Rooms of one stretch of the descent share a palette.
+ *
+ * The oldest open item on the visual list was that every room lived in its own
+ * light, so crossing from the ossuary to the chapel read as changing decks
+ * rather than as going further down. This is one tint over everything painted,
+ * per territory — **a grade, never a repaint**: no file in `public/` is touched
+ * by it and the plates underneath are the plates that were painted.
+ *
+ * Every colour below was **measured off the territory's own backdrops** — the
+ * mean of the brightest three per cent of each painting, which is the light
+ * source in it — and then used as the tint. Provisional first-pass values,
+ * reported rather than tuned, and written down in `docs/ART_DIRECTION.md`:
+ *
+ *   threshold   #996b33   amber, the doorway's own firelight
+ *   ossuary     #967541   ochre, the yellowest of the four: bone country
+ *   chapel      #926230   the reddest, and the warmest
+ *   deep        #604f3b   desaturated and cold — the only one whose shadows
+ *                         measure blue rather than brown
+ *
+ * The crossfade is what makes the shift land inside the travel beat: the grade
+ * changes in the same paint the destination does, which during a crossing is
+ * the paint under the dark. Ambient A → dark → ambient B, one movement.
+ */
+.grade {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  background: transparent;
+  mix-blend-mode: soft-light;
+  transition:
+    background-color 260ms linear,
+    opacity 260ms linear;
+}
+
+.grade[data-territory] {
+  opacity: 1;
+}
+
+.grade[data-territory="threshold"] {
+  background-color: #996b33;
+}
+
+.grade[data-territory="ossuary"] {
+  background-color: #967541;
+}
+
+.grade[data-territory="chapel"] {
+  background-color: #926230;
+}
+
+/* The deep is the one that is not warm. It is also the one that sits heaviest:
+   a stronger, colder wash, because it is the stretch that is meant to feel
+   like somewhere else. */
+.grade[data-territory="deep"] {
+  background-color: #604f3b;
+  mix-blend-mode: hard-light;
+  opacity: 0.55;
+}
+
+/*
+ * The card that names a stretch, once, on first entry to it.
+ *
+ * Type on the arrival, in the game's own letterforms, and it is over before
+ * anything can be pressed twice. With motion off it never appears at all —
+ * there is no crossing beat to carry it, and the say line and the strip say
+ * where you are without it.
+ */
+.territory-card {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  justify-items: center;
+  align-items: start;
+  /* High in the frame, clear of the ways out. A hotspot sits where the art
+     says it sits, and a word laid over one reads as a label for it. */
+  padding-top: 30%;
+  pointer-events: none;
+  opacity: 0;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.34em;
+  text-indent: 0.34em;
+  color: var(--ink);
+  text-shadow:
+    0 2px 14px #000,
+    0 0 30px rgb(0 0 0 / 0.9);
+}
+
+.territory-card[hidden] {
+  display: none;
+}
+
+.territory-card.showing {
+  animation: territory-named 1250ms ease-out forwards;
+}
+
+@keyframes territory-named {
+  0% {
+    opacity: 0;
+    letter-spacing: 0.26em;
+  }
+  18% {
+    opacity: 1;
+    letter-spacing: 0.34em;
+  }
+  72% {
+    opacity: 1;
+  }
+  100% {
     opacity: 0;
   }
 }

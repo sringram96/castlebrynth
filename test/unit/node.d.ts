@@ -13,6 +13,21 @@ declare module 'node:fs' {
 }
 
 /**
+ * And the one command a test runs.
+ *
+ * `test/unit/untouched.test.ts` asks git whether this wave changed a pixel,
+ * because that is a question only the repository can answer. Declared here for
+ * the same reason as the two functions above: a whole dependency for one
+ * function would be a dependency the game does not need.
+ */
+declare module 'node:child_process' {
+  export function execSync(
+    command: string,
+    options?: { encoding?: string; stdio?: readonly (string | null)[] },
+  ): string
+}
+
+/**
  * The one global the balance report touches.
  *
  * `npm run balance` has to be able to fail a build when an invariant breaks,

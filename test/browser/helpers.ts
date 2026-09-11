@@ -184,6 +184,12 @@ const MIN_WIDTH: Readonly<Record<string, number>> = {
   // same exception for the same reason: the plate's relic pitch is 55 of 730,
   // which is 32px on a phone. Growing it to 44 would overlap its neighbour.
   'inspect-talisman': 28,
+  // Reading a slot on the rail. The iron and the item dice keep the crown's
+  // own pitch — 66⅔ of 730, which is 38px on a phone — because the rail has to
+  // read as one row of objects at one height. Growing the read target to 44
+  // would make it wider than the die beside it and start the overlap the
+  // crown's pitch exists to prevent. It is the full 44px tall.
+  'inspect-slot': 34,
   // The scorecard is eight entries wide in a region the plate gives about 214
   // px to, so an entry is roughly 52 px across and shorter than a thumb. It is
   // stated here rather than silently allowed: the alternative is not showing

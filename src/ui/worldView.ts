@@ -13,11 +13,12 @@ import { STAGES, enemy as enemyById, stageForRound, stanceAt } from '../content/
 import { idlePose } from '../content/enemyPresentation.js'
 import { exitsAvailable, roomAt } from '../game/map.js'
 import { actionFor, platesFor, stateOf } from '../content/interactions.js'
-import { reward } from '../content/rewards.js'
+import { reward, thingSaidIn } from '../content/rewards.js'
+import { stripSaid } from '../content/faces.js'
 import { VERBS } from '../content/text.js'
 import { canTake, lootIn, refusalFor } from '../game/reducer.js'
 import type { GameState } from '../game/state.js'
-import { button, el } from './components.js'
+import { button, el, faceStripFor } from './components.js'
 
 /**
  * How far under a found thing's name its TAKE sits.
@@ -68,6 +69,7 @@ export function renderWorld(world: World, state: GameState, handlers: WorldHandl
     world.backdrop.src = url(roomArt('threshold'))
     hideEnemy(world)
     hideProp(world)
+    delete world.grade.dataset['territory']
     world.hits.replaceChildren()
     world.hud.replaceChildren()
     return
@@ -78,6 +80,14 @@ export function renderWorld(world: World, state: GameState, handlers: WorldHandl
   const here = roomAt(run)
   const backdrop = url(roomArt(here.art))
   if (world.backdrop.getAttribute('src') !== backdrop) world.backdrop.src = backdrop
+
+  // The air of the stretch of the descent this room is in.
+  //
+  // Written from the room the paint is painting, so the grade crosses over in
+  // the same frame the picture does — which, during a crossing, is the frame
+  // under the dark. Rooms of one territory now share a palette; the stylesheet
+  // owns what each one is, and no pixel of `public/` is touched by it.
+  world.grade.dataset['territory'] = here.territory
 
   // The monster, if there is one still standing here.
   const standing = here.enemy && !run.cleared.includes(run.roomId) ? here.enemy : undefined
@@ -233,13 +243,15 @@ function renderHits(world: World, state: GameState, handlers: WorldHandlers): vo
     const card = reward(item.id)
 
     const refused = refusalFor(run, item.id)
+    const faces = stripSaid(item.id)
     const name = button({
       act: 'look-loot',
       label: card.short,
       // The refusal is in the accessible name as well as one press away, so a
       // thing that cannot be carried says why without being touched — which is
-      // what replaces the grey button that is not allowed to exist.
-      describe: `${card.name}. ${card.rule}${refused ? ` ${refused}` : ''}`,
+      // what replaces the grey button that is not allowed to exist. The faces
+      // are in it too: a strip is a picture, and a picture is not a statement.
+      describe: `${card.name}. ${faces ? `${faces}. ` : ''}${card.rule}${refused ? ` ${refused}` : ''}`,
       onPress: () => handlers.onLook(`loot:${index}`),
       className: 'hit hit-focal hit-loot',
     })
@@ -393,6 +405,19 @@ function renderHud(world: World, state: GameState, handlers: WorldHandlers): voi
   say.id = 'say'
   const beats = run.say ? [run.say] : (combat && state.mode === 'combat' ? combat.log : [])
   for (const beat of beats) say.append(el('span', 'say-beat', beat))
+
+  // And the faces of the thing the band is talking about.
+  //
+  // A found thing states its exact mechanic **where it lies**, and since the
+  // faces are drawn rather than described, that means the strip goes here too:
+  // under the LOOK that names it and under the line that confirms taking it.
+  // Which thing is derived from the say the reducer wrote, against the reward
+  // table itself — see `thingSaidIn`. Nothing here decides anything, and a
+  // line about no thing at all gets no chips.
+  const about = run.say ? thingSaidIn(run.say) : undefined
+  const strip = about ? faceStripFor(about) : undefined
+  if (strip) say.append(strip)
+
   if (beats.length === 0) say.hidden = true
   world.hud.append(say)
 }
