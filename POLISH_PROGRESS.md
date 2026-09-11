@@ -1060,3 +1060,70 @@ ambient grades are four colours and two blend modes in `src/style.css`, each
 **measured off that territory's own backdrops** and written down in
 `docs/ART_DIRECTION.md` as provisional first-pass values; they tint the picture
 and never repaint it.
+
+---
+
+## The phone pass — the legible reel
+
+**Not done.** This wave was built in a remote container with no phone in it,
+and the standing rule is that a pass which could not settle something says so
+rather than inventing a value in its place. What ran instead is Chromium at
+390 × 844 with real presses, which can prove that a beat fires in order with
+the right numbers — it did, 302 times — and cannot answer whether any of it
+*feels* right under a thumb, or show a dark-value failure at real brightness
+on a panel that does not have the failure mode being decided.
+
+So: the numbers below are openly marked as guesses, and the cut order is
+**pre-registered here, before the phone**, so that a later tuning result is a
+measurement rather than a preference wearing a measurement's coat.
+
+### What a pass has to settle, in order of how much it matters
+
+1. **The deep's grade, in the dark.** `#604f3b` at hard-light 55% is the only
+   one of the four that is not a gentle soft-light wash, and the Chain Vault
+   and the Marrow's room are the two darkest paintings in the game. The
+   question is whether it crushes the darkest fifth of those walls into a flat
+   block. A desktop panel will not show that. **If it does: drop the opacity
+   before changing the hue** — the hue was measured off the paintings and the
+   strength was not.
+2. **The territory card's dwell.** `TERRITORY_HOLD` is 1250 ms from the beat
+   the dark lifts, over a crossing that is itself 760 ms. It is the only new
+   thing on the critical path of a press. If the run feels like it is waiting
+   for a word, cut it — and it is the **first** thing to cut, before any beat
+   of the attack, because it is the only one that teaches nothing.
+3. **The name over a pop.** 6.5 px, wrapping, up for 760 ms while a number
+   rises. If the name cannot be read in that time it is doing nothing but
+   crowding the figure, and the fix is the pop's dwell rather than the type
+   size — a name under its own legibility floor says less than no name.
+4. **A 38 × 44 slot on the rail.** The iron and the item dice keep the crown's
+   pitch, so a read target is narrower than a thumb and sits between two
+   others at the same pitch. The accepted deviation is documented; whether it
+   is *reachable* is a hand question.
+5. **A chip at 26 × 20 with an 11 px figure.** Six of them in a row inside the
+   word band, over art. Readable at arm's length, or a smear?
+
+### The cut order, if the hand says the turn drags
+
+The attack's beats are named constants at the top of `src/app/app.ts` and
+**their order is law while their durations are not**. This wave added no beat
+to the attack, so the standing order is unchanged and the card goes in front
+of it:
+
+| order | knob | now | why |
+| --- | --- | --- | --- |
+| 1 | `TERRITORY_HOLD` | 1250 ms | the only new thing on the critical path, and the only one that teaches nothing |
+| 2 | `CROSSING.still` | 760 ms | the tail of the crossing after the picture has landed |
+| 3 | `ATTACK.dice` · `DIE_POP` | 200 · 34 ms | six dice is 204 ms of stagger — the largest single block |
+| 4 | `ATTACK.blow` → `rest` | 840 → 950 ms | the longest pause; *then, and only then* survives a shorter one |
+| never | `ATTACK.items` · `talisman` | 520 · 660 ms | **these are the beats that teach the loadout.** A face that goes past at the speed of a die teaches nothing, and a thing the player cannot see land is a thing they cannot price |
+
+Cut to the felt beat, then record before and after in one table. A cut with no
+number beside it is a preference.
+
+### What is still owed
+
+The whole of it: device and OS, the served commit hash, what read, what lied,
+what dragged. Until that exists, every number this wave introduced —
+`TERRITORY_HOLD`, the four grade strengths, the chip and name type sizes — is
+a **first-pass value, reported rather than tuned**, exactly as the balance
+report's figures are.
