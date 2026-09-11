@@ -24,6 +24,33 @@
  * each other.** `test/unit/anchors.test.ts` does that arithmetic over every
  * template in this file, at the phone's own geometry.
  *
+ * ## What a room may hold at all
+ *
+ * **The negative-space law**, and it is the reason several of these rooms got
+ * shorter rather than longer. A frame has two kinds of crowding and a budget
+ * for each — furniture seated into the painting, and hotspots of any kind
+ * besides the ways out — and the budget comes from the room's `composition`,
+ * which is already the statement of what the picture can hold. The table is in
+ * `content/roomResolver.ts` beside `fits`, content validation walks every
+ * template in this file, and a breach throws at the press of START rather than
+ * reading as noise on a phone.
+ *
+ * What it cost, and it was the point: **a LOOK whose only job is flavour has no
+ * hotspot any more.** Its line did not go anywhere — it folded into the arrival
+ * or into the room's one focal LOOK, verbatim, and `test/unit/frames.test.ts`
+ * holds every folded line to still being in the room's prose. The backdrop
+ * still shows the thing; the room has simply stopped offering a press for every
+ * brick it was painted with.
+ *
+ * ## What a room does while nobody is pressing anything
+ *
+ * A room with no enemy in it used to be perfectly still, which reads as a slide
+ * rather than as a place. So a template may declare **ambient motion** beside
+ * the seating it animates, and a territory may declare one of its own. Two
+ * sources per room, the territory's counting as one of them; every one of them
+ * steps on one shared clock; all of it vanishes with motion off. See
+ * `render/ambience.ts` for the ticker and `docs/ART_DIRECTION.md` for the law.
+ *
  * ## What a room withholds
  *
  * Three kinds of thing can occupy a room, and they are different in what they
@@ -40,9 +67,11 @@
  * it is is written beside it.
  */
 
-import type { RoomTemplate } from './roomTypes.js'
+import type { Ambient, RoomTemplate, Territory } from './roomTypes.js'
 
 export type {
+  Ambient,
+  AmbientKind,
   Composition,
   Detail,
   ExitAnchor,
@@ -71,27 +100,25 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
     tags: [],
     art: 'entry',
     arrival: 'The stair ends in a long hall. Fresh candles are burning down here.',
+    // One LOOK, and the skull and the door fold into it. The door especially:
+    // it was a LOOK sitting on the same painted feature as the way out, which
+    // is the room offering to describe the thing it is also asking you to walk
+    // through.
     details: [
       {
         id: 'candles',
         at: { x: 0.16, y: 0.66 },
         focal: true,
-        says: 'Candles. Fresh ones, burning. Something down here still keeps a schedule.',
-      },
-      {
-        id: 'skull',
-        at: { x: 0.42, y: 0.86 },
-        says: 'A skull on the floor. Small. It has been here longer than the candles.',
-      },
-      {
-        id: 'far-door',
-        at: { x: 0.53, y: 0.4 },
-        says: 'The hall keeps going. There is a door at the end of it and no light behind it.',
+        says: 'Candles. Fresh ones, burning. Something down here still keeps a schedule. A skull on the floor. Small. It has been here longer than the candles. The hall keeps going. There is a door at the end of it and no light behind it.',
       },
     ],
-    // On the hall's own vanishing point, below the door the detail names — the
+    // On the hall's own vanishing point, below the door the LOOK names — the
     // press is *walking down there*, and the door is the thing you look at.
     exitAnchors: [{ id: 'far-door', at: { x: 0.53, y: 0.55 } }],
+    // The first room of the run, and the first thing in the game that moves on
+    // its own: the candles the arrival line calls fresh. Fast, uneven, and two
+    // quanta of light — a flame, not a lamp.
+    ambient: [{ kind: 'flicker', target: 'candles', amplitude: 2, tick: 1 }],
     topology: { minEntrances: 0, maxEntrances: 0, minExits: 1, maxExits: 1 },
   },
 
@@ -106,17 +133,14 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
     tags: [],
     art: 'choir',
     arrival: 'The hall narrows under an arch of skulls. Something has passed through here recently.',
+    // The step folds into the arch. A cramped frame gets three hotspots at the
+    // most and this one is a corridor: one thing to read, one way through.
     details: [
       {
         id: 'arch',
         at: { x: 0.5, y: 0.28 },
         focal: true,
-        says: 'An arch of skulls. Set carefully, every one facing out. Not a grave — a warning.',
-      },
-      {
-        id: 'step',
-        at: { x: 0.5, y: 0.78 },
-        says: 'A step, worn down the middle. Whatever uses this passage uses it often.',
+        says: 'An arch of skulls. Set carefully, every one facing out. Not a grave — a warning. A step, worn down the middle. Whatever uses this passage uses it often.',
       },
     ],
     // Under the arch of skulls and above the worn step: the gap the passage
@@ -137,14 +161,13 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
     composition: 'long-axis',
     tags: [],
     art: 'hall',
-    arrival: 'The Gnawing is at the far end of the hall. Too many eyes. All of them are on me.',
-    details: [
-      {
-        id: 'niches',
-        at: { x: 0.16, y: 0.34 },
-        says: 'Niches, packed with skulls. Hundreds. This is where the hall was leading.',
-      },
-    ],
+    arrival:
+      'The Gnawing is at the far end of the hall. Too many eyes. All of them are on me. Niches, packed with skulls. Hundreds. This is where the hall was leading.',
+    // Nothing to look at, and that is the audit's ruling rather than an
+    // omission: the room is a fight and two things on the floor afterwards, and
+    // a LOOK at the masonry during either is a press that answers nothing. The
+    // niches are still painted there, and the arrival still names them.
+    details: [],
     encounterTags: ['closing-horror'],
     threat: 'low',
     enemy: 'gnawing',
@@ -174,19 +197,12 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
     territory: 'chapel',
     composition: 'altar',
     tags: [],
-    arrival: 'The hall opens into a chapel. The basin is full. Something turns beneath the surface.',
-    details: [
-      {
-        id: 'candles',
-        at: { x: 0.16, y: 0.62 },
-        says: 'Candles down both walls, lit and level. Somebody comes down here and keeps them.',
-      },
-      {
-        id: 'niches',
-        at: { x: 0.84, y: 0.4 },
-        says: 'Skulls, shelf on shelf, back into the dark. Every one of them is facing the basin.',
-      },
-    ],
+    arrival:
+      'The hall opens into a chapel. The basin is full. Something turns beneath the surface. Candles down both walls, lit and level. Somebody comes down here and keeps them. Skulls, shelf on shelf, back into the dark. Every one of them is facing the basin.',
+    // One object, one press, one number — which is what the room was always
+    // described as and is now what it is. The candles and the niches are in the
+    // arrival, where they were doing their whole job anyway.
+    details: [],
     ritual: {
       art: 'chalice',
       name: 'The Font',
@@ -205,6 +221,9 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
     // holds the exits shut until it is used, so the two are never up together,
     // and they are still not allowed to share a thumb's worth of screen.
     exitAnchors: [{ id: 'chapel-arch', at: { x: 0.5, y: 0.3 } }],
+    // The water breathes. Slow, even, one quantum — the opposite of the entry
+    // hall's flame, and the only thing in the chapel that moves.
+    ambient: [{ kind: 'glow', target: 'ritual', amplitude: 1, tick: 3 }],
     topology: THROUGH,
   },
 
@@ -243,32 +262,21 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
     tags: ['worked', 'optional'],
     art: 'reliquary',
     arrival: 'A dead chapel. A bell hangs over an altar. Candles burn beside a locked chest.',
+    // **Five LOOKs became one**, and the Reliquary is where the negative-space
+    // law cost the most. Four of the five sat on objects that already carry
+    // their own verb — a LOOK on the bell beside RING, a LOOK on the candles
+    // beside PUT OUT — which is two presses on one thing and the exact crowding
+    // the audit was for. The fifth is the mechanism's own clue and stays.
+    //
+    // Nothing was cut from the writing. Every demoted line is inside this one,
+    // word for word, in the order the eye would take them: the altar, the
+    // handle under it, the bell above, the candles left, the chest right.
     details: [
-      {
-        id: 'bell',
-        at: { x: 0.214, y: 0.31 },
-        says: 'A bronze bell. Old red thread is knotted around the clapper.',
-      },
-      {
-        id: 'brazier',
-        at: { x: 0.16, y: 0.79 },
-        says: 'Five candles melted almost to the stone. They are the only warm light in the room.',
-      },
-      {
-        id: 'altar',
-        at: { x: 0.5, y: 0.585 },
-        says: 'An altar built around a basin. The blood in it is old enough to be black.',
-      },
       {
         id: 'lever',
         at: { x: 0.5, y: 0.815 },
         focal: true,
-        says: 'The altar has a recessed iron handle beneath the basin. Three marks have been cut beside it: a bell, a dead flame, a lowered skull.',
-      },
-      {
-        id: 'chest',
-        at: { x: 0.823, y: 0.815 },
-        says: 'A chest with no keyhole. The skull clasp is joined to something inside the wall.',
+        says: 'An altar built around a basin. The blood in it is old enough to be black. The altar has a recessed iron handle beneath the basin. Three marks have been cut beside it: a bell, a dead flame, a lowered skull. A bronze bell. Old red thread is knotted around the clapper. Five candles melted almost to the stone. They are the only warm light in the room. A chest with no keyhole. The skull clasp is joined to something inside the wall.',
       },
     ],
     // Deliberately seated off the details they belong to, so a LOOK and an act
@@ -311,6 +319,13 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
     exitAnchors: [{ id: 'side-arch', at: { x: 0.82, y: 0.36 } }],
     // The found thing lies in the chest, which is where the chest is painted.
     lootAt: [{ id: 'in-the-chest', at: { x: 0.823, y: 0.62 } }],
+    // The five candles, which the room's own line calls the only warm light in
+    // it. **Not in the wave's first table, and added deliberately**: the
+    // Reliquary already had a candle varying by a few percent on an eased CSS
+    // loop, this wave deletes every one of those, and a room that came out of a
+    // motion wave with less motion than it went in with would be a regression
+    // wearing a law's coat. Same kind, same numbers as the Offertory's.
+    ambient: [{ kind: 'flicker', target: 'reliquary-brazier', amplitude: 2, tick: 1 }],
     // And what is in it is authored rather than drawn. The Talisman of the Pair
     // used to be starting equipment; it lives here now, which is what makes the
     // Reliquary worth working rather than worth walking past.
@@ -340,22 +355,16 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
     tags: [],
     art: 'shrine',
     arrival: 'The passage divides. Bones went both ways.',
+    // The two mouth-marks fold into the pillar between them. They were LOOKs
+    // seated on the same painted mouths the ways out stand in, and a way
+    // already says what it costs and what it pays **before** the press — so the
+    // marks were describing a choice the buttons were already describing.
     details: [
       {
         id: 'divide',
         at: { x: 0.5, y: 0.52 },
         focal: true,
-        says: 'The passage splits around a pillar of packed bone. Both mouths have been used.',
-      },
-      {
-        id: 'left-mark',
-        at: { x: 0.22, y: 0.66 },
-        says: 'Dragged marks into the left mouth. Something heavy goes that way, and often.',
-      },
-      {
-        id: 'right-mark',
-        at: { x: 0.78, y: 0.66 },
-        says: 'Wax down the right-hand wall. Somebody carried a light in there and came back.',
+        says: 'The passage splits around a pillar of packed bone. Both mouths have been used. Dragged marks into the left mouth. Something heavy goes that way, and often. Wax down the right-hand wall. Somebody carried a light in there and came back.',
       },
     ],
     exitAnchors: [
@@ -383,22 +392,15 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
     tags: [],
     art: 'shrine',
     arrival: 'The two ways meet. Whichever I took, this is where it was going.',
+    // Same demotion as the Cleft's, read the other way round: the two mouths
+    // are behind you here, and a hotspot on a road already taken is the purest
+    // form of a press that answers nothing.
     details: [
       {
         id: 'meeting',
         at: { x: 0.5, y: 0.52 },
         focal: true,
-        says: 'Two passages, one floor. The dust from both of them stops in the same place.',
-      },
-      {
-        id: 'left-mouth',
-        at: { x: 0.24, y: 0.62 },
-        says: 'The mouth I could have come out of. It is quiet in there now.',
-      },
-      {
-        id: 'right-mouth',
-        at: { x: 0.76, y: 0.62 },
-        says: 'The other mouth. Narrower. I would have had to turn my shoulders.',
+        says: 'Two passages, one floor. The dust from both of them stops in the same place. The mouth I could have come out of. It is quiet in there now. The other mouth. Narrower. I would have had to turn my shoulders.',
       },
     ],
     exitAnchors: [{ id: 'on-together', at: { x: 0.5, y: 0.8 } }],
@@ -435,22 +437,23 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
     art: 'choir',
     arrival:
       'A side chapel with its own altar. The candles here are burning for somebody. There is a slot cut into the stone.',
+    // **The proving room of the negative-space law**, and it failed it: seven
+    // hotspots in an altar frame that allows five, on a backdrop painted for a
+    // different room with another room's furniture standing on it.
+    //
+    // The carved slot merges onto the altar — one plate carrying the price LOOK
+    // and the OFFER press, which is what it always was in the fiction and now
+    // is in the picture. The candles fold in, because the candle stand already
+    // carries PUT OUT and a LOOK beside it was the second press on one object.
+    // The recess folds in, because until the toll is paid there is nothing in
+    // it, and once it is paid what is in it is **the found thing**, with its own
+    // name and its own TAKE where it lies.
     details: [
       {
         id: 'price',
         at: { x: 0.5, y: 0.585 },
         focal: true,
-        says: 'Two skulls carved beside the slot. Under them, two carved bones. A price list.',
-      },
-      {
-        id: 'candles',
-        at: { x: 0.16, y: 0.79 },
-        says: 'Candles, and fresh ones. Whoever they are burning for is not me yet.',
-      },
-      {
-        id: 'recess',
-        at: { x: 0.823, y: 0.815 },
-        says: 'A recess in the wall, shut with a stone lid. The lid has been forced at before.',
+        says: 'Two skulls carved beside the slot. Under them, two carved bones. A price list. Candles, and fresh ones. Whoever they are burning for is not me yet. A recess in the wall, shut with a stone lid. The lid has been forced at before.',
       },
     ],
     interactables: [
@@ -468,6 +471,9 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
     exitAnchors: [{ id: 'chapel-out', at: { x: 0.5, y: 0.3 } }],
     lootAt: [{ id: 'in-the-recess', at: { x: 0.823, y: 0.62 } }],
     find: 'grave-candle',
+    // The room's one light, and its second source is the ossuary's own drift —
+    // which is the cap, exactly: two, and one of them belongs to the territory.
+    ambient: [{ kind: 'flicker', target: 'offertory-candles', amplitude: 2, tick: 1 }],
     topology: THROUGH,
   },
 
@@ -487,12 +493,7 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
         id: 'shrine',
         at: { x: 0.5, y: 0.45 },
         focal: true,
-        says: 'A shrine. Someone knelt here. The wax has run over the edge and set.',
-      },
-      {
-        id: 'scratches',
-        at: { x: 0.78, y: 0.62 },
-        says: 'Scratches on the stone. Counting something. They stop at nine.',
+        says: 'A shrine. Someone knelt here. The wax has run over the edge and set. Scratches on the stone. Counting something. They stop at nine.',
       },
     ],
     // Two mouths, and the order is the map's contract: the first anchor takes
@@ -534,32 +535,20 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
     // grate set into the floor below it, and the LOOK copy names all three. A
     // player who reads "a square plate in the floor" and taps the plate they
     // can see has to be tapping the right thing, or the clue is a riddle.
+    // **Five LOOKs became one, and the one is the rule.** A vertical frame
+    // allows four hotspots; the vault had eight. The panel is the only thing in
+    // the room the player has to read — it draws the mechanism in two pictures —
+    // and the four objects it names are all still in the picture, all still
+    // named, and two of them still carry their own verb.
+    //
+    // The order the lines fold in is the order the mechanism runs: the rule,
+    // the weight, the thing it stands on, the lever, the gate.
     details: [
-      {
-        id: 'cage',
-        at: { x: 0.81, y: 0.16 },
-        says: 'An iron cage. Heavy enough to make the chain groan.',
-      },
-      {
-        id: 'plate',
-        at: { x: 0.61, y: 0.69 },
-        says: 'A square plate in the floor, polished around the edges by weight.',
-      },
-      {
-        id: 'lever',
-        at: { x: 0.19, y: 0.63 },
-        says: 'A lever beside the gate. Its linkage runs toward the floor plate.',
-      },
       {
         id: 'wall-panel',
         at: { x: 0.13, y: 0.36 },
         focal: true,
-        says: 'Two figures cut into the stone: first a weight falling, then a gate lifting.',
-      },
-      {
-        id: 'gate',
-        at: { x: 0.61, y: 0.55 },
-        says: 'Iron bars with no lock. The mechanism is inside the wall.',
+        says: 'Two figures cut into the stone: first a weight falling, then a gate lifting. An iron cage. Heavy enough to make the chain groan. A square plate in the floor, polished around the edges by weight. A lever beside the gate. Its linkage runs toward the floor plate. Iron bars with no lock. The mechanism is inside the wall.',
       },
     ],
     // The chain's control sits on the chain, under the cage it lifts — so the
@@ -577,6 +566,11 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
     // and the gate is up. The deep way pays iron, and it pays it here.
     lootAt: [{ id: 'in-the-cage', at: { x: 0.83, y: 0.4 } }],
     find: 'rustplate',
+    // The hanging cage, moved by nothing in particular. One pixel, and slow
+    // enough that it is never the loudest thing in the frame — a room whose
+    // whole mechanism runs up and down should have exactly one thing in it that
+    // is not waiting to be pressed.
+    ambient: [{ kind: 'sway', target: 'vault-chain', amplitude: 1, tick: 3 }],
     topology: THROUGH,
   },
 
@@ -596,6 +590,9 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
       {
         id: 'roots',
         at: { x: 0.2, y: 0.5 },
+        // Focal now, and it is the room's only LOOK: the thing worth reading in
+        // a tunnel with the Marrow in it is the wall that is warm.
+        focal: true,
         says: 'Roots, or something like them, coming through the wall. They are warm.',
       },
     ],
@@ -607,6 +604,10 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
       { id: 'fallen-1', at: { x: 0.3, y: 0.72 } },
       { id: 'fallen-2', at: { x: 0.68, y: 0.72 } },
     ],
+    // A glint off the warm wall. Low and slow — the deep is the stretch that is
+    // meant to feel like somewhere else, and the way to say that is to move
+    // less than the rooms above it, not more.
+    ambient: [{ kind: 'glow', target: 'roots', amplitude: 1, tick: 4 }],
     topology: THROUGH,
   },
 
@@ -620,14 +621,12 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
     composition: 'duel',
     tags: [],
     art: 'gate',
-    arrival: 'The Warden stands in front of the exit door. There is no way through while it is alive.',
-    details: [
-      {
-        id: 'sign',
-        at: { x: 0.8, y: 0.62 },
-        says: 'A plate on the wall. REPENT OR PERISH. Someone had opinions.',
-      },
-    ],
+    arrival:
+      'The Warden stands in front of the exit door. There is no way through while it is alive. A plate on the wall. REPENT OR PERISH. Someone had opinions.',
+    // A duel frame holds the enemy and nothing else, which is the whole of what
+    // its budget says. The plate on the wall is still painted there and the
+    // arrival still reads it out; what has gone is a hotspot beside a keeper.
+    details: [],
     encounterTags: ['duel-stander'],
     threat: 'keeper',
     enemy: 'warden',
@@ -654,6 +653,76 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
 
 /** Every authored place, in declaration order. The resolver's whole world. */
 export const ROOM_LIBRARY: readonly RoomTemplate[] = Object.values(ROOM_TEMPLATES)
+
+/**
+ * What a whole stretch of the descent does, in every room of it.
+ *
+ * The companion to the ambient grade: rooms of one territory already share a
+ * light, and bone country now also shares **air with something in it**. It is
+ * declared once here rather than five times in the library, for the reason the
+ * grade is one table — a fact about a stretch written down per room is a fact
+ * that will disagree with itself.
+ *
+ * It counts against the room's cap of two. The Offertory is the room where that
+ * bites: its own candle plus the ossuary's dust is two, and there is no third.
+ */
+export const TERRITORY_AMBIENCE: Partial<Readonly<Record<Territory, Ambient>>> = {
+  ossuary: { kind: 'drift', target: 'world', amplitude: 2, tick: 1 },
+}
+
+/**
+ * How many motes may be in the air at once.
+ *
+ * Content, and a hard cap rather than a rate: dust that accumulates is weather,
+ * and weather is a system. Six, deterministically placed, recycled forever.
+ */
+export const MOTE_CAP = 6
+
+/** At most this many ambient sources in one room, the territory's included. */
+export const AMBIENT_CAP = 2
+
+/**
+ * Where an ambient's target is standing in the picture.
+ *
+ * The whole reason an ambient names a target instead of carrying a coordinate:
+ * the light is seated on the object, so moving the object moves its light and
+ * there is never a second number to keep in step. `undefined` for `world`,
+ * which has no seat because it is the whole box — and `undefined` for a target
+ * nobody wrote, which is what content validation fails on.
+ */
+export function ambientSeat(
+  t: RoomTemplate,
+  target: string,
+): { readonly x: number; readonly y: number } | undefined {
+  if (target === 'world') return undefined
+  if (target === 'ritual') return t.ritual?.at
+  return (
+    t.details.find((d) => d.id === target)?.at ??
+    t.interactables?.find((i) => i.id === target)?.at ??
+    t.lootAt?.find((l) => l.id === target)?.at
+  )
+}
+
+/** An ambient, with the seat its target stands on already resolved. */
+export interface SeatedAmbient extends Ambient {
+  readonly at?: { readonly x: number; readonly y: number }
+}
+
+/**
+ * Everything moving in one room: its own, and its territory's.
+ *
+ * The room's own come first, so the thing the player is looking at is the thing
+ * that was declared beside it. Nothing here decides anything and nothing here
+ * is stored — it is a pure function of the template, which is what lets the
+ * ticker be a timer and a list of elements and nothing else.
+ */
+export function ambienceFor(t: RoomTemplate): readonly SeatedAmbient[] {
+  const territory = TERRITORY_AMBIENCE[t.territory]
+  return [...(t.ambient ?? []), ...(territory ? [territory] : [])].map((a) => {
+    const at = ambientSeat(t, a.target)
+    return at ? { ...a, at } : { ...a }
+  })
+}
 
 /**
  * One authored place, by id.

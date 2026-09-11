@@ -96,8 +96,12 @@ export const PROP_ART: Readonly<Record<string, Asset>> = {
  *
  * Whole scene plates like every other overlay in the game, and numbered from
  * one. Empty for the same reason `PROP_ART` is: none of them has been painted.
- * `RoomAmbience` builds a loop only when it can resolve *every* frame of it, so
- * an empty table means the rooms are simply still.
+ *
+ * **What a room does while nobody is pressing anything is a treatment now**, not
+ * a family of plates — see `render/ambience.ts` and `docs/ART_DIRECTION.md`
+ * § *Quiet motion*. This table and the pipeline behind it stay armed for the
+ * day the painted mote and ember plates land, and `roomAssets` still fetches
+ * whatever is in it; what was deleted is the loop driver that resolved nothing.
  */
 export const AMBIENT_ART: Readonly<Record<string, Asset>> = {}
 
@@ -264,17 +268,6 @@ export function enemyPose(id: string, pose: string | undefined): Asset | undefin
  */
 export function propArt(id: string, frame: string): Asset | undefined {
   return PROP_ART[`${id}.${frame}`]
-}
-
-/**
- * One frame of a room's ambience, or nothing because it was never painted.
- *
- * Must be able to say no, and says it far more often than `propArt` does: a
- * room's mood is the most optional thing in the game. A missing frame costs a
- * loop; a missing loop costs nothing but stillness.
- */
-export function ambientArt(templateId: string, family: string, frame: number): Asset | undefined {
-  return AMBIENT_ART[`${templateId}.${family}.${frame}`]
 }
 
 export function handArt(pose: string): Asset {
