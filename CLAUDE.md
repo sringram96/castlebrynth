@@ -77,6 +77,23 @@ that produces a `GameState`.
 - **A room template names no destination.** `content/rooms.ts` owns what
   happens in a place; the generated `RunMap` owns where it leads. A room
   instance is a map node, never a template id — `roomAt(run)` is the only join.
+  A template *does* say **where in its picture** each way out stands; the map
+  binds its edges to those anchors in declaration order.
+- **The run is a forward-only reel.** The map is a DAG and `validateRunMap`
+  asserts it. The maze feeling is seeing the mouths of roads you cannot take,
+  not walking back up one. Written to be repealed in one line — see
+  `cyclesIn` — rather than re-litigated.
+- **We hide places, never rules.** A way says what it costs and what it pays
+  before the press; a room that charges prints the price on the verb before the
+  verb charges; a found thing states its exact mechanic where it lies.
+- **Movement is in the picture, and loot happens in the world.** There is no GO
+  button in the tray and no reward screen: an open exit is a hotspot on the
+  painted feature it passes through, and what a fight pays falls beside the
+  body with its own LOOK and its own TAKE. A held exit renders **nothing**.
+- **A run starts with six bare bones and nothing else.** Every carried thing is
+  found somewhere, and which route a run takes is which build it gets.
+- **Every draw is positioned by the node it happens in**, never by how far the
+  run walked to get there.
 - **No new gameplay noun** — collectible species, status family, screen mode,
   UI panel — without a product decision.
 - **The player has no separate HP field: `run.bones` is life.** Enemies
@@ -107,6 +124,9 @@ that produces a `GameState`.
   written down twice is a multiplier that will disagree with itself.
 - **Asset bytes are reported, never capped.** There is no global runtime-art
   payload ceiling. Loading is staged instead — see `src/render/loader.ts`.
+- **Combat chrome obeys the art's pixel grid and palette.** A fill is a whole
+  number of cells, a drain steps rather than slides, corners are square, and
+  colours come from the existing tokens. See `docs/ART_DIRECTION.md`.
 
 ## No art in the polish sweep
 
@@ -124,7 +144,8 @@ that does not need it continues.
 Any mode is reachable from a URL, which is what keeps the ends of the game
 testable: `?room=gate&bones=4&mode=combat`, `?mode=dead`, `?rolls=1`,
 `?dice=6,6,6,4,4,3`, `?used=pair,triple`, `?enemyHp=20`, `?iron=5`,
-`?iron=none`, `?items=splinter-fetish`, `?talismans=none`. `?room=` names an
-authored template and stands you in the first room of the run that used it;
-`?node=n8` names one exact room.
+`?iron=none`, `?items=splinter-fetish`, `?talismans=pair-talisman`,
+`?offertory=paid`, `?vault=solved`. `?room=` names an authored template and
+stands you in the first room of the run that used it; `?node=a8b` names one
+exact room.
 See `src/game/fixture.ts`.

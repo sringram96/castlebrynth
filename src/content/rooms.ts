@@ -11,6 +11,21 @@
  * A room may never require the player to find a hidden thing in order to
  * leave.
  *
+ * ## The ways out are in the picture
+ *
+ * A template also says **where** each way out is standing — `exitAnchors`, one
+ * per exit slot, measured against the art exactly as a detail is. It still
+ * names no destination: the map binds its edges to these positionally, first
+ * anchor to first edge, which is the same law that already made the first edge
+ * out of a junction the primary one.
+ *
+ * A worked object's verb, a found thing's pill and a way out are all presses on
+ * the picture, and **none of them may share 44 px with a LOOK detail or with
+ * each other.** `test/unit/anchors.test.ts` does that arithmetic over every
+ * template in this file, at the phone's own geometry.
+ *
+ * ## What a room withholds
+ *
  * Three kinds of thing can occupy a room, and they are different in what they
  * withhold. An **enemy** and a **ritual** each hold the exits shut until they
  * are resolved. **Interactables** are the third and are not one thing but
@@ -30,7 +45,9 @@ import type { RoomTemplate } from './roomTypes.js'
 export type {
   Composition,
   Detail,
+  ExitAnchor,
   Interactable,
+  LootAnchor,
   Ritual,
   RoomRole,
   RoomTemplate,
@@ -72,6 +89,9 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
         says: 'The hall keeps going. There is a door at the end of it and no light behind it.',
       },
     ],
+    // On the hall's own vanishing point, below the door the detail names — the
+    // press is *walking down there*, and the door is the thing you look at.
+    exitAnchors: [{ id: 'far-door', at: { x: 0.53, y: 0.55 } }],
     topology: { minEntrances: 0, maxEntrances: 0, minExits: 1, maxExits: 1 },
   },
 
@@ -99,6 +119,9 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
         says: 'A step, worn down the middle. Whatever uses this passage uses it often.',
       },
     ],
+    // Under the arch of skulls and above the worn step: the gap the passage
+    // actually goes through, between the two things you can look at.
+    exitAnchors: [{ id: 'under-the-arch', at: { x: 0.5, y: 0.5 } }],
     topology: THROUGH,
   },
 
@@ -125,6 +148,16 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
     encounterTags: ['closing-horror'],
     threat: 'low',
     enemy: 'gnawing',
+    // The far end of the hall, which is where the thing came from and is the
+    // only way on. Held shut while it is alive, and the view draws nothing.
+    exitAnchors: [{ id: 'hall-end', at: { x: 0.5, y: 0.46 } }],
+    // What a fight pays falls on the floor of the room it was fought in, in
+    // front of the body. Two, because the Marrow's guaranteed drop and its
+    // rolled offer are two objects and never one card with two things on it.
+    lootAt: [
+      { id: 'fallen-1', at: { x: 0.3, y: 0.72 } },
+      { id: 'fallen-2', at: { x: 0.68, y: 0.72 } },
+    ],
     topology: THROUGH,
   },
 
@@ -168,6 +201,10 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
       // bone and every carried thing in the game is held to.
       prompt: 'A basin, filled to the lip, with a die turning under the surface. It gives back bones: whatever it lands on, and two more. Never past thirty, and never one that had a name.',
     },
+    // The arch behind the altar, well clear of the basin's own press: the font
+    // holds the exits shut until it is used, so the two are never up together,
+    // and they are still not allowed to share a thumb's worth of screen.
+    exitAnchors: [{ id: 'chapel-arch', at: { x: 0.5, y: 0.3 } }],
     topology: THROUGH,
   },
 
@@ -261,13 +298,176 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
         at: { x: 0.5, y: 0.7 },
         describe: 'Pull the handle under the basin',
       },
+    ],
+    // There is no `reliquary-chest` control any more, and its absence is the
+    // wave's ruling in one line: the chest is not a button that pays out, it is
+    // a container, and what is in it is **an object in the room** with its own
+    // name, its own LOOK and its own TAKE. See `lootAt` below.
+    //
+    // The way out is the arch on the right wall, well above the chest and well
+    // clear of the bell: GO ON is on screen from the first frame in this room
+    // and never leaves, so it has to share the picture with everything else in
+    // it without ever sharing a thumb.
+    exitAnchors: [{ id: 'side-arch', at: { x: 0.82, y: 0.36 } }],
+    // The found thing lies in the chest, which is where the chest is painted.
+    lootAt: [{ id: 'in-the-chest', at: { x: 0.823, y: 0.62 } }],
+    // And what is in it is authored rather than drawn. The Talisman of the Pair
+    // used to be starting equipment; it lives here now, which is what makes the
+    // Reliquary worth working rather than worth walking past.
+    find: 'pair-talisman',
+    topology: THROUGH,
+  },
+
+  /**
+   * The first fork, and the one that decides what the run is carrying.
+   *
+   * A dividing passage in the ossuary. It reuses the Split's painting, and that
+   * is **recorded quality debt rather than a joke**: the picture is a passage
+   * dividing in front of you, a dividing passage in the ossuary is the same
+   * fact, and a bespoke cleft painting is owed — see POLISH_PROGRESS.md
+   * § HUMAN ART REQUIRED. Nothing was drawn, traced, recoloured or cropped.
+   *
+   * What the fork asks is not *how much health am I willing to spend* — that is
+   * the Split's question, five rooms later. It is *what do I want to be
+   * carrying*: left is a fight and a draw, right is a certain die and a toll.
+   */
+  cleft: {
+    id: 'cleft',
+    name: 'The Cleft',
+    role: 'junction',
+    territory: 'ossuary',
+    composition: 'junction',
+    tags: [],
+    art: 'shrine',
+    arrival: 'The passage divides. Bones went both ways.',
+    details: [
       {
-        id: 'reliquary-chest',
-        art: 'chest',
-        at: { x: 0.823, y: 0.7 },
-        describe: 'Take what is inside the reliquary',
+        id: 'divide',
+        at: { x: 0.5, y: 0.52 },
+        focal: true,
+        says: 'The passage splits around a pillar of packed bone. Both mouths have been used.',
+      },
+      {
+        id: 'left-mark',
+        at: { x: 0.22, y: 0.66 },
+        says: 'Dragged marks into the left mouth. Something heavy goes that way, and often.',
+      },
+      {
+        id: 'right-mark',
+        at: { x: 0.78, y: 0.66 },
+        says: 'Wax down the right-hand wall. Somebody carried a light in there and came back.',
       },
     ],
+    exitAnchors: [
+      { id: 'left-mouth', at: { x: 0.28, y: 0.38 } },
+      { id: 'right-mouth', at: { x: 0.72, y: 0.38 } },
+    ],
+    topology: { minEntrances: 1, maxEntrances: 1, minExits: 2, maxExits: 2 },
+  },
+
+  /**
+   * Where the two ways come back together.
+   *
+   * The Split's painting read the other way round: two passages meeting rather
+   * than one dividing. Same recorded debt as the Cleft, same reason, and the
+   * same nothing authored. Its topology is what makes it the only room that can
+   * stand here — **two ways in and one on** — and that is a fact about the
+   * picture, which is why the validator asks the art rather than the plan.
+   */
+  confluence: {
+    id: 'confluence',
+    name: 'The Confluence',
+    role: 'transition',
+    territory: 'chapel',
+    composition: 'junction',
+    tags: [],
+    art: 'shrine',
+    arrival: 'The two ways meet. Whichever I took, this is where it was going.',
+    details: [
+      {
+        id: 'meeting',
+        at: { x: 0.5, y: 0.52 },
+        focal: true,
+        says: 'Two passages, one floor. The dust from both of them stops in the same place.',
+      },
+      {
+        id: 'left-mouth',
+        at: { x: 0.24, y: 0.62 },
+        says: 'The mouth I could have come out of. It is quiet in there now.',
+      },
+      {
+        id: 'right-mouth',
+        at: { x: 0.76, y: 0.62 },
+        says: 'The other mouth. Narrower. I would have had to turn my shoulders.',
+      },
+    ],
+    exitAnchors: [{ id: 'on-together', at: { x: 0.5, y: 0.8 } }],
+    topology: { minEntrances: 2, maxEntrances: 2, minExits: 1, maxExits: 1 },
+  },
+
+  /**
+   * The Offertory: the Chain Vault's grammar, spent a second way.
+   *
+   * The vault charges a bone for a mistake. This one charges two for the
+   * correct answer, and prints the price on the wall before the press — which
+   * is the whole difference between a toll and a trap. It is the right-hand
+   * branch's cost, and it is flat: the left branch pays the Gnawing three bones
+   * a round instead, and which of those is cheaper depends on the dice.
+   *
+   * The greedy press is the vault's, exactly: PRY the recess before paying,
+   * lose a bone, move nothing, as many times as there is blood for it. A run
+   * can die here.
+   *
+   * **Built entirely from plates that already exist**: the Choir's backdrop and
+   * the Reliquary's altar, candle stand and chest. Nothing was authored,
+   * generated or moved. The plates are staged where they were painted for the
+   * Reliquary, so the objects sit where those coordinates put them and the
+   * verbs sit on the objects — which reads, and is recorded as owed art all the
+   * same.
+   */
+  offertory: {
+    id: 'offertory',
+    name: 'The Offertory',
+    role: 'toll',
+    territory: 'ossuary',
+    composition: 'altar',
+    tags: ['worked', 'mandatory'],
+    art: 'choir',
+    arrival:
+      'A side chapel with its own altar. The candles here are burning for somebody. There is a slot cut into the stone.',
+    details: [
+      {
+        id: 'price',
+        at: { x: 0.5, y: 0.585 },
+        focal: true,
+        says: 'Two skulls carved beside the slot. Under them, two carved bones. A price list.',
+      },
+      {
+        id: 'candles',
+        at: { x: 0.16, y: 0.79 },
+        says: 'Candles, and fresh ones. Whoever they are burning for is not me yet.',
+      },
+      {
+        id: 'recess',
+        at: { x: 0.823, y: 0.815 },
+        says: 'A recess in the wall, shut with a stone lid. The lid has been forced at before.',
+      },
+    ],
+    interactables: [
+      {
+        id: 'offertory-candles',
+        art: 'brazier',
+        // Above the flames, as the Reliquary's is: the verb is two words wide
+        // and the candle stand is exactly as wide as the verb.
+        at: { x: 0.16, y: 0.6 },
+        describe: 'Put out the candles',
+      },
+      { id: 'offertory-altar', art: 'altar', at: { x: 0.5, y: 0.7 }, describe: 'Offer two bones' },
+      { id: 'offertory-recess', art: 'chest', at: { x: 0.8, y: 0.44 }, describe: 'Pry at the stone lid' },
+    ],
+    exitAnchors: [{ id: 'chapel-out', at: { x: 0.5, y: 0.3 } }],
+    lootAt: [{ id: 'in-the-recess', at: { x: 0.823, y: 0.62 } }],
+    find: 'grave-candle',
     topology: THROUGH,
   },
 
@@ -294,6 +494,12 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
         at: { x: 0.78, y: 0.62 },
         says: 'Scratches on the stone. Counting something. They stop at nine.',
       },
+    ],
+    // Two mouths, and the order is the map's contract: the first anchor takes
+    // the first edge out of the slot, which is the stair.
+    exitAnchors: [
+      { id: 'stair-mouth', at: { x: 0.3, y: 0.38 } },
+      { id: 'deep-mouth', at: { x: 0.7, y: 0.38 } },
     ],
     topology: { minEntrances: 1, maxEntrances: 1, minExits: 2, maxExits: 2 },
   },
@@ -362,6 +568,15 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
       { id: 'vault-chain', art: 'chain', at: { x: 0.81, y: 0.28 }, describe: 'Lower the hanging cage' },
       { id: 'vault-lever', art: 'lever', at: { x: 0.19, y: 0.51 }, describe: 'Pull the iron lever' },
     ],
+    // Through the gate, once the gate is up. Nothing is drawn here while it is
+    // down: `exitsOpen` is the one statement of that and the view obeys it.
+    // Through the barred arch, left of centre — the cage hangs on the right and
+    // what is in it is a press of its own, and the two may not share a thumb.
+    exitAnchors: [{ id: 'through-the-gate', at: { x: 0.55, y: 0.38 } }],
+    // What the cage holds, sitting in the cage, once the cage is on the floor
+    // and the gate is up. The deep way pays iron, and it pays it here.
+    lootAt: [{ id: 'in-the-cage', at: { x: 0.83, y: 0.4 } }],
+    find: 'rustplate',
     topology: THROUGH,
   },
 
@@ -387,6 +602,11 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
     encounterTags: ['standing-horror'],
     threat: 'medium',
     enemy: 'marrow',
+    exitAnchors: [{ id: 'tunnel-on', at: { x: 0.5, y: 0.34 } }],
+    lootAt: [
+      { id: 'fallen-1', at: { x: 0.3, y: 0.72 } },
+      { id: 'fallen-2', at: { x: 0.68, y: 0.72 } },
+    ],
     topology: THROUGH,
   },
 
@@ -411,6 +631,9 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
     encounterTags: ['duel-stander'],
     threat: 'keeper',
     enemy: 'warden',
+    // The door itself, which is what the thing is standing in front of. It pays
+    // nothing, so it declares nowhere for anything to fall.
+    exitAnchors: [{ id: 'the-door', at: { x: 0.5, y: 0.55 } }],
     topology: { minEntrances: 1, maxEntrances: 2, minExits: 1, maxExits: 1 },
   },
 

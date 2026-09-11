@@ -231,6 +231,36 @@ button {
   }
 }
 
+/*
+ * The Offertory borrows all three of them.
+ *
+ * Same plates, same treatments, same nothing-authored: the room is the Choir's
+ * backdrop with the Reliquary's altar, candle stand and chest standing in it,
+ * and the chest is standing in for a stone recess. It reads, and it is recorded
+ * as owed art under `## HUMAN ART REQUIRED` rather than drawn.
+ */
+.prop[data-prop="offertory-candles"] {
+  transition: filter 260ms ease-out;
+}
+
+.prop[data-prop="offertory-candles"][data-look="out"] {
+  filter: brightness(0.48) saturate(0.4);
+}
+
+/* The lid, forced open — or forced at, and not open. The plate is the same
+   shut chest either way; what says it gave is that the room did. */
+.prop[data-prop="offertory-recess"][data-look="open"] {
+  filter: brightness(1.18) saturate(1.05);
+}
+
+.prop[data-prop="offertory-recess"][data-move="knock"] {
+  animation: chest-knock 330ms ease-out 1;
+}
+
+.prop[data-prop="offertory-altar"][data-move="work"] {
+  animation: altar-work 240ms ease-out 1;
+}
+
 /* And the altar takes the shock of the thing moving inside it. */
 .prop[data-prop="reliquary-altar"][data-move="work"] {
   animation: altar-work 240ms ease-out 1;
@@ -260,7 +290,8 @@ button {
  * still the room. With `prefers-reduced-motion` the block at the end of this
  * file stops both, and nothing is lost: neither was ever information.
  */
-.prop[data-prop="reliquary-brazier"][data-look="lit"] {
+.prop[data-prop="reliquary-brazier"][data-look="lit"],
+.prop[data-prop="offertory-candles"][data-look="lit"] {
   animation: candle-vary 1100ms ease-in-out infinite;
 }
 
@@ -274,7 +305,8 @@ button {
   }
 }
 
-.prop[data-prop="reliquary-altar"] {
+.prop[data-prop="reliquary-altar"],
+.prop[data-prop="offertory-altar"] {
   animation: altar-breathe 1800ms ease-in-out infinite;
 }
 
@@ -581,6 +613,54 @@ button {
   }
 }
 
+/*
+ * ── crossing ─────────────────────────────────────────────────────────
+ *
+ * The one important verb with no presentation, given one. A short push toward
+ * the doorway, then dark, then the next room — and **the dark is the beat that
+ * does the work**: a change of territory is a change of palette and of
+ * everything painted, and a cut through black reads as travel where a crossfade
+ * reads as a slide advancing.
+ *
+ * The reducer moved the run and saved it before any of this ran, so a reload
+ * mid-crossing lands in the destination, settled. With motion off the sequence
+ * never starts and neither class is ever added.
+ */
+#world.crossing {
+  transform: scale(1.035);
+  transition: transform 220ms ease-in;
+}
+
+/*
+ * Nothing in the world is pressable while you are in a doorway.
+ *
+ * The same ruling the defeat sequence keeps: while a beat is playing there is
+ * no move to make, so none is offered — **hidden, not disabled**. The room on
+ * screen during a crossing is the one being left, and its ways out lead where
+ * the run has already gone; leaving them under the thumb would be offering a
+ * press the reducer would refuse.
+ */
+#world.crossing #hits,
+#world.dark #hits {
+  display: none;
+}
+
+#world.dark::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  background: var(--void);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #world.crossing {
+    transform: none;
+    transition: none;
+  }
+}
+
 /* A soft floor of darkness so HUD text never sits on a busy focal region. */
 #world::after {
   content: "";
@@ -696,6 +776,57 @@ button {
   box-shadow: 0 0 14px rgb(163 48 42 / 0.45);
 }
 
+/*
+ * A way out, standing on the thing it passes through.
+ *
+ * The same pill as a worked object's verb, because it is the same kind of
+ * press: a verb on the picture, at the object it acts on. It used to be a
+ * button in the tray, which put the most important decision in the game in the
+ * one region of the screen that is not the world.
+ *
+ * A held exit is not styled — it is **not rendered**. There is no dimmed state
+ * here and there is nowhere to write one.
+ */
+.hit-go,
+.hit-loot,
+.hit-take {
+  width: auto;
+  min-width: 72px;
+  height: var(--touch);
+  margin-left: -36px;
+  display: grid;
+  place-items: center;
+  border-radius: calc(var(--touch) / 2);
+  padding: 0 14px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  white-space: nowrap;
+  color: var(--ink);
+  text-shadow: 0 1px 3px rgb(0 0 0 / 0.95);
+  background: rgb(7 6 5 / 0.62);
+}
+
+.hit-go::after,
+.hit-loot::after,
+.hit-take::after {
+  inset: 0;
+  border-radius: calc(var(--touch) / 2);
+  border-color: rgb(207 166 82 / 0.8);
+  box-shadow: 0 0 14px rgb(163 48 42 / 0.45);
+}
+
+/* A found thing names itself where it lies. Its ring is cold rather than
+   bloody: it is a thing to pick up, not a mechanism to work. */
+.hit-loot {
+  color: var(--gold);
+}
+
+.hit-loot::after {
+  border-color: rgb(207 166 82 / 0.9);
+  box-shadow: 0 0 16px rgb(207 166 82 / 0.35);
+}
+
 .hit-seen::after {
   border-color: rgb(157 144 122 / 0.24);
   box-shadow: none;
@@ -745,6 +876,63 @@ button {
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.12em;
+}
+
+/*
+ * ── the pixel-grid chrome law ────────────────────────────────────────
+ *
+ * **Combat chrome obeys the art's pixel grid and palette.** Everything on this
+ * screen except the chrome is posterised pixel art at a fixed scale, and a
+ * smooth bar sliding across it is the one element that looks like it came out
+ * of a different program.
+ *
+ * So the enemy's health is a row of whole cells. `worldView.ts` computes how
+ * many are lit as an integer and this multiplies it by one step: there is no
+ * fraction to round, no sub-pixel edge, and nothing for a transition to
+ * interpolate through. Corners are square. Every colour is an existing palette
+ * token. The drain is `steps()`, so it goes down a cell at a time, and it lands
+ * instantly with motion off or reduced motion.
+ *
+ * See `docs/ART_DIRECTION.md` § Combat chrome.
+ */
+.enemy-track {
+  --step: 6px;
+  --cells: 48;
+  width: calc(48 * var(--step));
+  max-width: 100%;
+  height: 12px;
+  margin: 5px auto 0;
+  border-radius: 0;
+  background: var(--void);
+  box-shadow: 0 0 0 2px rgb(207 166 82 / 0.4);
+  overflow: hidden;
+}
+
+.enemy-fill {
+  --step: 6px;
+  --cells: 0;
+  display: block;
+  height: 100%;
+  width: calc(var(--cells) * var(--step));
+  border-radius: 0;
+  background:
+    repeating-linear-gradient(
+      to right,
+      rgb(0 0 0 / 0.45) 0 1px,
+      transparent 1px var(--step)
+    ),
+    var(--blood);
+  transition: width 300ms steps(12, end);
+}
+
+body[data-motion='off'] .enemy-fill {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .enemy-fill {
+    transition: none;
+  }
 }
 
 .enemy-hits {
@@ -890,7 +1078,21 @@ button {
     ),
     linear-gradient(to bottom, #ded3b6 0%, #a8997a 46%, #5d5341 100%);
   border-top: 2px solid #f3ead1;
-  transition: height 300ms ease-out;
+  /* Under the same law as the health bar: the pile is a count of objects, so
+     it settles in steps rather than sliding. The height is already a whole
+     number of bones out of thirty — what changed is that it stops pretending
+     to pass through the numbers in between. */
+  transition: height 300ms steps(8, end);
+}
+
+body[data-motion='off'] .orb-fill {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orb-fill {
+    transition: none;
+  }
 }
 
 .orb::after {
@@ -1165,6 +1367,34 @@ button {
 .item-die[data-face="blank"] .item-face {
   background: linear-gradient(150deg, #4c4652, #241f29);
   color: #9d94a6;
+}
+
+/*
+ * A bay taking something that was just picked up.
+ *
+ * One short move on a plate that already exists — a pulse is a treatment, not a
+ * painting. It is the only thing that marks a found thing crossing from the
+ * world into the loadout, and it is deliberately over in under half a second:
+ * the *information* is the say line and the bay's own count, both of which are
+ * settled text.
+ */
+.filling {
+  animation: bay-fills 400ms ease-out 1;
+}
+
+@keyframes bay-fills {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  35% {
+    transform: scale(1.18);
+    filter: brightness(1.7);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
 }
 
 /* ── a number popping on the thing that made it ──────────────────────── */

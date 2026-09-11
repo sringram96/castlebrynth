@@ -17,7 +17,7 @@ import type { GameState, Mode } from './state.js'
 const KEY = 'castlebrynth'
 
 /** Modes a run can be resumed into. `dead` and `complete` are endings. */
-const LIVE: readonly Mode[] = ['explore', 'combat', 'reward']
+const LIVE: readonly Mode[] = ['explore', 'combat']
 
 export interface Loaded {
   readonly state: GameState

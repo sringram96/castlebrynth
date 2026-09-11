@@ -80,11 +80,21 @@ export function materializeRunPlan(plan: RunPlan, seed: number): RunMap {
     const chosen = resolveRoom(request, rng)
     const enemyId = resolveEncounter(chosen, slot, rng)
 
-    // The ways out, in the plan's order. First out of a junction is the primary
-    // bed on the tray, which is why the plan states the stair before the deep.
-    const exits: MapExit[] = ways.map((edge) => {
+    // The ways out, in the plan's order, each bound to the anchor at the same
+    // position in the room's picture. First out of a junction is the primary
+    // one, which is why the plan states the stair before the deep — and it is
+    // now also *where* the first way stands, because the anchors are declared
+    // in the same order for the same reason.
+    const exits: MapExit[] = ways.map((edge, index) => {
       const copy = way(edge.way)
-      return { label: copy.label, to: edge.to, sense: copy.sense }
+      const anchor = chosen.exitAnchors?.[index]
+      return {
+        label: copy.label,
+        to: edge.to,
+        sense: copy.sense,
+        kind: edge.kind,
+        ...(anchor ? { at: anchor.at } : {}),
+      }
     })
 
     nodes[slot.id] = {

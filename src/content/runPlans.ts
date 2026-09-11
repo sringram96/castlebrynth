@@ -81,12 +81,18 @@ export interface Way {
  */
 export const WAYS: Readonly<Record<string, Way>> = {
   'hall-on': { label: 'GO ON', sense: 'The hall continues to a dark archway.' },
-  'into-the-fight': { label: 'GO ON', sense: 'Something is breathing in the room ahead.' },
   'past-the-body': { label: 'GO ON', sense: 'The body is down. The corridor continues behind it.' },
   'chapel-on': { label: 'GO ON', sense: 'The chapel opens onto a dead one.' },
   'chapel-out': { label: 'GO ON', sense: 'The chapel gives onto the passage again.' },
+  // The first fork. Left is a fight; right is a price. Both stated before the
+  // press, because the run hides places and never rules.
+  'left-fight': { label: 'GO ON', sense: 'Something is feeding down there. I can hear it.' },
+  'right-work': { label: 'NARROW', sense: 'Quieter. Narrower. The quiet is doing a lot of work.' },
+  'ways-meet': { label: 'GO ON', sense: 'This passage rejoins the other. One of me arrives either way.' },
   stair: { label: 'STAIR', sense: 'Shorter route to the door.' },
-  deep: { label: 'DEEP', sense: 'One more fight. More danger, better chance of an upgrade.' },
+  // Amended: the deep way now *certainly* pays iron, and the printed-contract
+  // law means it has to say so before the press rather than after the gate.
+  deep: { label: 'DEEP', sense: 'One more fight. Pay at the gate; iron waits in the cage.' },
   'gate-up': { label: 'GO ON', sense: 'The gate is up. The tunnel goes on.' },
   rejoin: { label: 'GO ON', sense: 'This tunnel rejoins the path to the door.' },
   through: { label: 'THROUGH', sense: 'The door is open.' },
@@ -99,49 +105,71 @@ export function way(id: string): Way {
 }
 
 /**
- * The descent.
+ * The descent. A **directed acyclic graph**, with two decision points.
  *
- * One authored grammar, and for now the only one — the first director's job is
- * to reproduce the run the slice already had, so that the architecture is what
- * changed and nothing else. Read down the depths:
+ *                          ┌→ a3  encounter (the Gnawing) ─┐
+ *     a0 → a1 → a2 junction┤                               ├→ a4 → a5 → a6 → a7 junction
+ *                          └→ b3  toll (the Offertory) ────┘                     │
+ *                                                                                │
+ *                    ┌───────────────────────────────────── stair ───────────────┤
+ *                    ↓                                                           ↓
+ *                   a9 keeper → a10 exit ←──── rejoin ──── a8b ← a8a toll ← deep ┘
  *
- *     entrance → transition → encounter → recovery → find → junction
- *                                                             ├──────→ keeper → exit
- *                                                             └→ toll → encounter ─┘
+ * **Forward only.** The maze feeling is not backtracking — it is seeing the
+ * mouth of a road you cannot take this run, and the unchosen branch is what the
+ * next run is for. There is no cycle anywhere in here and `validateRunMap`
+ * asserts it; a loop wave, if there is one, deletes that assertion rather than
+ * arguing with this comment.
  *
- * Two things about the ordering are deliberate rather than incidental. The
- * recovery slot sits between the first fight and the junction because the
- * junction's question is *how much health am I willing to spend*, and that is
- * only a question if the player has just been told the answer. And the toll
- * sits in front of the deep encounter rather than after it, so the long way is
- * paid for before it is fought.
+ * Two forks, and they ask different questions:
+ *
+ *   - **the Cleft (a2)** asks *what do I want to be carrying*. Left is a fight
+ *     and a sixty-percent draw; right is a flat two-bone toll and a certain
+ *     item die. Route is build.
+ *   - **the Split (a7)** asks *how much health am I willing to spend*, which is
+ *     only a question if the run has just been told the answer — which is why
+ *     the recovery slot sits in front of it, exactly as it always has.
+ *
+ * A third fork was considered and is **not** here; it is recorded as an open
+ * question in `docs/PRODUCT.md` rather than smuggled in.
+ *
+ * The territory grammar is unchanged: threshold → ossuary → chapel → deep →
+ * threshold, and both branches of the Cleft are in the ossuary so the run reads
+ * as one stretch of bone country whichever it takes.
  */
 export const DESCENT: RunPlan = {
   nodes: [
-    { id: 'n1', role: 'entrance', depth: 0, territory: 'threshold' },
-    { id: 'n2', role: 'transition', depth: 1, territory: 'ossuary' },
-    { id: 'n3', role: 'encounter', depth: 2, territory: 'ossuary', threat: 'low' },
-    { id: 'n4', role: 'recovery', depth: 3, territory: 'chapel' },
-    { id: 'n5', role: 'find', depth: 4, territory: 'chapel', requiredTags: ['worked'] },
-    { id: 'n6', role: 'junction', depth: 5, territory: 'chapel' },
-    { id: 'n7', role: 'toll', depth: 6, territory: 'deep', requiredTags: ['worked', 'mandatory'] },
-    { id: 'n8', role: 'encounter', depth: 7, territory: 'deep', threat: 'medium' },
-    { id: 'n9', role: 'keeper', depth: 8, territory: 'threshold', threat: 'keeper' },
-    { id: 'n10', role: 'exit', depth: 9, territory: 'threshold' },
+    { id: 'a0', role: 'entrance', depth: 0, territory: 'threshold' },
+    { id: 'a1', role: 'transition', depth: 1, territory: 'ossuary' },
+    { id: 'a2', role: 'junction', depth: 2, territory: 'ossuary' },
+    { id: 'a3', role: 'encounter', depth: 3, territory: 'ossuary', threat: 'low' },
+    { id: 'b3', role: 'toll', depth: 3, territory: 'ossuary', requiredTags: ['worked', 'mandatory'] },
+    { id: 'a4', role: 'transition', depth: 4, territory: 'chapel' },
+    { id: 'a5', role: 'recovery', depth: 5, territory: 'chapel' },
+    { id: 'a6', role: 'find', depth: 6, territory: 'chapel', requiredTags: ['worked'] },
+    { id: 'a7', role: 'junction', depth: 7, territory: 'chapel' },
+    { id: 'a8a', role: 'toll', depth: 8, territory: 'deep', requiredTags: ['worked', 'mandatory'] },
+    { id: 'a8b', role: 'encounter', depth: 9, territory: 'deep', threat: 'medium' },
+    { id: 'a9', role: 'keeper', depth: 10, territory: 'threshold', threat: 'keeper' },
+    { id: 'a10', role: 'exit', depth: 11, territory: 'threshold' },
   ],
-  // Order matters at the junction and only there: the first edge out of a slot
-  // is the primary bed on the tray, and the short way is the one a player who
-  // presses the big button gets.
+  // Order matters at a junction and only there: the first edge out of a slot
+  // binds to the first exit anchor in the room's picture, and it is the way a
+  // player who presses the obvious thing gets.
   edges: [
-    { from: 'n1', to: 'n2', kind: 'forward', way: 'hall-on' },
-    { from: 'n2', to: 'n3', kind: 'forward', way: 'into-the-fight' },
-    { from: 'n3', to: 'n4', kind: 'forward', way: 'past-the-body' },
-    { from: 'n4', to: 'n5', kind: 'forward', way: 'chapel-on' },
-    { from: 'n5', to: 'n6', kind: 'forward', way: 'chapel-out' },
-    { from: 'n6', to: 'n9', kind: 'forward', way: 'stair' },
-    { from: 'n6', to: 'n7', kind: 'optional', way: 'deep' },
-    { from: 'n7', to: 'n8', kind: 'forward', way: 'gate-up' },
-    { from: 'n8', to: 'n9', kind: 'return', way: 'rejoin' },
-    { from: 'n9', to: 'n10', kind: 'forward', way: 'through' },
+    { from: 'a0', to: 'a1', kind: 'forward', way: 'hall-on' },
+    { from: 'a1', to: 'a2', kind: 'forward', way: 'hall-on' },
+    { from: 'a2', to: 'a3', kind: 'forward', way: 'left-fight' },
+    { from: 'a2', to: 'b3', kind: 'forward', way: 'right-work' },
+    { from: 'a3', to: 'a4', kind: 'forward', way: 'past-the-body' },
+    { from: 'b3', to: 'a4', kind: 'forward', way: 'ways-meet' },
+    { from: 'a4', to: 'a5', kind: 'forward', way: 'hall-on' },
+    { from: 'a5', to: 'a6', kind: 'forward', way: 'chapel-on' },
+    { from: 'a6', to: 'a7', kind: 'forward', way: 'chapel-out' },
+    { from: 'a7', to: 'a9', kind: 'forward', way: 'stair' },
+    { from: 'a7', to: 'a8a', kind: 'optional', way: 'deep' },
+    { from: 'a8a', to: 'a8b', kind: 'forward', way: 'gate-up' },
+    { from: 'a8b', to: 'a9', kind: 'return', way: 'rejoin' },
+    { from: 'a9', to: 'a10', kind: 'forward', way: 'through' },
   ],
 }

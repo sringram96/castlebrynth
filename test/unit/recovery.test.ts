@@ -12,7 +12,7 @@ import {
   FONT_BONUS,
   VIAL_BONES,
   fontRestore,
-  loseOneBone,
+  loseBones,
   newRun,
   reduce,
 } from '../../src/game/reducer.js'
@@ -148,16 +148,30 @@ describe('a vial', () => {
   })
 })
 
-describe('losing one bone outside a fight', () => {
-  it('takes exactly one', () => {
-    const { run: after, took } = loseOneBone({ ...newRun(1), bones: 5 })
-    expect(took).toBe(true)
+describe('losing bones outside a fight', () => {
+  it('takes exactly what was asked for', () => {
+    const { run: after, took } = loseBones({ ...newRun(1), bones: 5 }, 1)
+    expect(took).toBe(1)
     expect(after.bones).toBe(4)
   })
 
+  it('takes several, for a room that charges several', () => {
+    // The Offertory's toll is two. One helper, so every non-combat cost in the
+    // game spends the pile the same way.
+    const { run: after, took } = loseBones({ ...newRun(1), bones: 5 }, 2)
+    expect(took).toBe(2)
+    expect(after.bones).toBe(3)
+  })
+
+  it('takes what is there and says so, when the pile is short', () => {
+    const { run: after, took } = loseBones({ ...newRun(1), bones: 1 }, 2)
+    expect(took).toBe(1)
+    expect(after.bones).toBe(0)
+  })
+
   it('takes nothing from an empty pile, and says so', () => {
-    const { run: after, took } = loseOneBone({ ...newRun(1), bones: 0 })
-    expect(took).toBe(false)
+    const { run: after, took } = loseBones({ ...newRun(1), bones: 0 }, 1)
+    expect(took).toBe(0)
     expect(after.bones).toBe(0)
   })
 })

@@ -119,13 +119,10 @@ export async function fight(page: Page, maxAttacks = 30): Promise<FightReport> {
   await act(page, 'fight').click()
   let drank = 0
   for (let attack = 0; attack < maxAttacks; attack++) {
-    const screen = await screenName(page)
-    if (screen === 'reward') return { end: 'won', drank }
-    if (screen === 'dead') return { end: 'died', drank }
-    // A win with nothing to give goes straight back to the room, and a fight
-    // that is over has no throw left on the tray. Visible, not merely present:
-    // a reward screen can sit over a tray that still holds a ROLL button no
-    // thumb could reach.
+    if ((await screenName(page)) === 'dead') return { end: 'died', drank }
+    // A win goes straight back to the room — there is no reward screen — and a
+    // fight that is over has no throw left on the tray. Visible, not merely
+    // present: a control can be in the DOM under something no thumb can reach.
     if (!(await act(page, 'roll').isVisible())) {
       return { end: (await screenName(page)) === 'dead' ? 'died' : 'won', drank }
     }
@@ -140,10 +137,26 @@ export async function fightItOut(page: Page, maxAttacks = 30): Promise<FightEnd>
   return (await fight(page, maxAttacks)).end
 }
 
-/** Take whatever a reward screen is offering, or leave it. */
+/**
+ * Pick up whatever is lying in this room, or walk away from it.
+ *
+ * There is no reward screen to clear. What a fight paid is on the floor of the
+ * room it was fought in, with its own name on it and its own TAKE, and
+ * `take: false` is not a press at all — it is simply not pressing anything,
+ * which is what skipping is now.
+ */
 export async function clearReward(page: Page, take = true): Promise<void> {
-  if ((await screenName(page)) !== 'reward') return
-  if (take) await page.locator('[data-act="take"]').first().click()
-  else await act(page, 'skip').click()
-  await expect(page.locator('#screen')).toBeHidden()
+  if (!take) return
+  for (let guard = 0; guard < 4; guard++) {
+    const buttons = page.locator('[data-act="take"]')
+    if ((await buttons.count()) === 0) return
+    await buttons.first().click()
+  }
+}
+
+/** What is lying in this room, by the short name on each pill. */
+export async function lootOnScreen(page: Page): Promise<string[]> {
+  return (await page
+    .locator('[data-act="look-loot"]')
+    .evaluateAll((nodes) => nodes.map((n) => (n as HTMLElement).dataset['loot']!))) as string[]
 }

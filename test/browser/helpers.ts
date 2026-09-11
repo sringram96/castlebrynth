@@ -57,13 +57,31 @@ export async function settled(page: Page): Promise<void> {
   await page.evaluate(() => window.castlebrynth?.settle())
 }
 
-/** Start a run and walk to the first fight. Nothing is handed out on the way. */
+/**
+ * Start a run and walk to the first fight. Nothing is handed out on the way.
+ *
+ * Three ways on now, and the third is a **choice**: the Cleft divides, and the
+ * left mouth is the one with the Gnawing behind it. Taken through the map
+ * rather than by position, because a button carries a node id and nothing
+ * else — the view is not allowed to know which authored place is behind it.
+ */
 export async function toFirstFight(page: Page): Promise<void> {
   await act(page, 'start').click()
   await act(page, 'go').click()
   await act(page, 'go').click()
+  await (await wayTo(page, 'hollow')).click()
   await expect(act(page, 'fight')).toBeVisible()
 }
+
+/** The same walk, taking the Cleft's other mouth: the toll rather than the fight. */
+export async function toOffertory(page: Page): Promise<void> {
+  await act(page, 'start').click()
+  await act(page, 'go').click()
+  await act(page, 'go').click()
+  await (await wayTo(page, 'offertory')).click()
+  expect(await where(page)).toBe('offertory')
+}
+
 
 /** Read the state the app is holding. Assertions still go against the DOM. */
 export async function state(page: Page): Promise<{

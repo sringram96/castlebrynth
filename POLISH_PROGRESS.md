@@ -828,3 +828,116 @@ bay is where a player looks for their passive build.
 empty and their gates are still armed: a manifest row names a file, and
 `test/unit/assets.test.ts` holds every row to a real file of the declared size.
 No row was added for any of the above, so nothing promises art nobody has drawn.
+
+---
+
+## HUMAN ART REQUIRED — the reel
+
+The reel wave added three rooms, moved every carried thing into the world, put
+the ways out into the picture and repositioned one encounter's last stage — and
+**no art was authored for any of it**, per `CLAUDE.md` § *No art in the polish
+sweep*. `git diff --stat main -- public/` is empty and no new image file exists.
+
+This entry stands alongside *the Reliquary and The Chain Vault*, *the dice* and
+*the loadout*. Nothing in any of them is withdrawn.
+
+### Three rooms standing in somebody else's painting
+
+The largest debt of the wave, and the one with a gate on it:
+`test/unit/assets.test.ts` holds a **named list** of borrowed backdrops, so a
+fourth cannot be added quietly.
+
+| room | standing in | why it reads |
+| --- | --- | --- |
+| **The Cleft** | `rooms/shrine.png` — the Split | the painting *is* a passage dividing in front of you, and a dividing passage in the ossuary is the same fact |
+| **The Confluence** | `rooms/shrine.png` — the Split, read backwards | two passages meeting rather than one dividing |
+| **The Offertory** | `rooms/choir.png` plus the Reliquary's `altar`, `brazier` and `chest` portraits | a side chapel with an altar, candles and a stone recess. The chest is standing in for the recess |
+
+What is owed, in order of how much it would buy:
+
+1. **A bespoke Cleft**, 480 × 720. Two mouths in the ossuary, one dragged and
+   fed-looking, one narrow and waxed. The exit anchors in
+   `src/content/rooms.ts` are at 0.28 and 0.72 across, 0.38 down; a repaint
+   should put the mouths there or those two numbers move with it.
+2. **A bespoke Confluence**, 480 × 720. Two mouths arriving at one floor, with
+   the way on at 0.5 / 0.8. It is the room where both branches of the run meet,
+   and it currently looks exactly like the fork five rooms later — which is the
+   one place a reused painting actually misleads.
+3. **A bespoke Offertory**, 480 × 720, plus its three objects as portraits in
+   the Reliquary's delivery shape: a slot-and-price-list altar, a candle stand,
+   and a stone lid in a wall recess. The Reliquary's furniture is on the floor
+   where it was staged for a different room, so the "recess" is a chest sitting
+   on flagstones.
+
+Until any of that lands, all three rooms are fully playable: every verb is a
+button on the object, every outcome is in the word band, and the pictures are
+real paintings rather than placeholders. **Scenery may degrade; the opponent may
+not** — and no opponent is affected.
+
+### The found thing, in the chest
+
+Loot moved out of a full-screen card and into the room. There is a
+`## HUMAN ART REQUIRED` line under each place it can now be:
+
+| owed plate | where it goes | what it is running on |
+| --- | --- | --- |
+| **the found thing, in the chest** | Reliquary, 0.823 / 0.62 | a text pill carrying the thing's `short` name, and a TAKE pill under it |
+| **the plate in the cage** | Chain Vault, 0.83 / 0.40 | the same, over a room with no midground at all |
+| **loot beside the body** | the Hollow and the Deep Way, two spots each | the same, on the floor in front of a corpse that is not drawn either |
+| **the thing in the recess** | Offertory, 0.823 / 0.62 | the same |
+
+What each of them wants is small: a 480 × 720 scene plate per *container state*
+— an open chest with something in it, a cage with a plate of iron in it, a
+forced recess — and, ideally, one small object plate per found thing so a Vial
+on the floor looks like a Vial. None of it is required: every pill states the
+thing's short name as text, its full name and exact rule are one LOOK away in
+the word band, and both are in the accessible name. Nothing about loot is
+unreadable while the plates are outstanding and nothing is conveyed by colour.
+
+**The Reliquary's chest still has no painted open state.** That was already
+recorded; it matters more now, because what the chest opens onto is a thing the
+player is meant to reach into.
+
+### The bar's housing
+
+`docs/ART_DIRECTION.md` gained a law this wave — *combat chrome obeys the art's
+pixel grid and palette* — and the enemy's health bar is the first thing under
+it: forty-eight cells of six pixels, square, drawn from `--blood` and `--gold`,
+draining in steps.
+
+What is owed is **a painted housing**: a shallow iron or bone trough for the bar
+to sit in, at the top of the world box, 288 × 12 CSS px at the phone's scale
+with a couple of pixels of frame. The bar itself can stay CSS — a repeating
+one-pixel gradient reads as cells — but the box around it is currently a
+two-pixel gold shadow, which is chrome pretending to be a frame.
+
+The pile orb came under the same law and needs nothing: it already sits inside a
+painted glass sphere on `ui/tray.png`.
+
+### The Gnawing's close stage, possibly
+
+Its `close` stance was `width 1.24 / foot 1.02` — wider than the world box with
+its jaw below the bottom of it — so the last beat of the encounter was a
+composition the player could only see two thirds of. It is now **0.98 / 0.99**,
+first-pass and provisional, and `test/browser/chrome.spec.ts` asserts the whole
+sprite sits inside the world box rather than asserting those two numbers.
+
+`enemies/crawling-close.png` was painted at 480 × 708 to fill and overflow a
+frame. At 0.98 it does not overflow, and **it may read as a step backwards from
+`mid` rather than as the thing arriving.** The browser test checks that it is
+still much larger than `mid`, which it is; what it cannot check is whether the
+composition still lands.
+
+If it does not, that is an **owed repaint** of `crawling-close`: the same
+subject recomposed to be at its most legible when the whole of it is in frame —
+jaw at the bottom edge rather than under it, and the hall gone behind it.
+Nothing was traced, cropped, upscaled or repainted here; only the seat moved,
+and the seat is authored content in `src/content/enemies.ts` rather than a
+derived value in the pipeline.
+
+### Nothing else moved
+
+`BONE_ART` and `SATCHEL_ART` in `src/render/assets.ts` are still deliberately
+empty and their gates are still armed: a manifest row names a file, and
+`test/unit/assets.test.ts` holds every row to a real file of the declared size.
+No row was added for anything above, so nothing promises art nobody has drawn.

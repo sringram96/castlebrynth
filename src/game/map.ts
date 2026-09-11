@@ -26,8 +26,10 @@
  * a map existed would be a view that could be given a wrong one.
  */
 
+import { exitsOpen, stateOf } from '../content/interactions.js'
 import { template } from '../content/rooms.js'
 import type { RoomRole, RoomTemplate, Territory } from '../content/roomTypes.js'
+import type { PlanEdgeKind } from '../content/runPlans.js'
 import type { RunState } from './state.js'
 
 /** One way on, as the map generated it. */
@@ -38,6 +40,25 @@ export interface MapExit {
   readonly to: string
   /** One line, given before the press, so a fork is a decision. */
   readonly sense: string
+  /**
+   * What kind of edge the plan said this was.
+   *
+   * Carried onto the map rather than left behind in the plan, because the
+   * grammar rules the validator now holds are about *kinds* — several `forward`
+   * ways may only leave a junction, and an `optional` branch has to rejoin —
+   * and a validator that ran over the plan rather than the map would be
+   * checking the request instead of the answer.
+   */
+  readonly kind: PlanEdgeKind
+  /**
+   * Which anchor in the room's picture this way is standing on.
+   *
+   * Bound positionally when the map is built: the first edge out of a slot
+   * takes the first anchor the template declares. Absent for a template that
+   * declares fewer anchors than it was given edges, which is a content fault
+   * the tests catch rather than a case the view invents a position for.
+   */
+  readonly at?: { readonly x: number; readonly y: number }
 }
 
 /**
@@ -88,6 +109,25 @@ export interface ResolvedRoom extends RoomTemplate {
   readonly depth: number
   readonly exits: readonly MapExit[]
   readonly enemy?: string
+}
+
+/**
+ * Whether this room is letting anybody leave. **One statement of it.**
+ *
+ * Three things hold the ways shut and they are all the same rule: a living
+ * enemy, an unresolved ritual, and machinery that has not been worked. It used
+ * to be written out three times — once in the reducer's `GO`, once in the tray
+ * and once in the well — and three copies of a rule is how a gate comes to be
+ * down in state and open on screen.
+ *
+ * It matters more now than it did. The ways out are hotspots in the picture,
+ * and a **held exit renders nothing at all**: not a greyed arch, not a dimmed
+ * label. The reducer's guard and the view's are this one function.
+ */
+export function exitsAvailable(run: RunState, here: ResolvedRoom = roomAt(run)): boolean {
+  if (here.enemy && !run.cleared.includes(here.instanceId)) return false
+  if (here.ritual && run.ritual?.roomId !== here.instanceId) return false
+  return exitsOpen(stateOf(run.rooms, here.instanceId, here.id))
 }
 
 export function nodeAt(map: RunMap, nodeId: string): RunRoom {

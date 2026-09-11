@@ -13,7 +13,7 @@
 
 import { expect, test } from '@playwright/test'
 
-import { act, boot, decoded, screenName } from './helpers.js'
+import { act, boot, decoded, screenName, toFirstFight } from './helpers.js'
 
 /** Everything the manifest ships, so "not all of it" can be stated. */
 const ALL_FILES = 41
@@ -111,9 +111,7 @@ test.describe('nothing is fetched twice', () => {
 test.describe('a fight does not begin before its art does', () => {
   test('the opponent is on screen before FIGHT is pressed', async ({ page }) => {
     await boot(page)
-    await act(page, 'start').click()
-    await act(page, 'go').click()
-    await act(page, 'go').click()
+    await toFirstFight(page)
 
     // The rule from ART_DIRECTION.md: scenery may degrade, the opponent may
     // not. It is decoded and visible before the verb that starts the fight.

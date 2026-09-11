@@ -12,10 +12,11 @@
  */
 
 import { STARTING_BONES, roomToRecover } from '../content/bones.js'
-import { LOOT_REWARDS, itemDieOf, reward } from '../content/rewards.js'
+import { LOOT_REWARDS, ironDieOf, itemDieOf, reward } from '../content/rewards.js'
 import type { RewardId } from '../content/rewards.js'
 import {
   HAND_SLOTS,
+  IRON_CAP,
   ITEM_CAP,
   STARTING_HAND,
   STARTING_IRON,
@@ -25,7 +26,7 @@ import {
   itemDie,
   talisman,
 } from '../content/dice.js'
-import type { CoreDieId } from '../content/dice.js'
+import type { CoreDieId, TalismanId } from '../content/dice.js'
 import { enemy } from '../content/enemies.js'
 import type { Enemy } from '../content/enemies.js'
 import { defeatOf } from '../content/defeat.js'
@@ -48,14 +49,16 @@ import {
 } from '../combat/loadout.js'
 import { HAND_DICE, MAX_ROLLS, canonicalHeld, rerollDice, rollDice } from '../combat/roll.js'
 import { roomAt } from './map.js'
+import type { ResolvedRoom } from './map.js'
 import { generateRun } from './runGenerator.js'
-import { RELIQUARY_CHANNEL, RITUAL_CHANNEL, RNG_CHANNEL, combatSalt, rngAt } from './rng.js'
+import { RELIQUARY_CHANNEL, RITUAL_CHANNEL, RNG_CHANNEL, combatSalt, nodeSalt, rngAt } from './rng.js'
 import type { Rng } from './rng.js'
 import { SAVE_VERSION } from './state.js'
 import type {
   AttackRecord,
   CombatState,
   GameState,
+  LootItem,
   MetaState,
   RitualRoll,
   RoomInteractionState,
@@ -102,9 +105,16 @@ export type Action =
    */
   | { readonly type: 'REPLACE_DIE'; readonly slot: number; readonly die: CoreDieId }
   | { readonly type: 'DRINK' }
-  | { readonly type: 'TAKE'; readonly id: RewardId }
-  /** Leave it. A reward screen may never force a change on the run. */
-  | { readonly type: 'SKIP' }
+  /**
+   * Pick up the nth thing lying in this room.
+   *
+   * By **position in the room**, not by what it is: two Vials beside one body
+   * are two objects, and a press has to be able to say which one it was. There
+   * is no reward screen behind this and no offer to close — the thing was in
+   * the room before the press and the run is carrying it after, and that is
+   * the whole of the transition.
+   */
+  | { readonly type: 'TAKE'; readonly index: number }
   | { readonly type: 'RITUAL_ROLL' }
   /**
    * Work one of the room's objects.
@@ -184,23 +194,30 @@ function rngFor(run: RunState, salt: number): Rng {
  * held positions lands on the same faces again.
  */
 function fightRng(run: RunState, round: number, rollNumber: number, channel: number): Rng {
-  return rngFor(run, combatSalt(run.path.length, round, rollNumber, channel))
+  return rngFor(run, combatSalt(run.roomId, round, rollNumber, channel))
 }
 
 /**
  * Where the font's one draw sits in the same stream.
  *
- * The same rule as a fight: seed plus history, derived rather than stored, so
- * a save can never disagree with it. There is no round here — the room is one
- * press — so the position is the path length and a constant of its own.
+ * The same rule as a fight: seed plus **which room**, derived rather than
+ * stored, so a save can never disagree with it. There is no round here — the
+ * room is one press — so the position is the node's own identity and a
+ * constant of its own.
+ *
+ * It used to be the path length, which was an honest position only while the
+ * descent was a line. The map is a DAG: both branches of the Cleft arrive at
+ * the same confluence by routes of the same length today and might not
+ * tomorrow, and a draw that changed with how you walked to a room would be a
+ * chest you could shake. Two lines of insurance, recorded rather than debated.
  */
 function ritualSalt(run: RunState): number {
-  return run.path.length * 1013 + RITUAL_CHANNEL
+  return (nodeSalt(run.roomId) + RITUAL_CHANNEL) >>> 0
 }
 
 /** And the reliquary's, with a constant that keeps it clear of both. */
 function reliquarySalt(run: RunState): number {
-  return run.path.length * 1013 + RELIQUARY_CHANNEL
+  return (nodeSalt(run.roomId) + RELIQUARY_CHANNEL) >>> 0
 }
 
 /**
@@ -223,15 +240,48 @@ function drawWeighted(pool: RewardId[], rng: Rng): RewardId | undefined {
 }
 
 /**
- * What is in the chest, or nothing because there is nothing left to give.
+ * What a room's container holds.
  *
- * A single found object, so it is drawn and granted in the same tick the chest
- * is opened, and `rooms[].rewardId` records which — a reload reads that rather
- * than drawing again. An empty answer is a real one, and the room says so
- * plainly rather than leaving it looking like the offer screen failed.
+ * **An authored find beats the pool, always.** A template that names a `find`
+ * is a room that contains a specific thing — the Talisman of the Pair is in the
+ * Reliquary, the Rustplate is in the cage, the Grave Candle is in the
+ * Offertory's recess — and that is what makes a route a build choice rather
+ * than a lottery. A template that names nothing draws, and the draw machinery
+ * stays for the rooms that will want it.
+ *
+ * Either way the answer is settled **once**, in the tick the container opened,
+ * and written onto the node as loot. A reload reads that record rather than
+ * drawing again, which is the same law a ritual's roll is kept under.
  */
-function chestReward(run: RunState, rng: Rng): RewardId | undefined {
-  return drawWeighted([...LOOT_REWARDS], rng)
+function chestReward(here: ResolvedRoom, rng: Rng): RewardId | undefined {
+  return here.find ?? drawWeighted([...LOOT_REWARDS], rng)
+}
+
+// ── loot: things lying in rooms ────────────────────────────────────────
+
+/** What is lying in one room of this run. Empty is the ordinary answer. */
+export function lootIn(run: RunState, nodeId: string = run.roomId): readonly LootItem[] {
+  return run.loot?.[nodeId] ?? []
+}
+
+/**
+ * Put things on the floor of the room the run is standing in.
+ *
+ * Appended, never replaced: a fight that pays two things pays two objects, and
+ * a room that reveals a second one later stands it beside the first.
+ */
+function placeLoot(run: RunState, ids: readonly RewardId[]): RunState {
+  if (ids.length === 0) return run
+  const here = lootIn(run)
+  return {
+    ...run,
+    loot: { ...run.loot, [run.roomId]: [...here, ...ids.map((id) => ({ id, taken: false }))] },
+  }
+}
+
+/** Whether anything in this room is still lying there unclaimed. */
+export function unclaimedIn(run: RunState, nodeId: string = run.roomId): readonly LootItem[] {
+  return lootIn(run, nodeId).filter((l) => !l.taken)
 }
 
 /** What the room says about a press that changed something. */
@@ -243,34 +293,54 @@ function interactionSay(after: RoomInteractionState, id: string, found?: RewardI
         ? 'The flame folds into the wick. In the dark, the handle under the basin catches the red window-light.'
         : 'The flame returns.'
     }
-    if (id === 'reliquary-lever') return 'Something moves inside the altar. The chest answers.'
-    return found ? `Inside: ${reward(found).name}.` : 'The chest is empty.'
+    return found
+      ? `Something moves inside the altar. The chest opens on a ${reward(found).name}.`
+      : 'Something moves inside the altar. The chest opens on nothing at all.'
+  }
+  if (after.templateId === 'offertory') {
+    if (id === 'offertory-candles') {
+      return after.candles === 'out'
+        ? 'The flames fold into the wicks. In the dark, the carving beside the slot catches what light is left.'
+        : 'The flames come back.'
+    }
+    return found
+      ? `Two bones into the slot. The wall grinds open on a ${reward(found).name}, and so does the way out.`
+      : 'Two bones into the slot. The wall grinds open, and so does the way out.'
   }
   if (id === 'vault-chain') {
     return after.cage === 'lowered'
       ? 'The cage drops onto the plate. Something heavy unlocks inside the wall.'
       : 'The chain takes the weight again. The plate comes back up.'
   }
-  return 'The weight holds. The lever stays down. The gate rises.'
+  return found
+    ? `The weight holds. The lever stays down. The gate rises, and the cage is holding a ${reward(found).name}.`
+    : 'The weight holds. The lever stays down. The gate rises.'
 }
 
 /** What the vault kills you with, when it does. */
 const VAULT_CAUSE = 'The chain mechanism.'
 
+/** And the offertory, which charges for the correct answer and for the wrong one. */
+const OFFERTORY_CAUSE = 'The offertory.'
+
+/** What the slot costs, printed on the verb before it charges. */
+export const OFFERTORY_PRICE = 2
+
 /**
- * Take one bone out of the pile, for something that is not a fight.
+ * Take bones out of the pile, for something that is not a fight.
  *
- * One helper, so every non-combat cost in the game — the vault's backlash
- * today, whatever wants one next — spends the pile the same way. The pile is
- * one number now, so this is one subtraction, and it answers whether there was
- * anything left to take.
+ * One helper, so every non-combat cost in the game — the vault's backlash, the
+ * offertory's price and its backlash, whatever wants one next — spends the pile
+ * the same way. It answers with what it actually took, because a pile with one
+ * bone in it pays a two-bone toll with one bone and the copy has to be honest
+ * about that.
  */
-export function loseOneBone(run: RunState): {
+export function loseBones(run: RunState, wanted: number): {
   readonly run: RunState
-  readonly took: boolean
+  readonly took: number
 } {
-  if (run.bones <= 0) return { run, took: false }
-  return { run: { ...run, bones: run.bones - 1 }, took: true }
+  const took = Math.max(0, Math.min(wanted, run.bones))
+  return { run: took === 0 ? run : { ...run, bones: run.bones - took }, took }
 }
 
 /**
@@ -445,32 +515,37 @@ export function offerFor(run: RunState, enemyId: string, rng: Rng): readonly Rew
  * that is skipped pay identically, and neither can pay twice: `combat` is gone
  * from the state it returns, so a second call has no fight left to win.
  *
- * The guaranteed drop is applied **first and once**, inside here, so the
- * Marrow's Vial does not ride on the 70% that decides whether a screen opens.
+ * **What it pays falls beside the body.** There is no reward screen and no
+ * offer: the guaranteed drop and the rolled one are separate objects lying in
+ * the room, with their own LOOK and their own TAKE, and walking to the exit
+ * without touching either is what skipping is now. The drop is placed first
+ * and once, so the Marrow's Vial never rides on the 70% that decides whether
+ * anything else fell.
  */
 function victory(state: GameState, run: RunState, combat: CombatState): GameState {
   const e = enemy(combat.enemyId)
-  const paid = e.drop ? grant(run, e.drop) : run
-  const dropped = e.drop ? ` It leaves a ${reward(e.drop).name}.` : ''
+  const rng = fightRng(run, combat.round, 0, RNG_CHANNEL.reward)
+  const fell: RewardId[] = [...(e.drop ? [e.drop] : []), ...offerFor(run, combat.enemyId, rng)]
 
-  const rng = fightRng(paid, combat.round, 0, RNG_CHANNEL.reward)
-  const offer = offerFor(paid, combat.enemyId, rng)
-  const { combat: _gone, ...rest } = paid
-  const meta = e.drop ? remember(state.meta, [e.drop]) : state.meta
-  const cleared = { ...rest, cleared: [...paid.cleared, paid.roomId], say: '' }
+  const { combat: _gone, ...rest } = run
+  const cleared: RunState = { ...rest, cleared: [...run.cleared, run.roomId], say: '' }
+  const left = placeLoot(cleared, fell)
 
-  // A fight with nothing left to give goes straight back to the room. Said
-  // plainly, so an empty-handed win never reads as the reward screen having
-  // failed to open.
-  if (offer.length === 0) {
-    return {
-      ...state,
-      mode: 'explore',
-      meta,
-      run: { ...cleared, say: `${e.name} is finished.${dropped || ' Nothing useful on it.'}` },
-    }
+  const names = fell.map((id) => reward(id).name)
+  const dropped =
+    names.length === 0
+      ? ' Nothing useful on it.'
+      : ` It leaves ${names.join(' and ')}, on the floor where it fell.`
+
+  return {
+    ...state,
+    mode: 'explore',
+    // Seeing a thing is not carrying it. The ledger records what the run has
+    // actually taken, so a Vial walked away from is a Vial the title screen
+    // has never heard of.
+    meta: state.meta,
+    run: { ...left, say: `${e.name} is finished.${dropped}` },
   }
-  return { ...state, mode: 'reward', meta, run: { ...cleared, offer } }
 }
 
 /**
@@ -481,7 +556,34 @@ function victory(state: GameState, run: RunState, combat: CombatState): GameStat
  * that plainly cannot be taken rather than a press that silently does nothing.
  */
 export function canTake(run: RunState, id: RewardId): boolean {
-  return itemDieOf(id) === undefined || run.itemDice.length < ITEM_CAP
+  switch (reward(id).kind) {
+    case 'item-die':
+      return run.itemDice.length < ITEM_CAP
+    case 'iron-die':
+      return run.ironDice.length < IRON_CAP
+    case 'talisman':
+      return !run.talismans.includes(id as TalismanId)
+    default:
+      return true
+  }
+}
+
+/**
+ * Why a found thing cannot go anywhere, in the words the player is owed.
+ *
+ * The refusal is printed **in the room**, on the thing, rather than as a grey
+ * button: an unavailable action is hidden, and what replaces it is a sentence.
+ */
+export function refusalFor(run: RunState, id: RewardId): string | undefined {
+  if (canTake(run, id)) return undefined
+  switch (reward(id).kind) {
+    case 'item-die':
+      return `I am already carrying ${ITEM_CAP}. There is nowhere to put it.`
+    case 'iron-die':
+      return 'I am already wearing iron. There is nowhere to put a second piece.'
+    default:
+      return 'I already have one of these.'
+  }
 }
 
 /**
@@ -491,10 +593,13 @@ export function canTake(run: RunState, id: RewardId): boolean {
  * offered it or the screen that drew it: a third item die changes nothing.
  */
 function grant(run: RunState, id: RewardId): RunState {
-  const die = itemDieOf(id)
-  if (die) {
-    if (run.itemDice.length >= ITEM_CAP) return run
-    return { ...run, itemDice: [...run.itemDice, die] }
+  if (!canTake(run, id)) return run
+  const item = itemDieOf(id)
+  if (item) return { ...run, itemDice: [...run.itemDice, item] }
+  const iron = ironDieOf(id)
+  if (iron) return { ...run, ironDice: [...run.ironDice, iron] }
+  if (reward(id).kind === 'talisman') {
+    return { ...run, talismans: [...run.talismans, id as TalismanId] }
   }
   return reward(id).kind === 'vial' ? { ...run, vials: run.vials + 1 } : run
 }
@@ -536,6 +641,23 @@ export function reduce(state: GameState, action: Action): GameState {
     case 'LOOK': {
       const run = state.run
       if (!run) return state
+
+      // A found thing is looked at exactly as a carving is: one verb, one
+      // answer, nothing committed. What it says is the card — the name and the
+      // exact rule — because that is the contract a reward has always been
+      // held to, and it does not get weaker for having moved into the world.
+      if (action.detailId.startsWith('loot:')) {
+        const index = Number(action.detailId.slice(5))
+        const item = lootIn(run)[index]
+        if (!item || item.taken) return state
+        const card = reward(item.id)
+        const refused = refusalFor(run, item.id)
+        return {
+          ...state,
+          run: { ...run, say: `${card.name}. ${card.rule}${refused ? ` ${refused}` : ''}` },
+        }
+      }
+
       const detail = roomAt(run).details.find((d) => d.id === action.detailId)
       if (!detail) return state
       return {
@@ -569,13 +691,18 @@ export function reduce(state: GameState, action: Action): GameState {
       // authority it reads.
       if (!here.exits.some((e) => e.to === action.to)) return state
 
+      // Something is still lying here, and the descent does not come back.
+      // The band says so on the way through — not as a warning before the
+      // press, which would be the game second-guessing a decision it printed
+      // the stakes of, but as the fact it is.
+      const abandoned = unclaimedIn(run).length > 0
       const next = roomAt(run, action.to)
       const moved: RunState = {
         ...run,
         roomId: action.to,
         path: [...run.path, action.to],
         looked: [],
-        say: next.arrival,
+        say: abandoned ? `I left it. The door does not open twice. ${next.arrival}` : next.arrival,
       }
       if (next.ending) {
         return {
@@ -884,32 +1011,77 @@ export function reduce(state: GameState, action: Action): GameState {
             return put({ ...before, bellRung: true })
           case 'reliquary-brazier':
             return put({ ...before, brazier: before.brazier === 'lit' ? 'out' : 'lit' })
-          case 'reliquary-lever':
-            // The chest is authoritatively open *here*, in the same tick as the
-            // lever going down, and is in the save before a frame of the stone
-            // moving has been scheduled.
-            return put({ ...before, lever: 'down', chest: 'open' })
           default: {
-            const found = chestReward(run, rngFor(run, reliquarySalt(run)))
-            const next: RoomInteractionState = {
-              ...before,
-              claimed: true,
-              ...(found ? { rewardId: found } : {}),
-            }
-            // Granted in the same transition it is drawn in. There is no offer
-            // to re-enter and no second press to make, which is the whole of
-            // why this cannot pay twice: `claimed` is already true.
-            const paid = found ? grant(run, found) : run
+            // The lever. The chest is authoritatively open *here*, in the same
+            // tick as the lever going down, and **what is in it is drawn here
+            // too** — recorded on the node as loot, so a reload renders the same
+            // thing and can never redraw it.
+            //
+            // What has changed is that the draw and the *grant* have come
+            // apart. Opening a chest puts a thing in the room; carrying it is a
+            // separate press on the thing itself.
+            const found = chestReward(here, rngFor(run, reliquarySalt(run)))
+            const next: RoomInteractionState = { ...before, lever: 'down', chest: 'open' }
+            const opened: RunState = { ...run, rooms: { ...run.rooms, [run.roomId]: next } }
             return {
               ...state,
-              meta: found ? remember(state.meta, [found]) : state.meta,
               run: {
-                ...paid,
-                rooms: { ...run.rooms, [run.roomId]: next },
+                ...(found ? placeLoot(opened, [found]) : opened),
                 say: interactionSay(next, id, found),
               },
             }
           }
+        }
+      }
+
+      if (before.templateId === 'offertory') {
+        if (id === 'offertory-candles') {
+          return put({ ...before, candles: before.candles === 'lit' ? 'out' : 'lit' })
+        }
+
+        if (id === 'offertory-recess') {
+          // Prying at the lid before the slot is fed. The price of the greedy
+          // answer, and it is exactly the vault's: a bone, nothing moves, and
+          // it can be made as many times as there is blood for it.
+          const { run: paid, took } = loseBones(run, 1)
+          const gone = paid.bones === 0
+          const hurt: RunState = {
+            ...paid,
+            say: took > 0
+              ? "The stone takes a finger's worth. It was not asking twice."
+              : 'The stone takes at me and finds nothing left to take.',
+            ...(gone ? { cause: OFFERTORY_CAUSE } : {}),
+          }
+          return { ...state, ...(gone ? { mode: 'dead' as const } : {}), run: hurt }
+        }
+
+        // The slot, fed. **The price was printed on the verb before it
+        // charged** — two bones, in the button's own accessible name — which is
+        // the whole difference between a toll and a trap. It can be the last
+        // two: a room may kill you, and it uses the death the game already has.
+        const { run: charged, took } = loseBones(run, OFFERTORY_PRICE)
+        const next: RoomInteractionState = { ...before, paid: true, recess: 'open' }
+        const opened: RunState = { ...charged, rooms: { ...run.rooms, [run.roomId]: next } }
+        if (charged.bones === 0) {
+          return {
+            ...state,
+            mode: 'dead',
+            run: {
+              ...opened,
+              say: took === 1
+                ? 'One bone into the slot. It was the last one, and it was still short.'
+                : 'Two bones into the slot. They were the last two.',
+              cause: OFFERTORY_CAUSE,
+            },
+          }
+        }
+        const found = chestReward(here, rngFor(run, reliquarySalt(run)))
+        return {
+          ...state,
+          run: {
+            ...(found ? placeLoot(opened, [found]) : opened),
+            say: interactionSay(next, id, found),
+          },
         }
       }
 
@@ -927,11 +1099,11 @@ export function reduce(state: GameState, action: Action): GameState {
       // against, and it comes back through your hand — and it takes a bone for
       // it. One bone, every time.
       if (before.pressurePlate === 'off') {
-        const { run: paid, took } = loseOneBone(run)
+        const { run: paid, took } = loseBones(run, 1)
         const gone = paid.bones === 0
         const hurt: RunState = {
           ...paid,
-          say: took
+          say: took > 0
             ? 'The mechanism snaps back. The chain catches my hand. One of my bones snaps.'
             : 'The mechanism snaps back. There is nothing left of me for it to take.',
           ...(gone ? { cause: VAULT_CAUSE } : {}),
@@ -940,37 +1112,54 @@ export function reduce(state: GameState, action: Action): GameState {
         // player can make this mistake as many times as they have bones for.
         return { ...state, ...(gone ? { mode: 'dead' as const } : {}), run: hurt }
       }
-      return put({ ...before, lever: 'down', gate: 'open' })
-    }
-
-    case 'TAKE': {
-      const run = state.run
-      if (!run || state.mode !== 'reward' || !run.offer || !run.offer.includes(action.id)) return state
-      // A full loadout has nowhere to put a third item die, so the press is
-      // refused rather than swallowed — and the view does not draw it.
-      if (!canTake(run, action.id)) return state
-      const { offer: _taken, ...rest } = run
-      const taken = reward(action.id)
-      const paid = grant(rest, action.id)
-      return {
-        ...state,
-        mode: 'explore',
-        meta: remember(state.meta, [action.id]),
-        run: {
-          // A pickup repeats the thing's actual rule. "Vial. Taken." confirms
-          // a press and explains nothing, and sending the player to MENU to
-          // find out what they just chose is the same failure again.
-          ...paid,
-          say: `${taken.name} taken. ${taken.rule}`,
-        },
+      {
+        // The gate rises, and the cage — down on the plate, holding what it has
+        // always held — is now something you can reach into. The deep way's
+        // iron is here, and the way's own line said so before the press.
+        const next: RoomInteractionState = { ...before, lever: 'down', gate: 'open' }
+        const opened: RunState = { ...run, rooms: { ...run.rooms, [run.roomId]: next } }
+        const found = chestReward(here, rngFor(run, reliquarySalt(run)))
+        return {
+          ...state,
+          run: {
+            ...(found ? placeLoot(opened, [found]) : opened),
+            say: interactionSay(next, id, found),
+          },
+        }
       }
     }
 
-    case 'SKIP': {
+    /**
+     * Pick the nth thing off the floor of this room.
+     *
+     * There is no screen behind this and nothing to close. The cap is enforced
+     * here, in the reducer, exactly as it always was: a third item die changes
+     * nothing, and the room prints the refusal on the thing rather than
+     * offering a grey button.
+     */
+    case 'TAKE': {
       const run = state.run
-      if (!run || state.mode !== 'reward' || !run.offer) return state
-      const { offer: _left, ...rest } = run
-      return { ...state, mode: 'explore', run: { ...rest, say: 'I leave it where it fell.' } }
+      if (!run || state.mode !== 'explore') return state
+      const here = lootIn(run)
+      const item = here[action.index]
+      if (!item || item.taken) return state
+      if (!canTake(run, item.id)) return state
+
+      const card = reward(item.id)
+      const paid = grant(run, item.id)
+      const after = here.map((l, i) => (i === action.index ? { ...l, taken: true } : l))
+      return {
+        ...state,
+        meta: remember(state.meta, [item.id]),
+        run: {
+          // A pickup repeats the thing's actual rule. "Vial. Taken." confirms
+          // a press and explains nothing, and sending the player to MENU to
+          // find out what they just picked up is the same failure again.
+          ...paid,
+          loot: { ...run.loot, [run.roomId]: after },
+          say: `${card.name} taken. ${card.rule}`,
+        },
+      }
     }
 
     /**

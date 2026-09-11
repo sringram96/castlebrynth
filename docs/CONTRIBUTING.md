@@ -66,6 +66,19 @@ npm run balance      # deterministic fight simulation
 - **One aggregate on screen.** The readout, and nothing else. No fly-away
   numbers migrating into a total, and no receipt region: every other figure
   pops on the thing that made it.
+- **Movement is in the picture.** There is no GO button in the tray and there
+  is nowhere to write one. An open way out is a hotspot seated on the painted
+  feature it passes through; a held one renders nothing at all.
+- **Loot happens in the world.** There is no reward screen and no `reward`
+  mode. What a fight pays falls beside the body and what a chest holds renders
+  in the chest — discovered, revealed, inspected, decided on, taken, possessed,
+  all of it in the room.
+- **Forward only.** The map is a DAG and the validator asserts it. No
+  backtracking and no cycle without a product decision that repeals the
+  assertion.
+- **A fresh run carries nothing.** Six bare bones. Everything else is found.
+- **Combat chrome obeys the art's pixel grid.** A fill is a whole number of
+  cells, a drain steps rather than slides, and the colours are the palette's.
 - **No scratching a category.** A named hand is spent only when it is scored.
   A bad roll costs a throw and nothing else, and CRAP is what a roll with
   nothing in it is worth.
@@ -102,7 +115,7 @@ src/
   game/          GameState, the reducer, new runs, saves,
                  the dungeon director and the map it makes
   combat/        the dice, the scorecard, and the one damage equation
-  exploration/   moving, looking, rewards
+  exploration/   (folded into game/reducer while the slice is this small)
   content/       bones, rewards, enemies, room templates, run plans, copy, assets
   render/        the fixed-order compositor and asset loading
   ui/            views and components
@@ -143,6 +156,11 @@ Three consequences worth stating, because breaking any of them is subtle:
    fight can happen in it, the `encounterTags` its picture can carry; an enemy
    declares the tags it needs. A fight may never be placed in art that cannot
    hold it, and `validateRunMap` fails the run rather than shipping it.
+4. **A template says where its ways out stand, and still names none of them.**
+   `exitAnchors` is a list of places in a picture; the map binds its edges to
+   them positionally, so the first edge out of a slot takes the first anchor.
+   A press on the picture and a LOOK detail may never share the same 44 px —
+   `test/unit/anchors.test.ts` does that arithmetic over the whole library.
 
 Adding a room is adding a template. Changing the shape of a descent is editing
 a plan. Neither requires touching the other, and that is the test.

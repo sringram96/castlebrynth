@@ -19,7 +19,9 @@ import { enemy } from '../../src/content/enemies.js'
 import type { ScoreId } from '../../src/combat/hands.js'
 import type { IronDieId, ItemDieId, TalismanId } from '../../src/content/dice.js'
 import { firstNodeOf, roomAt } from '../../src/game/map.js'
-import { exitsOpen, legal, stateOf } from '../../src/content/interactions.js'
+import { legal, stateOf } from '../../src/content/interactions.js'
+import { canTake } from '../../src/game/reducer.js'
+import type { RewardId } from '../../src/content/rewards.js'
 import { drinkFor, holdFor, scoreFor, shouldScore } from './policies.js'
 import type { Table, Tier } from './policies.js'
 
@@ -144,7 +146,7 @@ export function simulateFight(
     state: current,
     result: {
       enemyId,
-      won: current.mode === 'reward' || current.mode === 'explore',
+      won: current.mode === 'explore',
       rounds: attacks.length,
       bonesLost: broken,
       netBones: (settled?.bones ?? 0) - bonesBefore,
@@ -208,7 +210,14 @@ export interface RunResult {
   readonly fights: readonly FightResult[]
   /** Satchel things actually acquired before the run ended. */
   readonly found: number
+  /** Exactly what was picked up, so acquisition can be reported per thing. */
+  readonly acquired: readonly RewardId[]
+  /** Bones that actually broke, fights and rooms together. */
+  readonly bonesLost: number
 }
+
+/** Which way the policy takes at the Cleft. `left` is the fight. */
+export type Branch = 'left' | 'right'
 
 /**
  * A whole run.
@@ -219,24 +228,38 @@ export interface RunResult {
 export function simulateRun(
   seed: number,
   tier: Tier,
-  { deep = true, bare = false } = {},
+  { deep = true, bare = false, branch = 'left' as Branch } = {},
 ): RunResult {
   let state = reduce(TITLE, { type: 'START_RUN', seed })
-  // The **bare** reading: a run carrying no iron die and no talisman, so the
-  // route can be measured with none of the upside the wave added. Item dice
-  // are already excluded from every reading — the policy cannot see them, and
-  // no target may assume them. See docs/COMBAT.md § Balance.
-  if (bare) {
-    state = { ...state, run: { ...state.run!, ironDice: [], itemDice: [], talismans: [] } }
-  }
   const fights: FightResult[] = []
-  let found = 0
+  const acquired: RewardId[] = []
+  const worked = new Set<string>()
+  let bonesLost = 0
 
-  const takeReward = (): void => {
-    const offer = state.run?.offer
-    if (!offer?.[0]) return
-    state = reduce(state, { type: 'TAKE', id: offer[0] })
-    found++
+  /**
+   * Pick up everything lying in this room that the run can carry.
+   *
+   * The **bare** reading is now the run that picks nothing up. It used to be a
+   * run whose starting loadout was stripped; a fresh run starts with nothing at
+   * all, so what "bare" means is *found nothing and took nothing* — which is
+   * still the reading a gate is allowed to be set against, and is still the
+   * pessimistic one. See docs/COMBAT.md § Balance.
+   */
+  const takeLoot = (): void => {
+    if (bare) return
+    for (;;) {
+      const run = state.run
+      if (!run) return
+      const index = (run.loot?.[run.roomId] ?? []).findIndex(
+        (l) => !l.taken && canTake(run, l.id),
+      )
+      if (index < 0) return
+      const id = run.loot![run.roomId]![index]!.id
+      const next = reduce(state, { type: 'TAKE', index })
+      if (next === state) return
+      state = next
+      acquired.push(id)
+    }
   }
 
   for (let step = 0; step < 60; step++) {
@@ -251,7 +274,9 @@ export function simulateRun(
         rooms: state.run!.path.length,
         bonesLeft: state.run!.bones,
         fights,
-        found,
+        found: acquired.length,
+        acquired,
+        bonesLost,
       }
     }
     if (state.mode === 'dead') {
@@ -261,19 +286,19 @@ export function simulateRun(
         rooms: state.run!.path.length,
         bonesLeft: 0,
         fights,
-        found,
+        found: acquired.length,
+        acquired,
+        bonesLost,
       }
     }
 
-    if (state.mode === 'reward') {
-      takeReward()
-      continue
-    }
-
     if (here.enemy && !state.run!.cleared.includes(here.instanceId)) {
+      const before = state.run!.bones
       const fight = simulateFight(state, tier)
       fights.push(fight.result)
       state = fight.state
+      bonesLost += fight.result.bonesLost
+      void before
       if (state.mode === 'dead') {
         return {
           reachedExit: false,
@@ -281,10 +306,12 @@ export function simulateRun(
           rooms: state.run!.path.length,
           bonesLeft: 0,
           fights,
-          found,
+          found: acquired.length,
+          acquired,
+          bonesLost,
         }
       }
-      takeReward()
+      takeLoot()
       continue
     }
 
@@ -296,26 +323,65 @@ export function simulateRun(
       continue
     }
 
-    // A room with machinery is worked on the way past, correctly.
+    // A room with machinery is worked on the way past, correctly, **once**.
     //
     // Deliberately no model of getting it wrong: the simulator does not misread
     // a scorecard either, and a report that quietly charged every run a bone
     // for a mistake the clues are written to prevent would be measuring the
     // model's ignorance rather than the slice's difficulty.
-    const machinery = stateOf(state.run!.rooms, here.instanceId, here.id)
-    if (machinery && !exitsOpen(machinery)) {
+    //
+    // One pass, in declaration order, is enough for every worked room in the
+    // slice — the order the objects are written in is the order they have to
+    // happen in, which is the same fact the carved clues state. The visited set
+    // is what stops a second pass toggling a brazier the first pass put out,
+    // and it is why an **optional** room is worked too: the Reliquary costs
+    // nothing and holds the Talisman, so a policy that walked past it would be
+    // reporting the model's indifference as an acquisition rate.
+    if (!worked.has(here.instanceId) && (here.interactables?.length ?? 0) > 0) {
+      worked.add(here.instanceId)
+      const before = state.run!.bones
       for (const thing of here.interactables ?? []) {
-        if (legal(stateOf(state.run!.rooms, here.instanceId, here.id)!, thing.id)) {
+        const now = stateOf(state.run!.rooms, here.instanceId, here.id)
+        if (now && legal(now, thing.id)) {
           state = reduce(state, { type: 'INTERACT', interactionId: thing.id })
+        }
+      }
+      // A toll is a cost like any other and the report counts it as one. The
+      // Offertory's two bones are what the right-hand branch trades the
+      // Gnawing's three-a-round for, and the delta is the whole reason the
+      // branch reading exists.
+      bonesLost += Math.max(0, before - (state.run?.bones ?? 0))
+      if (state.mode === 'dead') {
+        return {
+          reachedExit: false,
+          diedIn: here.id,
+          rooms: state.run!.path.length,
+          bonesLeft: 0,
+          fights,
+          found: acquired.length,
+          acquired,
+          bonesLost,
         }
       }
       continue
     }
 
+    // Anything a room has already revealed and left lying about is picked up
+    // on the way past — the chest's find, the cage's iron, the recess's candle.
+    takeLoot()
+
     const exits = here.exits
-    // By the label, not by the destination. The deep way is a *choice at the
-    // fork*, and what sits behind it is content's business.
-    const chosen = deep ? (exits.find((e) => e.label === 'DEEP') ?? exits[0]) : exits[0]
+    // By the label, not by the destination. Which way is a *choice at a
+    // junction*, and what sits behind it is content's business.
+    //
+    //   DEEP    the Split's long way, an extra toll and an extra fight
+    //   NARROW  the Cleft's right-hand branch: a flat toll instead of a fight
+    const chosen =
+      exits.find((e) => e.label === 'NARROW') && branch === 'right'
+        ? exits.find((e) => e.label === 'NARROW')!
+        : deep
+          ? (exits.find((e) => e.label === 'DEEP') ?? exits[0])
+          : exits[0]
     if (!chosen) break
     state = play(state, { type: 'GO', to: chosen.to })
   }
@@ -325,6 +391,8 @@ export function simulateRun(
     rooms: state.run!.path.length,
     bonesLeft: state.run?.bones ?? 0,
     fights,
-    found,
+    found: acquired.length,
+    acquired,
+    bonesLost,
   }
 }

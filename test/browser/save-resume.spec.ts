@@ -9,7 +9,7 @@
 
 import { expect, test } from '@playwright/test'
 
-import { act, boot, dice, screenName, state, valuesOf } from './helpers.js'
+import { act, boot, dice, screenName, state, toFirstFight, valuesOf } from './helpers.js'
 
 /** Reload the tab, the way a player does. The save is what comes back. */
 async function reload(page: Page): Promise<void> {
@@ -27,9 +27,7 @@ type Page = import('@playwright/test').Page
  */
 async function played(page: Page, upTo: 'open' | 'rolled' | 'rerolled'): Promise<void> {
   await boot(page)
-  await act(page, 'start').click()
-  await act(page, 'go').click()
-  await act(page, 'go').click()
+  await toFirstFight(page)
   await act(page, 'fight').click()
   if (upTo === 'open') return
   await act(page, 'roll').click()

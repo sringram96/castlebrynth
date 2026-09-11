@@ -134,7 +134,9 @@ describe('ROLL', () => {
   })
 
   it('throws the iron with them, once', () => {
-    const rolled = combatOf(reduce(facing(), { type: 'ROLL' }))
+    // A fresh run carries no iron now — it is found, in the cage — so a test
+    // about the iron puts one on.
+    const rolled = combatOf(reduce(facing('hollow', { ironDice: ['rustplate'] }), { type: 'ROLL' }))
     expect(rolled.ironRolls).toHaveLength(1)
     expect(rolled.ironRolls[0]!.id).toBe('rustplate')
     expect(IRON_DICE.rustplate!.faces).toContain(rolled.ironRolls[0]!.block)
@@ -411,7 +413,8 @@ describe('a killing attack', () => {
     const table = withDice(nearlyDone(20), 6, 6, 6, 4, 4, 3)
     const dying = reduce(table, { type: 'SCORE', hand: 'full-house' })
     const won = reduce(dying, { type: 'DEFEAT_DONE' })
-    expect(won.mode === 'reward' || won.mode === 'explore').toBe(true)
+    // Back to the room, always: there is no reward screen for a win to open.
+    expect(won.mode).toBe('explore')
     expect(won.run!.combat).toBeUndefined()
     expect(reduce(won, { type: 'DEFEAT_DONE' })).toBe(won)
   })

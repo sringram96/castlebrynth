@@ -18,8 +18,8 @@
  *   ?rolls=1                    the dice down, with two throws still in hand
  *   ?dice=6,6,6,4,4,3           exactly these faces on the table
  *   ?used=pair,triple           those two categories already spent
- *   ?iron=5                     the iron standing on an exact block this turn
- *   ?iron=none                  a run carrying no iron die at all
+ *   ?iron=5                     an iron die on, standing on an exact block
+ *   ?iron=none                  a run carrying no iron die at all (the default)
  *   ?items=splinter-fetish      that item die in the loadout (two at most)
  *   ?items=none                 an empty item loadout
  *   ?talismans=none             a run carrying no talisman
@@ -29,10 +29,14 @@
  *   ?dying=1                    the room's enemy finished, mid-death — what a
  *                               save written a third of a second before the
  *                               win holds
- *   ?reliquary=solved           the chest open, its reward already taken
+ *   ?reliquary=solved           the chest open, and what was in it taken
+ *   ?reliquary=open             the chest open, the find still lying in it
  *   ?reliquary=dark             bell rung and brazier out — the lever live
  *   ?vault=weighted             the cage down on the plate, gate still shut
- *   ?vault=open                 the gate up, and the way on with it
+ *   ?vault=open                 the gate up, the way on with it, iron in the cage
+ *   ?offertory=dark             the candles out, the slot ready to be fed
+ *   ?offertory=paid             the price paid, the recess open, the find in it
+ *   ?offertory=solved           the same, and the find already taken
  *
  * A fixture builds a real run and hands it to the real reducer. **Everything
  * that can be played is played** — FIGHT, ROLL, REROLL, SCORE — so a fixture
@@ -67,7 +71,7 @@ import { RNG_CHANNEL, combatSalt, rngAt } from './rng.js'
 import { SAVE_VERSION } from './state.js'
 import type { GameState, Mode } from './state.js'
 
-const MODES: readonly Mode[] = ['title', 'explore', 'combat', 'reward', 'dead', 'complete']
+const MODES: readonly Mode[] = ['title', 'explore', 'combat', 'dead', 'complete']
 
 const list = (raw: string | null): string[] =>
   raw ? raw.split(',').map((s) => s.trim()).filter(Boolean) : []
@@ -93,6 +97,7 @@ const KEYS: readonly string[] = [
   'dying',
   'reliquary',
   'vault',
+  'offertory',
   'iron',
   'items',
   'talismans',
@@ -130,7 +135,7 @@ function standDiceAt(state: GameState, faces: readonly DieValue[]): GameState {
       ? combat.ironRolls
       : rollIron(
           run.ironDice,
-          rngAt(run.seed, combatSalt(run.path.length, combat.round, 1, RNG_CHANNEL.ironRoll)),
+          rngAt(run.seed, combatSalt(run.roomId, combat.round, 1, RNG_CHANNEL.ironRoll)),
         )
   return { ...state, run: { ...run, combat: { ...combat, dice: faces, rollsUsed, ironRolls } } }
 }
@@ -238,8 +243,13 @@ export function applyFixture(base: GameState, search: string): GameState {
     run = { ...run, talismans: list(wantedTalismans).filter(isTalismanId) as TalismanId[] }
   }
 
+  // The iron is **found** now, in the Chain Vault's cage, so a fresh run has
+  // none — and a fixture that wants to stand a fight on an exact block has to
+  // put one on first. `?iron=none` is still spelled out rather than dropped,
+  // because a test that means *bare* should be able to say so.
   const wantedIron = p.get('iron')
   if (wantedIron === 'none') run = { ...run, ironDice: [] as readonly IronDieId[] }
+  else if (wantedIron !== null) run = { ...run, ironDice: ['rustplate'] as readonly IronDieId[] }
 
   // Standing in a half-worked room.
   //
@@ -255,20 +265,41 @@ export function applyFixture(base: GameState, search: string): GameState {
     run = state.run ?? run
   }
 
+  // And picking a thing up off the floor is a press like any other. It is the
+  // *first* untaken thing, always, so a fixture never has to know which index
+  // a room's own machinery put a find at.
+  const takeFirst = (): void => {
+    const index = (run.loot?.[run.roomId] ?? []).findIndex((l) => !l.taken)
+    if (index < 0) return
+    state = reduce({ version: SAVE_VERSION, mode: 'explore', meta: state.meta, run }, {
+      type: 'TAKE',
+      index,
+    })
+    run = state.run ?? run
+  }
+
   const stage = p.get('reliquary')
   if (stage && roomAt(run).id === 'reliquary') {
     press('reliquary-bell')
     press('reliquary-brazier')
     if (stage === 'solved' || stage === 'open') {
       press('reliquary-lever')
-      if (stage === 'solved') press('reliquary-chest')
+      if (stage === 'solved') takeFirst()
     }
   }
 
   const vault = p.get('vault')
   if (vault && roomAt(run).id === 'chain-vault') {
     press('vault-chain')
-    if (vault === 'open') press('vault-lever')
+    if (vault === 'open' || vault === 'solved') press('vault-lever')
+    if (vault === 'solved') takeFirst()
+  }
+
+  const offertory = p.get('offertory')
+  if (offertory && roomAt(run).id === 'offertory') {
+    press('offertory-candles')
+    if (offertory === 'paid' || offertory === 'solved') press('offertory-altar')
+    if (offertory === 'solved') takeFirst()
   }
 
   state = { version: SAVE_VERSION, mode: 'explore', meta: state.meta, run }

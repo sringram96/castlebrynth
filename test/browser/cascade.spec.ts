@@ -47,16 +47,22 @@ const animating = (page: Page): Promise<boolean> =>
 /**
  * A fight standing on six known faces, with an item die that fires a **flat**.
  *
- * Seed 2 rolls `+8` on the Splinter Fetish at this position in the stream, and
+ * Seed 5 rolls `+8` on the Splinter Fetish at this position in the stream, and
  * `?iron=5` stands the plate on a five. `6 6 6 4 4 3` sums to 29.
+ *
+ * The whole loadout is named. A fresh run starts with **nothing** now — the
+ * iron is in the cage and the talisman is in the Reliquary — so a fixture that
+ * wants a cascade with things in it has to say which things, which is the
+ * honest shape: every one of them is a thing the run found somewhere.
  */
-const FLAT = '?seed=2&room=deep&bones=26&rolls=3&dice=6,6,6,4,4,3&items=splinter-fetish&iron=5'
+const CARRYING = 'items=splinter-fetish&talismans=pair-talisman'
+const FLAT = `?seed=5&room=deep&bones=26&rolls=3&dice=6,6,6,4,4,3&${CARRYING}&iron=5`
 
 /** The same, on a seed whose Splinter Fetish comes up on a **cost** face. */
-const COST = '?seed=1&room=deep&bones=26&rolls=3&dice=6,6,6,4,4,3&items=splinter-fetish&iron=5'
+const COST = `?seed=2&room=deep&bones=26&rolls=3&dice=6,6,6,4,4,3&${CARRYING}&iron=5`
 
 /** The same, with the iron come up **empty**. */
-const BLANK = '?seed=2&room=deep&bones=26&rolls=3&dice=6,6,6,4,4,3&items=splinter-fetish&iron=0'
+const BLANK = `?seed=5&room=deep&bones=26&rolls=3&dice=6,6,6,4,4,3&${CARRYING}&iron=0`
 
 test.describe('the beats, in order', () => {
   test('resolves the line before the items fire, and answers after the blow', async ({ page }) => {
@@ -174,7 +180,7 @@ test.describe('a cost is a cost', () => {
     // Two bones and a cost face. The pile empties before the blow, so the
     // enemy is untouched and the line is not spent. Revisable ruling,
     // asserted: see docs/COMBAT.md § Costs.
-    await boot(page, '?seed=1&room=deep&bones=2&rolls=3&dice=6,6,6,4,4,3&items=splinter-fetish&iron=5')
+    await boot(page, `?seed=2&room=deep&bones=2&rolls=3&dice=6,6,6,4,4,3&${CARRYING}&iron=5`)
     const full = (await state(page)).run!.combat!.enemyHp
 
     await page.locator('.score-entry[data-hand="pair"]').click()
@@ -193,10 +199,10 @@ test.describe('a cost is a cost', () => {
 
 test.describe('a reload lands on the settled truth', () => {
   const matrix: readonly [string, string][] = [
-    ['before the throw', '?seed=2&room=deep&mode=combat&items=splinter-fetish'],
+    ['before the throw', `?seed=5&room=deep&mode=combat&${CARRYING}`],
     ['with the dice down', FLAT],
     ['with the iron empty', BLANK],
-    ['carrying nothing at all', '?seed=2&room=deep&rolls=1&iron=none&items=none&talismans=none'],
+    ['carrying nothing at all', '?seed=5&room=deep&rolls=1&iron=none&items=none&talismans=none'],
   ]
 
   for (const [where, fixture] of matrix) {
@@ -270,9 +276,9 @@ test.describe('motion off reaches the same numbers, in the same tick', () => {
 test.describe('an item die is never a press', () => {
   test('there is no control for it anywhere, in any position of an attack', async ({ page }) => {
     const positions = [
-      '?seed=2&room=deep&mode=combat&items=grave-candle,splinter-fetish',
-      '?seed=2&room=deep&rolls=1&items=grave-candle,splinter-fetish',
-      '?seed=2&room=deep&rolls=3&items=grave-candle,splinter-fetish',
+      '?seed=5&room=deep&mode=combat&iron=5&items=grave-candle,splinter-fetish',
+      '?seed=5&room=deep&rolls=1&iron=5&items=grave-candle,splinter-fetish',
+      '?seed=5&room=deep&rolls=3&iron=5&items=grave-candle,splinter-fetish',
     ]
     for (const fixture of positions) {
       await boot(page, fixture)
@@ -297,7 +303,7 @@ test.describe('an item die is never a press', () => {
   })
 
   test('REROLL throws the six and leaves the iron exactly as it was', async ({ page }) => {
-    await boot(page, '?seed=2&room=deep&rolls=1&items=splinter-fetish')
+    await boot(page, '?seed=5&room=deep&rolls=1&iron=3&items=splinter-fetish')
     const block = await page.locator('#iron .iron-die').getAttribute('data-block')
     const caption = await page.locator('#iron-caption').textContent()
     await dice(page).nth(0).click()

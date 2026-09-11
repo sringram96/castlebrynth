@@ -24,6 +24,11 @@ const initial = hasFixture(search) ? applyFixture(state, search) : state
 // change takes to appear and nothing about what the change is. Journeys that
 // care about flow rather than feel use it; the motion spec does not.
 const motion = new URLSearchParams(search).get('motion') !== '0'
+// Stated on the document as well as handed to the app, because some motion is
+// the stylesheet's: the health bar drains in pixel steps and has to land
+// instantly when motion is off, and CSS cannot read a query string.
+// `prefers-reduced-motion` is handled beside it, in the stylesheet.
+if (!motion) document.body.dataset['motion'] = 'off'
 
 const loader = new AssetLoader()
 const app = new App({ root, initial, discarded, persist: !hasFixture(search), motion, loader })
