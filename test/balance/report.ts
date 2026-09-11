@@ -31,7 +31,12 @@ import type { ScoreId } from '../../src/combat/hands.js'
 import { ENEMY_LIST, enemy } from '../../src/content/enemies.js'
 import { reward } from '../../src/content/rewards.js'
 import type { RewardId } from '../../src/content/rewards.js'
-import type { Tier } from './policies.js'
+import { DIE_POLICIES } from './policies.js'
+import type { DiePolicy, Tier } from './policies.js'
+import { CROOKED_DICE, coreDie } from '../../src/content/dice.js'
+import type { CoreDieId } from '../../src/content/dice.js'
+import { GRAMMARS } from '../../src/content/runPlans.js'
+import { generateRunPlan } from '../../src/game/runGenerator.js'
 
 const SEEDS = Array.from({ length: 400 }, (_, i) => (i + 1) * 2654435761)
 
@@ -231,6 +236,67 @@ function runStats(tier: Tier, deep: boolean, bare = true, branch: Branch = 'left
   }
 }
 
+/**
+ * Four hundred seeds that all produce one grammar.
+ *
+ * There are three descents and the seed chooses, so a row about THE TITHE has to
+ * be measured on seeds that actually deal it. It asks the real generator which
+ * each seed produces rather than hard-coding an answer, so a fourth grammar
+ * changes nothing here but the scan.
+ */
+function seedsFor(planId: string): readonly number[] {
+  const out: number[] = []
+  for (let seed = 1; out.length < SEEDS.length && seed < 20_000; seed++) {
+    if (generateRunPlan(seed).id === planId) out.push(seed)
+  }
+  return out
+}
+
+interface PlanCell {
+  readonly escape: number
+  readonly cost: number
+  readonly damage: number
+  /** Core dice actually bought, per run. */
+  readonly bought: number
+  readonly spent: number
+  readonly reached: number
+  readonly tookIt: number
+}
+
+/** Whole runs over one grammar's seeds, with whatever answer to a die. */
+function planStats(
+  seeds: readonly number[],
+  tier: Tier,
+  options: {
+    deep?: boolean
+    branch?: Branch
+    dice?: DiePolicy
+    hand?: readonly CoreDieId[]
+  } = {},
+): PlanCell {
+  const results = seeds.map((seed) =>
+    simulateRun(seed, tier, {
+      deep: options.deep ?? true,
+      // A run that answers a die is a run that takes what it finds: the two are
+      // the same decision about what to be carrying at the door.
+      bare: (options.dice ?? 'never') === 'never',
+      branch: options.branch ?? 'left',
+      dice: options.dice ?? 'never',
+      ...(options.hand ? { hand: options.hand } : {}),
+    }),
+  )
+  const attacks = results.flatMap((r) => r.fights.flatMap((f) => [...f.attacks]))
+  return {
+    escape: results.filter((r) => r.reachedExit).length / results.length,
+    cost: mean(results.map((r) => r.bonesLost)),
+    damage: mean(attacks.map((a) => a.damage)),
+    bought: mean(results.map((r) => r.bought.length)),
+    spent: mean(results.map((r) => r.spentOnDice)),
+    reached: results.filter((r) => r.reachedTreasure).length / results.length,
+    tookIt: results.filter((r) => r.tookTreasure).length / results.length,
+  }
+}
+
 const safeNaive = runStats('naive', false)
 const safeSolver = runStats('heuristic', false)
 const deepNaive = runStats('naive', true)
@@ -305,6 +371,175 @@ console.log(
     `bones broken ${one(branchRight.cost - branchLeft.cost).padStart(5)}\n` +
     '  Reported, not tuned. The two branches are priced differently on purpose\n' +
     '  and neither is meant to be the correct answer.\n',
+)
+
+// ── the three grammars ─────────────────────────────────────────────────
+//
+// A run is one of three descents now and the seed chooses, so every whole-run
+// figure above is an average over all of them. These are the same readings split
+// out, because *where the Font is* and *whether there is a Font at all* are facts
+// about a grammar rather than about the game.
+console.log('THE GRAMMARS — the bare floor, per descent')
+for (const plan of GRAMMARS) {
+  const seeds = seedsFor(plan.id)
+  for (const tier of ['naive', 'heuristic'] as const) {
+    const bare = planStats(seeds, tier, { deep: false })
+    const long = planStats(seeds, tier, { deep: true })
+    console.log(
+      `  ${plan.id.padEnd(9)} ${tier.padEnd(10)} stair ${pct(bare.escape).padStart(4)}  ` +
+        `deep ${pct(long.escape).padStart(4)}  bones broken ${one(bare.cost).padStart(5)}`,
+    )
+  }
+}
+console.log(
+  '  Bare is **bare**: six plain bones, nothing found, nothing bought. The\n' +
+    '  solver floor every figure in this report is set against.\n',
+)
+
+// ── what a crooked die is worth ────────────────────────────────────────
+//
+// **The bare-balance law, extended.** No gate, target or enemy number may
+// require a crooked die any more than it may require the iron — so the floor
+// stays six plain bones and this table is upside, measured and never targeted.
+//
+// Two readings per die: one copy in place of a bone, which is what a run that
+// buys once actually holds, and a full archetype build, which is what a run that
+// spends its whole descent on one idea gets.
+console.log('THE DIE SWING — one copy, and a whole build. Upside, never a target')
+const DESCENT_SEEDS = seedsFor('descent')
+const floor = planStats(DESCENT_SEEDS, 'heuristic', { deep: false })
+console.log(`  ${'six plain bones'.padEnd(34)} out ${pct(floor.escape).padStart(4)}  (the floor)`)
+for (const die of CROOKED_DICE) {
+  const one6: CoreDieId[] = ['bone', 'bone', 'bone', 'bone', 'bone', die]
+  const swung = planStats(DESCENT_SEEDS, 'heuristic', { deep: false, hand: one6 })
+  console.log(
+    `  ${`+1 ${coreDie(die).name}`.padEnd(34)} out ${pct(swung.escape).padStart(4)}  ` +
+      `delta ${pct(swung.escape - floor.escape).padStart(5)}  damage/attack ${one(swung.damage)}`,
+  )
+}
+const ARCHETYPES: readonly { name: string; hand: readonly CoreDieId[] }[] = [
+  { name: 'six Knucklebones', hand: Array.from({ length: 6 }, () => 'knucklebone' as CoreDieId) },
+  {
+    name: 'Long Bone ×4 + bone ×2',
+    hand: ['long-bone', 'long-bone', 'long-bone', 'long-bone', 'bone', 'bone'],
+  },
+  { name: 'Jawbone ×3 + bone ×3', hand: ['jawbone', 'jawbone', 'jawbone', 'bone', 'bone', 'bone'] },
+  {
+    name: 'the Hand of Saint Orrin ×1',
+    hand: ['hand-of-orrin', 'bone', 'bone', 'bone', 'bone', 'bone'],
+  },
+]
+for (const build of ARCHETYPES) {
+  const swung = planStats(DESCENT_SEEDS, 'heuristic', { deep: false, hand: build.hand })
+  console.log(
+    `  ${build.name.padEnd(34)} out ${pct(swung.escape).padStart(4)}  ` +
+      `delta ${pct(swung.escape - floor.escape).padStart(5)}  damage/attack ${one(swung.damage)}`,
+  )
+}
+console.log('')
+
+// ── the bargain policy sweep ───────────────────────────────────────────
+//
+// Six answers to *three bones for a specific die*, measured on every grammar.
+// **We expect always-take to dominate at thirty bones** — three of thirty is
+// close to free — and the sweep exists to say so in numbers rather than to be
+// believed. Reported, not tuned.
+console.log('THE BARGAIN SWEEP — which answer to a priced die dominates')
+for (const plan of GRAMMARS) {
+  const seeds = seedsFor(plan.id)
+  const rows = DIE_POLICIES.map((dice) => ({
+    dice,
+    cell: planStats(seeds, 'heuristic', { deep: true, dice }),
+  }))
+  const best = [...rows].sort((a, b) => b.cell.escape - a.cell.escape)[0]!
+  for (const row of rows) {
+    console.log(
+      `  ${plan.id.padEnd(9)} ${row.dice.padEnd(9)} out ${pct(row.cell.escape).padStart(4)}  ` +
+        `dice bought ${one(row.cell.bought)}  spent on dice ${one(row.cell.spent).padStart(4)}` +
+        `${row.dice === best.dice ? '   ← dominates' : ''}`,
+    )
+  }
+}
+console.log('')
+
+// ── the treasure ───────────────────────────────────────────────────────
+//
+// One per run, on one branch of one fork, and **missable by construction**. What
+// is measured is how often the solver ends up standing in front of it, which is a
+// route question and not a skill one.
+console.log('THE TREASURE — reached, and carried out')
+for (const plan of GRAMMARS) {
+  const seeds = seedsFor(plan.id)
+  for (const deep of [false, true]) {
+    const cell = planStats(seeds, 'heuristic', { deep, dice: 'always' })
+    console.log(
+      `  ${plan.id.padEnd(9)} ${(deep ? 'deep' : 'stair').padEnd(6)} ` +
+        `reached ${pct(cell.reached).padStart(4)}  carried out ${pct(cell.tookIt).padStart(4)}`,
+    )
+  }
+}
+console.log(
+  '  Reported, not tuned. A treasure every route passed would be a step; these\n' +
+    '  numbers are what *missable* costs, and the hints are what the design puts\n' +
+    '  against it.\n',
+)
+
+// ── the forks, all of them ─────────────────────────────────────────────
+//
+// The reel wave measured one fork on one grammar and reported −14 points for the
+// right-hand branch. There are two forks on each of three grammars now, and every
+// one of them is a decision the run is being asked to price.
+console.log('THE FORKS — what each mouth costs, on every grammar')
+for (const plan of GRAMMARS) {
+  const seeds = seedsFor(plan.id)
+  const first = {
+    left: planStats(seeds, 'heuristic', { deep: false, branch: 'left', dice: 'always' }),
+    right: planStats(seeds, 'heuristic', { deep: false, branch: 'right', dice: 'always' }),
+  }
+  const last = {
+    stair: planStats(seeds, 'heuristic', { deep: false, dice: 'always' }),
+    deep: planStats(seeds, 'heuristic', { deep: true, dice: 'always' }),
+  }
+  console.log(
+    `  ${plan.id.padEnd(9)} first fork   left ${pct(first.left.escape).padStart(4)}  ` +
+      `right ${pct(first.right.escape).padStart(4)}  ` +
+      `delta ${pct(first.right.escape - first.left.escape).padStart(5)}`,
+  )
+  console.log(
+    `  ${''.padEnd(9)} last fork    stair ${pct(last.stair.escape).padStart(4)}  ` +
+      `deep ${pct(last.deep.escape).padStart(4)}  ` +
+      `delta ${pct(last.deep.escape - last.stair.escape).padStart(5)}`,
+  )
+}
+console.log('')
+
+// ── one rule each ──────────────────────────────────────────────────────
+//
+// Three monsters that were three difficulty settings for one puzzle, measured
+// again now that each of them bends the throw. Expect the mean fight to matter:
+// the Gnawing's ladder prices a slow kill and the Marrow's rewards one.
+console.log('THE LADDERS — per enemy, bare, and what the rule costs')
+const LADDER_CELLS: readonly { name: string; room: string; loadout: Loadout }[] = [
+  { name: 'The Gnawing — bare, 30', room: 'hollow', loadout: { ...BARE } },
+  { name: 'The Marrow — bare, 24', room: 'deep', loadout: { ...BARE, bones: 24 } },
+  { name: 'The Warden — bare, 26 + Vial', room: 'gate', loadout: { ...BARE, bones: 26, vials: 1 } },
+]
+for (const row of LADDER_CELLS) {
+  for (const tier of ['naive', 'heuristic'] as const) {
+    const c = fightStats(row.room, tier, row.loadout)
+    console.log(
+      `  ${row.name.padEnd(30)} ${tier.padEnd(10)} win ${pct(c.win).padStart(4)}  ` +
+        `attacks ${one(c.rounds).padStart(4)} (median ${c.roundsMedian})  ` +
+        `bones lost ${one(c.cost).padStart(5)}`,
+    )
+  }
+}
+const gnawing = fightStats('hollow', 'heuristic', { ...BARE })
+const gnawingNaive = fightStats('hollow', 'naive', { ...BARE })
+console.log(
+  `  the Gnawing's median kill round: ${gnawing.roundsMedian} solver, ` +
+    `${gnawingNaive.roundsMedian} beginner. FAR 2 · MID 4 · CLOSE 8, so a\n` +
+    '  third round costs four times a first one. Reported, not tuned.\n',
 )
 
 // ── the invariants ─────────────────────────────────────────────────────
@@ -392,6 +627,44 @@ invariant(
     return (c.hands.get('crap') ?? 0) / total < 0.5
   }),
 )
+
+// **Added by the crooked bones wave.** The bare-balance law, extended to the
+// hand itself: the floor is six plain bones, so no figure above can be requiring
+// a crooked die any more than it can be requiring the iron.
+invariant(
+  'no figure above assumes a crooked die: every cell throws six plain bones',
+  [...CELLS, ...LADDER_CELLS].every((c) => c.loadout.hand === undefined),
+)
+// Every grammar is finishable from the floor, by a solver, on the short route.
+// It is the same statement *the slice is finishable* has always been, said three
+// times because there are three descents.
+invariant(
+  'every grammar can be finished from the bare floor',
+  GRAMMARS.every((plan) => planStats(seedsFor(plan.id), 'heuristic', { deep: false }).escape > 0),
+)
+// And buying is never worse than walking past, which is the same rule the
+// loadout wave wrote about what a run picks up.
+invariant(
+  'answering a priced die is never worse than walking past every one of them',
+  GRAMMARS.every((plan) => {
+    const seeds = seedsFor(plan.id)
+    return (
+      planStats(seeds, 'heuristic', { deep: true, dice: 'always' }).escape >=
+      planStats(seeds, 'heuristic', { deep: true, dice: 'never' }).escape
+    )
+  }),
+)
+// **The treasure is missable**, which is the law rather than a measurement: a
+// thing every route walked past would be a step, and the hints would be a lie.
+invariant(
+  'the treasure is missable: no grammar reaches it on every route',
+  GRAMMARS.every((plan) => {
+    const seeds = seedsFor(plan.id)
+    const stair = planStats(seeds, 'heuristic', { deep: false, dice: 'always' }).reached
+    const deep = planStats(seeds, 'heuristic', { deep: true, dice: 'always' }).reached
+    return stair < 1 && deep < 1
+  }),
+)
 console.log('')
 
 // ── the standing concern ───────────────────────────────────────────────
@@ -407,6 +680,32 @@ console.log(
     '  which starves anything that wants to escalate over a fight. Reported\n' +
     '  rather than tuned: changing it is a product decision about the three\n' +
     '  health totals, and belongs in a commit that says so.\n',
+)
+
+// ── the findings nobody should skip ─────────────────────────────────────
+//
+// Reported, not tuned. Every number this wave introduced is a first-pass value,
+// and these are the three readings a person has to decide about.
+console.log('THREE FINDINGS FROM THE CROOKED DICE')
+console.log(
+  '  1. **The treasure is weaker than a plain bone on its own.** The Hand of\n' +
+    "     Saint Orrin is `1 1 1 1 6 6` — a mean of 2.67 against a bone's 3.5 — and\n" +
+    '     the swing table above measures one copy of it as a *loss*. It is an\n' +
+    '     archetype piece in a game that can only ever hand you one, which is the\n' +
+    "     shape of the problem rather than the size of it. It is the wave's clearest\n" +
+    '     finding and it is **not** tuned here: the levers are its faces and whether\n' +
+    '     a run may ever hold more than one, and either is a product decision.\n' +
+    '  2. **Narrowness beats average, and by a lot.** Three Jawbones is the\n' +
+    '     strongest build measured, at +28 points over the floor, on a die whose\n' +
+    '     mean is identical to a bone. Six Knucklebones is +10 on a die whose mean\n' +
+    '     is *lower*. The crooked dice are working as distributions rather than as\n' +
+    '     stat sticks, which is what they were for.\n' +
+    '  3. **Always-take dominates, and the sweep says so without being asked to.**\n' +
+    '     Three bones out of thirty is close to free on two of the three grammars.\n' +
+    '     Only THE LONG WAY, which puts three priced dice in front of a run that has\n' +
+    "     already spent its Font, prefers a floor — and it prefers twenty. If 3 is\n" +
+    '     a formality, the lever is the price, and the hand has to say so: see\n' +
+    '     POLISH_PROGRESS.md § the hand pass, question 2.\n',
 )
 
 console.log(

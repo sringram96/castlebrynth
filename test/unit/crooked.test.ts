@@ -122,7 +122,90 @@ describe('a core die is its faces and nothing else', () => {
   })
 })
 
+// ── the throw reads the hand ───────────────────────────────────────────
+
+describe('a slot is thrown off its own die', () => {
+  it('only ever shows a face the slot actually has', () => {
+    // The whole mechanical footprint of the crooked dice, asserted: a slot holding
+    // a Jawbone comes up one or six, and never a four, however many times it is
+    // thrown or rerolled.
+    for (const die of Object.keys(CORE_DICE) as CoreDieId[]) {
+      const faces = new Set<number>(coreDie(die).faces)
+      const hand = Array.from({ length: HAND_SLOTS }, () => die)
+      for (let seed = 1; seed <= 40; seed++) {
+        let state = reduce(
+          { ...facingTheGnawing(seed), run: { ...facingTheGnawing(seed).run!, hand } },
+          { type: 'ROLL' },
+        )
+        for (const value of state.run!.combat!.dice) {
+          expect(faces.has(value), `${die} came up ${value}`).toBe(true)
+        }
+        // And again through a reroll, which throws the unheld slots off the same
+        // table: a held die keeps its lane, so slot three is thrown from slot
+        // three's die however many of the six have been replaced.
+        state = reduce(state, { type: 'REROLL', held: [0, 1] })
+        for (const value of state.run!.combat!.dice) {
+          expect(faces.has(value), `${die} rerolled to ${value}`).toBe(true)
+        }
+      }
+    }
+  })
+
+  it('throws each slot from the die standing in it, and keeps the lanes', () => {
+    // A mixed hand: two narrow dice at the ends and plain bones between them.
+    const hand: CoreDieId[] = ['jawbone', 'bone', 'bone', 'bone', 'bone', 'cracked-bone']
+    const base = facingTheGnawing(11)
+    const thrown = reduce({ ...base, run: { ...base.run!, hand } }, { type: 'ROLL' })
+    const dice = thrown.run!.combat!.dice
+    expect(new Set(coreDie('jawbone').faces).has(dice[0]!)).toBe(true)
+    expect(new Set(coreDie('cracked-bone').faces).has(dice[5]!)).toBe(true)
+
+    // Held slots keep their exact faces through a reroll, lane for lane.
+    const again = reduce(thrown, { type: 'REROLL', held: [0, 5] })
+    expect(again.run!.combat!.dice[0]).toBe(dice[0])
+    expect(again.run!.combat!.dice[5]).toBe(dice[5])
+  })
+
+  it('replays a hand of six plain bones exactly as it always did', () => {
+    // One draw per slot, and `rng.int(6)` is `rng.int(6)` whichever table it
+    // indexes — so reading the hand cost the determinism contract nothing.
+    for (let seed = 1; seed <= 20; seed++) {
+      const once = reduce(facingTheGnawing(seed), { type: 'ROLL' })
+      const twice = reduce(facingTheGnawing(seed), { type: 'ROLL' })
+      expect(once.run!.combat!.dice).toEqual(twice.run!.combat!.dice)
+      expect(once.run!.combat!.dice).toHaveLength(HAND_SLOTS)
+    }
+  })
+
+  it('is what makes a crooked hand a different fight', () => {
+    // Not a claim about strength — the report measures that — but about *effect*:
+    // a hand of Jawbones and a hand of bones do not throw the same table, which is
+    // the thing that would be silently untrue if the reducer ignored the slots.
+    const jaws = Array.from({ length: HAND_SLOTS }, () => 'jawbone' as CoreDieId)
+    let differed = false
+    for (let seed = 1; seed <= 20 && !differed; seed++) {
+      const base = facingTheGnawing(seed)
+      const plain = reduce(base, { type: 'ROLL' }).run!.combat!.dice
+      const crooked = reduce({ ...base, run: { ...base.run!, hand: jaws } }, { type: 'ROLL' }).run!
+        .combat!.dice
+      if (JSON.stringify(plain) !== JSON.stringify(crooked)) differed = true
+    }
+    expect(differed, 'a crooked hand threw the same table as six plain bones').toBe(true)
+  })
+})
+
 // ── the picker ─────────────────────────────────────────────────────────
+
+/** In the first fight of a descent, before the first throw. */
+function facingTheGnawing(seed: number): GameState {
+  const run = newRun(seedWith('hollow', seed))
+  const roomId = Object.values(run.map.nodes).find((n) => n.templateId === 'hollow')!.id
+  const stood = { ...run, roomId, path: [...run.path, roomId] }
+  return reduce(
+    { version: SAVE_VERSION, mode: 'explore', meta: EMPTY_META, run: stood },
+    { type: 'FIGHT' },
+  )
+}
 
 /** Standing in a room the director put core dice in. */
 function standingWhereDiceAre(templateId: string, bones = BONE_CEILING): GameState {

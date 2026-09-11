@@ -49,7 +49,7 @@ import {
   talismansFor,
   totalsFor,
 } from '../combat/loadout.js'
-import { HAND_DICE, MAX_ROLLS, canonicalHeld, rerollDice, rollDice } from '../combat/roll.js'
+import { MAX_ROLLS, canonicalHeld, rerollHand, rollHand } from '../combat/roll.js'
 import { roomAt } from './map.js'
 import type { DieOffer, ResolvedRoom } from './map.js'
 import { generateRun } from './runGenerator.js'
@@ -850,7 +850,10 @@ export function reduce(state: GameState, action: Action): GameState {
       if (!live(state, run) || !combat) return state
       if (combat.dice.length > 0 || combat.rollsUsed !== 0) return state
 
-      const dice = rollDice(HAND_DICE, fightRng(run, combat.round, 1, RNG_CHANNEL.playerRoll))
+      // **Each slot off its own die.** Six slots, left to right, one draw apiece —
+      // which is the whole of what a crooked die is and the reason a hand of six
+      // plain bones replays a seed exactly as it always did.
+      const dice = rollHand(run.hand, fightRng(run, combat.round, 1, RNG_CHANNEL.playerRoll))
       const ironRolls = rollIron(
         run.ironDice,
         fightRng(run, combat.round, 1, RNG_CHANNEL.ironRoll),
@@ -883,9 +886,10 @@ export function reduce(state: GameState, action: Action): GameState {
       if (held.length === combat.dice.length) return state
 
       const rollNumber = combat.rollsUsed + 1
-      const dice = rerollDice(
+      const dice = rerollHand(
         combat.dice,
         held,
+        run.hand,
         fightRng(run, combat.round, rollNumber, RNG_CHANNEL.playerRoll),
       )
       return {
