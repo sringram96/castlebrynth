@@ -14,8 +14,8 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 
-import { act, boot, screenName, state, tappable, wayTo, where } from './helpers.js'
-import { fightItOut } from './play.js'
+import { act, boot, screenName, state, tappable, toFirstFight, wayTo, where } from './helpers.js'
+import { clearReward, fightItOut } from './play.js'
 
 /** Hurt, standing in the chapel, on a known seed. */
 const inChapel = (page: Page, bones = 12, extra = '') =>
@@ -192,14 +192,12 @@ test.describe('one press, and the room is spent', () => {
     // here is about the record surviving, and the arithmetic is covered above.
     test.setTimeout(90_000)
     await boot(page)
-    await act(page, 'start').click()
-    await act(page, 'go').click()
-    await act(page, 'go').click()
+    await toFirstFight(page)
     expect(await fightItOut(page), 'lost to the Gnawing').toBe('won')
-    if ((await screenName(page)) === 'reward') {
-      await page.locator('[data-act="take"]').first().click()
-    }
+    await clearReward(page)
 
+    // The Confluence, and then the Font behind it.
+    await act(page, 'go').click()
     await act(page, 'go').click()
     expect(await where(page)).toBe('sanctuary')
 

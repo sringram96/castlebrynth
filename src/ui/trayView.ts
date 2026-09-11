@@ -9,7 +9,7 @@
  *   the rail ends  the iron die (left) and up to two item dice (right)
  *   the well       the running readout, the scorecard, the iron's caption
  *   the right bays the Vial, and the talisman
- *   the three beds MENU · ROLL or REROLL · a second route out of a room
+ *   the two beds  MENU · ROLL or REROLL or FIGHT
  *
  * A secondary action that does not exist is **absent**, never disabled. The
  * one verb in the middle bed is whichever throw is left; scoring is not a verb
@@ -100,7 +100,6 @@ export interface TrayHandlers {
   readonly onInspectReward: (id: string) => void
   /** A close look at one carried talisman. No state change. */
   readonly onInspectTalisman: (id: string) => void
-  readonly onGo: (to: string) => void
 }
 
 /** What the tray needs to know that is not in the save. */
@@ -765,15 +764,18 @@ function renderWell(
 }
 
 /**
- * The three beds.
+ * The beds.
  *
- * Left is MENU, always, in both modes. Centre is whichever throw is left.
- * Right is the secondary, and is simply not rendered when there is not one — a
- * greyed button that explains nothing is the defect this replaces.
+ * Left is MENU, always, in both modes. Centre is whichever press the fight is
+ * waiting for. The right bed is empty, and that is the wave's ruling rather
+ * than an oversight: **it used to carry the second way out of a room**, which
+ * put the most important verb in the game in the one region of the screen that
+ * is not the world. Movement moved into the picture, so GO left the tray
+ * entirely — there is no `onGo` here and there is nowhere to write one.
  *
- * There is no verb for scoring. Which hand to spend *is* the decision, so the
- * choice itself is the commitment and it lives on the scorecard where the
- * multipliers are.
+ * There is no verb for scoring either. Which hand to spend *is* the decision,
+ * so the choice itself is the commitment and it lives on the scorecard where
+ * the multipliers are.
  */
 function renderBeds(
   tray: Tray,
@@ -841,52 +843,16 @@ function renderBeds(
     return
   }
 
-  // Exploring. The room's enemy, if it is still up, is the only way on — and
-  // only while there is something left to throw. An empty pile is not a fight
-  // the reducer will open, so it is not a press the tray offers.
+  // Exploring. The room's enemy, if it is still up, is the only press the tray
+  // has left — and only while there is something to throw. An empty pile is
+  // not a fight the reducer will open, so it is not a press the tray offers.
+  //
+  // Everything else a room offers is in the room: the ways out, the worked
+  // objects and whatever is lying on the floor are all hotspots on the picture,
+  // and none of them is the tray's business any more.
   const here = roomAt(run)
-  if (here.enemy && !run.cleared.includes(run.roomId)) {
-    if (run.bones > 0) {
-      bed(1, button({ act: 'fight', label: VERBS.fight, onPress: on.onFight, className: 'act act-primary' }))
-    }
-    return
-  }
-
-  // The same for a font that has not been used. There is no way on yet — the
-  // reducer will not grant one — so no way on is offered.
-  if (here.ritual && run.ritual?.roomId !== run.roomId) return
-
-  // And the same again for a room whose machinery is still shut. The gate is
-  // not down as a matter of styling: the reducer rejects `GO` while it is, so
-  // offering the press would be offering a button that does nothing. One
-  // statement — `exitsOpen` — answers for both of them.
-  if (!exitsOpen(stateOf(run.rooms, run.roomId, here.id))) return
-
-  // The map's exits, resolved through `roomAt`. The view renders what the
-  // reducer would accept and never constructs a destination of its own — a
-  // `to` here is a node id the map already holds.
-  const exits = here.exits
-  if (exits[0]) {
-    const b = button({
-      act: 'go',
-      label: exits[0].label,
-      describe: `${exits[0].label} — ${exits[0].sense}`,
-      onPress: () => on.onGo(exits[0]!.to),
-      className: 'act act-primary',
-    })
-    b.dataset['to'] = exits[0].to
-    bed(1, b)
-  }
-  if (exits[1]) {
-    const b = button({
-      act: 'go',
-      label: exits[1].label,
-      describe: `${exits[1].label} — ${exits[1].sense}`,
-      onPress: () => on.onGo(exits[1]!.to),
-      className: 'act act-side',
-    })
-    b.dataset['to'] = exits[1].to
-    bed(2, b)
+  if (here.enemy && !run.cleared.includes(run.roomId) && run.bones > 0) {
+    bed(1, button({ act: 'fight', label: VERBS.fight, onPress: on.onFight, className: 'act act-primary' }))
   }
 }
 

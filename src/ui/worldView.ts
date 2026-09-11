@@ -11,10 +11,33 @@ import type { World } from '../render/compositor.js'
 import { enemyArt, handArt, isScenePlate, propArt, roomArt, url } from '../render/assets.js'
 import { STAGES, enemy as enemyById, stageForRound, stanceAt } from '../content/enemies.js'
 import { idlePose } from '../content/enemyPresentation.js'
-import { roomAt } from '../game/map.js'
+import { exitsAvailable, roomAt } from '../game/map.js'
 import { actionFor, platesFor, stateOf } from '../content/interactions.js'
+import { reward } from '../content/rewards.js'
+import { VERBS } from '../content/text.js'
+import { canTake, lootIn, refusalFor } from '../game/reducer.js'
 import type { GameState } from '../game/state.js'
 import { button, el } from './components.js'
+
+/**
+ * How far under a found thing's name its TAKE sits.
+ *
+ * Two presses on one object have to be two thumbs' worth apart, and the world
+ * box is about 634 px tall on a 390 × 844 phone, so this is a little over the
+ * 44 px floor. `test/unit/anchors.test.ts` does the arithmetic against every
+ * anchor in the library rather than trusting the number here.
+ */
+const LOOT_TAKE_DROP = 0.09
+
+/**
+ * How many cells the enemy's health bar is made of.
+ *
+ * The bar is a row of whole cells, not a percentage: **combat chrome obeys the
+ * art's pixel grid**, so what changes as a thing is hurt is how many cells are
+ * lit, and never a fractional width. Forty-eight at six pixels a cell is 288 px,
+ * which fits inside the 390 px phone with the margins the bar already had.
+ */
+const HP_CELLS = 48
 
 export interface WorldHandlers {
   readonly onLook: (detailId: string) => void
@@ -24,6 +47,10 @@ export interface WorldHandlers {
   readonly onRitual: () => void
   /** One of the room's objects, worked. The reducer decides what it does. */
   readonly onInteract: (interactionId: string) => void
+  /** A way out, pressed where it stands in the picture. */
+  readonly onGo: (to: string) => void
+  /** One of the things lying in this room, picked up. */
+  readonly onTake: (index: number) => void
 }
 
 /**
@@ -188,6 +215,77 @@ function renderHits(world: World, state: GameState, handlers: WorldHandlers): vo
     }
   }
 
+  // What is lying here, and has not been picked up.
+  //
+  // Two presses on one object, because a found thing has always been two
+  // questions and the reward screen used to answer them with a card and a
+  // button. The pill carries the thing's short name and is the LOOK — its
+  // name and its exact rule, in the band, committing nothing. TAKE sits under
+  // it and is the only press that changes the run.
+  //
+  // A thing the run cannot carry gets **no TAKE at all**. The cap is the
+  // reducer's, the refusal is a sentence the LOOK prints, and a greyed button
+  // beside a full loadout would be the interface refusing to say why.
+  lootIn(run).forEach((item, index) => {
+    if (item.taken) return
+    const spot = here.lootAt?.[index] ?? here.lootAt?.[here.lootAt.length - 1]
+    if (!spot) return
+    const card = reward(item.id)
+
+    const refused = refusalFor(run, item.id)
+    const name = button({
+      act: 'look-loot',
+      label: card.short,
+      // The refusal is in the accessible name as well as one press away, so a
+      // thing that cannot be carried says why without being touched — which is
+      // what replaces the grey button that is not allowed to exist.
+      describe: `${card.name}. ${card.rule}${refused ? ` ${refused}` : ''}`,
+      onPress: () => handlers.onLook(`loot:${index}`),
+      className: 'hit hit-focal hit-loot',
+    })
+    name.dataset['loot'] = item.id
+    name.dataset['lootIndex'] = String(index)
+    name.style.left = `${spot.at.x * 100}%`
+    name.style.top = `${spot.at.y * 100}%`
+    world.hits.append(name)
+
+    if (!canTake(run, item.id)) return
+    const take = button({
+      act: 'take',
+      label: VERBS.take,
+      describe: `Take the ${card.name}`,
+      onPress: () => handlers.onTake(index),
+      className: 'hit hit-focal hit-take',
+    })
+    take.dataset['takeIndex'] = String(index)
+    take.dataset['takeId'] = item.id
+    take.style.left = `${spot.at.x * 100}%`
+    take.style.top = `${(spot.at.y + LOOT_TAKE_DROP) * 100}%`
+    world.hits.append(take)
+  })
+
+  // The ways out, seated on the painted feature each one passes through.
+  //
+  // **A held exit renders nothing.** Not a greyed arch, not a dimmed label:
+  // `exitsOpen` and the reducer's GO guard are the one statement of whether a
+  // room lets you leave, and the view obeys it rather than restating it.
+  if (exitsAvailable(run, here)) {
+    for (const exit of here.exits) {
+      if (!exit.at) continue
+      const b = button({
+        act: 'go',
+        label: exit.label,
+        describe: `${exit.label} — ${exit.sense}`,
+        onPress: () => handlers.onGo(exit.to),
+        className: 'hit hit-focal hit-go',
+      })
+      b.dataset['to'] = exit.to
+      b.style.left = `${exit.at.x * 100}%`
+      b.style.top = `${exit.at.y * 100}%`
+      world.hits.append(b)
+    }
+  }
+
   for (const detail of here.details) {
     const b = button({
       act: 'look',
@@ -228,6 +326,33 @@ function renderHud(world: World, state: GameState, handlers: WorldHandlers): voi
     hp.setAttribute('aria-label', `${e.name}, ${combat.enemyHp} of ${combat.enemyMaxHp} left`)
     name.append(hp)
     bar.append(name)
+
+    // What is left of it, drawn on the art's own pixel grid.
+    //
+    // **Combat chrome obeys the art's grid and palette** — the law this wave
+    // wrote into `docs/ART_DIRECTION.md`. A smooth CSS bar sliding across
+    // static pixels is the one thing on the combat screen that looks like it
+    // came from a different game, so the fill is a whole number of cells and
+    // never a fraction of one. The count is computed here, in integers, and the
+    // stylesheet multiplies it by one step; there is no sub-pixel width to
+    // round and nothing for a transition to interpolate through.
+    //
+    // A thing that is alive always shows at least one cell. Rounding a live
+    // enemy to an empty bar would be the chrome lying about the only number the
+    // fight is made of.
+    const cells =
+      combat.enemyHp <= 0
+        ? 0
+        : Math.max(1, Math.round((combat.enemyHp / combat.enemyMaxHp) * HP_CELLS))
+    const track = el('div', 'enemy-track')
+    track.id = 'enemy-track'
+    track.dataset['cells'] = String(HP_CELLS)
+    const fill = el('i', 'enemy-fill')
+    fill.id = 'enemy-fill'
+    fill.dataset['cells'] = String(cells)
+    fill.style.setProperty('--cells', String(cells))
+    track.append(fill)
+    bar.append(track)
 
     if (!combat.defeated) {
       const hits = el('p', 'enemy-hits', `BREAKS ${e.damage}`)

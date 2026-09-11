@@ -133,6 +133,34 @@ const RITUAL = {
 } as const
 
 /**
+ * Crossing a threshold, in milliseconds from the press.
+ *
+ * The one important verb in the game with no presentation sequence, and now it
+ * has one. The reducer moved the run and saved it before any of this ran — a
+ * reload halfway across lands in the destination, settled — so every beat
+ * below is a picture of somewhere the player already is.
+ *
+ *   push   the frame leans toward the doorway. Bodies go before rooms do.
+ *   dark   the screen closes. **This is the beat that does the work**: a
+ *          palette change under a cut reads as travel, and the same change
+ *          under a slide reads as a slideshow advancing.
+ *   land   the destination is painted, behind the dark
+ *   open   the dark lifts on the new room, and the arrival line with it
+ *   still  the ambience settles and the sequence is over
+ *
+ * First-pass numbers, provisional, and reported rather than tuned. Motion off
+ * arrives in the same tick — there is no beat at all and the destination is
+ * simply the screen.
+ */
+const CROSSING = {
+  push: 0,
+  dark: 200,
+  land: 430,
+  open: 520,
+  still: 760,
+} as const
+
+/**
  * The faces that flicker past on the way to the real one.
  *
  * A fixed list, exactly as the crown's tumble uses a counter rather than a
@@ -363,6 +391,10 @@ export class App {
         return this.playDrink(before, after)
       case 'RITUAL_ROLL':
         return this.playRitual(before, after)
+      case 'GO':
+        return this.playGo(before, after)
+      case 'TAKE':
+        return this.playTake(before, after)
       case 'INTERACT':
         return this.playInteract(before, after, action.interactionId)
       default:
@@ -565,6 +597,85 @@ export class App {
     if (defeated) return this.playDefeat(sequence, ATTACK.said, combat, after)
 
     sequence.at(ATTACK.next, () => this.finish())
+  }
+
+  /**
+   * Walking through a door.
+   *
+   * Built the same way every other sequence in this file is: from the state
+   * *before* the press, with the settled one painted last. The room the player
+   * is walking into was decided, entered and **saved** by the reducer in the
+   * tick of the press — this holds the room they are leaving on screen for a
+   * fifth of a second so that leaving it is a thing that happened.
+   *
+   * The dark in the middle is not a transition effect. It is where the
+   * territory changes: an ossuary giving way to a chapel is a change of palette
+   * and of everything painted, and a cut through black reads as *travel* where
+   * a crossfade reads as a slide advancing. Which is the whole product framing
+   * of the run, in one beat.
+   */
+  private playGo(before: GameState, after: GameState): void {
+    // A run that ended by walking out has its own screen, and a screen is not
+    // a room to cross into. The victory framing takes it from here.
+    if (after.mode === 'complete' || !this.animated) {
+      this.presenting = undefined
+      this.render()
+      return
+    }
+
+    this.presenting = { ...before, run: { ...before.run!, say: '' } }
+    this.render()
+
+    const sequence = this.start()
+    sequence.at(CROSSING.push, () => this.world.root.classList.add('crossing'))
+    sequence.at(CROSSING.dark, () => this.world.root.classList.add('dark'))
+    sequence.at(CROSSING.land, () => {
+      this.world.root.classList.remove('crossing')
+      this.presenting = undefined
+      this.render()
+    })
+    sequence.at(CROSSING.open, () => this.world.root.classList.remove('dark'))
+    sequence.at(CROSSING.still, () => {
+      this.world.root.classList.remove('crossing', 'dark')
+      this.finish()
+    })
+  }
+
+  /**
+   * A thing picked up off the floor, arriving in its slot.
+   *
+   * The smallest sequence in the file after DRINK, and it is here for one
+   * reason: a thing crossing from the world into the loadout with no beat at
+   * all reads as a repaint rather than as something the player did. So the bay
+   * it landed in says so, once — **a treatment on a plate that already
+   * exists**, not a painting, and it lasts as long as a stylesheet says and
+   * nothing longer.
+   *
+   * Which bay is worked out by asking what the run gained, off the two settled
+   * states. Nothing here reads the reward table and nothing decides anything.
+   */
+  private playTake(before: GameState, after: GameState): void {
+    this.render()
+    if (!this.animated) return
+    const was = before.run!
+    const now = after.run!
+    const bay =
+      now.vials > was.vials
+        ? '.satchel-slot'
+        : now.talismans.length > was.talismans.length
+          ? '.talisman-slot'
+          : now.ironDice.length > was.ironDice.length
+            ? '.iron-die'
+            : now.itemDice.length > was.itemDice.length
+              ? `.item-die[data-index="${now.itemDice.length - 1}"]`
+              : undefined
+    if (!bay) return
+    const node = this.tray.root.querySelector<HTMLElement>(bay)
+    if (!node) return
+    node.classList.remove('filling')
+    void node.offsetWidth
+    node.classList.add('filling')
+    window.setTimeout(() => node.classList.remove('filling'), 420)
   }
 
   /**
@@ -937,6 +1048,7 @@ export class App {
     this.presenting = undefined
     this.sequence = undefined
     clearCascade(this.tray)
+    this.world.root.classList.remove('crossing', 'dark')
     weaponThrust(this.world, 'rest')
     enemyAdvance(this.world, 'arrive')
     this.render()
@@ -955,6 +1067,8 @@ export class App {
       },
       onRitual: () => this.dispatch({ type: 'RITUAL_ROLL' }),
       onInteract: (interactionId: string) => this.dispatch({ type: 'INTERACT', interactionId }),
+      onGo: (to: string) => this.dispatch({ type: 'GO', to }),
+      onTake: (index: number) => this.dispatch({ type: 'TAKE', index }),
     })
 
     // The room keeps breathing under all of it. Idempotent for the same room,
@@ -980,7 +1094,6 @@ export class App {
         onDrink: () => this.dispatch({ type: 'DRINK' }),
         onInspectReward: (id) => this.open({ kind: 'reward', id: id as RewardId }),
         onInspectTalisman: (id) => this.open({ kind: 'talisman', id: id as TalismanId }),
-        onGo: (to) => this.dispatch({ type: 'GO', to }),
       },
     )
 
@@ -991,8 +1104,6 @@ export class App {
         onStart: () => this.dispatch({ type: 'START_RUN' }),
         onContinue: () => this.dispatch({ type: 'CONTINUE' }),
         onTitle: () => this.dispatch({ type: 'TITLE' }),
-        onTake: (id) => this.dispatch({ type: 'TAKE', id }),
-        onSkip: () => this.dispatch({ type: 'SKIP' }),
       },
       this.discarded,
     )

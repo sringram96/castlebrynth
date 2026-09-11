@@ -17,12 +17,13 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { newRun, reduce } from '../../src/game/reducer.js'
+import { lootIn, newRun, reduce, unclaimedIn } from '../../src/game/reducer.js'
 import { SAVE_VERSION, TITLE } from '../../src/game/state.js'
 import type { GameState, RoomInteractionState } from '../../src/game/state.js'
 import { load, save } from '../../src/game/save.js'
-import { LOOT_REWARDS, reward } from '../../src/content/rewards.js'
+import { reward } from '../../src/content/rewards.js'
 import { BONE_CEILING } from '../../src/content/bones.js'
+import { ROOM_TEMPLATES } from '../../src/content/rooms.js'
 import { roomAt } from '../../src/game/map.js'
 import { nodeOf } from './where.js'
 import { actionFor, initialRoomState, stateOf } from '../../src/content/interactions.js'
@@ -63,8 +64,13 @@ function carried(state: GameState): readonly string[] {
   return [
     ...Array.from({ length: state.run!.vials }, () => 'vial'),
     ...state.run!.itemDice,
+    ...state.run!.ironDice,
+    ...state.run!.talismans,
   ]
 }
+
+/** Pick the first thing lying in this room off the floor. */
+const take = (state: GameState): GameState => reduce(state, { type: 'TAKE', index: 0 })
 
 const press = (state: GameState, ...ids: readonly string[]): GameState =>
   ids.reduce((s, interactionId) => reduce(s, { type: 'INTERACT', interactionId }), state)
@@ -96,8 +102,8 @@ describe('the Reliquary', () => {
       brazier: 'lit',
       lever: 'up',
       chest: 'closed',
-      claimed: false,
     })
+    expect(lootIn(here.run!)).toEqual([])
   })
 
   it('records the bell as rung', () => {
@@ -148,92 +154,101 @@ describe('the Reliquary', () => {
     expect(actionFor(open, 'reliquary-lever')).toBeUndefined()
   })
 
+  it('has no chest control at all: the chest is a container, not a button', () => {
+    // The wave's ruling, as an absence. Opening the chest puts **a thing in
+    // the room**; taking that thing is a press on the thing.
+    expect(ROOM_TEMPLATES['reliquary']!.interactables!.map((i) => i.id)).not.toContain(
+      'reliquary-chest',
+    )
+    const shut = press(standingIn('reliquary'), 'reliquary-bell')
+    expect(reduce(shut, { type: 'INTERACT', interactionId: 'reliquary-chest' })).toBe(shut)
+    expect(lootIn(shut.run!)).toEqual([])
+  })
+
   it('cannot be robbed through a shut chest', () => {
     const shut = press(standingIn('reliquary'), 'reliquary-bell')
-    expect(actionFor(roomStateOf(shut), 'reliquary-chest')).toBeUndefined()
-    expect(reduce(shut, { type: 'INTERACT', interactionId: 'reliquary-chest' })).toBe(shut)
+    expect(reduce(shut, { type: 'TAKE', index: 0 })).toBe(shut)
     expect(carried(shut)).toEqual([])
   })
 
-  it('gives exactly one thing from the reward pool', () => {
-    const took = press(
+  it('puts the Talisman of the Pair in the open chest, and does not hand it over', () => {
+    // An **authored** find: the template names it, so the pool is never
+    // touched. The talisman used to be starting equipment, and it lives here
+    // now — which is what makes working the room worth doing.
+    const opened = press(
       standingIn('reliquary'),
       'reliquary-bell',
       'reliquary-brazier',
       'reliquary-lever',
-      'reliquary-chest',
     )
-    expect(carried(took)).toHaveLength(1)
-    const found = carried(took)[0]!
-    // Something from the pool the fights draw from. No new species, no new
-    // noun, and no chest-only object.
-    expect(LOOT_REWARDS).toContain(found)
-    const claimed = roomStateOf(took)
-    expect(claimed.templateId === 'reliquary' && claimed.claimed).toBe(true)
-    expect(claimed.templateId === 'reliquary' && claimed.rewardId).toBe(found)
-    expect(took.run?.say).toContain('Inside:')
-    // Meta remembers it exactly as a reward screen would.
-    expect(took.meta.seenRewards).toContain(found)
+    expect(ROOM_TEMPLATES['reliquary']!.find).toBe('pair-talisman')
+    expect(unclaimedIn(opened.run!).map((l) => l.id)).toEqual(['pair-talisman'])
+    // Revealed is not carried. Nothing has moved into the loadout and the door
+    // has recorded nothing.
+    expect(carried(opened)).toEqual([])
+    expect(opened.meta.seenRewards).toEqual([])
+    expect(opened.run?.say).toContain(reward('pair-talisman').name)
   })
 
-  it('never touches the pile, whatever it hands over', () => {
-    // The chest fills the satchel. It is not a bone source and it never was:
-    // the pile only moves for a fight, a font, a Vial or the vault's backlash.
-    const here = standingIn('reliquary')
-    const took = press(
-      here,
+  it('hands it over on TAKE, and once', () => {
+    const opened = press(
+      standingIn('reliquary'),
       'reliquary-bell',
       'reliquary-brazier',
       'reliquary-lever',
-      'reliquary-chest',
     )
-    const claimed = roomStateOf(took)
-    const found = claimed.templateId === 'reliquary' ? claimed.rewardId : undefined
-    if (found) expect(reward(found).kind).toBe('vial')
+    const took = take(opened)
+    expect(took.run!.talismans).toEqual(['pair-talisman'])
+    expect(took.meta.seenRewards).toContain('pair-talisman')
+    // Not twice, and not across a reload — which is the press the save used to
+    // invite.
+    expect(reduce(took, { type: 'TAKE', index: 0 })).toBe(took)
+    expect(carried(take(reloaded(took)))).toEqual(['pair-talisman'])
+  })
+
+  it('never touches the pile, whatever it hands over', () => {
+    // The chest fills the loadout. It is not a bone source and it never was:
+    // the pile only moves for a fight, a font, a Vial or a room that charges.
+    const took = take(
+      press(standingIn('reliquary'), 'reliquary-bell', 'reliquary-brazier', 'reliquary-lever'),
+    )
     expect(took.run!.bones).toBe(BONE_CEILING)
   })
 
-  it('draws the same thing for the same seed and the same history', () => {
+  it('holds the same thing for every seed, because it is placed rather than drawn', () => {
     const solve = (s: GameState): GameState =>
-      press(s, 'reliquary-bell', 'reliquary-brazier', 'reliquary-lever', 'reliquary-chest')
-    expect(carried(solve(standingIn('reliquary', 99)))).toEqual(
-      carried(solve(standingIn('reliquary', 99))),
-    )
-    // The pool is three deep now, so what is under test is that the chest
-    // draws *exactly one* of it, off the run's own generator, and never twice.
+      take(press(s, 'reliquary-bell', 'reliquary-brazier', 'reliquary-lever'))
     for (let seed = 1; seed <= 24; seed++) {
-      const found = carried(solve(standingIn('reliquary', seed)))
-      expect(found, `seed ${seed}`).toHaveLength(1)
-      expect(LOOT_REWARDS, `seed ${seed}`).toContain(found[0])
+      expect(carried(solve(standingIn('reliquary', seed))), `seed ${seed}`).toEqual([
+        'pair-talisman',
+      ])
     }
   })
 
-  it('cannot have its reward changed by a reload', () => {
-    const took = press(
+  it('cannot have what is in it changed by a reload', () => {
+    const opened = press(
       standingIn('reliquary', 12),
       'reliquary-bell',
       'reliquary-brazier',
       'reliquary-lever',
-      'reliquary-chest',
     )
-    const back = reloaded(took)
-    expect(carried(back)).toEqual(carried(took))
-    expect(roomStateOf(back)).toEqual(roomStateOf(took))
+    const back = reloaded(opened)
+    expect(lootIn(back.run!)).toEqual(lootIn(opened.run!))
+    expect(roomStateOf(back)).toEqual(roomStateOf(opened))
   })
 
-  it('cannot pay twice, however many times the chest is pressed', () => {
-    const took = press(
+  it('lets you walk out on it, and the thing stays behind', () => {
+    const opened = press(
       standingIn('reliquary'),
       'reliquary-bell',
       'reliquary-brazier',
       'reliquary-lever',
-      'reliquary-chest',
     )
-    const again = press(took, 'reliquary-chest', 'reliquary-chest')
-    expect(again).toBe(took)
-    expect(carried(again)).toHaveLength(1)
-    // Not even across a reload, which is the press the save used to invite.
-    expect(carried(press(reloaded(took), 'reliquary-chest'))).toHaveLength(1)
+    const left = opened.run!.roomId
+    const walked = reduce(opened, { type: 'GO', to: onwardFrom(opened) })
+    expect(carried(walked)).toEqual([])
+    expect(unclaimedIn(walked.run!, left).map((l) => l.id)).toEqual(['pair-talisman'])
+    expect(walked.run!.say).toContain('The door does not open twice')
   })
 
   it('lets you leave without touching anything in it', () => {
@@ -371,6 +386,131 @@ describe('the Chain Vault', () => {
   })
 })
 
+describe('the Offertory', () => {
+  const here = (bones = BONE_CEILING): GameState => standingIn('offertory', 7, bones)
+
+  it('opens with the candles lit, nothing paid and the recess shut', () => {
+    expect(initialRoomState('offertory')).toEqual({
+      templateId: 'offertory',
+      candles: 'lit',
+      paid: false,
+      recess: 'shut',
+    })
+  })
+
+  it('will not take an offering until the price has been read', () => {
+    // The carving is in the dark until the candles are out, exactly as the
+    // Reliquary's handle is. The room is not a guessing game: it is a price
+    // list you have to be able to see.
+    const lit = here()
+    expect(actionFor(roomStateOf(lit), 'offertory-altar')).toBeUndefined()
+    expect(reduce(lit, { type: 'INTERACT', interactionId: 'offertory-altar' })).toBe(lit)
+    const dark = press(lit, 'offertory-candles')
+    expect(actionFor(roomStateOf(dark), 'offertory-altar')?.label).toBe('OFFER')
+  })
+
+  it('prints the price on the verb before it charges', () => {
+    // Two bones, in digits, in the button's own accessible name. That is the
+    // whole difference between a toll and a trap.
+    const dark = press(here(), 'offertory-candles')
+    expect(actionFor(roomStateOf(dark), 'offertory-altar')!.describe).toBe(
+      'Two bones into the slot. That is what it says it costs.',
+    )
+    expect(
+      ROOM_TEMPLATES['offertory']!.details.find((d) => d.focal)!.says,
+    ).toBe('Two skulls carved beside the slot. Under them, two carved bones. A price list.')
+  })
+
+  it('costs exactly two bones, and opens the recess and the way out together', () => {
+    const paid = press(here(), 'offertory-candles', 'offertory-altar')
+    expect(paid.run!.bones).toBe(BONE_CEILING - 2)
+    expect(roomStateOf(paid)).toEqual({
+      templateId: 'offertory',
+      candles: 'out',
+      paid: true,
+      recess: 'open',
+    })
+    expect(unclaimedIn(paid.run!).map((l) => l.id)).toEqual(['grave-candle'])
+    expect(ROOM_TEMPLATES['offertory']!.find).toBe('grave-candle')
+  })
+
+  it('holds the way out until it is paid', () => {
+    const shut = here()
+    const onward = onwardFrom(shut)
+    expect(reduce(shut, { type: 'GO', to: onward })).toBe(shut)
+    const dark = press(shut, 'offertory-candles')
+    expect(reduce(dark, { type: 'GO', to: onward })).toBe(dark)
+    const paid = press(dark, 'offertory-altar')
+    expect(roomAt(reduce(paid, { type: 'GO', to: onward }).run!).id).toBe('confluence')
+  })
+
+  it('charges a bone for prying at the lid, and moves nothing', () => {
+    const pried = press(here(), 'offertory-recess')
+    expect(pried.run!.bones).toBe(BONE_CEILING - 1)
+    expect(pried.run!.say).toMatch(/The stone takes a finger/)
+    const still = roomStateOf(pried)
+    expect(still.templateId === 'offertory' && still.recess).toBe('shut')
+    expect(lootIn(pried.run!)).toEqual([])
+    // And it can be done as many times as there is blood for it.
+    const again = press(pried, 'offertory-recess', 'offertory-recess')
+    expect(again.run!.bones).toBe(BONE_CEILING - 3)
+  })
+
+  it('can be pried to death, and uses the death the game already has', () => {
+    const doomed = press(here(1), 'offertory-recess')
+    expect(doomed.run!.bones).toBe(0)
+    expect(doomed.mode).toBe('dead')
+    expect(doomed.run!.cause).toBe('The offertory.')
+    // And it is over: a corpse cannot keep working the room.
+    expect(press(doomed, 'offertory-candles')).toBe(doomed)
+  })
+
+  it('can be paid to death, and says which', () => {
+    // The price is printed and it can still be the last of you. A toll that
+    // could not kill would be a toll that never mattered.
+    const doomed = press(here(2), 'offertory-candles', 'offertory-altar')
+    expect(doomed.run!.bones).toBe(0)
+    expect(doomed.mode).toBe('dead')
+    expect(doomed.run!.cause).toBe('The offertory.')
+  })
+
+  it('takes every control away once it is paid', () => {
+    const paid = press(here(), 'offertory-candles', 'offertory-altar')
+    for (const id of ['offertory-candles', 'offertory-altar', 'offertory-recess']) {
+      expect(actionFor(roomStateOf(paid), id)).toBeUndefined()
+      expect(reduce(paid, { type: 'INTERACT', interactionId: id })).toBe(paid)
+    }
+  })
+
+  it('is the right-hand branch of the Cleft, and the fight is the left', () => {
+    const cleft = standingIn('cleft')
+    expect(roomAt(cleft.run!, towards(cleft, 'GO ON')).id).toBe('hollow')
+    expect(roomAt(cleft.run!, towards(cleft, 'NARROW')).id).toBe('offertory')
+  })
+
+  it('comes back with its price paid, across a reload', () => {
+    const paid = press(here(), 'offertory-candles', 'offertory-altar')
+    const back = reloaded(paid)
+    expect(roomStateOf(back)).toEqual(roomStateOf(paid))
+    expect(lootIn(back.run!)).toEqual(lootIn(paid.run!))
+    expect(back.run!.bones).toBe(BONE_CEILING - 2)
+  })
+})
+
+describe('the Chain Vault\u2019s cage', () => {
+  it('is holding the iron, and hands it over on TAKE', () => {
+    // The deep way certainly pays iron, and its own way-line says so before
+    // the press. Nothing is in the cage until the gate is up.
+    const shut = standingIn('chain-vault')
+    expect(lootIn(shut.run!)).toEqual([])
+    const open = press(shut, 'vault-chain', 'vault-lever')
+    expect(unclaimedIn(open.run!).map((l) => l.id)).toEqual(['rustplate'])
+    expect(open.run!.ironDice).toEqual([])
+    const took = take(open)
+    expect(took.run!.ironDice).toEqual(['rustplate'])
+  })
+})
+
 describe('what a save carries', () => {
   it('holds room state as plain serialisable data', () => {
     const worked = press(standingIn('reliquary'), 'reliquary-bell', 'reliquary-brazier')
@@ -382,12 +522,8 @@ describe('what a save carries', () => {
   })
 
   it('brings the Reliquary back exactly as it was left', () => {
-    const solved = press(
-      standingIn('reliquary', 3),
-      'reliquary-bell',
-      'reliquary-brazier',
-      'reliquary-lever',
-      'reliquary-chest',
+    const solved = take(
+      press(standingIn('reliquary', 3), 'reliquary-bell', 'reliquary-brazier', 'reliquary-lever'),
     )
     const back = reloaded(solved)
     expect(roomAt(back.run!).id).toBe('reliquary')
@@ -422,7 +558,7 @@ describe('what a save carries', () => {
   })
 
   it('was bumped, because the shape of a run changed', () => {
-    expect(SAVE_VERSION).toBe(10)
+    expect(SAVE_VERSION).toBe(11)
     // And the policy is unchanged: an older save is discarded, never migrated.
     // 8 is the War of Bones, whose run carried a two-part pile and whose fight
     // carried two lines of thrown bones. Neither shape can be read here, and
@@ -470,5 +606,6 @@ describe('the rules a press is held to', () => {
     }
     walk(standingIn('reliquary'), 5)
     walk(standingIn('chain-vault'), 4)
+    walk(standingIn('offertory'), 4)
   })
 })

@@ -98,7 +98,7 @@ const RUSTPLATE: IronDie = {
   id: 'rustplate',
   name: 'Rustplate',
   faces: [0, 0, 3, 3, 5, 7],
-  rule: 'Rolls with the hand. Blocks what it shows off the answer this turn.',
+  rule: 'Rolls with the hand: 0, 0, 3, 3, 5 or 7 held off the answer this turn.',
   flavour: 'Two thirds of a breastplate and most of a century of rain.',
 }
 
@@ -234,13 +234,18 @@ export function isTalismanId(id: string): id is TalismanId {
 }
 
 /**
- * What a run wakes up carrying, beyond the six.
+ * What a run wakes up carrying, beyond the six. **Nothing.**
  *
- * **Provisional, and recorded as such.** The replacement economy is the next
- * wave's business; this wave needs the iron die and the talisman on screen in
- * a real run so the cascade and the readout can be played, and the honest way
- * to do that without inventing an acquisition path is to start with them. See
- * `docs/COMBAT.md` § Open questions.
+ * The iron die and the talisman were provisional starting content while there
+ * was no acquisition path for them, and that was recorded as the first thing
+ * the next wave should replace. It has been replaced: the Rustplate lies in the
+ * Chain Vault's cage and the Talisman of the Pair lies in the Reliquary, so
+ * both are found, and which route a run takes is now which build it gets.
+ *
+ * Empty is **safe by construction** rather than by measurement. The balance
+ * law already forbids any gate, target or enemy number from requiring an item
+ * die, a talisman or the iron — every fight cell in the report is bare — so a
+ * run that starts bare is a run standing exactly where every number was set.
  */
-export const STARTING_IRON: readonly IronDieId[] = ['rustplate']
-export const STARTING_TALISMANS: readonly TalismanId[] = ['pair-talisman']
+export const STARTING_IRON: readonly IronDieId[] = []
+export const STARTING_TALISMANS: readonly TalismanId[] = []

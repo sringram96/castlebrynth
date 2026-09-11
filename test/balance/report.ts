@@ -23,11 +23,14 @@
  */
 
 import { fightIn, simulateFight, simulateRun } from './simulate.js'
-import type { AttackLog, FightResult, Loadout, RunResult } from './simulate.js'
+import type { AttackLog, Branch, FightResult, Loadout, RunResult } from './simulate.js'
 import { NAMED_HANDS, scoreName } from '../../src/combat/hands.js'
 import { HAND_DICE } from '../../src/combat/roll.js'
+import { STARTING_IRON, STARTING_TALISMANS } from '../../src/content/dice.js'
 import type { ScoreId } from '../../src/combat/hands.js'
 import { ENEMY_LIST, enemy } from '../../src/content/enemies.js'
+import { reward } from '../../src/content/rewards.js'
+import type { RewardId } from '../../src/content/rewards.js'
 import type { Tier } from './policies.js'
 
 const SEEDS = Array.from({ length: 400 }, (_, i) => (i + 1) * 2654435761)
@@ -201,22 +204,30 @@ for (const e of ENEMY_LIST) {
 console.log('')
 
 // ── whole runs ─────────────────────────────────────────────────────────
-function runStats(tier: Tier, deep: boolean, bare = true): {
+interface RunCell {
   escape: number
   bones: number
   found: number
+  cost: number
   died: Map<string, number>
-} {
-  const results: RunResult[] = SEEDS.map((seed) => simulateRun(seed, tier, { deep, bare }))
+  acquired: Map<string, number>
+}
+
+function runStats(tier: Tier, deep: boolean, bare = true, branch: Branch = 'left'): RunCell {
+  const results: RunResult[] = SEEDS.map((seed) => simulateRun(seed, tier, { deep, bare, branch }))
   const died = new Map<string, number>()
+  const acquired = new Map<string, number>()
   for (const r of results) {
     if (r.diedIn) died.set(r.diedIn, (died.get(r.diedIn) ?? 0) + 1)
+    for (const id of new Set(r.acquired)) acquired.set(id, (acquired.get(id) ?? 0) + 1)
   }
   return {
     escape: results.filter((r) => r.reachedExit).length / results.length,
     bones: mean(results.filter((r) => r.reachedExit).map((r) => r.bonesLeft)),
     found: mean(results.map((r) => r.found)),
+    cost: mean(results.map((r) => r.bonesLost)),
     died,
+    acquired,
   }
 }
 
@@ -225,20 +236,22 @@ const safeSolver = runStats('heuristic', false)
 const deepNaive = runStats('naive', true)
 const deepSolver = runStats('heuristic', true)
 
-// And the same two routes with the run carrying what it actually starts with.
-// Printed beside the bare rows rather than instead of them, so the gap is the
-// measurement: nothing in the bare rows depends on the loadout existing.
+// And the same two routes with the run picking up what it finds. A fresh run
+// now starts with **nothing** — no iron, no talisman, no item die — so the
+// difference between these two pairs is no longer "carried versus stripped",
+// it is *found versus walked past*. Printed beside the bare rows rather than
+// instead of them: nothing in the bare rows depends on a find existing.
 const safeCarried = runStats('heuristic', false, false)
 const deepCarried = runStats('heuristic', true, false)
 
-console.log('WHOLE RUNS — the first four bare, the last two carrying the loadout')
+console.log('WHOLE RUNS — the first four take nothing; the last two pick up what they find')
 for (const [name, s] of [
   ['safe · naive', safeNaive],
   ['safe · heuristic', safeSolver],
   ['deep · naive', deepNaive],
   ['deep · heuristic', deepSolver],
-  ['safe · heuristic · carried', safeCarried],
-  ['deep · heuristic · carried', deepCarried],
+  ['safe · heuristic · taking', safeCarried],
+  ['deep · heuristic · taking', deepCarried],
 ] as const) {
   const graves = [...s.died]
     .sort((a, b) => b[1] - a[1])
@@ -251,6 +264,48 @@ for (const [name, s] of [
   )
 }
 console.log('')
+
+// ── what a route actually hands you ────────────────────────────────────
+//
+// **Reported, never tuned.** A fresh run starts with six bare bones, so every
+// carried thing in the game is a thing that was found somewhere — and the two
+// interesting questions are now *how often does the policy reach each placed
+// find* and *what does each branch of the Cleft cost*.
+console.log('ACQUISITION — how often a run that takes what it finds ends up carrying it')
+const ACQUIRING: readonly { name: string; cell: RunCell }[] = [
+  { name: 'safe · left (the Gnawing)', cell: runStats('heuristic', false, false, 'left') },
+  { name: 'safe · right (the Offertory)', cell: runStats('heuristic', false, false, 'right') },
+  { name: 'deep · left (the Gnawing)', cell: runStats('heuristic', true, false, 'left') },
+  { name: 'deep · right (the Offertory)', cell: runStats('heuristic', true, false, 'right') },
+]
+const PLACED: readonly RewardId[] = ['pair-talisman', 'rustplate', 'grave-candle', 'vial', 'splinter-fetish']
+for (const row of ACQUIRING) {
+  const got = PLACED.map((id) => `${reward(id).short.toLowerCase()} ${pct((row.cell.acquired.get(id) ?? 0) / SEEDS.length)}`)
+  console.log(`  ${row.name.padEnd(30)} ${got.join('  ')}`)
+}
+console.log('')
+
+// The branch delta, which is the whole of what the Cleft is asking. LEFT trades
+// three bones a round against the Gnawing for a 60% draw; RIGHT trades a flat
+// two-bone toll for a certain item die. Which is cheaper is a measurement.
+console.log("THE CLEFT — what each branch costs, on the safe route")
+const branchLeft = ACQUIRING[0]!.cell
+const branchRight = ACQUIRING[1]!.cell
+for (const [name, cell] of [
+  ['LEFT  · the Gnawing', branchLeft],
+  ['RIGHT · the Offertory', branchRight],
+] as const) {
+  console.log(
+    `  ${name.padEnd(24)} out ${pct(cell.escape).padStart(4)}  ` +
+      `bones broken ${one(cell.cost).padStart(5)}  found ${one(cell.found)}`,
+  )
+}
+console.log(
+  `  delta (right − left)     out ${pct(branchRight.escape - branchLeft.escape).padStart(5)}  ` +
+    `bones broken ${one(branchRight.cost - branchLeft.cost).padStart(5)}\n` +
+    '  Reported, not tuned. The two branches are priced differently on purpose\n' +
+    '  and neither is meant to be the correct answer.\n',
+)
 
 // ── the invariants ─────────────────────────────────────────────────────
 //
@@ -306,8 +361,16 @@ invariant(
   ),
 )
 invariant(
-  'the loadout is upside: carrying things is never worse than carrying nothing',
+  'the loadout is upside: taking what you find is never worse than walking past it',
   safeCarried.escape >= safeSolver.escape && deepCarried.escape >= deepSolver.escape,
+)
+// **Added by the reel wave.** A fresh run carries nothing at all, which is the
+// same reading every fight cell above is set against — so the bare rows are no
+// longer a hypothetical stripped run, they are what a run *is* until it finds
+// something.
+invariant(
+  'a fresh run starts bare: no iron, no talisman, no item die',
+  STARTING_IRON.length === 0 && STARTING_TALISMANS.length === 0,
 )
 
 // **Re-based by the loadout wave.** The old form of this measured the

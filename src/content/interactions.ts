@@ -94,10 +94,13 @@ export interface Beat {
  */
 export function initialRoomState(templateId: string): RoomInteractionState | undefined {
   if (templateId === 'reliquary') {
-    return { templateId, bellRung: false, brazier: 'lit', lever: 'up', chest: 'closed', claimed: false }
+    return { templateId, bellRung: false, brazier: 'lit', lever: 'up', chest: 'closed' }
   }
   if (templateId === 'chain-vault') {
     return { templateId, chain: 'off', cage: 'raised', pressurePlate: 'off', lever: 'up', gate: 'closed' }
+  }
+  if (templateId === 'offertory') {
+    return { templateId, candles: 'lit', paid: false, recess: 'shut' }
   }
   return undefined
 }
@@ -128,6 +131,35 @@ export function stateOf(
  * this does not. One table, both jobs, and they cannot drift apart.
  */
 export function actionFor(state: RoomInteractionState, id: string): InteractionAction | undefined {
+  if (state.templateId === 'offertory') {
+    // Paid. The slot is full, the recess is open and the way on is open with
+    // it: there is nothing left in the room to work, and what is left in it is
+    // a thing lying in a hole.
+    if (state.paid) return undefined
+    switch (id) {
+      case 'offertory-candles':
+        return state.candles === 'lit'
+          ? { label: 'PUT OUT', describe: 'Put out the candles' }
+          : { label: 'LIGHT', describe: 'Light the candles' }
+      case 'offertory-altar':
+        // The price is on the button before it charges. Two bones, in words,
+        // in the accessible name, and again in the well — the same contract
+        // every carried thing in the game is held to. The carving has to have
+        // been read first, and reading it takes putting the light out: the
+        // slot's own carving catches what is left, exactly as the Reliquary's
+        // handle does.
+        return state.candles === 'out'
+          ? { label: 'OFFER', describe: 'Two bones into the slot. That is what it says it costs.' }
+          : undefined
+      case 'offertory-recess':
+        // The greedy press, and it is a real press with a real cost. It moves
+        // nothing, and it can be made as many times as there is blood for it.
+        return { label: 'PRY', describe: 'Force the stone lid' }
+      default:
+        return undefined
+    }
+  }
+
   if (state.templateId === 'reliquary') {
     switch (id) {
       case 'reliquary-bell':
@@ -145,10 +177,10 @@ export function actionFor(state: RoomInteractionState, id: string): InteractionA
         return state.bellRung && state.brazier === 'out' && state.chest === 'closed'
           ? { label: 'PULL', describe: 'Pull the handle under the basin' }
           : undefined
-      case 'reliquary-chest':
-        return state.chest === 'open' && !state.claimed
-          ? { label: 'TAKE', describe: 'Take what is inside the reliquary' }
-          : undefined
+      // There is no `reliquary-chest` case, and its absence is the ruling: the
+      // chest is a container, not a button that pays out. What opening it does
+      // is put **a thing in the room**, and taking that thing is a press on the
+      // thing rather than on the furniture around it.
       default:
         return undefined
     }
@@ -187,6 +219,8 @@ export function exitsOpen(state: RoomInteractionState | undefined): boolean {
   // The Reliquary is optional in the strongest sense: its puzzle has no bearing
   // on the way out at all.
   if (state.templateId === 'reliquary') return true
+  // The Offertory is a toll, so the way out is what the toll buys.
+  if (state.templateId === 'offertory') return state.paid
   return state.gate === 'open'
 }
 
@@ -199,6 +233,20 @@ export function exitsOpen(state: RoomInteractionState | undefined): boolean {
  * property `## 16 settled rendering` is asking for.
  */
 export function platesFor(state: RoomInteractionState): readonly Plate[] {
+  // The Offertory borrows the Reliquary's three portraits — an altar, a candle
+  // stand and a chest standing in for the wall recess — over the Choir's
+  // backdrop. **Nothing was painted for it**, and the borrowing is recorded
+  // under `## HUMAN ART REQUIRED`: the objects are in the right places because
+  // those are the places their plates were staged at, not because a room was
+  // drawn around them.
+  if (state.templateId === 'offertory') {
+    return [
+      { id: 'offertory-altar', art: 'altar', frame: 'still', look: state.paid ? 'down' : 'up' },
+      { id: 'offertory-candles', art: 'brazier', frame: 'lit', look: state.candles },
+      { id: 'offertory-recess', art: 'chest', frame: 'closed', look: state.recess === 'open' ? 'open' : 'closed' },
+    ]
+  }
+
   if (state.templateId === 'reliquary') {
     // Four objects, four portraits, and the order is back to front: the altar
     // is the hero on the floor, the bell hangs over it, and the candles and the
@@ -252,6 +300,9 @@ export function beatsFor(
 
   // The Reliquary's objects were delivered one plate each, so nothing in that
   // room changes drawing and it has no beats at all. What it has is `movesFor`.
+  // The Offertory's plates are portraits too, so it has no beats and its two
+  // moves — the altar taking the offering, the lid grinding back — are in
+  // `movesFor` beside the Reliquary's.
   if (before.templateId !== 'chain-vault' || after.templateId !== 'chain-vault') return beats
 
   if (before.cage !== after.cage) {
@@ -315,8 +366,21 @@ export function beatsFor(
 export function movesFor(
   before: RoomInteractionState,
   after: RoomInteractionState,
-  _id: string,
+  id: string,
 ): readonly Move[] {
+  if (before.templateId === 'offertory' && after.templateId === 'offertory') {
+    const moves: Move[] = []
+    if (!before.paid && after.paid) {
+      moves.push({ id: 'offertory-altar', move: 'work', ms: 240 })
+      moves.push({ id: 'offertory-recess', move: 'knock', ms: 330 })
+    } else if (id === 'offertory-recess') {
+      // It was pried at and it did not move. The knock *is* the answer, and it
+      // is the same drawing the recess makes when it opens — which is the
+      // point: the room looks for a moment as though it worked.
+      moves.push({ id: 'offertory-recess', move: 'knock', ms: 330 })
+    }
+    return moves
+  }
   if (before.templateId !== 'reliquary' || after.templateId !== 'reliquary') return []
   const moves: Move[] = []
   if (!before.bellRung && after.bellRung) moves.push({ id: 'reliquary-bell', move: 'swing', ms: 380 })

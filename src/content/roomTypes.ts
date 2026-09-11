@@ -29,6 +29,8 @@
  * than staging.
  */
 
+import type { RewardId } from './rewards.js'
+
 export interface Detail {
   readonly id: string
   /** What the tap says. Leads with the plain noun. */
@@ -92,6 +94,42 @@ export interface Interactable {
    */
   readonly describe: string
 }
+
+/**
+ * Where one way out of this picture is standing.
+ *
+ * The exits used to be a button in the tray, which put the most important verb
+ * in the game in the one region of the screen that is not the world. They are
+ * hotspots now, seated on the painted feature the way passes through — the
+ * arch, the stair, the far door — and this is where that feature is.
+ *
+ * **A template still names no destination.** An anchor is a place in a picture
+ * and nothing else; the generated map's edges bind to these in **declaration
+ * order**, so the first anchor carries the first edge out of the slot, which is
+ * the same law that already made the first edge the primary one.
+ *
+ * A hotspot and a LOOK detail may never share the same 44 px. That was already
+ * the rule for a worked object's verb; an exit is a verb on the picture too,
+ * and `test/unit/rooms.test.ts` holds all three kinds to it together.
+ */
+export interface ExitAnchor {
+  /** For tests and for the DOM. Unique within the template. */
+  readonly id: string
+  /** Where the way sits, in fractions of the world box. */
+  readonly at: { readonly x: number; readonly y: number }
+}
+
+/**
+ * Where a found thing lies, once something has revealed it.
+ *
+ * Loot is a room object like any other: it is discovered, revealed, inspected,
+ * decided on, taken, and possessed — in the world, every time. There is no
+ * reward screen for it to appear on, so it needs a place in the picture, and
+ * this is that place. The nth thing revealed in this room lies at the nth
+ * anchor; a room that reveals more things than it declares anchors stacks the
+ * remainder on the last one, which is a content fault the tests catch.
+ */
+export type LootAnchor = ExitAnchor
 
 /**
  * The dramatic job a room does in a descent.
@@ -218,6 +256,29 @@ export interface RoomTemplate {
   readonly ritual?: Ritual
   /** Objects that can be worked, and remember it. */
   readonly interactables?: readonly Interactable[]
+
+  /**
+   * Where the ways out are standing, in the picture, in declaration order.
+   *
+   * One per exit slot the topology allows. It names no destination — the map
+   * does that — and binding is positional, so the first anchor takes the first
+   * edge and the primary way is the one it was already going to be.
+   */
+  readonly exitAnchors?: readonly ExitAnchor[]
+
+  /** Where found things lie in this room, in the order they are revealed. */
+  readonly lootAt?: readonly LootAnchor[]
+
+  /**
+   * The thing that is *in* this room, rather than drawn for it.
+   *
+   * A placed find. When a template names one, the room pays exactly it and
+   * `chestReward` never touches the pool — which is how the Talisman of the
+   * Pair comes to live in the Reliquary rather than in a starting loadout.
+   * A template that names nothing draws, and the machinery stays for the
+   * rooms that will want it.
+   */
+  readonly find?: RewardId
 
   readonly topology: RoomTopology
 

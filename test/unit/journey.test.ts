@@ -85,11 +85,23 @@ function walkTo(state: GameState, templateId: string, guard = 12): GameState {
   throw new Error(`never reached ${templateId}`)
 }
 
-/** Take whatever is offered, or leave it, and get back to the room. */
+/**
+ * Pick up whatever is lying in this room, or leave it.
+ *
+ * There is no screen to clear any more: a win goes straight back to the room
+ * with what it paid on the floor, and walking away is walking away. `take`
+ * being false is not a SKIP press — it is simply not pressing anything.
+ */
 function clearReward(state: GameState, take = true): GameState {
-  if (state.mode !== 'reward') return state
-  const first = state.run!.offer![0]!
-  return reduce(state, take ? { type: 'TAKE', id: first } : { type: 'SKIP' })
+  if (!take) return state
+  let now = state
+  for (;;) {
+    const index = (now.run?.loot?.[now.run.roomId] ?? []).findIndex((l) => !l.taken)
+    if (index < 0) return now
+    const next = reduce(now, { type: 'TAKE', index })
+    if (next === now) return now
+    now = next
+  }
 }
 
 describe('the door', () => {
@@ -126,7 +138,7 @@ describe('the door', () => {
     }
     const again = reduce(dead, { type: 'START_RUN', seed: 2 })
     expect(again.run!.combat).toBeUndefined()
-    expect(again.run!.offer).toBeUndefined()
+    expect(again.run!.loot).toBeUndefined()
     expect(again.run!.cause).toBeUndefined()
     expect(again.resume).toBeUndefined()
   })
@@ -308,15 +320,16 @@ describe('the save', () => {
 
   it('discards a save from the game this replaced', () => {
     const store = storage()
-    // Every earlier shape, including the War of Bones at 8. There is no
-    // migration ladder: an old save is detected, discarded, and reported.
-    for (const version of [6, 7, 8, 9]) {
+    // Every earlier shape, including the War of Bones at 8 and the loadout
+    // wave at 10. There is no migration ladder: an old save is detected,
+    // discarded, and reported.
+    for (const version of [6, 7, 8, 9, 10]) {
       store.setItem('castlebrynth', JSON.stringify({ version, mode: 'combat', meta: {} }))
       const { state, discarded } = load(store)
       expect(discarded, `version ${version}`).toBe('incompatible')
       expect(state.run).toBeUndefined()
     }
-    expect(SAVE_VERSION).toBe(10)
+    expect(SAVE_VERSION).toBe(11)
   })
 
   it('survives an empty and a corrupt store', () => {

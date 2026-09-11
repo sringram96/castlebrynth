@@ -30,7 +30,7 @@ import {
 } from '../../src/render/assets.js'
 import { defeatOf } from '../../src/content/defeat.js'
 import { ENEMIES, STAGES } from '../../src/content/enemies.js'
-import { ROOM_LIBRARY, template } from '../../src/content/rooms.js'
+import { ROOM_LIBRARY, ROOM_TEMPLATES, template } from '../../src/content/rooms.js'
 import { platesFor } from '../../src/content/interactions.js'
 import type { RoomInteractionState } from '../../src/game/state.js'
 import { decode } from '../../tools/png.mjs'
@@ -54,17 +54,14 @@ const EVERY_WORKED_STATE: readonly RoomInteractionState[] = [
       ([
         ['up', 'closed'],
         ['down', 'open'],
-      ] as const).flatMap(([lever, chest]) =>
-        [false, true].map(
-          (claimed): RoomInteractionState => ({
-            templateId: 'reliquary',
-            bellRung,
-            brazier,
-            lever,
-            chest,
-            claimed,
-          }),
-        ),
+      ] as const).map(
+        ([lever, chest]): RoomInteractionState => ({
+          templateId: 'reliquary',
+          bellRung,
+          brazier,
+          lever,
+          chest,
+        }),
       ),
     ),
   ),
@@ -487,9 +484,34 @@ describe('every room has a backdrop', () => {
     }
   })
 
-  it('gives every room its own backdrop, so no two rooms are one place', () => {
-    const arts = ROOM_LIBRARY.map((r) => r.art)
-    expect(new Set(arts).size).toBe(arts.length)
+  /**
+   * Which rooms are knowingly standing in a painting drawn for another one.
+   *
+   * **Recorded quality debt, not a licence.** The reel wave added three rooms
+   * and authored no pixel for any of them, per `CLAUDE.md` § *No art in the
+   * polish sweep*: the Cleft and the Confluence are the Split's painting read
+   * forwards and backwards, and the Offertory is the Choir with the
+   * Reliquary's furniture in it. Every one of them is written out under
+   * `## HUMAN ART REQUIRED` in POLISH_PROGRESS.md, and this list is the gate
+   * that keeps the debt from growing quietly: a fourth borrowed backdrop has
+   * to be added here, in a commit that says so.
+   */
+  const BORROWED: Readonly<Record<string, string>> = {
+    cleft: 'the Split, read as a dividing passage',
+    confluence: 'the Split, read as two passages meeting',
+    offertory: 'the Choir, with the Reliquary’s altar and candles in it',
+  }
+
+  it('gives every room a backdrop, and names the ones that are borrowed', () => {
+    const own = ROOM_LIBRARY.filter((r) => !(r.id in BORROWED)).map((r) => r.art)
+    expect(new Set(own).size, 'two rooms with their own art share a painting').toBe(own.length)
+    for (const id of Object.keys(BORROWED)) {
+      expect(ROOM_TEMPLATES[id], `${id} is listed as borrowed and does not exist`).toBeDefined()
+      // A borrowed backdrop is a *real* backdrop somebody painted for a room
+      // in this library. Borrowing is standing in someone else's picture, not
+      // pointing at a file that does not exist.
+      expect(own).toContain(ROOM_TEMPLATES[id]!.art)
+    }
   })
 
   it('ships every backdrop at the one scene size', () => {
@@ -646,7 +668,6 @@ describe('the Reliquary is four objects, and all four stay in the room', () => {
       brazier: 'lit',
       lever: 'up',
       chest: 'closed',
-      claimed: false,
     })
     const dark = platesFor({
       templateId: 'reliquary',
@@ -654,7 +675,6 @@ describe('the Reliquary is four objects, and all four stay in the room', () => {
       brazier: 'out',
       lever: 'down',
       chest: 'open',
-      claimed: true,
     })
     const look = (plates: readonly { id: string; look?: string }[]): Record<string, string> =>
       Object.fromEntries(plates.map((p) => [p.id, p.look ?? '']))

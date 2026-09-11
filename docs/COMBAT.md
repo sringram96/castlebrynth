@@ -67,8 +67,12 @@ replacement UI beyond what a fixture can drive are the next wave's — see
 
 **Armour is not a stat. It is a die that rolls alongside the six.**
 
-`run.ironDice` — exactly one this wave, `Rustplate`, faces `[0, 0, 3, 3, 5, 7]`.
+`run.ironDice` — at most one, `Rustplate`, faces `[0, 0, 3, 3, 5, 7]`.
 First-pass values, reported rather than tuned.
+
+**A fresh run has none.** It lies in the Chain Vault's cage, on the deep route,
+and the way's own line says so before the press: *One more fight. Pay at the
+gate; iron waits in the cage.* Which route a run takes is which build it gets.
 
 - It rolls **on ROLL only**, in the same tick, with a channel of its own. It is
   never holdable and **REROLL does not touch it**: what it shows is the turn's
@@ -131,7 +135,8 @@ that line is the one scored. **Flat, never a multiplier.** Optional upside,
 never a gate.
 
 First-pass content: **Talisman of the Pair** — `+12` when PAIR or TWO PAIR is
-the scored line.
+the scored line. **A fresh run has none**; it is in the Reliquary's chest, which
+is what makes the optional room worth working rather than worth walking past.
 
 ---
 
@@ -362,22 +367,46 @@ cost face — takes bones out of the pile and can end a run.
 
 ---
 
-## Rewards
+## Loot
 
-Two nouns: **Vials**, and **item dice**. A Vial is the consumable it has always
-been; an item die goes into the loadout and fires automatically at every Attack
-from then on.
+**A fresh run carries six bare bones and nothing else.** `STARTING_BONES` is
+thirty and `STARTING_IRON` and `STARTING_TALISMANS` are empty. Every carried
+thing in the game is a thing that was found somewhere, which is what makes a
+route a build choice rather than a walk.
 
-The reward screen is where a loadout thing enters a run, which is the machinery
-this pool kept through the baseline that had nothing to put in it. A run already
-carrying two item dice is offered no TAKE for a third and the card says why —
-the cap is enforced in the reducer, not by the screen.
+Four nouns, and none of them is new — what changed is **placement**:
 
-**SKIP is a real button**: a reward screen may never force a change on the run.
+| | where it is | how it is got |
+|---|---|---|
+| **Vial** | beside a body | the Marrow always drops one; the Gnawing may |
+| **Splinter Fetish** | beside a body | **pool only.** The one thing a fight's offer is for |
+| **Grave Candle** | the Offertory's recess | placed. Pay the two-bone toll |
+| **Rustplate** | the Chain Vault's cage | placed. Take the deep way |
+| **Talisman of the Pair** | the Reliquary's chest | placed. Work the optional room |
 
-The iron die and the talisman start in a fresh run's loadout as **provisional
-starting content** for this wave — the acquisition path for them is the next
-wave's. Recorded in *Open questions*.
+### There is no reward screen
+
+**Discover → reveal → inspect → decide → take → possess. In the world, every
+time.** `mode: 'reward'` is gone and is not coming back under another name.
+
+- A win settles the room and what it pays **falls beside the body**, as one or
+  more room objects. The Marrow's guaranteed Vial and its rolled offer are
+  separate objects, never one card with two things on it.
+- A chest's find is drawn **at the moment of opening** and recorded on the node,
+  so a reload renders the same thing and can never redraw it. The grant no
+  longer rides that transition: opening a chest puts a thing *in the room*.
+- **LOOK** gives the thing's name and its exact rule — the same contract a
+  reward card was always held to — and commits nothing.
+- **TAKE** grants it, fills its slot, and marks it taken. The caps are the
+  reducer's: TAKE on a third item die is refused, no TAKE is drawn, and the
+  refusal prints in the room as a sentence rather than as a grey button.
+- **Walking on without taking is legal.** The thing stays in the room's state,
+  and in a forward DAG that means it stays behind. The say line owns it:
+  *I left it. The door does not open twice.*
+
+An **authored find beats the pool, always**. A template that names a `find`
+contains exactly that; a template that names nothing draws, and the draw
+machinery stays for the rooms that will want it.
 
 ---
 
@@ -394,11 +423,17 @@ Each event names a **channel** (`src/game/rng.ts`):
 | `playerRoll` | ROLL and REROLL |
 | `ironRoll` | the iron die, on ROLL, once a turn |
 | `itemRoll` | the item dice, at the item beat of an Attack |
-| `reward` | the win |
+| `reward` | what a win leaves in the room |
 
-A fight's position in the stream is `(path length, round, roll number,
-channel)`. The iron and the item dice have channels of their own, so adding
-either could not perturb what the core dice come up.
+A fight's position in the stream is `(node, round, roll number, channel)`, and
+the node's id is hashed rather than its depth counted. It used to be the path
+length, which was an honest position only while the descent was a line: the map
+is a DAG and both branches of the Cleft arrive at the same room, so a draw that
+depended on *how far you had walked* would be a chest you could shake. The font
+and the chests are keyed the same way, with constants of their own.
+
+The iron and the item dice have channels of their own, so adding either could
+not perturb what the core dice come up.
 
 Requirements, and all of them are tested:
 
@@ -456,6 +491,13 @@ The list a change has to keep true.
 33. Animation draws no random values and decides no outcomes.
 34. A committed deterministic action replays identically after reload.
 35. There is exactly one aggregate on screen, and it is the readout.
+36. A fresh run carries six bare bones and nothing else.
+37. What a win pays lies in the room it was won in. There is no reward screen
+    and no mode for one.
+38. A found thing is drawn once, recorded on the node, and can never redraw.
+39. Walking away from a found thing is legal, and it stays where it was left.
+40. Every draw is positioned by the **node** it happens in, never by how far the
+    run walked to get there.
 
 ---
 
@@ -488,9 +530,11 @@ Named rather than quietly settled.
    this one improvises it.
 4. **Cost lethality.** A cost that empties the pile ends the run before the blow
    lands. Deliberate, asserted, and revisable.
-5. **The iron die's starting loadout.** The iron and the talisman start in a
-   fresh run because the acquisition path does not exist yet. **Provisional**,
-   and it is the first thing the next wave should replace.
+5. **The iron die's starting loadout — settled.** It was provisional, and it is
+   replaced: a fresh run starts bare and both the iron and the talisman are
+   placed finds. What is open in its place is **whether one iron die is the
+   cap** (question 1 above) and whether a second placed find should ever be
+   able to make a run carry two.
 
 ---
 
@@ -511,52 +555,94 @@ no gate, target or enemy number may require upside. What the loadout adds is
 measured separately and is never a target. The policy cannot see the item dice
 at all: they have not been thrown when a decision is due.
 
-### Observed, on the first run of the loadout system
+Since the reel wave, "bare" is not a hypothetical stripped run: it is **what a
+run is** until it finds something. A whole-run row marked *taking* is one that
+picks up what it walks past; the rest take nothing.
+
+### Observed, on the reel
 
 The fights, bare:
 
 | | naive | heuristic |
 |---|---|---|
-| Gnawing, bare 30 | 100% win, 2.4 attacks (median 2) | 100% win, 2.1 (median 2) |
-| Marrow, 24 | 100% win, 5.0 attacks (median 5) | 100% win, 3.4 (median 3) |
-| Warden, 26 + a Vial | **1% win**, median 4 | **25% win**, median 4 |
+| Gnawing, bare 30 | 100% win, 3.1 attacks (median 3) | 100% win, 2.1 (median 2) |
+| Marrow, 24 | 59% win, 4.5 (median 5) | 100% win, 3.4 (median 3) |
+| Warden, 26 + a Vial | **1% win**, median 4 | **32% win**, median 4 |
 | Warden, bare 12 | 0% win | 0% win |
 
 Whole runs:
 
 | | out | died at |
 |---|---|---|
-| safe · naive, bare | **2%** | gate 98% |
-| safe · heuristic, bare | **54%** | gate 47% |
-| deep · naive, bare | 0% | gate 86%, deep 14% |
-| deep · heuristic, bare | 33% | gate 67% |
-| safe · heuristic, carrying the loadout | 93% | gate 7% |
-| deep · heuristic, carrying the loadout | 96% | gate 4% |
+| safe · naive, taking nothing | **0%** | gate 100% |
+| safe · heuristic, taking nothing | **32%** | gate 68% |
+| deep · naive, taking nothing | 0% | gate 77%, deep 23% |
+| deep · heuristic, taking nothing | 3% | gate 98% |
+| safe · heuristic, taking what it finds | 41% | gate 59% |
+| deep · heuristic, taking what it finds | **90%** | gate 10% |
 
 What the loadout is worth, on the Warden at 26 with a Vial (heuristic):
 
 | | win | attacks | bones lost |
 |---|---|---|---|
-| bare | 25% | 4.0 | 30.0 |
-| + iron | **89%** | 5.1 | 21.3 |
-| + iron + talisman | 91% | 5.2 | 21.6 |
-| + everything | 93% | 4.5 | 17.7 |
+| bare | 32% | 4.0 | 29.3 |
+| + iron | **91%** | 5.0 | 20.0 |
+| + iron + talisman | 93% | 5.2 | 21.0 |
+| + everything | 94% | 4.5 | 17.3 |
 
-**Median fight length: 2–5 attacks, mean 3.2 across cells.** The standing
+**Median fight length: 2–5 attacks, mean 3.1 across cells.** The standing
 concern — that fights end near three and a half attacks, which starves anything
-wanting to escalate over a fight — is **reported and not tuned in this wave.**
+wanting to escalate over a fight — is **reported and not tuned.**
 
-### #93's open question, re-measured
+### Acquisition, and the branch delta
 
-#93 recorded solver 35% / never-reroll 1% on the safe route, against an
-equation this wave replaced. Re-measured on the bare rows: **54% / 2%.** The
-skill gap is still enormous and a naive win rate of 2% on the safe route is
-still a tutorial problem rather than a depth one. What changed is that the
-fixed hand made the *solver's* route survivable without making the beginner's
-one so; the levers are unchanged — the health totals, the damage figures, and
-how loudly the interface teaches that REROLL is free.
+New readings, added by the reel wave and **reported rather than tuned**. A run
+starts with nothing, so *how often the policy ends up carrying each placed
+find* is now the interesting half of the route question.
 
-### Two re-based gates, and one added
+| route | talisman | iron | candle | vial | fetish |
+|---|---|---|---|---|---|
+| safe · LEFT | 100% | 0% | 0% | 44% | 14% |
+| safe · RIGHT | 100% | 0% | 100% | 0% | 0% |
+| deep · LEFT | 100% | 100% | 0% | 100% | 30% |
+| deep · RIGHT | 100% | 100% | 100% | 100% | 18% |
+
+And the Cleft, on the safe route:
+
+| | out | bones broken | things found |
+|---|---|---|---|
+| LEFT · the Gnawing | 41% | 35.0 | 1.6 |
+| RIGHT · the Offertory | 27% | 31.8 | 2.0 |
+| **delta** (right − left) | **−14%** | **−3.2** | +0.4 |
+
+The right-hand branch is cheaper in bones and richer in things and **gets out
+less often**, because what it skips is the Gnawing's Vial. Neither branch is
+meant to be the correct answer, and the numbers are printed so a person can
+decide whether that spread is the one the design wants.
+
+### Two findings nobody should skip
+
+- **The deep route is now the *easier* one at 90%**, where the safe route is
+  41%. That is a direct consequence of the Rustplate living in the cage: the
+  long way is an extra toll and an extra fight, and it pays for both with the
+  die that swings the boss from 32% to 91%. It is the ratified shape — route is
+  build — and it is a large enough swing to be a product decision rather than a
+  fact. **Reported, not tuned.** The lever is where the iron lives.
+- **A naive run now gets out 0% of the time on either route.** It was 2%. What
+  changed is that a fresh run is bare, so the beginner's route no longer starts
+  with the die that was doing most of the work. The skill gap is still a
+  tutorial problem rather than a depth one, and the levers are unchanged: the
+  health totals, the damage figures, and how loudly the interface teaches that
+  REROLL is free.
+
+### #93's open question, re-measured again
+
+#93 recorded solver 35% / never-reroll 1% on the safe route. #94 re-measured it
+at 54% / 2% on the bare rows. On the reel it is **32% / 0% taking nothing**, and
+**41% / — taking what it finds**. The skill gap is still enormous. What moved
+the solver's number down is the empty starting loadout, not the dice.
+
+### Re-based gates, and the ones added
 
 Named in the report's own output rather than only here:
 
@@ -566,22 +652,28 @@ Named in the report's own output rather than only here:
   finding: the width coupling was not what made a wound matter.
 - *an attack rolls at most six and never more than the pile* — **re-based** to
   *the hand is six dice, at every pile, in every cell*.
-- *no figure above assumes the loadout: every cell is bare* — **added**, with
-  *the loadout is upside: carrying things is never worse than carrying
-  nothing*.
+- *no figure above assumes the loadout: every cell is bare* — **added** by the
+  loadout wave, with *the loadout is upside*, which the reel wave re-worded to
+  *taking what you find is never worse than walking past it*.
+- *a fresh run starts bare: no iron, no talisman, no item die* — **added** by
+  the reel wave. It is the same rule as the bare cells, stated about the game
+  rather than about the report.
 
-### The finding nobody should skip
+### The finding from the loadout wave, restated
 
-**The iron die is doing most of the work.** 25% → 89% on the boss row, from one
+**The iron die is doing most of the work.** 32% → 91% on the boss row, from one
 die with first-pass faces. That is a much larger swing than the talisman (+2
-points) or both item dice (+2 more), and it is exactly the dominance the
+points) or both item dice (+1 more), and it is exactly the dominance the
 always-on armour stat was rejected for — now attached to a die rather than a
 stat, which is the ratified shape, but at faces that may be too generous.
 
-It is **reported, not tuned**, per the wave's own instruction. `[0, 0, 3, 3, 5,
-7]` against a boss that swings 8 blocks the whole hit a third of the time. If
-that is the wrong number, the fix is the faces, and it belongs in a commit that
-says so.
+It matters more than it did, because the die is no longer starting equipment:
+it is behind one branch of one fork, so the swing above is now the *price of a
+route* rather than a thing every run has.
+
+It is **reported, not tuned**. `[0, 0, 3, 3, 5, 7]` against a boss that swings
+8 blocks the whole hit a third of the time. If that is the wrong number, the fix
+is the faces, and it belongs in a commit that says so.
 
 None of these numbers were tuned to make a target pass. They are what the
 provisional values produce, printed so a person can decide.

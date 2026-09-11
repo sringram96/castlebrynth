@@ -138,8 +138,21 @@ const MAW: Readonly<Record<Stage, Stance>> = {
   // Half the hall gone. Roughly four times the area, which is what makes the
   // second one land — the step has to be too big to be a trick of the light.
   mid: { width: 0.62, foot: 0.82 },
-  // Wider than the frame, jaw on the floor, no corridor left behind it.
-  close: { width: 1.24, foot: 1.02 },
+  // On top of you, and **inside the frame**.
+  //
+  // It was 1.24 wide with its feet at 1.02, which is wider than the world box
+  // with the jaw below it: the last beat of the fight was a composition the
+  // player could only see two thirds of, at exactly the moment the encounter is
+  // supposed to be at its most legible. Pulled back to sit whole in the world
+  // box — first-pass values, provisional and reported rather than tuned, and
+  // the browser suite asserts the box rather than the numbers.
+  //
+  // This is the **authored** seat. Nothing in `tools/art.mjs` stages the
+  // crawling family: its three plates arrive registered from the master and
+  // this table is what places them, so there is no derived value to regenerate
+  // and no pixel is touched. If the plate cannot read at this scale that is an
+  // owed repaint — recorded under `## HUMAN ART REQUIRED`, not drawn here.
+  close: { width: 0.98, foot: 0.99 },
 }
 
 /**
@@ -164,7 +177,11 @@ const GNAWING: Enemy = {
   foot: MAW.far.foot,
   staging: MAW,
   stageEvery: 1,
-  rewards: ['vial'],
+  // The Splinter Fetish is **pool-only**: it is the one carried thing in the
+  // game that is not lying in a room somewhere, which is what keeps a fight's
+  // offer worth having now that every chest holds an authored find. A run that
+  // wants it has to win a fight and get lucky.
+  rewards: ['vial', 'splinter-fetish'],
   rewardChance: 0.6,
   rewardChoices: 1,
 }
@@ -189,7 +206,7 @@ const MARROW: Enemy = {
   width: 0.62,
   foot: 0.94,
   // The optional route, so it pays better than the mandatory first fight.
-  rewards: ['vial'],
+  rewards: ['vial', 'splinter-fetish'],
   rewardChance: 0.7,
   rewardChoices: 1,
   drop: 'vial',

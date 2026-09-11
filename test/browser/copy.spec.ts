@@ -31,7 +31,10 @@ test.describe('the scorecard explains itself where the fight is', () => {
   })
 
   test('MENU states the pile, the loadout, the satchel and the lines a fight runs on', async ({ page }) => {
-    await boot(page, '?room=fork&vials=2')
+    // A fresh run carries nothing, so the loadout is put on: this test is
+    // about whether MENU can *state* a carried thing, not about what a run
+    // happens to have found by the fork.
+    await boot(page, '?room=fork&vials=2&iron=3&talismans=pair-talisman')
 
     await act(page, 'menu').click()
     const overlay = page.locator('#overlay')
@@ -48,7 +51,7 @@ test.describe('the scorecard explains itself where the fight is', () => {
 
     // The loadout is in here too, with each thing's exact mechanic.
     await expect(overlay.locator('#hand-slots')).toContainText('6 dice')
-    await expect(overlay).toContainText('Blocks what it shows off the answer this turn')
+    await expect(overlay).toContainText('0, 0, 3, 3, 5 or 7 held off the answer this turn')
     await expect(overlay).toContainText('+12 damage when the line I score is PAIR or TWO PAIR')
     await expect(overlay).toContainText('Item dice: 0 of 2')
 

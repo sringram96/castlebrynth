@@ -169,7 +169,12 @@ describe('the rooms say what changed', () => {
     expect(safe.sense, 'the short route does not say it is shorter').toMatch(/short/i)
     // The player is making a game decision. Say so before the tap.
     expect(risky.sense, 'the deep route does not state its risk').toMatch(/fight|danger/i)
-    expect(risky.sense, 'the deep route does not state its reward').toMatch(/upgrade|chance/i)
+    // **The printed-contract law.** The deep way used to promise a *chance* of
+    // an upgrade; it now certainly pays iron, because the Rustplate lies in
+    // the cage. What it pays has to be on the button before the press — we
+    // hide places, never rules.
+    expect(risky.sense, 'the deep route does not state what it pays').toMatch(/iron/i)
+    expect(risky.sense, 'the deep route does not state its toll').toMatch(/pay/i)
   })
 
   it('keeps every way on to two words, because it goes on a button', () => {

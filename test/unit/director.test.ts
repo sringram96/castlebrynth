@@ -21,7 +21,7 @@ import type { RunPlan } from '../../src/content/runPlans.js'
 import { ROOM_TEMPLATES } from '../../src/content/rooms.js'
 import { canHost, fits } from '../../src/content/roomResolver.js'
 import { generateRun, generateRunPlan, materializeRunPlan } from '../../src/game/runGenerator.js'
-import { reachableFrom, routesFrom, validateDescent, validateRun, validateRunMap } from '../../src/game/mapValidation.js'
+import { cyclesIn, reachableFrom, routesFrom, validateDescent, validateRun, validateRunMap } from '../../src/game/mapValidation.js'
 import type { RunMap } from '../../src/game/map.js'
 
 const SEEDS = [0, 1, 2, 7, 42, 999, 2654435761]
@@ -78,18 +78,54 @@ describe('the map it materialises', () => {
     }
   })
 
-  it('reproduces the run the slice has always had', () => {
-    // The whole point of the first director. The architecture changed; the
-    // game did not.
+  it('is a forked reel: two decision points and four routes through it', () => {
+    // The Cleft crosses the Split, so a run is one of four reels. Every one of
+    // them passes the Confluence, the Font and the Reliquary, and every one of
+    // them ends at the door.
     const map = generateRun(1)
     const routes = routesFrom(map, map.start).map((r) => asRooms(map, r))
-    expect(routes).toContainEqual([
-      'entry', 'passage', 'hollow', 'sanctuary', 'reliquary', 'fork', 'gate', 'exit',
-    ])
-    expect(routes).toContainEqual([
-      'entry', 'passage', 'hollow', 'sanctuary', 'reliquary', 'fork', 'chain-vault', 'deep', 'gate', 'exit',
-    ])
-    expect(routes).toHaveLength(2)
+    const spine = ['confluence', 'sanctuary', 'reliquary', 'fork']
+    expect(routes).toContainEqual(['entry', 'passage', 'cleft', 'hollow', ...spine, 'gate', 'exit'])
+    expect(routes).toContainEqual(['entry', 'passage', 'cleft', 'offertory', ...spine, 'gate', 'exit'])
+    expect(routes).toContainEqual(
+      ['entry', 'passage', 'cleft', 'hollow', ...spine, 'chain-vault', 'deep', 'gate', 'exit'],
+    )
+    expect(routes).toContainEqual(
+      ['entry', 'passage', 'cleft', 'offertory', ...spine, 'chain-vault', 'deep', 'gate', 'exit'],
+    )
+    expect(routes).toHaveLength(4)
+  })
+
+  it('is acyclic. This wave forbids the loop, and asserts it', () => {
+    // Forward only. The maze feeling is seeing the mouth of a road you cannot
+    // take, not walking back up one. Written as one assertion so that a loop
+    // wave repeals it rather than re-litigating the validator.
+    for (const seed of SEEDS) expect(cyclesIn(generateRun(seed))).toEqual([])
+  })
+
+  it('seats every way out on a place in the picture', () => {
+    // Movement moved into the room. A way with no anchor is a button on a wall.
+    for (const seed of SEEDS) {
+      const map = generateRun(seed)
+      for (const node of Object.values(map.nodes)) {
+        for (const exit of node.exits) {
+          expect(exit.at, `${node.id} → ${exit.to} stands nowhere`).toBeDefined()
+        }
+      }
+    }
+  })
+
+  it('binds the edges to the anchors in declaration order', () => {
+    // The map's contract with the picture: first edge, first anchor. It is the
+    // same law that already made the first edge out of a junction the primary
+    // one, and it is why the Split states the stair before the deep.
+    const map = generateRun(1)
+    for (const node of Object.values(map.nodes)) {
+      const anchors = ROOM_TEMPLATES[node.templateId]!.exitAnchors ?? []
+      node.exits.forEach((exit, index) => {
+        expect(exit.at, `${node.id} way ${index}`).toEqual(anchors[index]!.at)
+      })
+    }
   })
 
   it('lands the same rooms on every seed, while the library has one of each', () => {
@@ -127,18 +163,35 @@ describe('the map it materialises', () => {
     }
   })
 
-  it('rejoins the optional branch before the keeper', () => {
+  it('rejoins every branch before the keeper', () => {
     const map = generateRun(7)
-    const junction = Object.values(map.nodes).find((n) => n.role === 'junction')!
-    expect(junction.exits).toHaveLength(2)
+    const junctions = Object.values(map.nodes).filter((n) => n.role === 'junction')
+    expect(junctions).toHaveLength(2)
     const keeper = Object.values(map.nodes).find((n) => n.role === 'keeper')!
-    for (const exit of junction.exits) {
-      expect(reachableFrom(map, exit.to).has(keeper.id), `${exit.label} never rejoins`).toBe(true)
+    for (const junction of junctions) {
+      expect(junction.exits).toHaveLength(2)
+      for (const exit of junction.exits) {
+        expect(reachableFrom(map, exit.to).has(keeper.id), `${exit.label} never rejoins`).toBe(true)
+      }
     }
-    // And the long way really is longer.
+    // And the Split's long way really is longer: the Cleft's two branches are
+    // the same length as each other, so the only spread in route length is the
+    // deep detour's extra two rooms.
     const routes = routesFrom(map, map.start)
-    const lengths = routes.map((r) => r.length).sort((a, b) => a - b)
+    const lengths = [...new Set(routes.map((r) => r.length))].sort((a, b) => a - b)
+    expect(lengths).toHaveLength(2)
     expect(lengths[1]! - lengths[0]!).toBe(2)
+  })
+
+  it('brings the two branches of the Cleft back into one room', () => {
+    // A 2-in room, which is a fact about the picture rather than about the
+    // plan: only a template whose topology claims two entrances can stand here,
+    // and `validateRunMap` is what says so.
+    const map = generateRun(1)
+    const meeting = Object.values(map.nodes).find((n) => n.templateId === 'confluence')!
+    const into = Object.values(map.nodes).filter((n) => n.exits.some((e) => e.to === meeting.id))
+    expect(into).toHaveLength(2)
+    expect(ROOM_TEMPLATES['confluence']!.topology.minEntrances).toBe(2)
   })
 
   it('satisfies every slot role with the room it chose', () => {
@@ -226,67 +279,104 @@ describe('what the validator catches', () => {
 
   it('a node nobody can reach', () => {
     const broken = map()
-    const orphan = { ...broken.nodes['n2']!, id: 'n99' }
-    ;(broken.nodes as Record<string, typeof orphan>)['n99'] = orphan
+    const orphan = { ...broken.nodes['a1']!, id: 'a99' }
+    ;(broken.nodes as Record<string, typeof orphan>)['a99'] = orphan
     expect(codes(broken)).toContain('unreachable')
   })
 
   it('a node whose key and identity disagree', () => {
     const broken = map()
-    const wrong = { ...broken.nodes['n2']!, id: 'not-n2' }
-    ;(broken.nodes as Record<string, typeof wrong>)['n2'] = wrong
+    const wrong = { ...broken.nodes['a1']!, id: 'not-a1' }
+    ;(broken.nodes as Record<string, typeof wrong>)['a1'] = wrong
     expect(codes(broken)).toContain('node-id-mismatch')
   })
 
   it('more ways on than the art can carry', () => {
     const broken = map()
-    const node = broken.nodes['n2']!
-    ;(broken.nodes as Record<string, typeof node>)['n2'] = {
+    const node = broken.nodes['a1']!
+    ;(broken.nodes as Record<string, typeof node>)['a1'] = {
       ...node,
-      exits: [...node.exits, { label: 'GO ON', to: 'n4', sense: 'The hall continues to a dark archway.' }],
+      exits: [...node.exits, { ...node.exits[0]!, to: 'a4' }],
     }
     expect(codes(broken)).toContain('exit-count')
   })
 
+  it('a corridor that forks', () => {
+    // Several `forward` ways out is the shape of a decision, and a decision
+    // belongs in a room painted as one.
+    const broken = map()
+    const node = broken.nodes['a1']!
+    ;(broken.nodes as Record<string, typeof node>)['a1'] = {
+      ...node,
+      exits: [...node.exits, { ...node.exits[0]!, to: 'a4' }],
+    }
+    expect(codes(broken)).toContain('forked-corridor')
+  })
+
+  it('a way out with nowhere in the picture to stand', () => {
+    const broken = map()
+    const node = broken.nodes['a1']!
+    const { at: _gone, ...unanchored } = node.exits[0]!
+    ;(broken.nodes as Record<string, typeof node>)['a1'] = { ...node, exits: [unanchored] }
+    expect(codes(broken)).toContain('unanchored-exit')
+  })
+
+  it('a cycle', () => {
+    // This wave's law. A loop wave deletes this test and the assertion behind
+    // it; until then a descent that folds back on itself fails at START.
+    const broken = map()
+    const node = broken.nodes['a5']!
+    ;(broken.nodes as Record<string, typeof node>)['a5'] = {
+      ...node,
+      exits: [{ ...node.exits[0]!, to: 'a4' }],
+    }
+    expect(codes(broken)).toContain('cycle')
+  })
+
   it('a room standing in the wrong kind of slot', () => {
     const broken = map()
-    const node = broken.nodes['n2']!
-    ;(broken.nodes as Record<string, typeof node>)['n2'] = { ...node, role: 'keeper' }
+    const node = broken.nodes['a1']!
+    ;(broken.nodes as Record<string, typeof node>)['a1'] = { ...node, role: 'keeper' }
     expect(codes(broken)).toContain('role-mismatch')
   })
 
   it('a fight in a picture that cannot hold it', () => {
     const broken = map()
-    const node = broken.nodes['n3']!
-    ;(broken.nodes as Record<string, typeof node>)['n3'] = { ...node, enemyId: 'warden' }
+    const node = broken.nodes['a3']!
+    ;(broken.nodes as Record<string, typeof node>)['a3'] = { ...node, enemyId: 'warden' }
     expect(codes(broken)).toContain('encounter-incompatible')
   })
 
-  it('a keeper with nothing fought before it', () => {
-    // The junction leads straight past the first fight to the door.
+  it('a keeper the run walked to having paid nothing', () => {
+    // The entrance leads straight past both branches to the door.
+    //
+    // **Re-based by the reel wave**: it used to say *no fight before it*, which
+    // stopped being the rule the moment the right-hand branch traded the
+    // Gnawing for a toll. What it protects is that the run paid something.
     const broken = map()
     const entrance = broken.nodes[broken.start]!
+    const stair = broken.nodes['a7']!.exits.find((e) => e.label === 'STAIR')!
     ;(broken.nodes as Record<string, typeof entrance>)[broken.start] = {
       ...entrance,
-      exits: [{ label: 'STAIR', to: 'n9', sense: 'Shorter route to the door.' }],
+      exits: [{ ...stair, at: entrance.exits[0]!.at! }],
     }
     expect(codes(broken)).toContain('keeper-unearned')
   })
 
   it('something leading back into the start', () => {
     const broken = map()
-    const node = broken.nodes['n2']!
-    ;(broken.nodes as Record<string, typeof node>)['n2'] = {
+    const node = broken.nodes['a1']!
+    ;(broken.nodes as Record<string, typeof node>)['a1'] = {
       ...node,
-      exits: [{ label: 'GO ON', to: broken.start, sense: 'The hall continues to a dark archway.' }],
+      exits: [{ ...node.exits[0]!, to: broken.start }],
     }
     expect(codes(broken)).toContain('malformed-root')
   })
 
   it('a branch that never comes back', () => {
     const broken = map()
-    const node = broken.nodes['n8']!
-    ;(broken.nodes as Record<string, typeof node>)['n8'] = { ...node, exits: [] }
+    const node = broken.nodes['a8b']!
+    ;(broken.nodes as Record<string, typeof node>)['a8b'] = { ...node, exits: [] }
     expect(codes(broken)).toContain('branch-lost')
     expect(codes(broken)).toContain('dead-end')
   })
@@ -313,7 +403,15 @@ describe('adding to the library does not touch the map', () => {
     expect(map.start).toBe('a')
     expect(map.nodes['a']!.templateId).toBe('entry')
     expect(map.nodes['b']!.templateId).toBe('exit')
-    expect(map.nodes['a']!.exits).toEqual([{ label: 'THROUGH', to: 'b', sense: 'The door is open.' }])
+    expect(map.nodes['a']!.exits).toEqual([
+      {
+        label: 'THROUGH',
+        to: 'b',
+        sense: 'The door is open.',
+        kind: 'forward',
+        at: ROOM_TEMPLATES['entry']!.exitAnchors![0]!.at,
+      },
+    ])
     // It is a legal graph, and it is deliberately not a legal *descent* — no
     // fight, no keeper — which is exactly the split the two validators are.
     expect(validateRunMap(map)).toEqual([])

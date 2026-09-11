@@ -1,6 +1,12 @@
 /**
- * The four full screens: title, reward, death, and getting out — and the
- * overlays behind MENU and a close look at one thing.
+ * The three full screens: title, death, and getting out — and the overlays
+ * behind MENU and a close look at one thing.
+ *
+ * **There is no reward screen.** There was one, and it is gone with the mode it
+ * was: what a fight pays now falls in the room and is picked up in the room, so
+ * a full-screen interruption between a kill and the corridor behind it would be
+ * the game taking the player out of the world to hand them a thing that is
+ * lying in it. Title, death and victory are framings of a run; loot is not.
  *
  * Each screen has exactly one required forward route and that route is a
  * large, always-present button. Nothing here depends on prose advancing, on a
@@ -11,7 +17,6 @@ import {
   COMPLETE_LINE,
   DEATH_LINE,
   HOW_A_FIGHT_GOES,
-  REWARD_PROMPT,
   TITLE_LINE,
   TITLE_STALE,
   VERBS,
@@ -29,7 +34,7 @@ import {
 } from '../content/dice.js'
 import type { CoreDieId, TalismanId } from '../content/dice.js'
 import { enemy as enemyById } from '../content/enemies.js'
-import { canTake, carriedNames } from '../game/reducer.js'
+import { carriedNames } from '../game/reducer.js'
 import { roomArt, url } from '../render/assets.js'
 import type { GameState } from '../game/state.js'
 import { button, el, rewardCard } from './components.js'
@@ -38,8 +43,6 @@ export interface ScreenHandlers {
   readonly onStart: () => void
   readonly onContinue: () => void
   readonly onTitle: () => void
-  readonly onTake: (id: RewardId) => void
-  readonly onSkip: () => void
 }
 
 export function renderScreen(
@@ -48,8 +51,7 @@ export function renderScreen(
   on: ScreenHandlers,
   discarded?: string,
 ): void {
-  const showing =
-    state.mode === 'title' || state.mode === 'reward' || state.mode === 'dead' || state.mode === 'complete'
+  const showing = state.mode === 'title' || state.mode === 'dead' || state.mode === 'complete'
   host.hidden = !showing
   host.replaceChildren()
   if (!showing) {
@@ -63,9 +65,6 @@ export function renderScreen(
   switch (state.mode) {
     case 'title':
       host.append(title(state, on, discarded))
-      return
-    case 'reward':
-      host.append(reward(state, on))
       return
     case 'dead':
       host.append(dead(state, on))
@@ -123,72 +122,6 @@ function title(state: GameState, on: ScreenHandlers, discarded?: string): HTMLEl
       el('p', 'screen-note', `${state.meta.runs} descents · ${state.meta.wins} ways out`),
     )
   }
-  box.append(panel)
-  return box
-}
-
-/**
- * One thing on offer, and the press that takes it.
- *
- * A run already carrying two item dice cannot take a third, so TAKE is
- * **absent** and the card says why in words. Not disabled: an unavailable
- * action is hidden, and the explanation is a sentence rather than a grey
- * button.
- */
-function offerCard(id: RewardId, state: GameState, on: ScreenHandlers): HTMLElement {
-  const wrap = el('div', 'offer')
-  wrap.dataset['offerId'] = id
-  wrap.append(rewardCard(rewardById(id)))
-
-  const run = state.run
-  if (run && !canTake(run, id)) {
-    wrap.dataset['full'] = 'yes'
-    wrap.append(
-      el('p', 'screen-note', `I am already carrying ${ITEM_CAP}. There is nowhere to put it.`),
-    )
-    return wrap
-  }
-
-  const b = button({
-    act: 'take',
-    label: VERBS.take,
-    describe: `Take the ${rewardById(id).name}`,
-    onPress: () => on.onTake(id),
-    className: 'act act-take',
-  })
-  b.dataset['takeId'] = id
-  wrap.append(b)
-  return wrap
-}
-
-/**
- * The reward screen.
- *
- * SKIP is a real button and it is not an afterthought: a reward screen may
- * never force a change on the run, and a screen with no way out would be the
- * game making the choice for you.
- */
-function reward(state: GameState, on: ScreenHandlers): HTMLElement {
-  const box = el('section', 'screen screen-reward')
-  const panel = el('div', 'screen-panel screen-scroll')
-  panel.append(el('h2', 'screen-head', 'IT LEFT SOMETHING'))
-  panel.append(el('p', 'screen-line', REWARD_PROMPT))
-
-  const run = state.run
-  const list = el('div', 'offers')
-  list.id = 'offers'
-  for (const id of run?.offer ?? []) list.append(offerCard(id, state, on))
-  panel.append(list)
-
-  panel.append(
-    button({
-      act: 'skip',
-      label: VERBS.skip,
-      describe: 'Leave it where it fell',
-      onPress: on.onSkip,
-      className: 'act act-big',
-    }),
-  )
   box.append(panel)
   return box
 }

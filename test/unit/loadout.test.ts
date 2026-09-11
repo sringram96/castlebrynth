@@ -21,6 +21,8 @@ import {
   ITEM_CAP,
   ITEM_DICE,
   STARTING_HAND,
+  STARTING_IRON,
+  STARTING_TALISMANS,
   TALISMANS,
   itemDie,
 } from '../../src/content/dice.js'
@@ -43,6 +45,7 @@ import { HAND_DICE } from '../../src/combat/roll.js'
 import type { DieValue } from '../../src/combat/roll.js'
 import { Rng } from '../../src/game/rng.js'
 import { enemy } from '../../src/content/enemies.js'
+import type { RewardId } from '../../src/content/rewards.js'
 import { nodeOf } from './where.js'
 
 const at = (templateId: string, run: Partial<RunState> = {}, seed = 4): GameState => {
@@ -53,6 +56,20 @@ const at = (templateId: string, run: Partial<RunState> = {}, seed = 4): GameStat
     mode: 'explore',
     meta: EMPTY_META,
     run: { ...base, roomId, path: [...base.path, roomId], ...run },
+  }
+}
+
+/** The same room, with things lying on its floor. */
+const lying = (
+  templateId: string,
+  ids: readonly RewardId[],
+  run: Partial<RunState> = {},
+): GameState => {
+  const state = at(templateId, run)
+  const roomId = state.run!.roomId
+  return {
+    ...state,
+    run: { ...state.run!, loot: { [roomId]: ids.map((id) => ({ id, taken: false })) } },
   }
 }
 
@@ -84,6 +101,40 @@ function withDice(state: GameState, faces: number[], block = 0): GameState {
 
 /** A run carrying nothing but the six, so one thing is under test at a time. */
 const BARE: Partial<RunState> = { bones: 30, ironDice: [], itemDice: [], talismans: [] }
+
+describe('ruling 0 — the empty hand', () => {
+  it('starts a run with six bare bones and nothing else', () => {
+    // The iron die and the talisman were provisional starting content while
+    // there was no acquisition path for them, and it was recorded as the first
+    // thing the next wave should replace. It has been: the Rustplate lies in
+    // the Chain Vault's cage and the Talisman of the Pair lies in the
+    // Reliquary, so both are found and the route is the build.
+    expect(STARTING_IRON).toEqual([])
+    expect(STARTING_TALISMANS).toEqual([])
+    const fresh = newRun(1)
+    expect(fresh.hand).toHaveLength(HAND_SLOTS)
+    expect(fresh.ironDice).toEqual([])
+    expect(fresh.itemDice).toEqual([])
+    expect(fresh.talismans).toEqual([])
+    expect(fresh.vials).toBe(0)
+  })
+
+  it('is a fight with no terrain, and the tray says so rather than pretending', () => {
+    // Safe by construction rather than by measurement: every balance cell is
+    // bare, so a run that starts bare is standing exactly where the numbers
+    // were set. What the fight loses is the caption, and it loses it honestly.
+    const rolled = reduce(facing('hollow'), { type: 'ROLL' })
+    expect(combatOf(rolled).ironRolls).toEqual([])
+    expect(combatOf(rolled).dice).toHaveLength(HAND_DICE)
+  })
+
+  it('takes no block off an answer it has no iron for', () => {
+    const table = withDice(facing('hollow', { bones: 30 }), [1, 1, 2, 3, 4, 6])
+    const record = combatOf(reduce(table, { type: 'SCORE', hand: 'pair' })).lastAttack!
+    expect(record.block).toBe(0)
+    expect(record.retaliation).toBe(enemy('gnawing').damage)
+  })
+})
 
 describe('ruling 1 — the hand is six dice, always', () => {
   it('gives a fresh run six slots, all ordinary bones', () => {
@@ -173,7 +224,13 @@ describe('ruling 2 — the iron die', () => {
 
   it('holds the enemy’s own number off the pile, in a real exchange', () => {
     // The Warden breaks eight. Rustplate on a five leaves three.
-    const table = withDice(facing('gate', { bones: 30, itemDice: [], talismans: [] }), [1, 1, 2, 3, 4, 6], 5)
+    // A fresh run starts bare now, so the iron is put on explicitly. That is
+    // the honest shape of every one of these: the die is a thing the run found.
+    const table = withDice(
+      facing('gate', { bones: 30, ironDice: ['rustplate'], itemDice: [], talismans: [] }),
+      [1, 1, 2, 3, 4, 6],
+      5,
+    )
     const after = reduce(table, { type: 'SCORE', hand: 'pair' })
     const record = combatOf(after).lastAttack!
     expect(record.enemyHit).toBe(enemy('warden').damage)
@@ -184,7 +241,11 @@ describe('ruling 2 — the iron die', () => {
 
   it('takes all of it when the block is the bigger number', () => {
     // The Gnawing breaks three. Rustplate on a seven takes the whole swing.
-    const table = withDice(facing('hollow', { bones: 30, itemDice: [], talismans: [] }), [1, 1, 2, 3, 4, 6], 7)
+    const table = withDice(
+      facing('hollow', { bones: 30, ironDice: ['rustplate'], itemDice: [], talismans: [] }),
+      [1, 1, 2, 3, 4, 6],
+      7,
+    )
     const after = reduce(table, { type: 'SCORE', hand: 'pair' })
     expect(combatOf(after).lastAttack!.retaliation).toBe(0)
     expect(after.run!.bones).toBe(30)
@@ -194,7 +255,7 @@ describe('ruling 2 — the iron die', () => {
   it('contributes nothing to the sum and nothing to what qualifies', () => {
     const bare = withDice(facing('hollow', { ...BARE }), [6, 6, 6, 4, 4, 3], 0)
     const plated = withDice(
-      facing('hollow', { bones: 30, itemDice: [], talismans: [] }),
+      facing('hollow', { bones: 30, ironDice: ['rustplate'], itemDice: [], talismans: [] }),
       [6, 6, 6, 4, 4, 3],
       7,
     )
@@ -205,7 +266,10 @@ describe('ruling 2 — the iron die', () => {
   })
 
   it('is thrown once a turn, and thrown again for the next turn', () => {
-    let state = reduce(facing('deep', { itemDice: [], talismans: [] }), { type: 'ROLL' })
+    let state = reduce(
+      facing('deep', { ironDice: ['rustplate'], itemDice: [], talismans: [] }),
+      { type: 'ROLL' },
+    )
     const first = combatOf(state).ironRolls
     expect(first).toHaveLength(IRON_CAP)
     state = scoreAnything(state)
@@ -239,25 +303,18 @@ describe('ruling 3 — item dice', () => {
   })
 
   it('is capped at two, in the reducer', () => {
-    const full = at('fork', { itemDice: ['grave-candle', 'splinter-fetish'] })
-    const offered: GameState = {
-      ...full,
-      mode: 'reward',
-      run: { ...full.run!, offer: ['grave-candle'] },
-    }
-    expect(reduce(offered, { type: 'TAKE', id: 'grave-candle' })).toBe(offered)
+    const full = lying('fork', ['grave-candle'], { itemDice: ['grave-candle', 'splinter-fetish'] })
+    expect(reduce(full, { type: 'TAKE', index: 0 })).toBe(full)
 
-    const room = at('fork', { itemDice: ['grave-candle'] })
-    const one: GameState = { ...room, mode: 'reward', run: { ...room.run!, offer: ['splinter-fetish'] } }
-    const taken = reduce(one, { type: 'TAKE', id: 'splinter-fetish' })
+    const one = lying('fork', ['splinter-fetish'], { itemDice: ['grave-candle'] })
+    const taken = reduce(one, { type: 'TAKE', index: 0 })
     expect(taken.run!.itemDice).toEqual(['grave-candle', 'splinter-fetish'])
     expect(taken.run!.itemDice.length).toBeLessThanOrEqual(ITEM_CAP)
   })
 
-  it('enters a run through the reward flow', () => {
-    const room = at('fork')
-    const offered: GameState = { ...room, mode: 'reward', run: { ...room.run!, offer: ['grave-candle'] } }
-    const taken = reduce(offered, { type: 'TAKE', id: 'grave-candle' })
+  it('enters a run by being picked up off the floor of a room', () => {
+    const found = lying('fork', ['grave-candle'])
+    const taken = reduce(found, { type: 'TAKE', index: 0 })
     expect(taken.run!.itemDice).toEqual(['grave-candle'])
     expect(taken.mode).toBe('explore')
     expect(taken.run!.say).toContain(itemDie('grave-candle').name)

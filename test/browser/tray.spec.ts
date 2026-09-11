@@ -101,14 +101,14 @@ test.describe('the crown', () => {
     // `#crown .bone` means the hand and nothing else. The iron and the items
     // sit on the same rail in hosts of their own, so anything counting the
     // hand — this suite, and the throw animation — counts six.
-    await boot(page, '?room=deep&rolls=1&items=grave-candle,splinter-fetish')
+    await boot(page, '?room=deep&rolls=1&iron=3&items=grave-candle,splinter-fetish')
     await expect(dice(page)).toHaveCount(6)
     await expect(page.locator('#iron .iron-die')).toHaveCount(1)
     await expect(page.locator('#items .item-die')).toHaveCount(2)
   })
 
   test('seats the whole rail at one height, without overlapping', async ({ page }) => {
-    await boot(page, '?room=deep&rolls=1&items=grave-candle,splinter-fetish')
+    await boot(page, '?room=deep&rolls=1&iron=3&items=grave-candle,splinter-fetish')
     // Sorted left to right rather than taken in document order: the three
     // hosts are separate elements, so the DOM order is crown-then-rail-ends
     // and what is under test is the row as a thumb reads it.

@@ -13,8 +13,6 @@ export const TITLE_STALE = 'Whatever I was doing before, I have lost the thread 
 export const DEATH_LINE = 'Dark. Then nothing. Then the stair again.'
 export const COMPLETE_LINE = 'Out. Carrying more than I came in with, and I am going back down.'
 
-export const REWARD_PROMPT = 'Take one, or leave it.'
-
 /** Controls. Plain verbs, two words or fewer. */
 export const VERBS = {
   descend: 'DESCEND',
@@ -37,7 +35,6 @@ export const VERBS = {
   reroll: 'REROLL',
   drink: 'DRINK',
   take: 'TAKE',
-  skip: 'SKIP',
   close: 'CLOSE',
 } as const
 

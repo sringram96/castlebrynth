@@ -22,26 +22,36 @@ import {
   settled,
   state,
   tappable,
+  toFirstFight,
   wayTo,
   where,
 } from './helpers.js'
-import { fightItOut } from './play.js'
+import { clearReward, fightItOut } from './play.js'
 
 const say = (page: Page) => page.locator('#say')
 const pile = (page: Page) => page.locator('#pile')
 
 /**
- * What the run is carrying that a chest could have given it.
+ * What the run is carrying that a room could have given it.
  *
- * One noun deep for this baseline: everything a chest can pay lands in the
- * satchel, so this is a count rather than a join across two places.
+ * Four nouns now, because the iron die and the talisman stopped being starting
+ * equipment and became things that are found — in the cage and in the chest.
  */
 function carried(now: Awaited<ReturnType<typeof state>>): string[] {
-  return Array.from({ length: now.run!.vials }, () => 'vial')
+  const run = now.run!
+  return [
+    ...Array.from({ length: run.vials }, () => 'vial'),
+    ...run.itemDice,
+    ...run.ironDice,
+    ...run.talismans,
+  ]
 }
 
 /** One of the room's objects, by the id the reducer switches on. */
 const thing = (page: Page, id: string) => page.locator(`[data-interact="${id}"]`)
+
+/** The pill on a thing lying in this room, by what the thing is. */
+const lying = (page: Page, id: string) => page.locator(`[data-loot="${id}"]`)
 
 /** Every plate the midground is currently holding, in paint order. */
 const plates = (page: Page) =>
@@ -120,17 +130,27 @@ test.describe('the Reliquary', () => {
     await thing(page, 'reliquary-lever').click()
     await expect(say(page)).toContainText('Something moves inside the altar')
     await expect(thing(page, 'reliquary-lever')).toHaveCount(0)
-    await expect(thing(page, 'reliquary-chest')).toHaveText('TAKE')
 
-    await thing(page, 'reliquary-chest').click()
-    await expect(say(page)).toContainText('Inside:')
-    await expect(thing(page, 'reliquary-chest')).toHaveCount(0)
+    // **Discover, reveal, inspect, decide, take, possess** — in the world.
+    // What was in the chest is now a thing in the room, named where it lies,
+    // and nothing has been carried yet.
+    await expect(lying(page, 'pair-talisman')).toHaveText('PAIR')
+    expect(carried(await state(page))).toHaveLength(0)
 
-    const after = await state(page)
-    expect(carried(after)).toHaveLength(1)
-    // It is carried, and it is somewhere the player can see without opening
-    // anything: the count on its satchel bay.
-    await expect(page.locator('.satchel-slot[data-slot-id="vial"] .satchel-count')).toHaveText('1')
+    // LOOK gives the name and the exact rule, and commits nothing.
+    await lying(page, 'pair-talisman').click()
+    await expect(say(page)).toContainText('Talisman of the Pair')
+    await expect(say(page)).toContainText('+12')
+    expect(carried(await state(page))).toHaveLength(0)
+
+    await act(page, 'take').click()
+    await expect(say(page)).toContainText('taken')
+    await expect(act(page, 'take')).toHaveCount(0)
+
+    expect(carried(await state(page))).toEqual(['pair-talisman'])
+    // And it is somewhere the player can see without opening anything: the bay
+    // it sits in on the tray.
+    await expect(page.locator('.talisman-slot[data-talisman-id="pair-talisman"]')).toBeVisible()
   })
 
   test('cannot be made to pay twice by an impatient thumb', async ({ page }) => {
@@ -139,13 +159,13 @@ test.describe('the Reliquary', () => {
     // it plays — so TAKE is still under the thumb for a few hundred ms after
     // it has already paid out. That is the press this has to survive, and the
     // only reason it does is that the reducer settled and saved before the
-    // first frame of the chest opening was scheduled.
-    const take = thing(page, 'reliquary-chest')
+    // first frame of it was scheduled.
+    const take = act(page, 'take')
     await take.click()
     await take.click({ timeout: 2000 }).catch(() => {})
     await settled(page)
-    expect(carried(await state(page))).toHaveLength(1)
-    await expect(thing(page, 'reliquary-chest')).toHaveCount(0)
+    expect(carried(await state(page))).toEqual(['pair-talisman'])
+    await expect(act(page, 'take')).toHaveCount(0)
   })
 
   test('can be walked straight through, and lands at the fork', async ({ page }) => {
@@ -270,11 +290,11 @@ test.describe('with motion reduced', () => {
     await thing(page, 'reliquary-bell').click()
     await thing(page, 'reliquary-brazier').click()
     await thing(page, 'reliquary-lever').click()
-    await thing(page, 'reliquary-chest').click()
+    await act(page, 'take').click()
 
     const after = await state(page)
-    expect(carried(after)).toHaveLength(1)
-    await expect(say(page)).toContainText('Inside:')
+    expect(carried(after)).toEqual(['pair-talisman'])
+    await expect(say(page)).toContainText('taken')
     await expect(act(page, 'go')).toBeVisible()
 
     // Every object is where it was, at the position the save records, with
@@ -432,7 +452,9 @@ test.describe('the room is art, and the art is not the interface', () => {
     // nobody painted.
     await expect(chest).toBeVisible()
     await expect(chest).toHaveAttribute('data-look', 'open')
-    await expect(thing(page, 'reliquary-chest')).toHaveText('TAKE')
+    // And what was in it is in the room, named where it lies.
+    await expect(lying(page, 'pair-talisman')).toHaveText('PAIR')
+    await expect(act(page, 'take')).toBeVisible()
   })
 
   test('is still four objects with the app’s motion switch off', async ({ page }) => {
@@ -446,8 +468,8 @@ test.describe('the room is art, and the art is not the interface', () => {
     for (const id of OBJECTS) await expect(plate(page, id)).toBeVisible()
     // Nothing is left mid-move, because no move was ever started.
     for (const id of OBJECTS) await expect(plate(page, id)).not.toHaveAttribute('data-move', /.*/)
-    await thing(page, 'reliquary-chest').click()
-    expect(carried(await state(page))).toHaveLength(1)
+    await act(page, 'take').click()
+    expect(carried(await state(page))).toEqual(['pair-talisman'])
     await expect(act(page, 'go')).toBeVisible()
   })
 })
@@ -465,13 +487,11 @@ test.describe('across a real reload', () => {
   /** Start, beat the Gnawing, use the font, and step into the dead chapel. */
   async function walkToReliquary(page: Page): Promise<void> {
     await boot(page)
-    await act(page, 'start').click()
-    await act(page, 'go').click()
-    await act(page, 'go').click()
+    await toFirstFight(page)
     expect(await fightItOut(page), 'lost to the Gnawing').toBe('won')
-    if ((await screenName(page)) === 'reward') {
-      await page.locator('[data-act="take"]').first().click()
-    }
+    await clearReward(page)
+    // The Confluence, then the Font, then the dead chapel.
+    await act(page, 'go').click()
     await act(page, 'go').click()
     await act(page, 'ritual').click()
     await act(page, 'go').click()
@@ -484,7 +504,7 @@ test.describe('across a real reload', () => {
     await thing(page, 'reliquary-bell').click()
     await thing(page, 'reliquary-brazier').click()
     await thing(page, 'reliquary-lever').click()
-    await thing(page, 'reliquary-chest').click()
+    await act(page, 'take').click()
     const before = await state(page)
     const midground = await plates(page).evaluateAll((els) =>
       els.map((el) => `${(el as HTMLElement).dataset['prop']}=${el.getAttribute('src') ?? ''}`),
@@ -500,6 +520,7 @@ test.describe('across a real reload', () => {
     for (const id of ['reliquary-bell', 'reliquary-lever', 'reliquary-chest']) {
       await expect(thing(page, id)).toHaveCount(0)
     }
+    await expect(act(page, 'take')).toHaveCount(0)
     // And the picture is the same picture, derived from the save rather than
     // left behind by the sequence that played it.
     const painted = await plates(page).evaluateAll((els) =>

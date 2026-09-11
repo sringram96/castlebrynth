@@ -47,10 +47,26 @@ import type { RunMap } from './map.js'
  * neither the six slots nor an iron die, and a fight resumed out of one would
  * be a fight with no terrain. There is no migration ladder and there is not
  * going to be one: an old save is detected, discarded, and reported.
+ *
+ * **11.** The reel wave, and **one bump for the whole of it**: a fresh run
+ * starts with an empty loadout, what a fight pays is `run.loot` on the node
+ * rather than an `offer` on a screen, the `reward` mode is gone, a map's exits
+ * carry the kind of edge they were, and the descent forked. A save from 10
+ * would resume into a mode that no longer exists holding an offer nothing can
+ * read. Discarded, and reported.
  */
-export const SAVE_VERSION = 10
+export const SAVE_VERSION = 11
 
-export type Mode = 'title' | 'explore' | 'combat' | 'reward' | 'dead' | 'complete'
+/**
+ * The screens.
+ *
+ * `reward` is **gone**, and it is not coming back under another name. What a
+ * fight pays now falls in the room and is picked up in the room — discover,
+ * reveal, inspect, decide, take, possess, all in the world — so there is no
+ * mode for *what do I take*, because there is no screen for it. See
+ * `docs/COMBAT.md` § Loot.
+ */
+export type Mode = 'title' | 'explore' | 'combat' | 'dead' | 'complete'
 
 /**
  * One settled exchange, in full.
@@ -219,17 +235,6 @@ export type RoomInteractionState =
       readonly brazier: 'lit' | 'out'
       readonly lever: 'up' | 'down'
       readonly chest: 'closed' | 'open'
-      readonly claimed: boolean
-      /**
-       * What was inside, once it has been taken.
-       *
-       * Recorded rather than recomputed, for the same reason `RitualState`
-       * records its roll: the draw happened once, in the reducer, and a reload
-       * that re-derived it would be a second draw that is merely *likely* to
-       * agree. Absent when the chest was empty — `claimed` is what says the
-       * press happened, and an empty chest is a real answer.
-       */
-      readonly rewardId?: RewardId
     }
   | {
       readonly templateId: 'chain-vault'
@@ -239,6 +244,40 @@ export type RoomInteractionState =
       readonly lever: 'up' | 'down'
       readonly gate: 'closed' | 'open'
     }
+  | {
+      /**
+       * The Offertory: the Chain Vault's grammar spent a second way.
+       *
+       * The candles go out so the carved price can be read, the price is paid
+       * on the altar, and the wall recess and the way on open together. The
+       * greedy press — prying the recess before paying — is priced exactly as
+       * the vault's mis-pull is: it costs a bone, moves nothing, and can be
+       * made as many times as there is blood for it.
+       */
+      readonly templateId: 'offertory'
+      readonly candles: 'lit' | 'out'
+      readonly paid: boolean
+      readonly recess: 'shut' | 'open'
+    }
+
+/**
+ * One found thing, lying where it was found.
+ *
+ * The whole of the loot economy, and it is deliberately three fields. There is
+ * no screen mode behind it, no offer, no pending choice and no timer: a thing
+ * that has been revealed is **in the room**, and the only question left is
+ * whether the player walks over and takes it.
+ *
+ * `taken` is a flag rather than a removal for the same reason `RitualState`
+ * records a roll: the draw happened once, in the reducer, and a record that
+ * deleted itself would leave nothing to stop a second visit drawing again.
+ * A forward DAG means there is no second visit — which is exactly why walking
+ * away has to be legible as a decision rather than as a bug.
+ */
+export interface LootItem {
+  readonly id: RewardId
+  readonly taken: boolean
+}
 
 export interface RunState {
   readonly seed: number
@@ -331,8 +370,14 @@ export interface RunState {
    * position, and it is the one place it is stated.
    */
   readonly rooms?: Readonly<Record<string, RoomInteractionState>>
-  /** The things on offer, when `mode === 'reward'`. */
-  readonly offer?: readonly RewardId[]
+  /**
+   * What is lying in each room, keyed by **node** id.
+   *
+   * Written by whatever revealed it — a fight settling, a chest opening, a
+   * price being paid — and never by a screen, because there is no screen. It
+   * is sparse: a room that has revealed nothing has no entry.
+   */
+  readonly loot?: Readonly<Record<string, readonly LootItem[]>>
   /** Why the run ended. */
   readonly cause?: string
 }

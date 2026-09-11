@@ -13,7 +13,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { reduce } from '../../src/game/reducer.js'
+import { lootIn, reduce } from '../../src/game/reducer.js'
 import type { Action } from '../../src/game/reducer.js'
 import { TITLE } from '../../src/game/state.js'
 import type { GameState } from '../../src/game/state.js'
@@ -114,10 +114,10 @@ describe('the last bone', () => {
     const combat = after.run!.combat!
     expect(combat.defeated).toBe(true)
     expect(combat.enemyHp).toBe(0)
-    // Not cleared, no offer drawn, no screen changed. The state says only that
-    // the thing is finished and is being watched finishing.
+    // Not cleared, nothing dropped, no screen changed. The state says only
+    // that the thing is finished and is being watched finishing.
     expect(after.run!.cleared).not.toContain(after.run!.roomId)
-    expect(after.run!.offer).toBeUndefined()
+    expect(lootIn(after.run!)).toEqual([])
   })
 
   it('leaves no move in the fight', () => {
@@ -166,13 +166,13 @@ describe('DEFEAT_DONE', () => {
     expect(reduce(live, { type: 'DEFEAT_DONE' })).toBe(live)
   })
 
-  it('pays the same offer however long the death was watched', () => {
+  it('pays the same loot however long the death was watched', () => {
     // Everything it draws on comes from the run's own generator at a fixed
     // position, so a death that is watched and a death that is skipped pay
     // identically.
     const a = reduce(kill(poised('hollow', 12)), { type: 'DEFEAT_DONE' })
     const b = reduce(kill(poised('hollow', 12)), { type: 'DEFEAT_DONE' })
-    expect(a.run!.offer).toEqual(b.run!.offer)
+    expect(lootIn(a.run!)).toEqual(lootIn(b.run!))
     expect(a.mode).toBe(b.mode)
   })
 })

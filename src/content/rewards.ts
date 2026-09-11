@@ -1,31 +1,42 @@
 /**
  * Everything the labyrinth can hand you.
  *
- * Two nouns now: **Vials**, and **item dice**. The Vial is the consumable it
- * has always been; an item die is a thing that goes into the loadout and fires
- * automatically at every Attack from then on. The reward screen is where a
- * loadout thing enters a run, which is the machinery this file kept through
- * the baseline that had nothing to put in it.
+ * Four nouns now, and the growth is **placement rather than invention**: the
+ * Vial and the item dice were already here, and the iron die and the talisman
+ * moved in when they stopped being starting equipment. A fresh run begins with
+ * six bare bones and nothing else, so every carried thing in the game is now a
+ * thing that was found somewhere, and this is the one table that says what a
+ * found thing is called and exactly what it does.
  *
- * Item dice are drawn from `content/dice.ts` and their card prints that table
- * verbatim: a reward card has to state its exact mechanic before TAKE is
- * pressed. Not a hint, not a category — the faces.
+ * Item dice, the iron die and the talisman are drawn from `content/dice.ts` and
+ * their card prints those tables verbatim: a found thing has to state its exact
+ * mechanic before TAKE is pressed. Not a hint, not a category — the faces.
  *
- * **The cap is the reducer's**, not the pool's. TAKE on a third item die is
- * refused there, and the offer screen says so rather than the draw quietly
- * pretending the thing was never there.
+ * **The caps are the reducer's**, not the pool's. TAKE on a third item die is
+ * refused there, and the room says so rather than the draw quietly pretending
+ * the thing was never there.
+ *
+ * ## `short` is not a nickname
+ *
+ * A found thing lies in the room and carries its own name on it, on a pill
+ * seated on the object it is sitting in. A phone is 390 px wide and *Talisman
+ * of the Pair* is not, so the pill carries `short` and the full name is one
+ * LOOK away, on the card, with the rule. Every `short` is a word a player can
+ * point at.
  */
 
-import { ITEM_DICE, ITEM_DIE_LIST, itemDie } from './dice.js'
-import type { ItemDieId } from './dice.js'
+import { IRON_DICE, ITEM_DICE, ITEM_DIE_LIST, ironDie, itemDie, talisman } from './dice.js'
+import type { IronDieId, ItemDieId, TalismanId } from './dice.js'
 
-export type RewardId = 'vial' | ItemDieId
+export type RewardId = 'vial' | ItemDieId | IronDieId | TalismanId
 
-export type RewardKind = 'vial' | 'item-die'
+export type RewardKind = 'vial' | 'item-die' | 'iron-die' | 'talisman'
 
 export interface Reward {
   readonly id: RewardId
   readonly name: string
+  /** One word, for the pill that sits on the thing where it lies. */
+  readonly short: string
   readonly kind: RewardKind
   /** The exact mechanic, in digits. This is the card. */
   readonly rule: string
@@ -35,36 +46,38 @@ export interface Reward {
    * How often it comes up in a draw, relative to its neighbours.
    *
    * Rarity is expressed here rather than by curating a different table per
-   * enemy, so the whole cadence of the slice can be read in one place. With
-   * one thing in the pool it decides nothing today; it is the shape the pool
-   * has, and it costs one field to keep.
+   * enemy, so the whole cadence of the slice can be read in one place.
    */
   readonly weight: number
 }
 
 /**
- * One item die, as a card.
+ * One thing out of `content/dice.ts`, as a card.
  *
  * Built from the die's own table rather than restated, so the card and the
  * cascade cannot disagree about what the thing does — the same rule
  * `HAND_DEFINITIONS` is held to.
  */
-const itemDieReward = (id: ItemDieId, weight: number): Reward => {
-  const die = itemDie(id)
-  return {
-    id,
-    name: die.name,
-    kind: 'item-die',
-    rule: die.rule,
-    ...(die.flavour ? { flavour: die.flavour } : {}),
-    weight,
-  }
-}
+const fromTable = (
+  thing: { readonly id: string; readonly name: string; readonly rule: string; readonly flavour?: string },
+  kind: RewardKind,
+  short: string,
+  weight: number,
+): Reward => ({
+  id: thing.id as RewardId,
+  name: thing.name,
+  short,
+  kind,
+  rule: thing.rule,
+  ...(thing.flavour ? { flavour: thing.flavour } : {}),
+  weight,
+})
 
 const REWARD_LIST: readonly Reward[] = [
   {
     id: 'vial',
     name: 'Vial',
+    short: 'VIAL',
     kind: 'vial',
     rule: 'Drink it: 5 bones back, up to 30 in all.',
     flavour: 'Thick, and still warm. Best not to ask.',
@@ -72,16 +85,31 @@ const REWARD_LIST: readonly Reward[] = [
   },
   // Item dice are upside and are drawn less often than the consumable that
   // keeps a run alive. No balance target assumes either of them.
-  itemDieReward('grave-candle', 3),
-  itemDieReward('splinter-fetish', 2),
+  fromTable(itemDie('grave-candle'), 'item-die', 'CANDLE', 3),
+  fromTable(itemDie('splinter-fetish'), 'item-die', 'FETISH', 2),
+  // The iron die and the talisman are **placed, never drawn**: their weight is
+  // zero and they are not in `LOOT_REWARDS`, so no chest and no fight can roll
+  // one. They are in this table because a found thing needs a card, and they
+  // are found — in the cage, and in the Reliquary.
+  fromTable(ironDie('rustplate'), 'iron-die', 'IRON', 0),
+  fromTable(talisman('pair-talisman'), 'talisman', 'PAIR', 0),
 ]
 
 export const REWARDS: Readonly<Record<RewardId, Reward>> = Object.fromEntries(
   REWARD_LIST.map((r) => [r.id, r]),
 ) as Readonly<Record<RewardId, Reward>>
 
-/** Everything drawable, in a stable order. Draws are seeded, never shuffled. */
-export const LOOT_REWARDS: readonly RewardId[] = REWARD_LIST.map((r) => r.id)
+/**
+ * Everything a draw may produce, in a stable order. Draws are seeded, never
+ * shuffled.
+ *
+ * The placed things are deliberately absent. A run finds the iron in the cage
+ * and the talisman in the Reliquary or it does not find them at all — which is
+ * what makes the route a build choice rather than a lottery.
+ */
+export const LOOT_REWARDS: readonly RewardId[] = REWARD_LIST.filter((r) => r.weight > 0).map(
+  (r) => r.id,
+)
 
 export function reward(id: RewardId): Reward {
   const found = REWARDS[id]
@@ -96,6 +124,11 @@ export function isRewardId(id: string): id is RewardId {
 /** Whether a reward is an item die, and which. */
 export function itemDieOf(id: RewardId): ItemDieId | undefined {
   return id in ITEM_DICE ? (id as ItemDieId) : undefined
+}
+
+/** Whether a reward is an iron die, and which. */
+export function ironDieOf(id: RewardId): IronDieId | undefined {
+  return id in IRON_DICE ? (id as IronDieId) : undefined
 }
 
 /** Referenced so a die added to the table without a card fails loudly here. */

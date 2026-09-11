@@ -78,14 +78,37 @@ export const RITUAL_CHANNEL = 977
 export const RELIQUARY_CHANNEL = 613
 
 /**
- * Where a fight's draw sits: how far into the run, which round, which roll of
- * that round, and which channel.
+ * Where in the run a draw sits — **which room**, not how far you walked.
  *
- * The fourth term is new and it is what the three-roll attack needs. Under the
- * old combat each side rolled once a round, so *round plus channel* was an
- * unambiguous position; an attack now draws up to three times before it is
- * scored, and two of those draws sharing a salt would make a reroll reproduce
- * the throw it was rerolling.
+ * Every salt below used to key on `run.path.length`, which was an honest
+ * position only while the descent was a line: two routes of different lengths
+ * arriving at the same room would draw different things out of the same chest.
+ * The map is a DAG now and both branches meet again at the confluence, so the
+ * position has to be the node's own identity.
+ *
+ * A cheap FNV-ish string hash. It is not cryptography and does not need to be:
+ * what it has to do is give every node id in a ten-node map a stable number of
+ * its own, so a draw is a function of *this room* and the run's seed and
+ * nothing else. It is save/replay contract once shipped.
+ */
+export function nodeSalt(nodeId: string): number {
+  let h = 0x811c9dc5
+  for (let i = 0; i < nodeId.length; i++) {
+    h ^= nodeId.charCodeAt(i)
+    h = Math.imul(h, 0x01000193) >>> 0
+  }
+  return h >>> 0
+}
+
+/**
+ * Where a fight's draw sits: which room, which round, which roll of that
+ * round, and which channel.
+ *
+ * The fourth term is what the three-roll attack needs. Under the old combat
+ * each side rolled once a round, so *round plus channel* was an unambiguous
+ * position; an attack now draws up to three times before it is scored, and two
+ * of those draws sharing a salt would make a reroll reproduce the throw it was
+ * rerolling.
  *
  * Derived rather than stored, so a save can never disagree with it. A reload
  * before ROLL and a press of ROLL produce the same dice; a reload with dice
@@ -93,15 +116,25 @@ export const RELIQUARY_CHANNEL = 613
  * SCORE draws nothing, and neither does retaliation.
  */
 export function combatSalt(
-  pathLength: number,
+  nodeId: string,
   round: number,
   rollNumber: number,
   channel: number,
 ): number {
-  return pathLength * 1013 + round * 97 + rollNumber * 17 + channel
+  return (nodeSalt(nodeId) + round * 97 + rollNumber * 17 + channel) >>> 0
 }
 
-/** A generator positioned at a salt, off the run's seed. */
+/**
+ * A generator positioned at a salt, off the run's seed.
+ *
+ * `Math.imul`, not `*`. The salts used to be small — a path length times a
+ * thousand — and an ordinary multiply by the golden constant stayed inside the
+ * 53 bits a double gives exactly. A salt keyed on a **hashed node id** is a
+ * full 32-bit word, and 2³² × 2.6×10⁹ is not: the product loses its low bits,
+ * `>>> 0` reads garbage off the top of it, and neighbouring seeds land on the
+ * same generator state. That was measured — forty seeds in a row drawing the
+ * same answer out of a 70% chance — and this is the fix.
+ */
 export function rngAt(seed: number, salt: number): Rng {
-  return new Rng((seed + salt * 0x9e3779b1) >>> 0)
+  return new Rng((seed + Math.imul(salt, 0x9e3779b1)) >>> 0)
 }

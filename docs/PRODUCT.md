@@ -17,6 +17,39 @@ pattern makes that power hit harder. Each good pattern goes once. If it
 survives, I know exactly what it costs me.** Everything else in the system
 exists to make those four legible.
 
+## The run is a reel
+
+**Ratified, and it is the frame everything else hangs on.** A descent is an
+authored reel — Dragon's Lair by way of a dice game — and it is **forward
+only**: the map is a directed acyclic graph and `validateRunMap` asserts it.
+
+The maze feeling does not come from returning. It comes from *seeing the mouths
+of roads you cannot take this run*, and the unchosen branch is what the next run
+is for. So the run forks, twice, and both mouths are painted in the room you are
+standing in with their labels on them and what is behind them written under
+them.
+
+Choices are irreversible, and their stakes are **printed before the press**:
+
+> **We hide places, never rules.**
+
+A way on says what it costs and what it pays before it is taken. A room that
+charges says the price on the verb before the verb charges. A found thing states
+its exact mechanic where it lies. What a run does not know is what is *down the
+other road*, and that is the only thing it is allowed not to know.
+
+Two consequences worth stating outright, because they are what the wave that
+ratified this actually built:
+
+- **Movement is in the picture.** There is no GO button in the tray. Every open
+  way out is a hotspot seated on the painted feature it passes through, and a
+  held exit renders **nothing** — not a greyed arch.
+- **Loot happens in the world.** There is no reward screen. What a fight pays
+  falls beside the body; what a chest holds renders in the chest. Discover,
+  reveal, inspect, decide, take, possess — all of it in the room, every time.
+  Title, death and getting out remain screens, because they are framings of a
+  run rather than things in it.
+
 ## The player verbs
 
 Everything that ships supports one of these. If a feature cannot be explained
@@ -31,9 +64,13 @@ as support for one of them, it is out of scope.
 | **REROLL** | Throw the unheld ones again. Twice at most. |
 | **SCORE** | Commit the dice as one hand. The whole cascade, in one press. |
 | **DRINK** | Spend a Vial: five bones back. |
-| **TAKE** | Choose a reward. |
-| **SKIP** | Leave a reward where it fell. |
+| **TAKE** | Pick up a thing lying in the room. |
 | **RESTART** | Begin a new run after death. |
+
+There is no **SKIP**. Leaving a thing where it fell is walking to the exit
+without touching it, which is what skipping always meant and now needs no
+button of its own. The descent is forward only, so the thing stays behind and
+the word band says so on the way through.
 
 There is deliberately **no verb for an item die**. Item dice fire automatically
 at SCORE, as a beat in the cascade; adding a press for them was explicitly
@@ -41,22 +78,40 @@ rejected. See `COMBAT.md` § Item dice.
 
 ## The slice
 
-Ten rooms, three fights, one font, two worked rooms, two rewards, one ending
-each way.
+Thirteen rooms, three fights, one font, three worked rooms, two decision points,
+one ending each way — and four reels through it.
 
 ```
-entry → passage → hollow(FIGHT: the Gnawing) → sanctuary(THE FONT)
-   → reliquary(OPTIONAL: bell, dark, lever → a find) → fork ┬→ STAIR ─────────┐
-                                                             └→ DEEP          │
-                                                    chain-vault(LOCKED:       │
-                                                    cage → plate → lever) ────┤
-                                                                 ↓            │
-                                                    deep(FIGHT: the Marrow) ──┤
-                                                                              ↓
-                                                              gate(FIGHT: the Warden)
-                                                                              ↓
-                                                                            exit
+                        ┌→ hollow(FIGHT: the Gnawing) ──┐
+entry → passage → cleft ┤                               ├→ confluence → sanctuary(THE FONT)
+        (JUNCTION: two ways) └→ offertory(TOLL: 2 bones) ┘                        │
+                                                                                  ↓
+                              reliquary(OPTIONAL: bell, dark, lever → a find) ────┘
+                                     │
+                                     ↓
+                                   fork ┬→ STAIR ────────────────────────────┐
+                                        └→ DEEP                              │
+                                           chain-vault(LOCKED: cage →        │
+                                           plate → lever; iron in the cage) ─┤
+                                                        ↓                    │
+                                           deep(FIGHT: the Marrow) ──────────┤
+                                                                             ↓
+                                                       gate(FIGHT: the Warden)
+                                                                             ↓
+                                                                           exit
 ```
+
+**Two decision points, and they ask different questions.**
+
+- **The Cleft** asks *what do I want to be carrying*. Left is a fight and a
+  sixty-percent draw; right is a flat two-bone toll and a certain item die.
+  Route is build.
+- **The Split** asks *how much health am I willing to spend*. It sits behind the
+  Font on purpose: the question is only a question if the run has just been told
+  what it has to spend. The deep way now certainly pays iron, and the way's own
+  line says so before the press.
+
+A third fork was considered and is **not** here. See *Still open*.
 
 ## Rooms you work
 
@@ -64,7 +119,7 @@ Two rooms answer a complaint that was true of every other one: *enter, look at
 picture, read prose, press exit.* A room is a backdrop, ambient motion, several
 concrete objects, state those objects keep, and actions with consequences.
 
-They are a matched pair, and the pairing is the design:
+They are a matched set, and the pairing is the design:
 
 - **The Reliquary is optional and free.** GO ON is on screen from the first
   frame and never leaves. Ring the bell, put out the brazier, pull the skull
@@ -75,7 +130,16 @@ They are a matched pair, and the pairing is the design:
   pressure plate, then pull the lever, and the gate rises. Pull the lever
   against an unweighted plate and the mechanism takes a bone through your hand —
   as often as you have blood for it. It is the first place in the slice where a
-  *room* can kill you.
+  *room* can kill you. And the cage is holding the Rustplate, which is what
+  makes the deep way a build decision rather than only a longer walk.
+- **The Offertory is the vault's grammar spent a second way.** It charges two
+  bones for the *correct* answer rather than one for a mistake, and it prints
+  the price on the wall and on the verb before either charges — which is the
+  whole difference between a toll and a trap. Put the candles out so the carving
+  can be read, feed the slot, and the wall recess and the way on open together.
+  Prying at the lid first costs a bone and moves nothing, as often as there is
+  blood for it. It is the right-hand branch of the Cleft, and the Grave Candle
+  is in the recess.
 
 Neither is a guessing game. Every mechanical relationship is readable through
 ordinary LOOK: three cuts beside the skull lever name the bell, the black flame
@@ -112,10 +176,14 @@ is inferred.
 | --- | --- | --- |
 | `title` | Do I go down? | `START_RUN`, `CONTINUE` |
 | `explore` | Which way — and what do I touch? | `GO`, or a room's fight begins |
-| `combat` | What can I make of these, and what will it cost? | its health empty → `reward`; my pile empty → `dead` |
-| `reward` | What do I take, if anything? | `TAKE` or `SKIP` → `explore` |
+| `combat` | What can I make of these, and what will it cost? | its health empty → `explore`; my pile empty → `dead` |
 | `dead` | (nothing — it is over) | `START_RUN` |
 | `complete` | (nothing — you got out) | `START_RUN`, `TITLE` |
+
+**Five, and `reward` is gone.** It is not coming back under another name: a
+full-screen interruption between a kill and the corridor behind it takes the
+player out of the world to hand them a thing that is lying in it. What a fight
+pays is a room object with its own LOOK and its own TAKE.
 
 ## What is deliberately not here
 
@@ -129,8 +197,15 @@ permanent knowledge clues · refusal flags · the Book of Ends as state ·
 procedural region lean and lock · the provable-winnability generator ·
 hand-size wounds and upgrades · classes · QTE windows · merchants and currency
 
-One collectible noun exists for this baseline: **Vials**. Adding a second is a
-product decision, not an engineering one.
+Four carried nouns exist for this baseline: **Vials**, **item dice**, the
+**iron die** and a **talisman**. Adding a fifth is a product decision, not an
+engineering one — and note what the reel wave added, which is *placement* and
+not vocabulary: the iron and the talisman already existed and stopped being
+starting equipment.
+
+**A fresh run starts with six bare bones and nothing else.** Every carried thing
+in the game is now a thing that was found somewhere, which is what makes the
+route the build.
 
 Named bones are gone with the fielding step they modified. When modifiers
 return — unusual dice that change Yahtzee probabilities — they will be built
@@ -160,6 +235,24 @@ contaminating the experiment. See `docs/COMBAT.md` § *What is not here*.
   tutorial problem rather than a depth one. See `docs/COMBAT.md` § *Balance*.
 - **The Warden may now be too hard**, at 25% for the solver at a developed
   pile. Its health total and its damage figure are both first-pass values.
+- **A third fork.** The Cleft and the Split are two decision points and the
+  descent could plainly carry a third. It is **not** in this build. Adding one
+  is a product decision about how much of a run should be unseen, not a
+  director change, and the plan is data so it costs one edit when it is made.
+- **The acyclicity assertion is written to be repealed.** Forward-only is this
+  wave's law, and `cyclesIn` in `game/mapValidation.ts` plus one `problem` call
+  is the whole of it. A loop wave deletes those and argues with the product,
+  not with the validator.
+- **Dual-purpose relics.** A found thing does one thing today. Whether a
+  talisman should also, say, change what a room offers is the next design
+  conversation and is deliberately not started here.
+- **Two rooms are standing in a painting drawn for another one.** The Cleft and
+  the Confluence reuse the Split's picture and the Offertory reuses the Choir's
+  with the Reliquary's furniture in it. Recorded as owed art, gated by a list in
+  `test/unit/assets.test.ts`, and not a licence for a fourth.
+- **A second worked room per branch.** The right-hand branch has one worked room
+  and one press-and-leave transition; the left has a fight and a transition.
+  Whether the reel wants more machinery or more fights is a playtest question.
 - **The dice art has not been drawn.** The bones are rendered from the pip
   geometry the game has always drawn a face with. The plates that are owed —
   a bone body with faces 1–6 and a held state, and a Vial plate — are written

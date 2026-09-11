@@ -144,6 +144,43 @@ the exact defect this reset exists to fix.
 
 Scenery may degrade. The opponent may not.
 
+## Combat chrome obeys the art's pixel grid
+
+**New law, and it is narrow on purpose.** Everything on the fight screen except
+the chrome is posterised pixel art at a fixed scale. A smooth CSS bar sliding
+across it is the one element that looks like it came out of a different program,
+and the enemy's health bar was exactly that.
+
+So, for every piece of chrome in the combat tray and the fight's own HUD:
+
+- **A fill is a whole number of cells.** The count is an integer computed in the
+  view; the stylesheet multiplies it by one step. There is no fractional width
+  to round and no sub-pixel edge.
+- **No smooth width or height transition.** A drain animates in `steps()` and
+  lands instantly with `?motion=0` or `prefers-reduced-motion`.
+- **Square corners.** The art has no rounded chrome anywhere in it.
+- **Colours come from the existing palette tokens** in `src/style.css` — not
+  from new hex.
+
+Two things are under it today: the enemy's health bar, which is forty-eight
+cells of six pixels, and the pile orb's fill, which is a count of objects and
+now settles in steps rather than sliding. `test/browser/chrome.spec.ts` asserts
+the integer widths across a real drain.
+
+The **scope is the combat tray and the fight's HUD.** The title, death and
+victory screens are typography on a backdrop and are not chrome over art; they
+are deliberately left alone.
+
+**What the audit of the tray found**, in full: two fills, and nothing else. A
+held bone lifting, a bone tumbling, a number popping and the frame kicking are
+*objects moving* rather than chrome sliding across pixels, and the law does not
+reach them — `ART_DIRECTION.md` § Motion budget already governs those and the
+reduced-motion block at the end of the stylesheet already stops them.
+
+A painted housing for the health bar is owed — see `POLISH_PROGRESS.md`
+§ HUMAN ART REQUIRED. Until it lands the bar is CSS on the palette, and no
+pixel was authored for it.
+
 ## Motion budget
 
 Idle motion is tiny and high-impact: a slow enemy breath, a candle flicker,
