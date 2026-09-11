@@ -416,9 +416,13 @@ describe('the Offertory', () => {
     expect(actionFor(roomStateOf(dark), 'offertory-altar')!.describe).toBe(
       'Two bones into the slot. That is what it says it costs.',
     )
-    expect(
-      ROOM_TEMPLATES['offertory']!.details.find((d) => d.focal)!.says,
-    ).toBe('Two skulls carved beside the slot. Under them, two carved bones. A price list.')
+    // And on the wall, in the room's one LOOK. The carving's own sentences are
+    // verbatim what they were before the negative-space audit folded the
+    // candles and the recess in beside them — see `test/unit/frames.test.ts`,
+    // which holds every folded line in the library to exactly that.
+    expect(ROOM_TEMPLATES['offertory']!.details.find((d) => d.focal)!.says).toContain(
+      'Two skulls carved beside the slot. Under them, two carved bones. A price list.',
+    )
   })
 
   it('costs exactly two bones, and opens the recess and the way out together', () => {

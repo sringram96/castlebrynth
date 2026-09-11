@@ -45,15 +45,16 @@ test.describe('the chapel is a room with one thing in it', () => {
     await tappable(page, act(page, 'ritual'))
   })
 
-  test('leaves the room lookable without the details eating the press', async ({ page }) => {
+  test('is one object and one press, with nothing else to tap', async ({ page }) => {
     await inChapel(page)
-    const details = page.locator('#hits .hit:not(.hit-ritual)')
-    await expect(details).toHaveCount(2)
-    for (let i = 0; i < 2; i++) {
-      await details.nth(i).click()
-      await expect(page.locator('#say')).not.toBeEmpty()
-    }
-    // Looking costs nothing and rolls nothing.
+    // **One object, one press, one number** — which is what the room has always
+    // been described as and is now what it is. The negative-space audit took
+    // the two flavour LOOKs off the candles and the niches; both lines are in
+    // the arrival, where they were doing their whole job anyway.
+    await expect(page.locator('#hits .hit:not(.hit-ritual):not(.hit-go)')).toHaveCount(0)
+    await expect(page.locator('#say')).toContainText('Candles down both walls, lit and level')
+    await expect(page.locator('#say')).toContainText('Skulls, shelf on shelf, back into the dark')
+    // And the one press is still the basin's, and still costs nothing to read.
     const now = await state(page)
     expect(now.run!.bones).toBe(12)
     await expect(act(page, 'ritual')).toBeVisible()

@@ -45,6 +45,7 @@ import { TERRITORY_CARD } from '../content/text.js'
 import { mountWorld, placeEnemy, showProp, showProps } from '../render/compositor.js'
 import type { World } from '../render/compositor.js'
 import { RoomAmbience } from '../render/ambience.js'
+import { ambienceFor } from '../content/rooms.js'
 import {
   beatsDuration,
   beatsFor,
@@ -1138,14 +1139,26 @@ export class App {
       onTake: (index: number) => this.dispatch({ type: 'TAKE', index }),
     })
 
-    // The room keeps breathing under all of it. Idempotent for the same room,
-    // so the loops are not restarted by the several paints a sequence makes —
-    // and torn down the moment the room changes, so nothing is left guttering
-    // behind the next one.
+    // The room keeps breathing under all of it. Idempotent for the same room in
+    // the same condition, so the cycles are not restarted by the several paints
+    // a sequence makes — and torn down the moment the room changes, so nothing
+    // is left guttering behind the next one.
     //
     // Keyed by the authored template, because a room's mood is a property of
     // the place rather than of which instance of it the run is standing in.
-    this.ambience.show(run && state.mode !== 'title' ? roomAt(run).id : undefined)
+    //
+    // **Explore, idle, and motion on.** A sequence owns the picture while it is
+    // running, a fight *is* the room, and an open overlay is the screen — so
+    // ambience is mounted for none of them. `animated` carries motion off and
+    // `prefers-reduced-motion` together, which is where ceremony vanishes whole.
+    const here = run && state.mode !== 'title' ? roomAt(run) : undefined
+    this.ambience.show(
+      here ? { id: here.id, sources: ambienceFor(here) } : undefined,
+      this.animated &&
+        state.mode === 'explore' &&
+        this.presenting === undefined &&
+        this.opened === undefined,
+    )
 
     renderTray(
       this.tray,
@@ -1191,10 +1204,18 @@ export class App {
     renderOverlay(this.overlay, view, state, () => this.close())
   }
 
+  /**
+   * Open an overlay, and repaint underneath it.
+   *
+   * The repaint is not cosmetic: an open card is the screen, and the room's
+   * ambience is mounted only while the room is the screen. `render` is the one
+   * place that decides that, so opening and closing both go through it rather
+   * than each reaching for the ticker themselves.
+   */
   private open(view: Overlay): void {
     this.opened = view
     this.overlay.hidden = false
-    this.paintOverlay(view, this.presenting ?? this.state)
+    this.render()
   }
 
   private close(): void {
@@ -1202,6 +1223,7 @@ export class App {
     this.overlay.hidden = true
     this.overlay.replaceChildren()
     delete this.overlay.dataset['overlay']
+    this.render()
   }
 
   private say(line: string): void {

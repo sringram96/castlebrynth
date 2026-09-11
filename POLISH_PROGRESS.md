@@ -1063,6 +1063,117 @@ and never repaint it.
 
 ---
 
+## HUMAN ART REQUIRED — quiet rooms
+
+The negative-space wave. Frames cleared of furniture and of presses, and then
+quiet motion put inside the space that cleared. **No pixel was authored,
+generated, traced, recoloured, cropped or otherwise touched**, and
+`test/unit/untouched.test.ts` asserts it: `git diff --stat main -- public/` is
+empty and `public/` and the masters are byte for byte what they were.
+
+This entry stands alongside *the Reliquary and The Chain Vault*, *the dice*,
+*the loadout*, *the reel* and *the legible reel*. Nothing in any of them is
+withdrawn, and one thing in the first of them is **narrowed** — see below.
+
+### The composed Offertory painting, and it is owed regardless
+
+The wave's proving room. The Offertory failed the negative-space law and it
+should have: **seven presses in an altar frame that holds five**, over the
+Choir's backdrop with the Reliquary's altar, candle stand and chest standing on
+it. The audit resolved the crowding — the carved slot merged onto the altar as
+one plate carrying the price LOOK and the OFFER press, the candles' LOOK and the
+recess's LOOK folded into it — and the room is now four plates and five presses,
+inside its frame.
+
+**That does not settle the debt.** A bespoke Offertory at 480 × 720 plus its
+three objects as portraits in the Reliquary's delivery shape — a
+slot-and-price-list altar, a candle stand, a stone lid in a wall recess — is
+still owed exactly as *the reel* recorded it. The reuse was always debt and
+being inside a budget is not the same as being painted.
+
+**One deviation from the wave's own first-pass resolution, stated.** The brief
+said the chest plate is removed and the recess is prose until the toll is paid.
+It is not removed, and the reason is that removing it removes the PRY press with
+it — a bone charged for a greedy hand, a way for the room to kill a run, and a
+number this wave is explicitly forbidden to tune. So the recess keeps its plate
+and its verb, and it is the LOOK on it that went. The room lands at four plates
+and five presses rather than the brief's two and three; both are inside an altar
+frame, and the deviation is here rather than in a commit message.
+
+### Painted mote and ember treatments
+
+Quiet motion ships as **treatments**, in the same family as the territory grade:
+no plate, no sprite sheet, no particle texture. What each is running on, and
+what would replace it:
+
+| | what it is today | what is owed |
+| --- | --- | --- |
+| `flicker` | a hard-edged 56 × 72 box of `--gold` at `soft-light`, stepping through four whole quanta of opacity | an ember plate per step, 480 × 720, registered to the room it lights |
+| `glow` | the same in `--ink`, 72 × 48, on an even four-step breathe | the same, slower and cooler |
+| `sway` | a 40 × 120 band of `--ink-dim`, translated by one whole pixel | the hanging object's own plates, painted at each position, as the Chain Vault's set already asks for |
+| `drift` | six 1 px squares of `--ink-dim` falling two pixels a step | a mote plate, or a two-frame dust sheet, at the same one-pixel size |
+
+**The `flicker` and `glow` boxes are the ones to look at first.** They are hard
+rectangles at low opacity over a dark painting, which is honest — the corners
+are square and the pitch is whole, per § *Combat chrome obeys the art's pixel
+grid* — and at those opacities the edge should not read. Whether it does is a
+phone question and is pre-registered below. If it reads, the fix is a painted
+ember rather than a softer edge: a blur would break the grid law this wave
+exists to extend.
+
+**The motes are one pixel because dust is one pixel**, and at `--ink-dim` on a
+dark ossuary wall that is close to the legibility floor. The alternative was two
+pixels, which reads as snow.
+
+### The plate loop that was deleted, and what it means for the ambient manifest
+
+`render/ambience.ts` used to drive a family of painted overlay plates and built
+nothing, because none of them was delivered. That driver is **gone** and the
+ticker replaced it. Which narrows one line of the Reliquary and Chain Vault
+entry above:
+
+```
+ambient-candle-1..3.png   ambient-chain-1..3.png    ambient-drip-1..3.png
+ambient-embers-1..4.png   ambient-window-1..2.png
+ambient-fire-1..3.png     ambient-smoke-1..4.png    ambient-shaft-1..2.png
+```
+
+Those twenty-one files are **no longer owed as a loop**. `AMBIENT_ART` and the
+pipeline behind them are still armed and `roomAssets` still fetches whatever is
+in the table, so a painted set is not wasted — but what a room does while nobody
+is pressing anything is a declaration in content and a treatment on screen now,
+and a set that lands would be seated by the ticker rather than cycled by a
+timer of its own. The four treatments in the table above are what is actually
+owed.
+
+### What the rooms lost, and it was hotspots rather than words
+
+Twenty-two LOOKs lost their press. **Not one line lost a word.** Every demoted
+sentence folded into its room's arrival or into the one LOOK that kept its
+place, verbatim, and two tests hold it there: `test/unit/frames.test.ts` against
+the library, and `test/browser/quiet.spec.ts` against what a thumb can actually
+reach on a 390 × 844 phone.
+
+The biggest cuts, and why each was the audit's call:
+
+| room | was | now | why |
+| --- | --- | --- | --- |
+| the Reliquary | 5 LOOKs | 1 | four of the five sat on objects that already carry RING, PUT OUT or a TAKE |
+| the Chain Vault | 5 LOOKs | 1 | the panel already draws the mechanism the other four name |
+| the Offertory | 3 LOOKs | 1 | see above |
+| the Cleft, the Confluence | 3 each | 1 each | the mouth-marks sat on the painted mouths the ways out pass through, and a way says what it costs before the press |
+| the Font | 2 | 0 | *one object, one press, one number*, which is what the room was always described as |
+| the Door | 1 | 0 | a duel frame holds the enemy and nothing else |
+
+### Nothing else moved
+
+No manifest row was added, so nothing promises art nobody has drawn. `BONE_ART`
+and `SATCHEL_ART` are still deliberately empty and their gates are still armed.
+`SAVE_VERSION` is still 11: the budgets are content law, the ambients are
+content declarations plus a treatment ticker, and not one of them added a field.
+
+---
+
 ## The phone pass — the legible reel
 
 **Not done.** This wave was built in a remote container with no phone in it,
@@ -1127,3 +1238,72 @@ what dragged. Until that exists, every number this wave introduced —
 `TERRITORY_HOLD`, the four grade strengths, the chip and name type sizes — is
 a **first-pass value, reported rather than tuned**, exactly as the balance
 report's figures are.
+
+---
+
+## The phone pass — quiet rooms
+
+**Not done.** This wave was built in a remote container with no phone in it,
+and the standing rule is that a pass which could not settle something says so
+rather than inventing a value in its place. What ran instead is Chromium at
+390 × 844 with real presses — 357 of them, no skips — which can prove that a
+flame steps six times a second in whole quanta with nothing easing between
+them. It did. It cannot answer whether six steps a second reads as *alive* or
+as *broken*, and it cannot show a 1 px mote against a real panel's black.
+
+The five questions below are the wave's own, **pre-registered here before the
+build finished**, so that a later tuning result is a measurement rather than a
+preference wearing a measurement's coat.
+
+### What a pass has to settle, in order of how much it matters
+
+1. **Does 5 Hz read as alive, or as broken?** `AMBIENT_HZ` in
+   `src/render/ambience.ts`, and every other number in the wave divides it. A
+   candle at five steps a second is a deliberate stutter — a sprite cycle, not
+   a dimmer — and the failure mode is that it reads as a dropped frame rather
+   than as a flame. **If it does: halve the rate before touching the quanta.**
+   The pattern was authored uneven on purpose and the rate was not.
+2. **Does the ossuary feel cleared, or stripped?** Twenty-two LOOKs lost their
+   hotspot, and the Reliquary and the Chain Vault went from five to one. The
+   writing is all still there, on the arrival or on the one LOOK that kept its
+   place — but a player who used to tap five things and now taps one may read
+   the room as emptier rather than as calmer. **If it reads as stripped, the
+   fix is a budget, not a line**: `FRAME_BUDGETS` in
+   `src/content/roomResolver.ts`, one number, and the folded prose comes back
+   out of the focal LOOK in the same edit.
+3. **Is two-per-room the right cap, or one too many?** The Offertory is the
+   only room in the game that spends both — its own candle and the ossuary's
+   dust. Everywhere else it is one or none. If two reads as fussy, the cap
+   drops to one and the territory ambient wins, because a stretch of the
+   descent sharing air is the thing rooms cannot do for themselves.
+4. **Do the motes read as dust, or as noise?** Six 1 px squares of `--ink-dim`
+   against the ossuary's ochre grade. One pixel is what dust is and it is close
+   to the legibility floor; two pixels reads as snow. If they are invisible the
+   answer is a **painted mote**, recorded above, rather than a bigger square.
+5. **Does the still threshold read as intentional?** The Split, the Confluence,
+   the Door and the way out hold their breath, deliberately, while the rooms
+   either side of them breathe. The intended reading is *this room is about to
+   ask you something*. The failure mode is *this room is broken*.
+
+### The knobs, and the cut order if the hand says it is wrong
+
+The order of these is law and the values are not, exactly as the attack's beats
+are. Nothing here is on the critical path of a press — ambience runs only while
+the screen is idle — so this list is about feel and never about pace.
+
+| order | knob | now | why |
+| --- | --- | --- | --- |
+| 1 | `AMBIENT_HZ` | 5 | the whole wave divides it, and it is the one number that can read as a fault rather than as a choice |
+| 2 | the `flicker` pattern | `[2, 1, 3, 2]` quanta | the uneven one. If the flame reads as a fault rather than as a flame, flatten it before slowing it |
+| 3 | `LIGHT_QUANTUM` | 0.02 | how much light one step is worth. Raise it if the flame does nothing; lower it if the box's edge shows |
+| 4 | the treatment boxes | 56 × 72, 72 × 48, 40 × 120 | the hard rectangles. A visible edge is answered by a **painted ember**, never by a blur — a blur breaks the grid law this wave exists to extend |
+| never | the cap of two | 2 | it is what welds quiet motion to the negative-space law. Raising it is how a room becomes a lighting cue |
+
+### What is still owed
+
+The whole of it: device and OS, the served commit hash, what read, what lied,
+what dragged. Until that exists, every number this wave introduced —
+`AMBIENT_HZ`, the four step patterns, `LIGHT_QUANTUM`, the treatment box sizes,
+the seven rows of `FRAME_BUDGETS`, `CLEAR_WATER` and `FOCAL_MOAT` — is a
+**first-pass value, reported rather than tuned**, exactly as the territory
+grades and the balance report's figures are.

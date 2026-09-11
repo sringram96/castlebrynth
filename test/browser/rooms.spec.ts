@@ -82,11 +82,22 @@ test.describe('the Reliquary', () => {
     await boot(page, '?room=reliquary&seed=3')
 
     await expect(say(page)).toContainText('A dead chapel')
-    // The things the room is made of, each LOOK-able from the first frame. The
-    // altar carries two, because it is two things to the player: a basin to
-    // read, and the handle underneath it that the three marks are cut beside.
-    for (const id of ['bell', 'brazier', 'altar', 'lever', 'chest']) {
-      await expect(page.locator(`[data-detail="${id}"]`)).toBeVisible()
+    // **One LOOK, and it is the mechanism's.** The negative-space audit took
+    // the hotspots off the bell, the candles, the altar and the chest — all
+    // four sat on objects that already carry their own verb — and folded their
+    // lines into this one, where they still are, word for word.
+    await expect(page.locator('#hits [data-detail]')).toHaveCount(1)
+    const look = page.locator('[data-detail="lever"]')
+    await expect(look).toBeVisible()
+    await look.click()
+    for (const line of [
+      'An altar built around a basin',
+      'a bell, a dead flame, a lowered skull',
+      'A bronze bell',
+      'Five candles melted almost to the stone',
+      'A chest with no keyhole',
+    ]) {
+      await expect(say(page)).toContainText(line)
     }
     // Two verbs offered, and two withheld. The lever and the chest are not
     // greyed out — they are absent, because the room has nothing to say about
@@ -187,9 +198,15 @@ test.describe('the Chain Vault', () => {
     await expect(thing(page, 'vault-lever')).toHaveText('PULL')
     // Not hidden by CSS — not rendered, because the reducer would refuse it.
     await expect(act(page, 'go')).toHaveCount(0)
-    // The rule is on the wall, for anyone who looks.
+    // The rule is on the wall, for anyone who looks — and the wall is the only
+    // thing left to look at. A vertical frame holds four presses; the vault had
+    // eight, and the cage, the plate, the lever and the gate fold into the
+    // panel that already draws the mechanism they are part of.
+    await expect(page.locator('#hits [data-detail]')).toHaveCount(1)
     await page.locator('[data-detail="wall-panel"]').click()
     await expect(say(page)).toContainText('a weight falling, then a gate lifting')
+    await expect(say(page)).toContainText('A square plate in the floor')
+    await expect(say(page)).toContainText('Its linkage runs toward the floor plate')
   })
 
   test('answers a real tap at each control, at 44px', async ({ page }) => {
@@ -377,7 +394,8 @@ test.describe('the room is art, and the art is not the interface', () => {
         return { id: el.dataset['interact'] ?? `look:${el.dataset['detail']}`, x: r.x + r.width / 2, y: r.y + r.height / 2 }
       }),
     )
-    expect(spots.length).toBeGreaterThanOrEqual(7)
+    // Four after the audit rather than seven: two verbs, one LOOK, one way out.
+    expect(spots.length).toBeGreaterThanOrEqual(4)
     for (const a of spots) {
       for (const b of spots) {
         if (a.id >= b.id) continue
@@ -389,11 +407,9 @@ test.describe('the room is art, and the art is not the interface', () => {
   test('answers a real tap at every one of them, at 44px', async ({ page }) => {
     await boot(page, '?room=reliquary&seed=3&reliquary=solved')
     // The far side of the puzzle, where the room has the fewest verbs left —
-    // so what is checked is that the LOOKs are still on the objects and still
-    // reachable once the actions have gone.
-    for (const id of ['bell', 'brazier', 'altar', 'lever', 'chest']) {
-      await tappable(page, page.locator(`[data-detail="${id}"]`))
-    }
+    // so what is checked is that the one LOOK is still on the altar and still
+    // reachable once the actions have gone, beside the thing in the chest.
+    await tappable(page, page.locator('[data-detail="lever"]'))
     await tappable(page, act(page, 'go'))
   })
 

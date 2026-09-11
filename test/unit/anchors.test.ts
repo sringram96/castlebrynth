@@ -23,6 +23,7 @@ import { ROOM_LIBRARY } from '../../src/content/rooms.js'
 import type { RoomTemplate } from '../../src/content/rooms.js'
 import { CONTENT_SPAN, TRAY_ASPECT } from '../../src/content/tray.js'
 import { REWARDS } from '../../src/content/rewards.js'
+import { CLEAR_WATER, FOCAL_MOAT } from '../../src/content/roomResolver.js'
 import { actionFor, initialRoomState } from '../../src/content/interactions.js'
 
 /** The phone the browser suite runs at, and the only one anything is sized to. */
@@ -146,6 +147,42 @@ const WIDEST_LOOT = Object.values(REWARDS).reduce((n, r) => Math.max(n, pill(r.s
 const overlaps = (a: Press, b: Press): boolean =>
   Math.abs(a.x - b.x) < (a.w + b.w) / 2 && Math.abs(a.y - b.y) < (a.h + b.h) / 2
 
+/**
+ * How much open painting there is between two boxes.
+ *
+ * The larger of the two axes' gaps, because two boxes are separated as soon as
+ * they are separated on **one** axis — a candle a hundred pixels to the left of
+ * an altar is clear of it however much their rows overlap. Negative when they
+ * overlap at all, which is what `overlaps` above is a test of.
+ */
+const water = (a: Press, b: Press): number =>
+  Math.max(Math.abs(a.x - b.x) - (a.w + b.w) / 2, Math.abs(a.y - b.y) - (a.h + b.h) / 2)
+
+/**
+ * Every seat in a picture: the furniture, and nothing else.
+ *
+ * The plate budget's own list — what occupies a place in the frame — so the
+ * clear-water assertion below is about what content chose to seat rather than
+ * about the ways out, which stand where the painting puts them.
+ */
+function seatsIn(t: RoomTemplate): readonly Press[] {
+  const opening = initialRoomState(t.id)
+  const out: Press[] = []
+  if (t.ritual) out.push(at(`ritual:${t.ritual.label}`, t.ritual.at, pill(t.ritual.label)))
+  for (const thing of t.interactables ?? []) {
+    const labels = opening
+      ? [actionFor(opening, thing.id)?.label, ...(WIDEST[thing.id] ?? [])].filter(
+          (l): l is string => typeof l === 'string',
+        )
+      : []
+    out.push(
+      at(`seat:${thing.id}`, thing.at, labels.reduce((n, l) => Math.max(n, pill(l)), pill(''))),
+    )
+  }
+  for (const spot of t.lootAt ?? []) out.push(at(`seat:${spot.id}`, spot.at, WIDEST_LOOT))
+  return out
+}
+
 describe('two presses never share a thumb', () => {
   for (const t of ROOM_LIBRARY) {
     it(`${t.id} seats every press clear of every other`, () => {
@@ -178,6 +215,52 @@ describe('every press is on the screen', () => {
         expect(p.y + p.h / 2, `${t.id}: ${p.what} runs off the bottom`).toBeLessThanOrEqual(
           WORLD.height,
         )
+      }
+    })
+  }
+})
+
+/**
+ * Clear water: the negative-space law, as geometry.
+ *
+ * The budgets in `content/roomResolver.ts` count things; this measures the room
+ * between them. A frame can be inside both budgets and still read as a pile —
+ * the Reliquary's altar and its candle stand are two of four allowed plates and
+ * would be a pile if they were forty-five pixels apart — so the count is only
+ * half of it.
+ *
+ * Both numbers are first-pass and provisional, and both are asserted here
+ * rather than eyeballed on one phone, exactly as the tray's seating is.
+ */
+describe('clear water', () => {
+  for (const t of ROOM_LIBRARY) {
+    const seats = seatsIn(t)
+    if (seats.length < 2) continue
+    it(`${t.id} leaves open painting between everything it seats`, () => {
+      for (let i = 0; i < seats.length; i++) {
+        for (let j = i + 1; j < seats.length; j++) {
+          const a = seats[i]!
+          const b = seats[j]!
+          expect(
+            Math.round(water(a, b)),
+            `${t.id}: ${a.what} and ${b.what} have no painting between them`,
+          ).toBeGreaterThanOrEqual(CLEAR_WATER)
+        }
+      }
+    })
+  }
+
+  for (const t of ROOM_LIBRARY) {
+    const focal = t.details.find((d) => d.focal)
+    const seats = seatsIn(t)
+    if (!focal || seats.length === 0) continue
+    it(`${t.id} keeps a moat around the one thing the eye should find`, () => {
+      const eye = at(`focal:${focal.id}`, focal.at, TOUCH)
+      for (const seat of seats) {
+        expect(
+          Math.round(water(eye, seat)),
+          `${t.id}: the focal LOOK is inside ${seat.what}'s moat`,
+        ).toBeGreaterThanOrEqual(FOCAL_MOAT)
       }
     })
   }
