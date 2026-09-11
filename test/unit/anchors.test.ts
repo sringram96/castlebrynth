@@ -23,6 +23,7 @@ import { ROOM_LIBRARY } from '../../src/content/rooms.js'
 import type { RoomTemplate } from '../../src/content/rooms.js'
 import { CONTENT_SPAN, TRAY_ASPECT } from '../../src/content/tray.js'
 import { REWARDS } from '../../src/content/rewards.js'
+import { CORE_DICE } from '../../src/content/dice.js'
 import { CLEAR_WATER, FOCAL_MOAT } from '../../src/content/roomResolver.js'
 import { actionFor, initialRoomState } from '../../src/content/interactions.js'
 
@@ -116,6 +117,19 @@ function pressesIn(t: RoomTemplate): readonly Press[] {
     )
   }
 
+  // A spare seat, **whether or not anything is standing in it this run**. The
+  // negative-space law counts a seat as a plate: a room whose empty seat would
+  // have covered a LOOK is one die away from a tap landing on the wrong thing, and
+  // "nothing is in it today" is a promise about the generator rather than about
+  // the picture. Two presses apiece, the same pair a found thing has.
+  for (const seat of t.spareSeats ?? []) {
+    out.push(at(`die:${seat.id}`, seat.at, WIDEST_DIE))
+    out.push(at(`claim:${seat.id}`, { x: seat.at.x, y: seat.at.y + LOOT_TAKE_DROP }, pill('TAKE')))
+  }
+
+  // And the one place a carving can be cut. Prose and a tap, so it is a LOOK ring.
+  if (t.carvingAt) out.push(at('look:carving', t.carvingAt, TOUCH))
+
   return out
 }
 
@@ -143,6 +157,9 @@ const WIDEST_WAY = pill('THROUGH')
 
 /** And the widest short name any found thing can put on a pill. */
 const WIDEST_LOOT = Object.values(REWARDS).reduce((n, r) => Math.max(n, pill(r.short)), 0)
+
+/** The same question for a core die on a seat: the widest word one can wear. */
+const WIDEST_DIE = Object.values(CORE_DICE).reduce((n, d) => Math.max(n, pill(d.short)), 0)
 
 const overlaps = (a: Press, b: Press): boolean =>
   Math.abs(a.x - b.x) < (a.w + b.w) / 2 && Math.abs(a.y - b.y) < (a.h + b.h) / 2
@@ -273,6 +290,19 @@ describe('the ways out are in the picture', () => {
     // nothing can ever bind to.
     for (const t of ROOM_LIBRARY) {
       expect(t.exitAnchors?.length ?? 0, `${t.id}`).toBe(t.topology.maxExits)
+    }
+  })
+
+  it('gives a room that sells exactly one seat per thing on its table', () => {
+    // A die with nowhere to stand is a die the view would have to invent a place
+    // for, which is the one thing a view may not do. Asserted both ways: enough
+    // seats for what the room sells, and no seat that nothing could ever stand on.
+    for (const t of ROOM_LIBRARY) {
+      const seats = t.spareSeats?.length ?? 0
+      if (t.exchange) expect(seats, `${t.id} sells ${t.exchange.count}`).toBeGreaterThanOrEqual(t.exchange.count)
+      if (seats > 0) expect(t.role === 'exchange' || t.role === 'find', `${t.id} has seats`).toBe(true)
+      // Every seat is unique in its room, or two things would stack on one.
+      expect(new Set((t.spareSeats ?? []).map((s) => s.id)).size).toBe(seats)
     }
   })
 

@@ -391,6 +391,16 @@ button {
   object-fit: contain;
   filter: drop-shadow(0 0 14px rgb(0 0 0 / 0.85));
   transition: transform 140ms ease-out;
+  /*
+   * **The breath.** A count of whole pixels, written by the shared 5 Hz ticker —
+   * see `render/ambience.ts` § `breathe` — and multiplied by one pixel here. There
+   * is deliberately **no transition on `translate`**: the grid law in time says
+   * ambient motion moves like a sprite cycle, so this steps and never slides.
+   *
+   * Every animation that takes `translate` — the recoil, the settle — overrides it
+   * for as long as it runs, which is correct: a thing being hit is not breathing.
+   */
+  translate: 0 calc(var(--breath, 0) * 1px);
 }
 
 .layer-enemy[hidden] {
@@ -429,10 +439,40 @@ button {
  * while something is being worked out.
  */
 .layer-enemy.struck {
-  filter: drop-shadow(0 0 14px rgb(0 0 0 / 0.85)) brightness(3.2) saturate(0.25)
-    contrast(1.3);
-  transform: translateX(-3px) scale(1.015);
+  /*
+   * **Two pixels, in steps, and one frame of white.**
+   *
+   * It was three pixels held still for the whole 130 ms with a filter on top,
+   * which is a state the thing is in rather than a blow it took. The grid-in-time
+   * law says a fill is a whole number of cells and a drain steps rather than
+   * slides; an impact is the same rule in the other axis, so the recoil is two
+   * whole pixels reached in one step and given back in the next, and the flash is
+   * **a frame** — full white on the first step, the plate's own colour on the
+   * second — rather than a brightness that fades.
+   */
+  animation:
+    recoil 130ms steps(1, end) 2,
+    flash 130ms steps(1, end) 2;
+  filter: drop-shadow(0 0 14px rgb(0 0 0 / 0.85));
   transition: none;
+}
+
+@keyframes recoil {
+  from {
+    translate: -2px 0;
+  }
+  to {
+    translate: 0 0;
+  }
+}
+
+@keyframes flash {
+  from {
+    filter: drop-shadow(0 0 14px rgb(0 0 0 / 0.85)) brightness(3.4) saturate(0.2) contrast(1.3);
+  }
+  to {
+    filter: drop-shadow(0 0 14px rgb(0 0 0 / 0.85));
+  }
 }
 
 /*
@@ -444,7 +484,7 @@ button {
  * flash is up.
  */
 .layer-enemy[data-scene].struck {
-  transform: none;
+  animation: flash 130ms steps(1, end) 2;
 }
 
 /*
@@ -1320,15 +1360,22 @@ body[data-motion='off'] .orb-fill {
   animation: settling 130ms ease-out;
 }
 
+/*
+ * The squash, and **one pixel of bounce off the bay**.
+ *
+ * A die that only squashes has landed on nothing; a die that comes up a pixel and
+ * back has landed on a surface. One whole pixel, because the chrome obeys the
+ * art's grid and half a pixel of lift is a blur rather than a bounce.
+ */
 @keyframes settling {
   0% {
-    transform: scale(1.16, 0.84);
+    transform: translateY(0) scale(1.16, 0.84);
   }
   60% {
-    transform: scale(0.96, 1.05);
+    transform: translateY(-1px) scale(0.96, 1.05);
   }
   100% {
-    transform: scale(1, 1);
+    transform: translateY(0) scale(1, 1);
   }
 }
 
@@ -2166,6 +2213,29 @@ button.score-crap {
 
 #world.struck {
   animation: jolt 320ms ease-out;
+}
+
+/*
+ * The tray taking the answer. **One pixel, in two steps.**
+ *
+ * The world shaking is the player's head; this is the pile and the dice in his
+ * hands being jarred by the same blow, and it is deliberately an order of
+ * magnitude smaller. A tray that shook as hard as the frame would read as the
+ * interface breaking rather than as the man holding it being hit — and it is a
+ * whole pixel reached in one step, because the plate is pixel art and a
+ * sub-pixel slide of a painted frame is a smear of every rib on it.
+ */
+#tray.jolted {
+  animation: tray-jolt 160ms steps(1, end) 2;
+}
+
+@keyframes tray-jolt {
+  from {
+    translate: 0 1px;
+  }
+  to {
+    translate: 0 0;
+  }
 }
 
 @keyframes jolt {

@@ -42,13 +42,26 @@ export async function scoresSpent(page: Page): Promise<string[]> {
  * `fixture` is a query string from src/game/fixture.ts, used to stand
  * somewhere the walk would take forty presses to reach.
  */
-export async function boot(page: Page, fixture = '', { motion = false } = {}): Promise<void> {
+export async function boot(
+  page: Page,
+  fixture = '',
+  { motion = false, plan = 'descent' as string | null } = {},
+): Promise<void> {
   // Motion is off unless a test asks for it. These specs are about what the
   // game does, and waiting out a smash sequence on every round of every
   // journey buys nothing — `test/browser/motion.spec.ts` is where the beats
   // themselves are asserted, and it opts in.
-  const query = motion ? fixture : `${fixture ? `${fixture}&` : '?'}motion=0`
-  await page.goto(`/${query}`)
+  //
+  // **And the grammar is pinned.** There are three descents now and the seed
+  // chooses, so a spec that presses DESCEND and then walks rooms by name would be
+  // asserting against whichever of the three the clock dealt it — which is a
+  // flaky suite, not a thorough one. `?plan=` is not a fixture: it changes nothing
+  // but the seed that press uses, so the run is still one the game could deal.
+  // The descent is the default because it is the grammar the slice grew up as; a
+  // spec about another one names it, and `plan: null` takes whatever comes.
+  const extra = [...(motion ? [] : ['motion=0']), ...(plan ? [`plan=${plan}`] : [])]
+  const query = [fixture.replace(/^\?/, ''), ...extra].filter(Boolean).join('&')
+  await page.goto(`/${query ? `?${query}` : ''}`)
   await expect(page.locator('body')).toHaveAttribute('data-assets', 'ready')
 }
 
@@ -161,6 +174,34 @@ export async function nodeFor(page: Page, templateId: string): Promise<string> {
  */
 export async function wayTo(page: Page, templateId: string): Promise<Locator> {
   return page.locator(`[data-act="go"][data-to="${await nodeFor(page, templateId)}"]`)
+}
+
+/**
+ * The way out with a given label, which is the only thing a player can read.
+ *
+ * A hotspot carries a destination node and a word. `wayTo` picks by destination,
+ * through the map, and is right whenever a spec means *the room behind this*;
+ * this is right whenever it means *the mouth the player is looking at* — and since
+ * both legs of the Split now have a room of their own on them, STAIR and DEEP are
+ * what those two mouths are, not the names of what is immediately behind them.
+ */
+export const wayLabelled = (page: Page, label: string): Locator =>
+  page.locator('[data-act="go"]').filter({ hasText: label })
+
+/**
+ * Press on until the run is standing in a named authored room.
+ *
+ * Presses the way out, one room at a time, and stops when it arrives. Rooms that
+ * hold their exits shut are the caller's problem — this is for walking a leg of a
+ * descent whose middle is not what the spec is about, which is what the alcoves
+ * on both legs of the Split made every *other* spec need.
+ */
+export async function walkOn(page: Page, templateId: string, max = 6): Promise<void> {
+  for (let step = 0; step < max; step++) {
+    if ((await where(page)) === templateId) return
+    await act(page, 'go').first().click()
+  }
+  expect(await where(page), `never walked on to ${templateId}`).toBe(templateId)
 }
 
 /**

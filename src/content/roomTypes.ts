@@ -132,6 +132,69 @@ export interface ExitAnchor {
 export type LootAnchor = ExitAnchor
 
 /**
+ * A pre-measured place in a picture that a *generated* thing may be seated in.
+ *
+ * The other half of the placement system. A `LootAnchor` is where this room's own
+ * machinery puts what it pays; a seat is where the **director** may stand
+ * something the room knows nothing about — a chained die in an alcove, the two
+ * dice on the carver's table, whatever the next plan wants.
+ *
+ * It is measured exactly as every other anchor is, and the negative-space law
+ * counts it as a plate **whether or not it is filled**: a room whose spare seat
+ * is empty this run must still be a room where that seat would not have covered
+ * a LOOK or a way out. `test/unit/anchors.test.ts` does that arithmetic over
+ * every seat in the library, filled or not.
+ */
+export type Seat = ExitAnchor
+
+/**
+ * A plate a room paints with no state behind it.
+ *
+ * The Reliquary's altar and the vault's chain are *objects with positions that
+ * survive a reload*, and `content/interactions.ts` owns them. Furniture is the
+ * other case and the honest one for a room with nothing to work: the Bone
+ * Carver has an altar in it because a table is where dice are laid out, and no
+ * press in the game can move it. So it is declared here, beside the room's copy,
+ * rather than as a `RoomInteractionState` with no transitions in it.
+ *
+ * Structurally the same as `interactions.Plate`, and deliberately declared here
+ * so the vocabulary file does not have to import the rules file.
+ */
+export interface Furniture {
+  readonly id: string
+  readonly art: string
+  readonly frame: string
+  /** A position the stylesheet draws, when the plate is a portrait. */
+  readonly look?: string
+}
+
+/**
+ * What the director may stand in a spare seat.
+ *
+ * Three kinds and no framework. `bargain-die` is a specific crooked die, chained
+ * and priced. `treasure` is the Hand of Saint Orrin, unpriced — its price is the
+ * road to it. `hint-carving` is **prose only**: a detail cut into the wall that
+ * consumes no seat, takes no press beyond a LOOK, and says a thing exists
+ * without saying where.
+ */
+export type PlacementId = 'bargain-die' | 'treasure' | 'hint-carving'
+
+/**
+ * What a room that *sells* has on its table.
+ *
+ * Authored by the template rather than by the plan, because it is a fact about
+ * the place: the Bone Carver has two dice on the altar because that is what the
+ * Bone Carver is. Which two, and at what price, is the generator's — seeded by
+ * the node, so two Carvers in one descent are two tables.
+ */
+export interface ExchangeOffer {
+  /** How many dice are on the table. One seat each. */
+  readonly count: number
+  /** Bones, printed on the verb before it charges. */
+  readonly price: number
+}
+
+/**
  * The dramatic job a room does in a descent.
  *
  * This is what the director asks for. It is deliberately *not* a description
@@ -155,6 +218,15 @@ export type RoomRole =
   | 'toll'
   | 'junction'
   | 'keeper'
+  /**
+   * A place where the hand is **sold**.
+   *
+   * Not `find` and not `toll`, and the difference is the whole reason it is its
+   * own word: a find is a thing lying there, a toll is a price for the way on,
+   * and an exchange is a price for a *specific object you can read before you
+   * pay*. The Bone Carver is the one authored so far.
+   */
+  | 'exchange'
   | 'aftermath'
   | 'exit'
 
@@ -269,7 +341,26 @@ export interface RoomTemplate {
   readonly name: string
 
   readonly role: RoomRole
+  /**
+   * Where the place is. Its primary one, and the one a node records.
+   *
+   * A template that reads in more than one stretch of the descent says so in
+   * `territories` below; this stays the first of them.
+   */
   readonly territory: Territory
+  /**
+   * Every stretch of the descent this picture belongs in, when it is more than
+   * one.
+   *
+   * **An extension, not a weakening.** `fits()` still requires membership — a
+   * template with no `territories` is a template that belongs in exactly one
+   * territory, which is every room authored before this wave — and the
+   * resolution throw is unchanged: a request no authored room can satisfy is
+   * still a loud failure naming the request. What it buys is a room whose paint
+   * honestly reads in two places being allowed to stand in both, rather than
+   * being copied.
+   */
+  readonly territories?: readonly Territory[]
   readonly composition: Composition
 
   /** Secondary properties a plan may require or forbid. Never a second role. */
@@ -302,6 +393,9 @@ export interface RoomTemplate {
   /** Objects that can be worked, and remember it. */
   readonly interactables?: readonly Interactable[]
 
+  /** Plates the room simply has. Nothing can move them and nothing records them. */
+  readonly furniture?: readonly Furniture[]
+
   /**
    * Where the ways out are standing, in the picture, in declaration order.
    *
@@ -313,6 +407,31 @@ export interface RoomTemplate {
 
   /** Where found things lie in this room, in the order they are revealed. */
   readonly lootAt?: readonly LootAnchor[]
+
+  /**
+  /**
+   * Places the director may seat a generated thing, in declaration order.
+   *
+   * Measured like every other anchor, and **counted against both budgets
+   * whether they are filled or not**: a seat is a plate and its pill is a press,
+   * and "nothing is in it this run" is a promise about the generator rather than
+   * about the painting.
+   */
+  readonly spareSeats?: readonly Seat[]
+
+  /** What this room sells, if selling is what it is for. */
+  readonly exchange?: ExchangeOffer
+
+  /**
+   * Where a cut carving stands, for a room that can carry one.
+   *
+   * `hint-carving` consumes no seat — it is prose, and a tap that answers — so
+   * it needs a place in the picture of its own. It is a press, so it counts
+   * against the press budget; it is not furniture, so it costs no plate. A
+   * template with none simply cannot host one, and the content test says which
+   * grammars rely on which.
+   */
+  readonly carvingAt?: { readonly x: number; readonly y: number }
 
   /**
    * What moves in here while nobody is doing anything.

@@ -24,11 +24,14 @@ import { execSync } from 'node:child_process'
 import { SAVE_VERSION } from '../../src/game/state.js'
 
 describe('the save is untouched', () => {
-  it('is still the version the reel wave wrote', () => {
-    // **11 is the reel wave's number and this wave does not move it.** If a
-    // change here needs a twelfth, it is not this wave: stop, record the field
-    // as an open question, and ship the rest. See `docs/COMBAT.md`.
-    expect(SAVE_VERSION).toBe(11)
+  it('was bumped once for the crooked bones wave, and only once', () => {
+    // **12, and it is the whole wave's bump.** Eight core dice rather than one,
+    // priced dice and cut prose on a `RunRoom`, a record of which of them have
+    // been claimed, three grammars, and a ladder where an enemy's damage was —
+    // all of it is one shape change and it gets one number. A thirteenth inside
+    // this wave would mean two saves nobody ever wrote were readable; the policy
+    // is unchanged, which is that an old save is discarded and reported.
+    expect(SAVE_VERSION).toBe(12)
   })
 })
 

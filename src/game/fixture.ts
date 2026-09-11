@@ -7,6 +7,12 @@
  * ended up with a death screen nobody had ever automated.
  *
  *   ?seed=7                     a known run
+ *   ?plan=tithe                 pin which **grammar** the run is built from, by
+ *                               choosing the lowest seed that produces it. It is
+ *                               not a fixture on its own — it changes nothing but
+ *                               which seed a press of DESCEND uses, so a journey
+ *                               can know which of the three descents it is
+ *                               walking without skipping a single press
  *   ?room=gate                  stand in the first room of the run built from
  *                               that authored template
  *   ?node=n8                    stand in one exact room of the generated map,
@@ -67,6 +73,7 @@ import {
 import type { CoreDieId, IronDieId, ItemDieId, TalismanId } from '../content/dice.js'
 import { firstNodeOf, roomAt } from './map.js'
 import { newRun, reduce } from './reducer.js'
+import { generateRun, generateRunPlan } from './runGenerator.js'
 import { RNG_CHANNEL, combatSalt, rngAt } from './rng.js'
 import { SAVE_VERSION } from './state.js'
 import type { GameState, Mode } from './state.js'
@@ -107,6 +114,69 @@ const KEYS: readonly string[] = [
 export function hasFixture(search: string): boolean {
   const p = new URLSearchParams(search)
   return KEYS.some((k) => p.has(k))
+}
+
+/**
+ * How far to look for a seed that produces a named grammar.
+ *
+ * Three grammars off a hashed seed: the first handful of integers covers all of
+ * them many times over. The bound exists so a typo answers `undefined` rather
+ * than spinning.
+ */
+const SEED_SEARCH = 500
+
+/**
+ * The lowest seed whose descent is built from a named grammar.
+ *
+ * **It pins nothing but the seed.** The generator is untouched: this asks it what
+ * each seed produces and hands back one that produces the grammar a test means.
+ * So a journey booted with `?plan=tithe` is walking a run the game could have
+ * dealt it, which is the whole reason a fixture is allowed to exist.
+ */
+export function seedForPlan(planId: string): number | undefined {
+  for (let seed = 1; seed <= SEED_SEARCH; seed++) {
+    if (generateRunPlan(seed).id === planId) return seed
+  }
+  return undefined
+}
+
+/**
+ * The seed a press of DESCEND should use, if the URL asked for one.
+ *
+ * Read by `main.ts` as well as by the fixture below, because the two want it for
+ * the same reason and at different moments: the fixture builds a run *now*, and
+ * the title screen's DESCEND builds one later. `?plan=` is deliberately **not**
+ * a fixture key — on its own it leaves the game exactly where it was, at the
+ * title, with one press still to make.
+ */
+export function pinnedSeed(search: string): number | undefined {
+  const p = new URLSearchParams(search)
+  const seed = num(p.get('seed'))
+  if (seed !== undefined) return seed
+  const plan = p.get('plan')
+  return plan ? seedForPlan(plan) : undefined
+}
+
+/**
+ * The first seed at or after `from` whose descent actually contains a room.
+ *
+ * `?room=gate` means **the gate**, and it has to keep meaning that now that the
+ * three grammars disagree about which rooms exist: there is no Reliquary in THE
+ * LONG WAY and no Font at all in THE TITHE. So a seed that built a descent
+ * without the room asked for is walked forward until one did.
+ *
+ * It is still not a cheat and still not an invented room: every seed it tries is
+ * a run the game could have dealt, and the room it lands in is one the director
+ * built. A seed that is explicitly asked for is the **starting point** of that
+ * search rather than an override, because a fixture pointing at a room that is
+ * not there is a fixture that silently does nothing — which is how a browser
+ * spec comes to assert against the entry hall.
+ */
+function seedWithRoom(templateId: string, from: number): number {
+  for (let seed = from; seed < from + 200; seed++) {
+    if (firstNodeOf(generateRun(seed >>> 0), templateId)) return seed
+  }
+  return from
 }
 
 /** Stand the enemy on an exact total. The one thing an attack cannot aim at. */
@@ -185,7 +255,13 @@ export function applyFixture(base: GameState, search: string): GameState {
   const p = new URLSearchParams(search)
   if (!hasFixture(search)) return base
 
-  const seed = num(p.get('seed')) ?? 1
+  // The seed, and then the seed that actually has the room in it. See
+  // `seedWithRoom`: `?room=` names a template and the three grammars do not all
+  // contain every template, so an unsatisfiable `?room=` walks the seed forward
+  // rather than quietly leaving the run standing in the entry hall.
+  const asked = pinnedSeed(search) ?? 1
+  const wantedRoom = p.get('room')
+  const seed = wantedRoom ? seedWithRoom(wantedRoom, asked) : asked
   let state: GameState = reduce({ ...base, mode: 'title' }, { type: 'START_RUN', seed })
   let run = state.run ?? newRun(seed)
 
@@ -197,7 +273,7 @@ export function applyFixture(base: GameState, search: string): GameState {
   // names one exact room, and is the answer when it does not: a fixture that
   // silently picked one of two Reliquaries would be worse than no fixture.
   const wantedNode = p.get('node')
-  const wantedTemplate = p.get('room')
+  const wantedTemplate = wantedRoom
   const node = wantedNode
     ? run.map.nodes[wantedNode]
     : wantedTemplate

@@ -493,13 +493,20 @@ describe('every room has a backdrop', () => {
    * forwards and backwards, and the Offertory is the Choir with the
    * Reliquary's furniture in it. Every one of them is written out under
    * `## HUMAN ART REQUIRED` in POLISH_PROGRESS.md, and this list is the gate
-   * that keeps the debt from growing quietly: a fourth borrowed backdrop has
+   * that keeps the debt from growing quietly: another borrowed backdrop has
    * to be added here, in a commit that says so.
+   *
+   * The crooked bones wave added two more and authored no pixel for either. The
+   * Bone Carver is the Choir with the Reliquary's altar standing in for a
+   * worktable, and the niche is the Deep Way with the vault's chain across it.
+   * Both are written out under `## HUMAN ART REQUIRED`.
    */
   const BORROWED: Readonly<Record<string, string>> = {
     cleft: 'the Split, read as a dividing passage',
     confluence: 'the Split, read as two passages meeting',
     offertory: 'the Choir, with the Reliquary’s altar and candles in it',
+    carver: 'the Choir, with the Reliquary’s altar standing in for a worktable',
+    niche: 'the Deep Way, with the vault’s chain across an alcove',
   }
 
   it('gives every room a backdrop, and names the ones that are borrowed', () => {

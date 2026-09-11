@@ -23,6 +23,8 @@ import {
   state,
   tappable,
   toFirstFight,
+  walkOn,
+  wayLabelled,
   wayTo,
   where,
 } from './helpers.js'
@@ -79,7 +81,7 @@ async function brightnessOf(page: Page, id: string): Promise<number> {
 
 test.describe('the Reliquary', () => {
   test('arrives with its objects present and the way on already open', async ({ page }) => {
-    await boot(page, '?room=reliquary&seed=3')
+    await boot(page, '?room=reliquary')
 
     await expect(say(page)).toContainText('A dead chapel')
     // **One LOOK, and it is the mechanism's.** The negative-space audit took
@@ -112,17 +114,17 @@ test.describe('the Reliquary', () => {
   })
 
   test('answers a real tap at each object, at 44px', async ({ page }) => {
-    await boot(page, '?room=reliquary&seed=3')
+    await boot(page, '?room=reliquary')
     await tappable(page, thing(page, 'reliquary-bell'))
     await tappable(page, thing(page, 'reliquary-brazier'))
     await tappable(page, act(page, 'go'))
     // And once the lever is live, it too.
-    await boot(page, '?room=reliquary&seed=3&reliquary=dark')
+    await boot(page, '?room=reliquary&reliquary=dark')
     await tappable(page, thing(page, 'reliquary-lever'))
   })
 
   test('opens the chest for bell, then dark, then lever — and pays once', async ({ page }) => {
-    await boot(page, '?room=reliquary&seed=3')
+    await boot(page, '?room=reliquary')
 
     await thing(page, 'reliquary-bell').click()
     await expect(say(page)).toContainText('The bell answers once')
@@ -165,7 +167,7 @@ test.describe('the Reliquary', () => {
   })
 
   test('cannot be made to pay twice by an impatient thumb', async ({ page }) => {
-    await boot(page, '?room=reliquary&seed=3&reliquary=open', { motion: true })
+    await boot(page, '?room=reliquary&reliquary=open', { motion: true })
     // With motion on, the sequence holds the *previous* room on screen while
     // it plays — so TAKE is still under the thumb for a few hundred ms after
     // it has already paid out. That is the press this has to survive, and the
@@ -180,7 +182,7 @@ test.describe('the Reliquary', () => {
   })
 
   test('can be walked straight through, and lands at the fork', async ({ page }) => {
-    await boot(page, '?room=reliquary&seed=3')
+    await boot(page, '?room=reliquary')
     await act(page, 'go').click()
     expect(await where(page)).toBe('fork')
     // Untouched and unpunished.
@@ -191,7 +193,7 @@ test.describe('the Reliquary', () => {
 
 test.describe('the Chain Vault', () => {
   test('arrives shut, with no way on at all', async ({ page }) => {
-    await boot(page, '?room=chain-vault&seed=3')
+    await boot(page, '?room=chain-vault')
 
     await expect(say(page)).toContainText('ends at an iron gate')
     await expect(thing(page, 'vault-chain')).toHaveText('LOWER')
@@ -210,13 +212,13 @@ test.describe('the Chain Vault', () => {
   })
 
   test('answers a real tap at each control, at 44px', async ({ page }) => {
-    await boot(page, '?room=chain-vault&seed=3')
+    await boot(page, '?room=chain-vault')
     await tappable(page, thing(page, 'vault-chain'))
     await tappable(page, thing(page, 'vault-lever'))
   })
 
   test('costs one bone for a lever pulled against nothing', async ({ page }) => {
-    await boot(page, '?room=chain-vault&seed=3')
+    await boot(page, '?room=chain-vault')
     await expect(pile(page)).toHaveText('30')
 
     await thing(page, 'vault-lever').click()
@@ -228,7 +230,7 @@ test.describe('the Chain Vault', () => {
   })
 
   test('opens the gate for cage, then lever — and lets you out', async ({ page }) => {
-    await boot(page, '?room=chain-vault&seed=3')
+    await boot(page, '?room=chain-vault')
 
     await thing(page, 'vault-chain').click()
     await expect(say(page)).toContainText('The cage drops onto the plate')
@@ -247,12 +249,15 @@ test.describe('the Chain Vault', () => {
     await expect(go).toBeVisible()
     await tappable(page, go)
     await go.click()
-    expect(await where(page)).toBe('deep')
+    // Through the gate and down the leg. The alcove is between the two now, which
+    // is the grammar's and not the room's: a template names no destination.
+    expect(await where(page)).toBe('niche')
+    await walkOn(page, 'deep')
     await expect(say(page)).toContainText('The Marrow')
   })
 
   test('can kill you, and lands on the death the game already has', async ({ page }) => {
-    await boot(page, '?room=chain-vault&bones=1&seed=3')
+    await boot(page, '?room=chain-vault&bones=1')
     await thing(page, 'vault-lever').click()
     expect(await screenName(page)).toBe('dead')
     await expect(page.locator('#screen')).toContainText('The chain mechanism')
@@ -263,7 +268,7 @@ test.describe('the Chain Vault', () => {
 
 test.describe('the deep route, end to end', () => {
   test('runs fork → vault → Deep Way, and the stair still does not', async ({ page }) => {
-    await boot(page, '?room=fork&seed=3')
+    await boot(page, '?room=fork')
     const deep = await wayTo(page, 'chain-vault')
     await expect(deep).toHaveText('DEEP')
     await deep.click()
@@ -271,19 +276,28 @@ test.describe('the deep route, end to end', () => {
 
     await thing(page, 'vault-chain').click()
     await thing(page, 'vault-lever').click()
+    // Past the gate and down the leg. **An alcove stands between the vault and
+    // the Marrow now**, which is the grammar's business rather than the room's —
+    // a template names no destination, so what the gate opens onto is whatever the
+    // descent put next.
     await act(page, 'go').click()
-    expect(await where(page)).toBe('deep')
+    expect(await where(page)).toBe('niche')
+    await walkOn(page, 'deep')
 
     // And the short way is untouched: straight to the door, no vault.
-    await boot(page, '?room=fork&seed=3')
-    const stair = await wayTo(page, 'gate')
+    await boot(page, '?room=fork')
+    // By the word on the mouth, which is all a player has. Both legs carry a room
+    // of their own now, so the label is the thing that is stable and the room
+    // immediately behind it is not.
+    const stair = wayLabelled(page, 'STAIR')
     await expect(stair).toHaveText('STAIR')
     await stair.click()
+    await walkOn(page, 'gate')
     expect(await where(page)).toBe('gate')
   })
 
   test('puts the Reliquary between the chapel and the fork', async ({ page }) => {
-    await boot(page, '?room=sanctuary&bones=12&seed=3')
+    await boot(page, '?room=sanctuary&bones=12')
     await act(page, 'ritual').click()
     await act(page, 'go').click()
     expect(await where(page)).toBe('reliquary')
@@ -303,7 +317,7 @@ test.describe('with motion reduced', () => {
   test.use({ reducedMotion: 'reduce' })
 
   test('solves the Reliquary to the same reward, in the same tick', async ({ page }) => {
-    await boot(page, '?room=reliquary&seed=3', { motion: true })
+    await boot(page, '?room=reliquary', { motion: true })
     await thing(page, 'reliquary-bell').click()
     await thing(page, 'reliquary-brazier').click()
     await thing(page, 'reliquary-lever').click()
@@ -327,12 +341,12 @@ test.describe('with motion reduced', () => {
     await expect(plate(page, 'reliquary-chest')).toHaveAttribute('data-look', 'open')
 
     // The same seed and the same history reach the same reward with motion on.
-    await boot(page, '?room=reliquary&seed=3&reliquary=solved')
+    await boot(page, '?room=reliquary&reliquary=solved')
     expect(carried(await state(page))).toEqual(carried(after))
   })
 
   test('opens the vault, and charges the same one bone for getting it wrong', async ({ page }) => {
-    await boot(page, '?room=chain-vault&seed=3', { motion: true })
+    await boot(page, '?room=chain-vault', { motion: true })
     await thing(page, 'vault-lever').click()
     await expect(pile(page)).toHaveText('29')
 
@@ -340,8 +354,13 @@ test.describe('with motion reduced', () => {
     await thing(page, 'vault-lever').click()
     await expect(pile(page)).toHaveText('29')
     await expect(act(page, 'go')).toBeVisible()
+    // Past the gate and down the leg. **An alcove stands between the vault and
+    // the Marrow now**, which is the grammar's business rather than the room's —
+    // a template names no destination, so what the gate opens onto is whatever the
+    // descent put next.
     await act(page, 'go').click()
-    expect(await where(page)).toBe('deep')
+    expect(await where(page)).toBe('niche')
+    await walkOn(page, 'deep')
   })
 })
 
@@ -355,7 +374,7 @@ test.describe('with motion reduced', () => {
  */
 test.describe('the room is art, and the art is not the interface', () => {
   test('never lets a plate take a tap', async ({ page }) => {
-    await boot(page, '?room=reliquary&seed=3&reliquary=dark')
+    await boot(page, '?room=reliquary&reliquary=dark')
     for (const node of await plates(page).all()) {
       expect(await node.evaluate((el) => getComputedStyle(el).pointerEvents)).toBe('none')
     }
@@ -375,7 +394,7 @@ test.describe('the room is art, and the art is not the interface', () => {
   const OBJECTS = ['reliquary-altar', 'reliquary-bell', 'reliquary-brazier', 'reliquary-chest']
 
   test('shows the altar, the bell, the candles and the chest, all at once', async ({ page }) => {
-    await boot(page, '?room=reliquary&seed=3')
+    await boot(page, '?room=reliquary')
     await expect(plates(page)).toHaveCount(4)
     for (const id of OBJECTS) await expect(plate(page, id)).toBeVisible()
 
@@ -405,7 +424,7 @@ test.describe('the room is art, and the art is not the interface', () => {
   })
 
   test('answers a real tap at every one of them, at 44px', async ({ page }) => {
-    await boot(page, '?room=reliquary&seed=3&reliquary=solved')
+    await boot(page, '?room=reliquary&reliquary=solved')
     // The far side of the puzzle, where the room has the fewest verbs left —
     // so what is checked is that the one LOOK is still on the altar and still
     // reachable once the actions have gone, beside the thing in the chest.
@@ -414,7 +433,7 @@ test.describe('the room is art, and the art is not the interface', () => {
   })
 
   test('swings the bell when it is rung, and puts it back down', async ({ page }) => {
-    await boot(page, '?room=reliquary&seed=3', { motion: true })
+    await boot(page, '?room=reliquary', { motion: true })
     const bell = plate(page, 'reliquary-bell')
     // Still, until it is rung. Nothing in this room moves on arrival.
     expect(await bell.evaluate((el) => el.getAnimations().map((a) => (a as CSSAnimation).animationName))).toEqual([])
@@ -435,7 +454,7 @@ test.describe('the room is art, and the art is not the interface', () => {
   })
 
   test('takes the light out of the candles, and gives it back', async ({ page }) => {
-    await boot(page, '?room=reliquary&seed=3')
+    await boot(page, '?room=reliquary')
     const candles = plate(page, 'reliquary-brazier')
     await expect(candles).toHaveAttribute('data-look', 'lit')
     expect(await brightnessOf(page, 'reliquary-brazier')).toBeGreaterThan(0.9)
@@ -454,7 +473,7 @@ test.describe('the room is art, and the art is not the interface', () => {
   })
 
   test('knocks the chest when the mechanism goes, and leaves it standing', async ({ page }) => {
-    await boot(page, '?room=reliquary&seed=3&reliquary=dark', { motion: true })
+    await boot(page, '?room=reliquary&reliquary=dark', { motion: true })
     const chest = plate(page, 'reliquary-chest')
     await expect(chest).toHaveAttribute('data-look', 'closed')
 
@@ -476,7 +495,7 @@ test.describe('the room is art, and the art is not the interface', () => {
   test('is still four objects with the app’s motion switch off', async ({ page }) => {
     // `motion=0` settles every sequence instantly. The room is a function of
     // the save either way, so the picture is the finished picture at once.
-    await boot(page, '?room=reliquary&seed=3')
+    await boot(page, '?room=reliquary')
     await thing(page, 'reliquary-bell').click()
     await thing(page, 'reliquary-brazier').click()
     await thing(page, 'reliquary-lever').click()
@@ -576,7 +595,12 @@ test.describe('across a real reload', () => {
 
     await expect(act(page, 'go')).toBeVisible()
     await expect(thing(page, 'vault-lever')).toHaveCount(0)
+    // Past the gate and down the leg. **An alcove stands between the vault and
+    // the Marrow now**, which is the grammar's business rather than the room's —
+    // a template names no destination, so what the gate opens onto is whatever the
+    // descent put next.
     await act(page, 'go').click()
-    expect(await where(page)).toBe('deep')
+    expect(await where(page)).toBe('niche')
+    await walkOn(page, 'deep')
   })
 })

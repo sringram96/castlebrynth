@@ -45,10 +45,25 @@ export interface RoomRequest {
   readonly recentTemplates?: readonly string[]
 }
 
+/**
+ * Every stretch of the descent a template belongs in.
+ *
+ * One statement of it, read by `fits` and by `validateRunMap`, so a room allowed
+ * to stand in the chapel cannot be a room the validator then calls misplaced.
+ * A template that declares nothing belongs in exactly one territory, which is
+ * every room authored before the carver.
+ */
+export function territoriesOf(template: RoomTemplate): readonly Territory[] {
+  return template.territories ?? [template.territory]
+}
+
 /** Whether one authored place can take one request. Pure, and total. */
 export function fits(template: RoomTemplate, request: RoomRequest): boolean {
   if (template.role !== request.role) return false
-  if (template.territory !== request.territory) return false
+  // Membership, not equality. The extension is what lets one honest painting
+  // stand in two stretches of the descent; it is not a loosening, because a
+  // template with no `territories` still names exactly one.
+  if (!territoriesOf(template).includes(request.territory)) return false
 
   const { topology } = template
   if (request.entrances < topology.minEntrances || request.entrances > topology.maxEntrances) return false
@@ -131,7 +146,20 @@ export const FOCAL_MOAT = 16
  * backdrop is not furniture and a way out is not furniture.
  */
 export function platesIn(t: RoomTemplate): number {
-  return (t.interactables?.length ?? 0) + (t.ritual ? 1 : 0) + (t.lootAt?.length ?? 0)
+  return (
+    (t.interactables?.length ?? 0) +
+    (t.ritual ? 1 : 0) +
+    (t.lootAt?.length ?? 0) +
+    // Furniture is exactly what the plate budget is about: a plate seated into
+    // the painting that nothing in the game can move. The Carver's table and the
+    // chain across a niche are furniture, and a room may not dodge the law by
+    // declaring its crowding in a field the counter had not heard of.
+    (t.furniture?.length ?? 0) +
+    // And a spare seat counts **filled**, always. "Nothing is in it this run" is a
+    // promise about the generator rather than about the frame, and the law counts a
+    // composition at its authoring-time maximum.
+    (t.spareSeats?.length ?? 0)
+  )
 }
 
 /**
@@ -150,7 +178,14 @@ export function pressesIn(t: RoomTemplate): number {
     t.details.length +
     (t.interactables?.length ?? 0) +
     (t.ritual ? 1 : 0) +
-    (t.lootAt?.length ?? 0)
+    (t.lootAt?.length ?? 0) +
+    // A seat is one object with two presses on it — the pill that reads it and the
+    // verb that takes it — and it is counted as one, exactly as a loot anchor is.
+    // The budget is about *objects competing for a frame*, not about taps.
+    (t.spareSeats?.length ?? 0) +
+    // A carving is a press and not furniture: prose cut into a wall costs a
+    // hotspot and no plate at all.
+    (t.carvingAt ? 1 : 0)
   )
 }
 

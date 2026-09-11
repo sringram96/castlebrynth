@@ -20,7 +20,13 @@ import { generateRun } from '../../src/game/runGenerator.js'
 import { newRun, reduce } from '../../src/game/reducer.js'
 import { SAVE_VERSION, TITLE } from '../../src/game/state.js'
 import type { GameState, RunState } from '../../src/game/state.js'
-import { nodeOf } from './where.js'
+import { nodeOf, seedFor } from './where.js'
+
+/**
+ * A seed whose grammar is **the descent**, because the paths written out below
+ * are its node ids — and because THE LONG WAY has no Reliquary in it at all.
+ */
+const DESCENT_SEED = seedFor('descent')
 
 describe('a node is a position', () => {
   it('gives every node in a descent a number of its own', () => {
@@ -98,15 +104,15 @@ describe('the same room draws the same thing, whatever the route was', () => {
     // Two runs of the same seed standing in the same Reliquary, one having
     // walked three rooms and one having walked eight. Under the old salt these
     // were two different draws out of one chest.
-    const short = solve(standing(21, 'reliquary', ['a0', 'a1', 'a2']))
-    const long = solve(standing(21, 'reliquary', ['a0', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7']))
+    const short = solve(standing(DESCENT_SEED, 'reliquary', ['a0', 'a1', 'a2']))
+    const long = solve(standing(DESCENT_SEED, 'reliquary', ['a0', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7']))
     expect(short.run!.loot).toEqual(long.run!.loot)
   })
 
   it('holds for a font', () => {
     const roll = (path: readonly string[]): number => {
       const state = reduce(
-        { ...standing(21, 'sanctuary', path), run: { ...standing(21, 'sanctuary', path).run!, bones: 10 } },
+        { ...standing(DESCENT_SEED, 'sanctuary', path), run: { ...standing(DESCENT_SEED, 'sanctuary', path).run!, bones: 10 } },
         { type: 'RITUAL_ROLL' },
       )
       return state.run!.ritual!.roll
@@ -116,7 +122,7 @@ describe('the same room draws the same thing, whatever the route was', () => {
 
   it('holds for what a fight throws', () => {
     const dice = (path: readonly string[]): readonly number[] => {
-      const open = reduce(standing(21, 'hollow', path), { type: 'FIGHT' })
+      const open = reduce(standing(DESCENT_SEED, 'hollow', path), { type: 'FIGHT' })
       return reduce(open, { type: 'ROLL' }).run!.combat!.dice
     }
     expect(dice(['a0', 'a1', 'a2'])).toEqual(dice(['a0', 'a1', 'a2', 'a3', 'a4', 'a5']))
@@ -125,8 +131,8 @@ describe('the same room draws the same thing, whatever the route was', () => {
   it('and two different rooms of one run do not draw the same thing', () => {
     // The other half: node identity has to *separate* as well as stabilise, or
     // every room in a run would be one stream.
-    const hollow = reduce(reduce(standing(21, 'hollow', ['a0']), { type: 'FIGHT' }), { type: 'ROLL' })
-    const deep = reduce(reduce(standing(21, 'deep', ['a0']), { type: 'FIGHT' }), { type: 'ROLL' })
+    const hollow = reduce(reduce(standing(DESCENT_SEED, 'hollow', ['a0']), { type: 'FIGHT' }), { type: 'ROLL' })
+    const deep = reduce(reduce(standing(DESCENT_SEED, 'deep', ['a0']), { type: 'FIGHT' }), { type: 'ROLL' })
     expect(hollow.run!.combat!.dice).not.toEqual(deep.run!.combat!.dice)
   })
 })

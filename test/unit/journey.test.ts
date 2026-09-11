@@ -23,7 +23,9 @@ import { legalScores } from '../../src/combat/hands.js'
 import { ROOM_LIBRARY } from '../../src/content/rooms.js'
 import { roomAt } from '../../src/game/map.js'
 import { validateRun } from '../../src/game/mapValidation.js'
-import { nodeOf } from './where.js'
+import { legal, stateOf } from '../../src/content/interactions.js'
+import { GRAMMARS } from '../../src/content/runPlans.js'
+import { nodeOf, seedFor } from './where.js'
 import { load, save, wipe } from '../../src/game/save.js'
 
 const play = (state: GameState, ...actions: readonly Action[]): GameState =>
@@ -73,11 +75,39 @@ function walk(state: GameState, label?: string): GameState {
   return reduce(state, { type: 'GO', to: chosen.to })
 }
 
+/**
+ * Do whatever this room needs doing before it will let anybody leave.
+ *
+ * A font is rolled and machinery is worked, in declaration order, which is the
+ * order the carved clues say it has to happen in. **A fight is deliberately not
+ * here**: every spec below opens its own fights, because what a fight costs is
+ * the thing they are about.
+ *
+ * It exists because there are three grammars now and they do not agree about what
+ * stands between two rooms — THE LONG WAY puts the Font before either fight — so a
+ * walk that only pressed GO would be a walk that only worked on one of them.
+ */
+function openTheWay(state: GameState): GameState {
+  let now = state
+  const here = roomAt(now.run!)
+  if (here.ritual && now.run!.ritual?.roomId !== now.run!.roomId) {
+    now = reduce(now, { type: 'RITUAL_ROLL' })
+  }
+  for (const thing of here.interactables ?? []) {
+    const room = stateOf(now.run!.rooms, now.run!.roomId, here.id)
+    if (room && legal(room, thing.id)) {
+      now = reduce(now, { type: 'INTERACT', interactionId: thing.id })
+    }
+  }
+  return now
+}
+
 /** Walk until the run is standing in a room built from a named template. */
-function walkTo(state: GameState, templateId: string, guard = 12): GameState {
+function walkTo(state: GameState, templateId: string, guard = 16): GameState {
   let now = state
   for (let step = 0; step < guard; step++) {
     if (roomAt(now.run!).id === templateId) return now
+    now = openTheWay(now)
     const before = now.run!.roomId
     now = walk(now)
     if (now.run!.roomId === before) break
@@ -146,7 +176,10 @@ describe('the door', () => {
 
 describe('the short route', () => {
   it('goes door to exit on real presses', () => {
-    let state = reduce(TITLE, { type: 'START_RUN', seed: 6 })
+    // **Pinned to the descent**, because this spec walks its rooms by name: the
+    // Gnawing, then the Font, then the door. THE LONG WAY puts the Font first and
+    // THE TITHE has none at all, and both of those are walked end to end below.
+    let state = reduce(TITLE, { type: 'START_RUN', seed: seedFor('descent') })
     state = walkTo(state, 'hollow')
 
     // The Gnawing. A room with a living enemy has no exits, whatever the map
@@ -180,7 +213,7 @@ describe('the short route', () => {
 
 describe('the deep route', () => {
   it('goes through the vault and the Marrow', () => {
-    let state = reduce(TITLE, { type: 'START_RUN', seed: 21 })
+    let state = reduce(TITLE, { type: 'START_RUN', seed: seedFor('descent') })
     state = walkTo(state, 'hollow')
     state = clearReward(fightItOut(reduce(state, { type: 'FIGHT' })))
     if (state.mode === 'dead') return
@@ -200,14 +233,70 @@ describe('the deep route', () => {
       { type: 'INTERACT', interactionId: 'vault-chain' },
       { type: 'INTERACT', interactionId: 'vault-lever' },
     )
-    state = walk(state)
-    expect(roomAt(state.run!).id).toBe('deep')
+    // Past the gate, down the deep leg, and on to the Marrow — with an alcove cut
+    // into the leg between them since this wave, which is exactly why a walk names
+    // the room it is going to rather than counting doors.
+    state = walkTo(state, 'deep')
 
     const before = state.run!.vials
     state = fightItOut(reduce(state, { type: 'FIGHT' }))
     if (state.mode === 'dead') return
-    // The Marrow always leaves a Vial, offer or no offer.
+    // The Marrow always leaves a Vial, offer or no offer — **on the floor beside
+    // the body**, which is where everything a fight pays has lain since the reel
+    // wave. Seeing a thing is not carrying it, so the press is what moves it.
+    //
+    // This used to be written as *vials went up by one*, and it passed only
+    // because the run died in this fight and returned before the assertion ever
+    // ran. The Marrow breaks less the more of it is gone now, so the run survives
+    // and the claim is finally reached.
+    const left = state.run!.loot![state.run!.roomId]!.filter((l) => !l.taken)
+    expect(left.map((l) => l.id)).toContain('vial')
+    expect(state.run!.vials).toBe(before)
+    state = clearReward(state)
     expect(state.run!.vials).toBe(before + 1)
+  })
+})
+
+describe('every grammar is walkable, down every branch', () => {
+  // **Three descents now, and the seed chooses.** A journey that only ever walked
+  // one of them would leave two thirds of the game unplayed by the suite that is
+  // supposed to prove it can be played at all. Every branch of every grammar is
+  // walked here with real presses — fights fought, fonts rolled, machinery worked,
+  // tolls paid — and every one of them has to reach the way out or die trying,
+  // never stall.
+  for (const plan of GRAMMARS) {
+    for (const branch of ['first', 'second'] as const) {
+      it(`${plan.id}, taking the ${branch} mouth at every fork`, () => {
+        let state = reduce(TITLE, { type: 'START_RUN', seed: seedFor(plan.id) })
+        for (let step = 0; step < 40; step++) {
+          if (state.mode === 'complete' || state.mode === 'dead') break
+          const here = roomAt(state.run!)
+          if (here.enemy && !state.run!.cleared.includes(here.instanceId)) {
+            state = clearReward(fightItOut(reduce(state, { type: 'FIGHT' })))
+            continue
+          }
+          const before = state.run!.roomId
+          state = clearReward(openTheWay(state))
+          const exits = roomAt(state.run!).exits
+          const chosen = branch === 'second' ? (exits[1] ?? exits[0]) : exits[0]
+          if (!chosen) break
+          state = reduce(state, { type: 'GO', to: chosen.to })
+          // A press that changed nothing is a stall, and a stall is the one
+          // failure a walkable descent may not have.
+          expect(state.run!.roomId, `${plan.id} stalled in ${here.id}`).not.toBe(before)
+        }
+        expect(['complete', 'dead'], `${plan.id} never finished`).toContain(state.mode)
+      })
+    }
+  }
+
+  it('every grammar offers two mouths at both of its forks', () => {
+    for (const plan of GRAMMARS) {
+      const map = reduce(TITLE, { type: 'START_RUN', seed: seedFor(plan.id) }).run!.map
+      const junctions = Object.values(map.nodes).filter((n) => n.role === 'junction')
+      expect(junctions, plan.id).toHaveLength(2)
+      for (const j of junctions) expect(j.exits, `${plan.id}/${j.id}`).toHaveLength(2)
+    }
   })
 })
 
@@ -305,7 +394,7 @@ describe('the save', () => {
   it('boots to the title, whatever it was doing', () => {
     const store = storage()
     const fighting = reduce(
-      walkTo(reduce(TITLE, { type: 'START_RUN', seed: 1 }), 'hollow'),
+      walkTo(reduce(TITLE, { type: 'START_RUN', seed: seedFor('descent') }), 'hollow'),
       { type: 'FIGHT' },
     )
     save(fighting, store)
@@ -329,7 +418,9 @@ describe('the save', () => {
       expect(discarded, `version ${version}`).toBe('incompatible')
       expect(state.run).toBeUndefined()
     }
-    expect(SAVE_VERSION).toBe(11)
+    store.setItem('castlebrynth', JSON.stringify({ version: 11, mode: 'combat', meta: {} }))
+    expect(load(store).discarded).toBe('incompatible')
+    expect(SAVE_VERSION).toBe(12)
   })
 
   it('survives an empty and a corrupt store', () => {
@@ -347,7 +438,7 @@ describe('the save', () => {
     const store = storage()
     const mid = play(
       reduce(
-        walkTo(reduce(TITLE, { type: 'START_RUN', seed: 8 }), 'hollow'),
+        walkTo(reduce(TITLE, { type: 'START_RUN', seed: seedFor('descent', 8) }), 'hollow'),
         { type: 'FIGHT' },
       ),
       { type: 'ROLL' },
@@ -364,13 +455,13 @@ describe('determinism', () => {
   it('a seed replays exactly', () => {
     const once = fightItOut(
       reduce(
-        walkTo(reduce(TITLE, { type: 'START_RUN', seed: 44 }), 'hollow'),
+        walkTo(reduce(TITLE, { type: 'START_RUN', seed: seedFor('descent', 44) }), 'hollow'),
         { type: 'FIGHT' },
       ),
     )
     const twice = fightItOut(
       reduce(
-        walkTo(reduce(TITLE, { type: 'START_RUN', seed: 44 }), 'hollow'),
+        walkTo(reduce(TITLE, { type: 'START_RUN', seed: seedFor('descent', 44) }), 'hollow'),
         { type: 'FIGHT' },
       ),
     )
@@ -386,7 +477,7 @@ describe('determinism', () => {
         ),
         { type: 'ROLL' },
       ).run!.combat!.dice
-    expect(throwOf(1)).not.toEqual(throwOf(2))
+    expect(throwOf(seedFor('descent'))).not.toEqual(throwOf(seedFor('descent', 40)))
   })
 
   it('a new run carries the same opening pile whatever the seed', () => {

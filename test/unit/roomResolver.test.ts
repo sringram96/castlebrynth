@@ -87,8 +87,17 @@ describe('what the resolver will accept', () => {
       exits: 1,
       forbiddenTags: ['worked'],
     }
-    expect(candidatesFor(noWork)).toEqual([])
-    expect(() => resolveRoom(noWork, new Rng(1))).toThrow(/forbids=worked/)
+    // Forbidding `worked` takes the Reliquary out and leaves the alcove, which is
+    // the other chapel room that pays. **That is the tag doing its job**, and it
+    // is why the niche carries `placed`: a plan that wants a shell asks for one,
+    // and a plan that wants machinery asks for the other.
+    expect(candidatesFor(noWork).map((t) => t.id)).toEqual(['niche'])
+
+    // Forbid both and there is nothing left, which is still a loud throw naming
+    // the request rather than a quietly wrong room.
+    const neither: RoomRequest = { ...noWork, forbiddenTags: ['worked', 'placed'] }
+    expect(candidatesFor(neither)).toEqual([])
+    expect(() => resolveRoom(neither, new Rng(1))).toThrow(/forbids=worked\+placed/)
   })
 
   it('never answers with a room that does not fit, over every request the library can be asked', () => {

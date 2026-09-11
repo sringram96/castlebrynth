@@ -46,10 +46,10 @@ import type { DieValue } from '../../src/combat/roll.js'
 import { Rng } from '../../src/game/rng.js'
 import { enemy } from '../../src/content/enemies.js'
 import type { RewardId } from '../../src/content/rewards.js'
-import { nodeOf } from './where.js'
+import { nodeOf, seedWith } from './where.js'
 
-const at = (templateId: string, run: Partial<RunState> = {}, seed = 4): GameState => {
-  const base = newRun(seed)
+const at = (templateId: string, run: Partial<RunState> = {}, from = 4): GameState => {
+  const base = newRun(seedWith(templateId, from))
   const roomId = nodeOf(base, templateId)
   return {
     version: SAVE_VERSION,
@@ -73,8 +73,8 @@ const lying = (
   }
 }
 
-const facing = (templateId = 'hollow', run: Partial<RunState> = {}, seed = 4): GameState =>
-  reduce(at(templateId, run, seed), { type: 'FIGHT' })
+const facing = (templateId = 'hollow', run: Partial<RunState> = {}, from = 4): GameState =>
+  reduce(at(templateId, run, from), { type: 'FIGHT' })
 
 const combatOf = (state: GameState): CombatState => state.run!.combat!
 
@@ -495,7 +495,13 @@ describe('ruling 5 — the equation, at each stage of loadout', () => {
 describe('CRAP is still infinite', () => {
   it('is never written down, however many times it is scored', () => {
     let state = facing('hollow', { ...BARE })
-    for (let attack = 0; attack < 6; attack++) {
+    // **Four, not six, and the reason is the Gnawing's ladder.** CRAP is still
+    // infinitely available and still never spent — that is what is being
+    // asserted — but leaning on it against a thing that breaks two, then four,
+    // then eight costs 22 bones in four exchanges, and a run that died halfway
+    // through the loop would be asserting nothing. That is the ladder working:
+    // the cost of having nothing left to score is now a number on the screen.
+    for (let attack = 0; attack < 4; attack++) {
       const table = withDice(state, [1, 2, 3, 4, 6, 6], 0)
       const spent: GameState = {
         ...table,
@@ -507,7 +513,7 @@ describe('CRAP is still infinite', () => {
       state = reduce(spent, { type: 'SCORE', hand: 'crap' })
       expect(combatOf(state).usedHands).toEqual(['pair', 'two-pair'])
     }
-    expect(combatOf(state).round).toBe(7)
+    expect(combatOf(state).round).toBe(5)
   })
 })
 

@@ -304,6 +304,21 @@ are square, its colours are the palette's tokens, and there is no smooth width
 anywhere in it for a transition to interpolate through. The same is true of the
 strip of visited rooms behind MAP: frames and mouths are boxes on a pitch.
 
+**Ladder chips** are the newest thing under the law and the clearest case for it.
+Every monster has one rule that bends what it breaks, and a rule about numbers is
+drawn rather than written: `FAR 2 · MID 4 · CLOSE 8` is three chips in the same
+component, from the same shape of data, as a die's faces. The reason is not
+consistency for its own sake — a ladder written once as chips and once as a
+sentence is a ladder that will **disagree with itself**, which is the same rule
+`HAND_DEFINITIONS` is held to. They stand in two places, both of them
+before-the-press: the pre-fight brief in the well, and the enemy's bar during the
+fight, under the one live figure the turn is standing on.
+
+A **ladder chip housing** is owed — the chips are palette boxes on a pitch today,
+like every other chip — and is recorded under `POLISH_PROGRESS.md`
+§ HUMAN ART REQUIRED, alongside the composed Carver and niche paintings, the
+in-world die plates, and the Hand of Saint Orrin's own plate.
+
 **Colour is never the only statement.** A cost chip carries its own minus sign
 and a `data-face` of its kind; a blank is a dim pip and never a gap; the strip
 says the current frame in a border as well as in a tone. Painted furniture for
@@ -323,6 +338,50 @@ reduced-motion block at the end of the stylesheet already stops them.
 A painted housing for the health bar is owed — see `POLISH_PROGRESS.md`
 § HUMAN ART REQUIRED. Until it lands the bar is CSS on the palette, and no
 pixel was authored for it.
+
+### The impact frames: whole pixels, in steps
+
+An impact is the same law in the other axis. A blow that slides is chrome moving
+across pixel art; a blow that **steps** is a thing being hit. So, for the one
+frame a blow is on screen:
+
+- **The enemy plate recoils two whole pixels**, reached in one step and given back
+  in the next. It was three pixels held still for the whole 130 ms with a filter
+  over it, which is a *state* the thing is in rather than a blow it took.
+- **One frame of white.** A stepped two-frame animation — full brightness on the
+  first step, the plate's own colour on the second — rather than a brightness that
+  fades out. When an authored impact plate exists for the pose the thing is
+  standing in, that plate is the frame and nothing is done to it at all.
+- **A scene plate does not recoil**, only flashes: a trimmed sprite flinching off
+  a blade is the figure moving, and a whole-frame plate doing it shows bare frame
+  down one edge.
+- **The tray jolts one pixel** when the answer comes back. The world shaking is
+  the player's head; the tray is what is in his hands, and it is an order of
+  magnitude smaller on purpose — a tray that shook as hard as the frame reads as
+  the interface breaking. One whole pixel, in steps, because the plate is pixel
+  art and a sub-pixel slide of a painted frame is a smear of every rib on it.
+- **A die bounces one pixel** off its bay as it lands, under the squash it already
+  had. A die that only squashes has landed on nothing.
+
+And one piece of *ambient* motion belongs with them, because it is the same pixel
+on the same grid: **a standing horror breathes one whole pixel**, on the shared
+5 Hz ticker, dividing it by three so a full breath is a little under two and a
+half seconds. It is the **one ambient source allowed inside a fight**, and the
+reason is the one the room's ambience is excluded for: *a fight owns the picture*,
+and what is standing in it is the fight. Dust falling through a cascade has no
+claim on the frame; the opponent has nothing but.
+
+Every other clause of the quiet-motion law holds over it unchanged — one gate
+rather than a clock of its own, a count of whole pixels written in TypeScript and
+multiplied by one pixel in the stylesheet, **no transition on `translate`**, no
+layout read, and nothing mounted at all under motion off. A blow takes `translate`
+for the frame it is on and overrides the breath, which is correct: a thing being
+hit is not breathing. Neither is a thing that is dying — `content/defeat.ts` owns
+that picture and the ticker stays off it.
+
+Every one of them is a picture of a number the reducer settled before the first
+frame ran, and every one of them is absent with `?motion=0` or
+`prefers-reduced-motion` — where the settled screen states all of it as text.
 
 ## Shared air: one grade per territory
 

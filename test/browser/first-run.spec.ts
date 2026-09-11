@@ -139,7 +139,12 @@ test.describe('the first fight', () => {
 
     // Public, exact, and up before ROLL exists as a press.
     await expect(page.locator('#enemy-hp')).toHaveAttribute('data-hp', '70')
-    await expect(page.locator('#enemy-hits')).toHaveAttribute('data-damage', '3')
+    // **The rung it is standing on, not a flat figure.** The Gnawing opens at FAR
+    // and FAR breaks two; the ladder under it says what the other two rungs cost
+    // before a single die is thrown.
+    await expect(page.locator('#enemy-hits')).toHaveAttribute('data-damage', '2')
+    await expect(page.locator('#enemy-ladder')).toContainText('FAR 2')
+    await expect(page.locator('#enemy-ladder')).toContainText('CLOSE 8')
     await expect(act(page, 'roll')).toBeVisible()
   })
 

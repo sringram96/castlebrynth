@@ -1307,3 +1307,266 @@ what dragged. Until that exists, every number this wave introduced —
 the seven rows of `FRAME_BUDGETS`, `CLEAR_WATER` and `FOCAL_MOAT` — is a
 **first-pass value, reported rather than tuned**, exactly as the territory
 grades and the balance report's figures are.
+
+---
+
+# The crooked bones wave
+
+## The hand pass — pre-registered, before a line of this wave was built
+
+The standing rule is that a pass which cannot settle something says so rather
+than inventing a value in its place, and that the cuts are named *before* the
+phone so a later result is a measurement rather than a preference wearing a
+measurement's coat. These five questions were written down first. What the pass
+actually found is recorded at the end of this section.
+
+1. **Does the picker read at a glance, or does it need a second beat?** Taking a
+   core die opens the six current dice as strips and asks which one goes. It is
+   the only new overlay in the game that is a *decision* rather than a read, and
+   it arrives in the middle of a room. If the six strips cannot be compared in
+   one look, the fix is the strip's type size and the row spacing — not a
+   tutorial line, and not a confirm step.
+2. **Is 3 bones a price or a formality at 30?** The sweep says in numbers
+   whether always-take dominates; the hand says whether handing over three of
+   thirty *feels* like paying. If it is a formality the lever is the price, and
+   it is a product decision rather than a tuning pass.
+3. **Does the Gnawing's ladder read as dread or as a tax?** FAR 2 · MID 4 ·
+   CLOSE 8 is printed from frame one and the tray number moves as it closes. The
+   question is whether the third round feels like being caught or like a bill
+   arriving.
+4. **Does the Warden's CRAP rule feel like an exam or an ambush?** The card says
+   it in capitals before the first ROLL. If it still lands as an ambush the
+   problem is that the card is read once and the tray never restates it, and the
+   fix is on the tray rather than in the number.
+5. **Does the treasure hint make anyone look for it?** Two lines of prose, one in
+   the entry hall and one at the transition, and nothing anywhere says where.
+   If nobody looks, the hint is decoration and the next lever is the strip — the
+   untaken mouth is already drawn there.
+
+---
+
+## What landed
+
+| gate | before (`41a26ef`) | after |
+| --- | --- | --- |
+| `npm run typecheck` | clean | clean |
+| `npm test` | 557 tests | 630 tests |
+| `npm run build` | clean | 122 kB js / 25 kB css |
+| `npx playwright test` | 357 passed | 386 passed, 0 skipped |
+| `npm run balance` | 12 invariants green | 16 invariants green, 4 added |
+
+`CHROMIUM_PATH=/opt/pw-browsers/chromium` in this container, as before.
+
+`git diff --stat main -- public/` is empty and `test/unit/untouched.test.ts`
+asserts it against the base on every run. **No pixel was authored.** Six
+`## HUMAN ART REQUIRED` entries were written instead; the breath is a treatment on
+an existing plate, in the same family as the territory grades, and the owed
+paintings for it are the ones #98 already recorded.
+
+### The breath, and a wave landing underneath this one
+
+Part 6's last item was written conditionally: *the staging plate moves 1px on the
+quiet-motion ticker between presses — only if the quiet-rooms wave has landed.*
+When this branch was cut it had not. It landed as #98 while this one was in
+review, so the branch was merged onto it and the item was built rather than left
+as a record of something waiting on a thing that had arrived.
+
+It is the **one ambient source allowed inside a fight**, and the reason is the one
+#98 excluded room ambience for: a fight owns the picture, and what is standing in
+it is the fight. Dust falling through a cascade has no claim on the frame; the
+opponent has nothing but. Every other clause of the quiet-motion law holds over it
+unchanged — `RoomAmbience.breathe` hangs off the same single rAF gate rather than
+keeping a clock, it writes a count of whole pixels, there is no transition on
+`translate`, and with motion off nothing is written at all. A blow overrides it for
+the frame it is on; a death is never given it.
+
+**The merge also put this wave's own furniture inside #98's law.** `platesIn` and
+`pressesIn` now count `furniture`, `spareSeats` — at their authoring-time maximum,
+always *filled*, because "nothing is in it this run" is a promise about the
+generator rather than about the frame — and `carvingAt`, which is a press and not
+a plate. A wave that added seated objects and then exempted them from the budget
+that had just landed beneath it would be the worse kind of merge. Both new rooms
+fit: the Carver is 3/4 plates and 5/5 presses in an altar frame, the niche 2/2 and
+3/3 in a cramped one. Both are at their press ceiling, which is stated rather than
+discovered.
+
+### The one defect the harness found
+
+The crooked dice were authored, priced, bought, swapped, seated, validated and
+covered — and then thrown as plain d6s. `ROLL` called `rollDice(6, rng)` and
+never looked at `run.hand`, so every die in the swing table came back at exactly
+the floor and every build measured identically. A distribution does not produce
+that number; a table nobody reads does.
+
+`rollSlot` / `rollHand` / `rerollHand` in `src/combat/roll.ts` read each slot's
+own `faces` table. One draw per slot, the same as before, so a hand of six plain
+bones replays a seed byte for byte — `rng.int(6)` is `rng.int(6)` whichever table
+it indexes. It is recorded here because the *reason* it was caught is worth more
+than the fix: the balance harness is the only thing in the repository that would
+have noticed, and it noticed because its rows are differences rather than
+absolutes.
+
+### Three grammars broke every spec that counted doors
+
+Forty-odd unit tests and sixteen browser tests asserted against a single
+descent's room order — reasonably, because there was one. The fix was not to pin
+a seed everywhere; it was to make each spec say **what it is about**:
+
+- `seedFor(planId)` and `seedWith(templateId)` in `test/unit/where.ts` ask the
+  real generator for a seed that deals the grammar, or a descent that has the
+  room. A loop over seeds still loops over genuinely different runs.
+- `boot()` pins `?plan=descent` by default, which is not a fixture — it changes
+  nothing but the seed a press of DESCEND uses, so the run is still one the game
+  could deal. A spec about another grammar names it.
+- `walkOn` and `wayLabelled` replaced *the room behind this door* with *the word
+  on this mouth*, which is what a player actually has. Both legs of the Split
+  carry a room of their own now, so STAIR and DEEP are stable and what is
+  immediately behind either of them is the grammar's business.
+
+One latent dead test surfaced on the way: the deep-route journey asserted the
+Marrow's Vial raised the count, and only passed because the run died in that
+fight and returned before the assertion ran. The Marrow breaks less the more of
+it is gone now, the run survives, and the claim was finally reached — and was
+wrong, because a dropped Vial lies on the floor until it is picked up.
+
+---
+
+# HUMAN ART REQUIRED — the crooked bones
+
+Four entries. Every one of them is a thing the wave needed and **stopped rather
+than drawing**, per `CLAUDE.md` § *No art in the polish sweep*. The rules, the
+state, the tests and the balance are finished and green; the pictures are not.
+
+## A composed Bone Carver painting
+
+The first room in the game where the **hand** is sold. It is built from the
+Choir's backdrop with the Reliquary's altar standing in for a worktable, and the
+two dice on it are nameplates — the pattern every unpainted in-world object in
+this game uses.
+
+What is wanted is one 480 × 720 scene: a low table or bench of sorted bones,
+longest on the left and split ones on the right, a knife left in the wood, and
+somewhere obvious for two objects to be lying in the middle of it at
+`(0.36, 0.60)` and `(0.64, 0.60)` of the frame. The carver is **not in it**; the
+focal line is *The carver is not here. The knife is.*
+
+Until it lands the room reads — the altar is a plausible table and the verbs sit
+on the objects — and it is recorded in `test/unit/assets.test.ts`'s borrowed-art
+list, which is the gate that keeps the debt from growing quietly.
+
+## A composed niche painting, with the chain seated in it
+
+A shell room whose contents are entirely the director's: a chained die on most
+runs and, on one branch of one fork per run, the treasure. It is built from the
+Deep Way's backdrop, and the `chain` prop family **has never been painted at
+all**, so the midground is empty and the alcove is prose.
+
+What is wanted is one 480 × 720 scene with a cut alcove at `(0.5, 0.52)` deep
+enough to hold an object, two forced iron plates over its mouth, and a short
+chain set into the stone at both ends — and a `chain.off` plate registered to the
+same scene box so the chain can be seated over it.
+
+## In-world die plates
+
+A core die lying on a table or on a chain is a pill with a word on it: `KNUCKLE`,
+`JAW`, `CRACKED`, `HAND`. Eight of them now, and they are the only objects in the
+game a player is asked to *compare* before buying.
+
+What is wanted is eight 64 × 64 transparent plates, one per core die, each
+readable as a bone with its own silhouette — the Knucklebone short and two-lobed,
+the Long Bone long, the Jawbone a jaw. They would be `dice/<id>.png` and the
+nameplate pill stays as the accessible name over them.
+
+Note what is **not** wanted: a plate per face. A core die in the world is an
+object you pick up, not a die mid-throw; its faces are the strip beside it, and
+that strip is already drawn from the die's own table.
+
+## The Hand of Saint Orrin's own plate
+
+The one thing in the game a run goes out of its way for, and it currently wears
+the same pill as everything else. It wants its own 64 × 64 plate and it wants to
+look like treasure: a reliquary hand, too many fingers, the same hand the two
+hint carvings describe.
+
+It is listed separately from the other seven on purpose. The hints say *somebody
+came down here for it*, and a player who walks into the right alcove should know
+from the picture that they found the thing the hints meant.
+
+## Ladder chip housings
+
+`FAR 2 · MID 4 · CLOSE 8` is three palette boxes on a pitch, in the pre-fight
+brief and on the enemy's bar. It is the same owed housing the face chips have
+wanted since the legibility wave, at the same size, and it is named again here
+because a ladder is now on screen for the whole of every fight rather than on a
+card that is read once.
+
+## A second chapel junction painting
+
+`THE LONG WAY` forks twice in the chapel and the Split is the only chapel
+junction anybody has painted, so that grammar shows one picture at two moments.
+Recorded quality debt. A second dividing-passage composition at 480 × 720 closes
+it, and nothing was recoloured or cropped to hide it in the meantime.
+
+---
+
+## The phone pass — the crooked bones
+
+**Not done.** This wave was built in a remote container with no phone in it, and
+the standing rule is that a pass which could not settle something says so rather
+than inventing a value in its place. The five questions were pre-registered at the
+top of this section, before a line of the wave was written; they are still open,
+and they are the honest form of the answer.
+
+What ran instead is Chromium at 390 × 844 with real presses — 328 of them, every
+branch of every grammar walked end to end, every ladder read before a press, the
+picker opened, paid, cancelled and reloaded. That can prove a beat fires in order
+with the right numbers, and it did. It cannot answer whether six strips can be
+compared in one look under a thumb, or whether handing over three bones out of
+thirty *feels* like paying.
+
+1. **Device and OS.** None. Served commit: the head of
+   `claude/crooked-bones-wave-146yns`; `version.txt` was never fetched from a
+   phone because there was no phone to fetch it from.
+2. **What read.** Unverifiable in the hand. In Chromium at phone geometry: the
+   ladder chips read as a row of three, the picker's six rows fit the panel
+   without scrolling at 390 px, and every new press clears the 44 px floor —
+   `test/unit/anchors.test.ts` does that arithmetic over every seat in the
+   library, filled or not, and `tappable` hit-tests each of them in the browser.
+3. **What lied.** Nothing the frame said disagreed with the record — the motion-off
+   parity specs assert that the settled screen states every number the beats would
+   have shown. The one thing that *did* lie was not presentation: the crooked dice
+   were thrown as plain bones for most of this wave. The balance harness caught it;
+   no amount of looking at a screen would have.
+4. **What dragged.** Unmeasured. No beat was added to the attack, so the
+   pre-registered cut order from the reel wave stands unchanged and the card is
+   still first. The four new pieces of motion are all sub-frame punctuation —
+   2 px of recoil, one white frame, 1 px of tray jolt, 1 px of die bounce — and
+   none of them is on the critical path of a press.
+5. **What is still owed.** The whole of it. Specifically, and in the order it
+   matters:
+   - **question 2**, whether 3 bones is a price or a formality. The sweep says
+     always-take dominates on two of three grammars, which is what a formality
+     looks like in numbers; the hand is what says whether it *feels* like one, and
+     the lever is the price rather than a tuning pass.
+   - **question 1**, whether the picker reads at a glance. Six strips of six chips
+     is the densest comparison the game has ever asked for, and the fallback if it
+     does not read is the strip's type size and the row spacing — **not** a
+     tutorial line and **not** a confirm step.
+   - **questions 3 and 4**, dread versus tax and exam versus ambush. Both are about
+     a number the player has already been shown, so if either lands wrong the fix
+     is on the tray — restating the rule where the turn is — rather than in the
+     ladder.
+   - **question 5**, whether anybody looks for the treasure. If nobody does, the
+     hint is decoration and the next lever is the strip, where the untaken mouth is
+     already drawn.
+
+Until that exists, every number this wave introduced — `DIE_PRICE`, the eight
+face tables, the three ladders, the recoil and jolt distances — is a **first-pass
+value, reported rather than tuned**, exactly as the balance report's figures are.
+
+> *On the skill's own checklist:* its walk still names the Crossing's candles, a
+> rider firing and `CASCADE` in `src/content/render.ts`. Those are the pre-reset
+> design stack's and `archive/` binds nothing — the form of the record is what was
+> followed, and the beats that exist today are the ones in `src/app/app.ts`. The
+> record lives here rather than in `CHRONICLE.md` for the same reason: this file is
+> the active ledger.

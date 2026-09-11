@@ -14,12 +14,22 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 
-import { act, boot, screenName, state, tappable, toFirstFight, wayTo, where } from './helpers.js'
+import {
+  act,
+  boot,
+  screenName,
+  state,
+  tappable,
+  toFirstFight,
+  wayLabelled,
+  wayTo,
+  where,
+} from './helpers.js'
 import { clearReward, fightItOut } from './play.js'
 
 /** Hurt, standing in the chapel, on a known seed. */
 const inChapel = (page: Page, bones = 12, extra = '') =>
-  boot(page, `?room=sanctuary&bones=${bones}&seed=3${extra}`)
+  boot(page, `?room=sanctuary&bones=${bones}${extra}`)
 
 const pile = (page: Page) => page.locator('#pile')
 
@@ -171,7 +181,10 @@ test.describe('one press, and the room is spent', () => {
     await expect(page.locator('#say')).toContainText('The passage splits')
     // Both routes, untouched by any of this. The deep way now has the Chain
     // Vault in front of its fight; it is still the same decision at the fork.
-    await expect(await wayTo(page, 'gate')).toBeVisible()
+    // By the words on the mouths. Both legs of the Split carry a room of their
+    // own since this wave, so STAIR and DEEP are the decision and what is
+    // immediately behind either of them is the grammar's.
+    await expect(wayLabelled(page, 'STAIR')).toBeVisible()
     await expect(await wayTo(page, 'chain-vault')).toBeVisible()
   })
 
@@ -229,7 +242,7 @@ test.describe('one press, and the room is spent', () => {
 
 test.describe('the throw is a reveal, not a decision', () => {
   test('with motion on, the pile lands after the die does', async ({ page }) => {
-    await boot(page, '?room=sanctuary&bones=12&seed=3', { motion: true })
+    await boot(page, '?room=sanctuary&bones=12', { motion: true })
     await act(page, 'ritual').click()
 
     // Mid-sequence: the reducer has already healed and already saved, and the
@@ -245,7 +258,7 @@ test.describe('the throw is a reveal, not a decision', () => {
   })
 
   test('an impatient thumb settles the throw and never rolls twice', async ({ page }) => {
-    await boot(page, '?room=sanctuary&bones=12&seed=3', { motion: true })
+    await boot(page, '?room=sanctuary&bones=12', { motion: true })
     await act(page, 'ritual').click()
     const decided = await state(page)
 
@@ -264,7 +277,7 @@ test.describe('the throw is a reveal, not a decision', () => {
 
   test('reduced motion reaches exactly the same state, immediately', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
-    await boot(page, '?room=sanctuary&bones=12&seed=3', { motion: true })
+    await boot(page, '?room=sanctuary&bones=12', { motion: true })
     expect(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches)).toBe(
       true,
     )
@@ -283,7 +296,7 @@ test.describe('the throw is a reveal, not a decision', () => {
     // The same seed, with motion, decides the same face — the sequence is
     // reading the roll, never making it.
     await page.emulateMedia({ reducedMotion: 'no-preference' })
-    await boot(page, '?room=sanctuary&bones=12&seed=3', { motion: true })
+    await boot(page, '?room=sanctuary&bones=12', { motion: true })
     await act(page, 'ritual').click()
     const moved = await state(page)
     expect((moved.run as unknown as { ritual: unknown }).ritual).toEqual(ritual)

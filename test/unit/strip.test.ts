@@ -18,9 +18,17 @@ import { newRun, reduce } from '../../src/game/reducer.js'
 import { nodeAt, roomAt } from '../../src/game/map.js'
 import { firstEntryToTerritory, stripOf, territoryAt } from '../../src/game/strip.js'
 import { EMPTY_META, SAVE_VERSION } from '../../src/game/state.js'
+import { seedFor } from './where.js'
 import type { GameState, RunState } from '../../src/game/state.js'
 
-const start = (seed = 1): GameState => ({
+/**
+ * A run, on a seed whose grammar is **the descent**.
+ *
+ * The strip is the same derivation on every grammar, and these specs walk to the
+ * Cleft by name — so they pin the descent rather than asserting against whichever
+ * of the three a bare `1` happened to deal. See `seedFor`.
+ */
+const start = (seed = seedFor('descent')): GameState => ({
   version: SAVE_VERSION,
   mode: 'explore',
   meta: EMPTY_META,

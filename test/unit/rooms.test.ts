@@ -25,7 +25,8 @@ import { reward } from '../../src/content/rewards.js'
 import { BONE_CEILING } from '../../src/content/bones.js'
 import { ROOM_TEMPLATES } from '../../src/content/rooms.js'
 import { roomAt } from '../../src/game/map.js'
-import { nodeOf } from './where.js'
+import { reachableFrom } from '../../src/game/mapValidation.js'
+import { nodeOf, seedWith } from './where.js'
 import { actionFor, initialRoomState, stateOf } from '../../src/content/interactions.js'
 
 /**
@@ -35,8 +36,12 @@ import { actionFor, initialRoomState, stateOf } from '../../src/content/interact
  * resolved to whichever node of this run's map used it. A test may not invent
  * a room; it may only stand in one the director built.
  */
-function standingIn(templateId: string, seed = 7, bones = BONE_CEILING): GameState {
-  const run = newRun(seed)
+function standingIn(templateId: string, from = 7, bones = BONE_CEILING): GameState {
+  // **A descent that has the room in it.** The three grammars disagree about
+  // which rooms exist — there is no Reliquary in THE LONG WAY and no Font in THE
+  // TITHE — so a spec about a room asks for a seed that built one rather than
+  // pinning a grammar it is not about. See `seedWith`.
+  const run = newRun(seedWith(templateId, from))
   const roomId = nodeOf(run, templateId)
   const stood = { ...run, roomId, bones, path: [...run.path, roomId] }
   return {
@@ -44,6 +49,19 @@ function standingIn(templateId: string, seed = 7, bones = BONE_CEILING): GameSta
     mode: 'explore',
     run: { ...stood, say: roomAt(stood).arrival },
   }
+}
+
+/**
+ * Which authored rooms are still ahead of a node, through the generated map.
+ *
+ * The grammars disagree about what the next door is — THE DESCENT cuts an alcove
+ * into both legs of the Split — so a spec that means *the deep way still gets to
+ * the door* asserts the reach rather than the neighbour. Template ids, because
+ * that is the only half of a map a spec is allowed to name.
+ */
+function aheadOf(state: GameState, nodeId: string): readonly string[] {
+  const run = state.run!
+  return [...reachableFrom(run.map, nodeId)].map((id) => run.map.nodes[id]!.templateId)
 }
 
 /** Where a press has to go, from where the run is standing. */
@@ -371,17 +389,24 @@ describe('the Chain Vault', () => {
     expect(roomAt(reduce(press(shut, 'vault-chain'), { type: 'GO', to: deep }).run!).id).toBe('chain-vault')
   })
 
-  it('leads to the Deep Way once the gate is up', () => {
+  it('leads on down the deep leg once the gate is up', () => {
+    // **Where it leads is the map's, and the map changed.** THE DESCENT now cuts
+    // an alcove into the deep leg between the gate and the Marrow, so what the
+    // vault opens onto is whatever the grammar put next — which is exactly why a
+    // room template names no destination. What is asserted is that the gate
+    // actually opens onto something, and that the leg still reaches the keeper.
     const open = press(standingIn('chain-vault'), 'vault-chain', 'vault-lever')
     const on = reduce(open, { type: 'GO', to: onwardFrom(open) })
-    expect(roomAt(on.run!).id).toBe('deep')
-    // And the deep way rejoins. The map says so now, not the room.
-    expect(roomAt(on.run!, onwardFrom(on)).id).toBe('gate')
+    expect(on.run!.roomId).not.toBe(open.run!.roomId)
+    expect(aheadOf(on, on.run!.roomId)).toContain('gate')
   })
 
   it('is only on the deep route, and the stair skips it', () => {
     const fork = standingIn('fork')
-    expect(roomAt(fork.run!, towards(fork, 'STAIR')).id).toBe('gate')
+    // The stair does not pass the vault, and the deep way does. Which *room* each
+    // mouth opens onto is the grammar's — the descent puts an alcove on the stair
+    // leg now — so what is asserted is the reach, not the next door.
+    expect(aheadOf(fork, towards(fork, 'STAIR'))).not.toContain('chain-vault')
     expect(roomAt(fork.run!, towards(fork, 'DEEP')).id).toBe('chain-vault')
   })
 })
@@ -549,7 +574,8 @@ describe('what a save carries', () => {
     const open = press(standingIn('chain-vault'), 'vault-chain', 'vault-lever')
     const back = reloaded(open)
     expect(roomStateOf(back)).toEqual(roomStateOf(open))
-    expect(roomAt(reduce(back, { type: 'GO', to: onwardFrom(back) }).run!).id).toBe('deep')
+    const on = reduce(back, { type: 'GO', to: onwardFrom(back) })
+    expect(on.run!.roomId).not.toBe(back.run!.roomId)
   })
 
   it('brings a half-worked Chain Vault back half-worked, and still shut', () => {
@@ -562,7 +588,7 @@ describe('what a save carries', () => {
   })
 
   it('was bumped, because the shape of a run changed', () => {
-    expect(SAVE_VERSION).toBe(11)
+    expect(SAVE_VERSION).toBe(12)
     // And the policy is unchanged: an older save is discarded, never migrated.
     // 8 is the War of Bones, whose run carried a two-part pile and whose fight
     // carried two lines of thrown bones. Neither shape can be read here, and

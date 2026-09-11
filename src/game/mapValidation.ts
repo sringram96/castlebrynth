@@ -20,7 +20,7 @@
  * START rather than four rooms later at a button that leads nowhere.
  */
 
-import { canHost } from '../content/roomResolver.js'
+import { canHost, territoriesOf } from '../content/roomResolver.js'
 import { ROOM_TEMPLATES } from '../content/rooms.js'
 import { WAYS } from '../content/runPlans.js'
 import type { RunMap, RunRoom } from './map.js'
@@ -154,8 +154,11 @@ export function validateRunMap(map: RunMap): readonly MapProblem[] {
     if (t.role !== node.role) {
       out.push(problem('role-mismatch', `${node.id} wants a ${node.role} and holds ${t.id}, which is a ${t.role}`, node.id))
     }
-    if (t.territory !== node.territory) {
-      out.push(problem('territory-mismatch', `${node.id} is in ${node.territory} and holds ${t.id}, which is ${t.territory}`, node.id))
+    // Membership, and the same statement of it `fits` uses — a template that
+    // honestly reads in two stretches of the descent is allowed to stand in
+    // either, and is still not allowed to stand in a third.
+    if (!territoriesOf(t).includes(node.territory)) {
+      out.push(problem('territory-mismatch', `${node.id} is in ${node.territory} and holds ${t.id}, which is ${territoriesOf(t).join('/')}`, node.id))
     }
 
     // 5. More ways in or out than the picture can carry.
@@ -221,20 +224,42 @@ export function validateRunMap(map: RunMap): readonly MapProblem[] {
     if (!reachable.has(node.id)) {
       out.push(problem('unreachable', `${node.id} cannot be reached from ${map.start}`, node.id))
     }
+
+    // 11. A thing seated somewhere the picture does not have a seat.
+    //
+    // The placement law, asserted: the director may only stand something in a
+    // **pre-measured spare seat**, because a seat is a press on a painting and a
+    // coordinate the generator made up would be a press on a wall. A room asked
+    // to hold more than it has seats for fails here rather than silently dropping
+    // the treasure.
+    const seats = new Set((t.spareSeats ?? []).map((s) => s.id))
+    for (const offer of node.dice ?? []) {
+      if (!seats.has(offer.seat)) {
+        out.push(problem('unseated-placement', `${node.id} (${t.id}) seats ${offer.die} on "${offer.seat}", which its picture does not have`, node.id))
+      }
+    }
+    if ((node.dice?.length ?? 0) > seats.size) {
+      out.push(problem('oversubscribed-seats', `${node.id} (${t.id}) holds ${node.dice?.length} things and has ${seats.size} seats`, node.id))
+    }
+
+    // 12. Prose cut into a wall with no wall to cut it into.
+    if ((node.carvings?.length ?? 0) > 0 && !t.carvingAt) {
+      out.push(problem('uncarvable', `${node.id} (${t.id}) carries a carving and its picture has nowhere to cut one`, node.id))
+    }
   }
 
-  // 11. **The DAG law.** Forward-only, this wave, and asserted rather than
+  // 13. **The DAG law.** Forward-only, this wave, and asserted rather than
   //     assumed. Written to be repealed in one line — see `cyclesIn`.
   for (const id of cyclesIn(map)) {
     out.push(problem('cycle', `${id} is on a cycle; this descent is a DAG`, id))
   }
 
-  // 12. Something leads back into the start, so the root is not a root.
+  // 14. Something leads back into the start, so the root is not a root.
   if ((incoming.get(map.start) ?? 0) > 0) {
     out.push(problem('malformed-root', `${map.start} is the start and something leads into it`, map.start))
   }
 
-  // 13. A descent with no way out of it.
+  // 15. A descent with no way out of it.
   const endings = [...reachable].filter((id) => ROOM_TEMPLATES[map.nodes[id]!.templateId]?.ending)
   if (map.nodes[map.start] && endings.length === 0) {
     out.push(problem('no-reachable-exit', 'no ending is reachable from the start'))
@@ -244,6 +269,49 @@ export function validateRunMap(map: RunMap): readonly MapProblem[] {
 }
 
 const roleOf = (map: RunMap, id: string): string | undefined => map.nodes[id]?.role
+
+/**
+ * The roles a run can come out of carrying something it did not come in with.
+ *
+ * What the old *somewhere to heal* rule was protecting, stated as the thing it
+ * was protecting. A `recovery` puts bones back, an `exchange` sells a die, a
+ * `find` has one lying in it — and a descent that offers none of the three
+ * before the door is a descent where the dice at the start are the dice at the
+ * end, which is the run the whole of this wave exists to stop being the game.
+ */
+const CAN_CHANGE_YOUR_FATE: readonly string[] = ['recovery', 'exchange', 'find']
+
+/**
+ * The roles that ask a run for something on the way past.
+ *
+ * A fight asks for bones and takes them. A toll asks and charges. An exchange
+ * asks and lets the run decline — which is the weakening this list records; see
+ * `keeper-unearned` below for why it is a deliberate one rather than a slip.
+ */
+const ASKS_FOR_SOMETHING: readonly string[] = ['encounter', 'toll', 'exchange']
+
+/**
+ * Whether every route out of the start passes through this node.
+ *
+ * The treasure law's one piece of arithmetic. A thing on a spine is a thing every
+ * run gets, and a thing every run gets is a step rather than a treasure — so the
+ * Hand has to be **missable**, and the only honest way to say that is that some
+ * route to a way out does not go past it.
+ */
+export function isSpine(map: RunMap, nodeId: string): boolean {
+  const routes = routesFrom(map, map.start).filter(
+    (r) => ROOM_TEMPLATES[map.nodes[r[r.length - 1]!]?.templateId ?? '']?.ending,
+  )
+  return routes.length > 0 && routes.every((route) => route.includes(nodeId))
+}
+
+/** Every node of this map holding a core die, by what the die is there for. */
+export function offersIn(map: RunMap, kind: string): readonly string[] {
+  return Object.values(map.nodes)
+    .filter((n) => (n.dice ?? []).some((d) => d.kind === kind))
+    .map((n) => n.id)
+    .sort()
+}
 
 /**
  * The dramatic grammar of the descent this game actually has.
@@ -283,19 +351,39 @@ export function validateDescent(map: RunMap): readonly MapProblem[] {
     const before = route.slice(0, route.indexOf(keeper.id))
     // A keeper you can walk to for free is a boss the run never earned.
     //
-    // **Re-based by the reel wave.** It used to say *no fight before it*, which
-    // was true of a descent with one spine and became false the moment the
-    // Cleft existed: the right-hand branch trades the Gnawing for the
-    // Offertory, which is not a fight and is very much a price. What the rule
-    // was always protecting is that the run pays something before the door, so
-    // that is what it now says — an encounter **or** a toll.
-    if (!before.some((id) => roleOf(map, id) === 'encounter' || roleOf(map, id) === 'toll')) {
-      out.push(problem('keeper-unearned', `${route.join(' → ')} reaches the keeper having paid nothing`, keeper.id))
+    // **Re-based twice.** The reel wave widened *no fight before it* to *an
+    // encounter or a toll*, because the Cleft's right-hand branch trades the
+    // Gnawing for the Offertory and a toll is very much a price. The crooked
+    // bones wave widens it again, to include an `exchange`, and that is a real
+    // weakening rather than a restatement — so it is recorded as one:
+    //
+    // On THE TITHE's right-hand branch the run passes the Bone Carver instead of
+    // the Gnawing, and the Carver's price is **optional**. A run can therefore
+    // reach the Warden at thirty bones having spent nothing, which the old rule
+    // forbade. That is the grammar's whole premise: thirty bones, no Font, and one
+    // decision about what to turn them into. What the rule protects now is that
+    // the route passed somewhere that **asked** the run for something.
+    if (!before.some((id) => ASKS_FOR_SOMETHING.includes(roleOf(map, id) ?? ''))) {
+      out.push(problem('keeper-unearned', `${route.join(' → ')} reaches the keeper having passed nothing that asked it for anything`, keeper.id))
     }
-    // And the fork's question — how much health am I willing to spend — is only
-    // a question if the run has been told what it has to spend.
-    if (!before.some((id) => roleOf(map, id) === 'recovery')) {
-      out.push(problem('no-recovery', `${route.join(' → ')} reaches the keeper with nowhere to heal`, keeper.id))
+    // And the fork's question is only a question if the run has had somewhere to
+    // answer it.
+    //
+    // **Re-based by the crooked-bones wave.** It used to say *nowhere to heal*,
+    // which was the right rule while every grammar had a Font in it. THE TITHE
+    // has none anywhere, deliberately — the thirty bones a run starts with are
+    // its whole budget and the only way to change fate is to buy a die — so what
+    // the rule was always protecting has to be said as what it actually is:
+    // the run reaches the door having passed somewhere it could **change what it
+    // is carrying**. A recovery, an exchange, or a room that pays.
+    if (!before.some((id) => CAN_CHANGE_YOUR_FATE.includes(roleOf(map, id) ?? ''))) {
+      out.push(
+        problem(
+          'no-reprieve',
+          `${route.join(' → ')} reaches the keeper having passed nowhere that could change what it carries`,
+          keeper.id,
+        ),
+      )
     }
   }
 
@@ -310,6 +398,23 @@ export function validateDescent(map: RunMap): readonly MapProblem[] {
     }
     if (!route.includes(keeper.id)) {
       out.push(problem('keeper-skipped', `${route.join(' → ')} reaches the way out without passing the keeper`, last))
+    }
+  }
+
+  // **The treasure law.** One per descent, and missable.
+  //
+  // Two statements and they fail for different reasons. More or fewer than one is
+  // a generator bug: the seed picks exactly one of two candidates and the loser
+  // keeps an ordinary bargain. One on a spine is a *plan* bug, and the worse of
+  // the two — a thing every route passes is a step, and what the hints promise is
+  // something somebody went down there for.
+  const hoards = offersIn(map, 'treasure')
+  if (hoards.length !== 1) {
+    out.push(problem('treasure-count', `a descent holds one treasure; this one holds ${hoards.length}`))
+  }
+  for (const id of hoards) {
+    if (isSpine(map, id)) {
+      out.push(problem('treasure-on-a-spine', `the treasure at ${id} is on every route out, so it is not missable`, id))
     }
   }
 

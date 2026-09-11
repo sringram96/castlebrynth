@@ -15,15 +15,18 @@ import { reduce } from '../../src/game/reducer.js'
 import type { Action } from '../../src/game/reducer.js'
 import { TITLE } from '../../src/game/state.js'
 import type { GameState, RunState } from '../../src/game/state.js'
-import { enemy } from '../../src/content/enemies.js'
+import { breakFor, enemy } from '../../src/content/enemies.js'
 import type { ScoreId } from '../../src/combat/hands.js'
 import type { IronDieId, ItemDieId, TalismanId } from '../../src/content/dice.js'
 import { firstNodeOf, roomAt } from '../../src/game/map.js'
 import { legal, stateOf } from '../../src/content/interactions.js'
 import { canTake } from '../../src/game/reducer.js'
 import type { RewardId } from '../../src/content/rewards.js'
-import { drinkFor, holdFor, scoreFor, shouldScore } from './policies.js'
-import type { Table, Tier } from './policies.js'
+import { buyFor, drinkFor, holdFor, scoreFor, shouldScore } from './policies.js'
+import type { DiePolicy, Table, Tier } from './policies.js'
+import { generateRunPlan } from '../../src/game/runGenerator.js'
+import { claimedIn } from '../../src/game/reducer.js'
+import type { CoreDieId } from '../../src/content/dice.js'
 
 const play = (state: GameState, ...actions: Action[]): GameState =>
   actions.reduce((s, a) => reduce(s, a), state)
@@ -38,7 +41,10 @@ function tableOf(state: GameState): Table {
     usedHands: combat.usedHands,
     enemyHp: combat.enemyHp,
     enemyMaxHp: combat.enemyMaxHp,
-    enemyDamage: enemy(combat.enemyId).damage,
+    // **The rung it is standing on**, not the enemy's nominal figure. A policy may
+    // only know what the screen shows, and what the screen shows is `breakFor` of
+    // the turn in front of it.
+    enemyDamage: breakFor(enemy(combat.enemyId), combat),
     bones: run.bones,
     vials: run.vials,
     talismans: run.talismans,
@@ -172,6 +178,15 @@ export interface Loadout {
   readonly ironDice?: readonly IronDieId[]
   readonly itemDice?: readonly ItemDieId[]
   readonly talismans?: readonly TalismanId[]
+  /**
+   * What the six slots hold, when a cell wants to say.
+   *
+   * Omitted means **six bare bones**, which is the floor every figure in the
+   * report is set against: no gate, target or enemy number may require a crooked
+   * die any more than it may require the iron. The die swing table is what says
+   * what one is worth, and it is never a target.
+   */
+  readonly hand?: readonly CoreDieId[]
 }
 
 /**
@@ -196,6 +211,7 @@ export function fightIn(templateId: string, seed: number, loadout: Loadout = {})
     ...(loadout.ironDice !== undefined ? { ironDice: loadout.ironDice } : {}),
     ...(loadout.itemDice !== undefined ? { itemDice: loadout.itemDice } : {}),
     ...(loadout.talismans !== undefined ? { talismans: loadout.talismans } : {}),
+    ...(loadout.hand !== undefined ? { hand: loadout.hand } : {}),
   }
   return { ...started, run: next }
 }
@@ -214,6 +230,18 @@ export interface RunResult {
   readonly acquired: readonly RewardId[]
   /** Bones that actually broke, fights and rooms together. */
   readonly bonesLost: number
+  /** Core dice actually bought, in the order they were put into the hand. */
+  readonly bought: readonly CoreDieId[]
+  /** Bones handed over for them. A toll the old report had no row for. */
+  readonly spentOnDice: number
+  /** What the six slots held when the run ended. */
+  readonly hand: readonly CoreDieId[]
+  /** Whether the run ever stood in the room the treasure was chained in. */
+  readonly reachedTreasure: boolean
+  /** And whether it walked out carrying it. */
+  readonly tookTreasure: boolean
+  /** Which grammar the seed dealt. */
+  readonly plan: string
 }
 
 /** Which way the policy takes at the Cleft. `left` is the fight. */
@@ -228,13 +256,65 @@ export type Branch = 'left' | 'right'
 export function simulateRun(
   seed: number,
   tier: Tier,
-  { deep = true, bare = false, branch = 'left' as Branch } = {},
+  {
+    deep = true,
+    bare = false,
+    branch = 'left' as Branch,
+    dice = 'never' as DiePolicy,
+    hand = undefined as readonly CoreDieId[] | undefined,
+  } = {},
 ): RunResult {
   let state = reduce(TITLE, { type: 'START_RUN', seed })
+  if (hand) state = { ...state, run: { ...state.run!, hand } }
   const fights: FightResult[] = []
   const acquired: RewardId[] = []
+  const bought: CoreDieId[] = []
   const worked = new Set<string>()
   let bonesLost = 0
+  let spentOnDice = 0
+  let reachedTreasure = false
+  let tookTreasure = false
+
+  /**
+   * Answer whatever core dice are lying in this room.
+   *
+   * The picker is presentation-local, so the model does here exactly what a thumb
+   * does: read the die, read the price, and either hand over the bones or walk on.
+   * `CLAIM_DIE` is one transition, so there is no half-bought state to model.
+   */
+  const answerDice = (): void => {
+    for (;;) {
+      const run = state.run
+      if (!run) return
+      const here = roomAt(run)
+      const claimed = new Set(claimedIn(run))
+      const next = here.dice.findIndex((_, index) => !claimed.has(index))
+      if (next < 0) return
+      const offer = here.dice[next]!
+      if (offer.kind === 'treasure') reachedTreasure = true
+      const slot = buyFor(
+        { die: offer.die, ...(offer.price !== undefined ? { price: offer.price } : {}), bones: run.bones, hand: run.hand },
+        dice,
+      )
+      if (slot === undefined) return
+      const after = reduce(state, { type: 'CLAIM_DIE', index: next, slot })
+      if (after === state) return
+      spentOnDice += offer.price ?? 0
+      bought.push(offer.die)
+      if (offer.kind === 'treasure') tookTreasure = true
+      state = after
+    }
+  }
+
+  /** Every reading the report wants, whichever way the run ended. */
+  const readings = (): Omit<RunResult, 'reachedExit' | 'rooms' | 'bonesLeft' | 'fights' | 'found' | 'acquired' | 'bonesLost' | 'diedIn'> => ({
+    bought,
+    spentOnDice,
+    hand: state.run?.hand ?? [],
+    reachedTreasure,
+    tookTreasure,
+    plan: generateRunPlan(seed).id,
+  })
 
   /**
    * Pick up everything lying in this room that the run can carry.
@@ -277,6 +357,7 @@ export function simulateRun(
         found: acquired.length,
         acquired,
         bonesLost,
+        ...readings(),
       }
     }
     if (state.mode === 'dead') {
@@ -289,6 +370,7 @@ export function simulateRun(
         found: acquired.length,
         acquired,
         bonesLost,
+        ...readings(),
       }
     }
 
@@ -309,6 +391,7 @@ export function simulateRun(
           found: acquired.length,
           acquired,
           bonesLost,
+          ...readings(),
         }
       }
       takeLoot()
@@ -361,6 +444,7 @@ export function simulateRun(
           found: acquired.length,
           acquired,
           bonesLost,
+          ...readings(),
         }
       }
       continue
@@ -369,6 +453,9 @@ export function simulateRun(
     // Anything a room has already revealed and left lying about is picked up
     // on the way past — the chest's find, the cage's iron, the recess's candle.
     takeLoot()
+    // And whatever is for sale in it is answered: the Carver's table, a chained
+    // alcove, the treasure. Which is the whole of Part 4's measurement.
+    answerDice()
 
     const exits = here.exits
     // By the label, not by the destination. Which way is a *choice at a
@@ -394,5 +481,6 @@ export function simulateRun(
     found: acquired.length,
     acquired,
     bonesLost,
+    ...readings(),
   }
 }

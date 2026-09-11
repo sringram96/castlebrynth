@@ -32,7 +32,8 @@ import type { DieValue } from '../../src/combat/roll.js'
 import { legalScores, multiplierOf } from '../../src/combat/hands.js'
 import type { NamedHandId, ScoreId } from '../../src/combat/hands.js'
 import { talismanFlatOf, totalsFor } from '../../src/combat/loadout.js'
-import type { TalismanId } from '../../src/content/dice.js'
+import { coreDie } from '../../src/content/dice.js'
+import type { CoreDieId, TalismanId } from '../../src/content/dice.js'
 import { BONE_CEILING } from '../../src/content/bones.js'
 
 export type Tier = 'naive' | 'heuristic'
@@ -184,4 +185,100 @@ export function drinkFor(t: Table, tier: Tier): boolean {
   if (tier === 'naive') return t.bones <= t.enemyDamage * 2
   if (t.bones <= 8) return true
   return t.bones <= BONE_CEILING - 5
+}
+
+// ── buying a die ───────────────────────────────────────────────────────
+
+/**
+ * How a simulated player answers a priced die.
+ *
+ * Six policies, and the sweep exists to say which dominates rather than to
+ * assume. The expectation going in is that **always-take dominates at thirty
+ * bones** — three of thirty is close to free — and the point of measuring it is
+ * that *we expect* is not a number. See `docs/COMBAT.md` § Balance.
+ *
+ *   `never`      walk past every table and every chain. The floor.
+ *   `always`     buy whatever is offered, whenever the pile allows it.
+ *   `fits`       buy only when the die improves the slot it would replace, or
+ *                doubles down on an archetype the hand is already building.
+ *   `above-N`    always-take, but only while the pile is over N.
+ */
+export type DiePolicy = 'never' | 'always' | 'fits' | 'above-10' | 'above-15' | 'above-20'
+
+export const DIE_POLICIES: readonly DiePolicy[] = [
+  'never',
+  'always',
+  'fits',
+  'above-10',
+  'above-15',
+  'above-20',
+]
+
+/** Exactly what is on the screen when a die is being decided on. */
+export interface Shop {
+  readonly die: CoreDieId
+  /** Absent for the treasure, which is unpriced. */
+  readonly price?: number
+  readonly bones: number
+  readonly hand: readonly CoreDieId[]
+}
+
+/** What a die averages. The one number a strip of six chips actually conveys. */
+const meanFace = (id: CoreDieId): number =>
+  coreDie(id).faces.reduce((total, face) => total + face, 0) / coreDie(id).faces.length
+
+/**
+ * How many different things a die can come up with.
+ *
+ * The other number a strip conveys at a glance, and the interesting one: a die
+ * with three distinct faces makes a TRIPLE far more often than one with six, and
+ * a player reading `1 1 2 2 6 6` can see that without arithmetic.
+ */
+const distinctFaces = (id: CoreDieId): number => new Set(coreDie(id).faces).size
+
+/** The floor over which a policy named `above-N` will part with bones. */
+function floorOf(policy: DiePolicy): number {
+  const named = /^above-(\d+)$/.exec(policy)
+  return named ? Number(named[1]) : 0
+}
+
+/**
+ * Which of the six to give up for this die, or nothing because it is declined.
+ *
+ * It chooses the **weakest slot by mean face**, which is the only comparison a
+ * strip of chips supports without arithmetic a player would not do: a run holding
+ * five bones and a Jawbone gives up a bone. Ties go to the earliest slot, so the
+ * answer is deterministic.
+ *
+ * A bargain is never lethal, so the pile has to be strictly over the price — the
+ * same rule the reducer enforces, stated here so the policy never asks for a press
+ * that would be refused.
+ */
+export function buyFor(shop: Shop, policy: DiePolicy): number | undefined {
+  if (policy === 'never') return undefined
+  const price = shop.price ?? 0
+  if (price > 0 && shop.bones <= price) return undefined
+  if (shop.bones <= floorOf(policy)) return undefined
+
+  let slot = 0
+  for (let i = 1; i < shop.hand.length; i++) {
+    if (meanFace(shop.hand[i]!) < meanFace(shop.hand[slot]!)) slot = i
+  }
+
+  if (policy === 'fits') {
+    // **The archetype heuristic**, and it is three reasons rather than one:
+    //
+    //   it hits harder   — a higher mean than the worst thing in the hand;
+    //   it hits narrower — fewer distinct faces, which is what makes multiples;
+    //   it doubles down  — the hand already holds one, so a second sharpens it.
+    //
+    // The narrowness test is the one that matters and the one a mean-face rule
+    // misses entirely: a Knucklebone averages *less* than a plain bone and is far
+    // better at FOUR, which is the whole reason the crooked dice are interesting.
+    const better = meanFace(shop.die) > meanFace(shop.hand[slot]!)
+    const narrower = distinctFaces(shop.die) < distinctFaces(shop.hand[slot]!)
+    const doubling = shop.hand.includes(shop.die)
+    if (!better && !narrower && !doubling) return undefined
+  }
+  return slot
 }

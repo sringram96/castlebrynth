@@ -15,19 +15,21 @@ import { STARTING_BONES, roomToRecover } from '../content/bones.js'
 import { LOOT_REWARDS, ironDieOf, itemDieOf, reward } from '../content/rewards.js'
 import type { RewardId } from '../content/rewards.js'
 import {
+  CORE_RULE,
   HAND_SLOTS,
   IRON_CAP,
   ITEM_CAP,
   STARTING_HAND,
   STARTING_IRON,
   STARTING_TALISMANS,
+  coreDie,
   ironDie,
   isCoreDieId,
   itemDie,
   talisman,
 } from '../content/dice.js'
 import type { CoreDieId, TalismanId } from '../content/dice.js'
-import { enemy } from '../content/enemies.js'
+import { breakFor, enemy } from '../content/enemies.js'
 import type { Enemy } from '../content/enemies.js'
 import { defeatOf } from '../content/defeat.js'
 import { exitsOpen, legal, stateOf } from '../content/interactions.js'
@@ -47,9 +49,9 @@ import {
   talismansFor,
   totalsFor,
 } from '../combat/loadout.js'
-import { HAND_DICE, MAX_ROLLS, canonicalHeld, rerollDice, rollDice } from '../combat/roll.js'
+import { MAX_ROLLS, canonicalHeld, rerollHand, rollHand } from '../combat/roll.js'
 import { roomAt } from './map.js'
-import type { ResolvedRoom } from './map.js'
+import type { DieOffer, ResolvedRoom } from './map.js'
 import { generateRun } from './runGenerator.js'
 import { RELIQUARY_CHANNEL, RITUAL_CHANNEL, RNG_CHANNEL, combatSalt, nodeSalt, rngAt } from './rng.js'
 import type { Rng } from './rng.js'
@@ -104,6 +106,22 @@ export type Action =
    * `docs/COMBAT.md` § Open questions.
    */
   | { readonly type: 'REPLACE_DIE'; readonly slot: number; readonly die: CoreDieId }
+  /**
+   * Take the nth core die lying in this room, in place of one of the six.
+   *
+   * **One transition for the whole of it**: the price charges, the slot is
+   * swapped, and the seat is marked claimed, all in the same tick, so there is no
+   * state anywhere in which a run has paid and not been given the die. That is
+   * the whole reason this exists beside `REPLACE_DIE` rather than being two
+   * dispatches — and it is why the picker that chooses the slot is
+   * presentation-local: opening it commits nothing, and cancelling leaves the die
+   * exactly where it lay, uncharged.
+   *
+   * It is **never lethal**. A press is not offered when the pile is not strictly
+   * bigger than the price, and it is refused here as well, because the view's
+   * claim that a press is legal is not what makes it legal.
+   */
+  | { readonly type: 'CLAIM_DIE'; readonly index: number; readonly slot: number }
   | { readonly type: 'DRINK' }
   /**
    * Pick up the nth thing lying in this room.
@@ -282,6 +300,73 @@ function placeLoot(run: RunState, ids: readonly RewardId[]): RunState {
 /** Whether anything in this room is still lying there unclaimed. */
 export function unclaimedIn(run: RunState, nodeId: string = run.roomId): readonly LootItem[] {
   return lootIn(run, nodeId).filter((l) => !l.taken)
+}
+
+// ── core dice: the hand, for sale ──────────────────────────────────────
+
+/** Which seats in this room have already been emptied. */
+export function claimedIn(run: RunState, nodeId: string = run.roomId): readonly number[] {
+  return run.claimed?.[nodeId] ?? []
+}
+
+/**
+ * The core dice still lying in this room, with the seat each one is on.
+ *
+ * The index is the **position in the room's offer list**, not a position in what
+ * is left — exactly as `TAKE` addresses loot by position in the room. A press has
+ * to be able to say which object it was, and a list that renumbered itself as
+ * things were bought could not.
+ */
+export function diceOnOffer(
+  run: RunState,
+  nodeId: string = run.roomId,
+): readonly { readonly index: number; readonly offer: DieOffer }[] {
+  const claimed = new Set(claimedIn(run, nodeId))
+  return roomAt(run, nodeId).dice.flatMap((offer, index) =>
+    claimed.has(index) ? [] : [{ index, offer }],
+  )
+}
+
+/**
+ * Whether a die in a room can be taken at all.
+ *
+ * **A bargain is never lethal.** The pile has to be strictly bigger than the
+ * price — three bones out of three is not a trade, it is the room killing you for
+ * a die you will not live to throw — and the press is hidden rather than greyed,
+ * with the say line owning the refusal. The treasure has no price and is always
+ * takeable: what it cost was the road.
+ *
+ * One question, one answer, asked by the reducer before a claim is honoured and
+ * by the view before a verb is drawn.
+ */
+export function canClaim(run: RunState, offer: DieOffer): boolean {
+  return offer.price === undefined || run.bones > offer.price
+}
+
+/** Why a die cannot be taken, in the words the player is owed. */
+export function refusalForDie(run: RunState, offer: DieOffer): string | undefined {
+  if (canClaim(run, offer)) return undefined
+  const price = offer.price ?? 0
+  return run.bones === price
+    ? `It wants ${NUMBER[price]?.toLowerCase() ?? price}. I have ${NUMBER[price]?.toLowerCase() ?? price}. No.`
+    : `It wants ${price}. I have ${run.bones}.`
+}
+
+/**
+ * What a die lying in a room says when it is looked at.
+ *
+ * Name, and the price before the press. The **strip** is drawn under it by the
+ * word band, off the die's own table — a found thing states its exact mechanic
+ * where it lies, and since the faces are drawn rather than described, the faces
+ * are what the LOOK is for.
+ */
+function dieSay(run: RunState, offer: DieOffer): string {
+  const die = coreDie(offer.die)
+  const refused = refusalForDie(run, offer)
+  if (offer.price === undefined) {
+    return `${die.name}. ${die.flavour} It is not priced. It cost what it cost to get here.`
+  }
+  return `${die.name}. ${die.flavour} ${refused ?? `${NUMBER[offer.price] ?? offer.price} of my bones.`}`
 }
 
 /** What the room says about a press that changed something. */
@@ -658,6 +743,30 @@ export function reduce(state: GameState, action: Action): GameState {
         }
       }
 
+      // A core die on a table or on a chain is looked at exactly as a found
+      // thing is: its name, its price before the press, and its faces drawn
+      // under the line. Nothing is committed and nothing is charged.
+      if (action.detailId.startsWith('die:')) {
+        const index = Number(action.detailId.slice(4))
+        const offer = roomAt(run).dice[index]
+        if (!offer || claimedIn(run).includes(index)) return state
+        return { ...state, run: { ...run, say: dieSay(run, offer) } }
+      }
+
+      // And the prose the plan cut into this room's wall.
+      if (action.detailId === 'carving') {
+        const line = roomAt(run).carvings[0]
+        if (!line) return state
+        return {
+          ...state,
+          run: {
+            ...run,
+            say: line,
+            looked: run.looked.includes('carving') ? run.looked : [...run.looked, 'carving'],
+          },
+        }
+      }
+
       const detail = roomAt(run).details.find((d) => d.id === action.detailId)
       if (!detail) return state
       return {
@@ -741,7 +850,10 @@ export function reduce(state: GameState, action: Action): GameState {
       if (!live(state, run) || !combat) return state
       if (combat.dice.length > 0 || combat.rollsUsed !== 0) return state
 
-      const dice = rollDice(HAND_DICE, fightRng(run, combat.round, 1, RNG_CHANNEL.playerRoll))
+      // **Each slot off its own die.** Six slots, left to right, one draw apiece —
+      // which is the whole of what a crooked die is and the reason a hand of six
+      // plain bones replays a seed exactly as it always did.
+      const dice = rollHand(run.hand, fightRng(run, combat.round, 1, RNG_CHANNEL.playerRoll))
       const ironRolls = rollIron(
         run.ironDice,
         fightRng(run, combat.round, 1, RNG_CHANNEL.ironRoll),
@@ -774,9 +886,10 @@ export function reduce(state: GameState, action: Action): GameState {
       if (held.length === combat.dice.length) return state
 
       const rollNumber = combat.rollsUsed + 1
-      const dice = rerollDice(
+      const dice = rerollHand(
         combat.dice,
         held,
+        run.hand,
         fightRng(run, combat.round, rollNumber, RNG_CHANNEL.playerRoll),
       )
       return {
@@ -845,9 +958,14 @@ export function reduce(state: GameState, action: Action): GameState {
       const killed = landed && enemyHp === 0
 
       // A dead thing does not answer. The kill happened first, and it happened
-      // whatever the pile was down to. What a living one swings is its own
-      // fixed number, less whatever the iron came up holding.
-      const enemyHit = landed && !killed ? e.damage : 0
+      // whatever the pile was down to. What a living one swings is **its own rule
+      // of the turn it is standing in** — how near it is, how much of it is left,
+      // or what line was just committed — less whatever the iron came up holding.
+      //
+      // `breakFor` is the one authority on that number. The tray derived the same
+      // figure off the same function before the press, which is what makes the
+      // rule a stated mechanic rather than a surprise.
+      const enemyHit = landed && !killed ? breakFor(e, combat, action.hand) : 0
       const retaliation = answerAfterBlock(enemyHit, block)
       const bones = Math.max(0, afterCost - retaliation)
 
@@ -1180,6 +1298,51 @@ export function reduce(state: GameState, action: Action): GameState {
       if (run.hand[action.slot] === action.die) return state
       const hand = run.hand.map((id, index) => (index === action.slot ? action.die : id))
       return { ...state, run: { ...run, hand } }
+    }
+
+    /**
+     * The price, the swap and the claim, in one tick.
+     *
+     * Every guard here is a statement of a law rather than a belt: the slot is
+     * one of six, the die is one somebody wrote, the seat has not already been
+     * emptied, and **the price is never the last of the pile**. A press that
+     * reaches here illegally — a stale dispatch, a second confirm from a picker
+     * the screen has already closed — changes nothing.
+     *
+     * What it deliberately does not do is ask whether the swap is an improvement.
+     * A run is allowed to put a Saint's Finger in place of a Jawbone and regret
+     * it; which route a run takes is which build it gets, and which slot it spends
+     * is the same sentence one level down.
+     */
+    case 'CLAIM_DIE': {
+      const run = state.run
+      if (!run || state.mode !== 'explore') return state
+      if (!Number.isInteger(action.slot) || action.slot < 0 || action.slot >= HAND_SLOTS) return state
+
+      const here = roomAt(run)
+      const offer = here.dice[action.index]
+      if (!offer || claimedIn(run).includes(action.index)) return state
+      if (!isCoreDieId(offer.die)) return state
+      if (!canClaim(run, offer)) return state
+
+      const price = offer.price ?? 0
+      const taken = coreDie(offer.die)
+      const paid = price > 0 ? ` ${price} bones for it.` : ''
+
+      return {
+        ...state,
+        meta: remember(state.meta, [offer.die]),
+        run: {
+          ...run,
+          bones: run.bones - price,
+          hand: run.hand.map((id, index) => (index === action.slot ? offer.die : id)),
+          claimed: { ...run.claimed, [run.roomId]: [...claimedIn(run), action.index] },
+          // The line owns the discarded die **once**, and then never again. There
+          // is no inventory for it to go to and no screen that lists it: the hand
+          // is six, nothing sits outside it, and what was in that slot is gone.
+          say: `${taken.name}. ${CORE_RULE}${paid} I put the old one down. It had been with me since the stair.`,
+        },
+      }
     }
   }
 

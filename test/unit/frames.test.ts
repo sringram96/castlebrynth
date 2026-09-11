@@ -137,8 +137,11 @@ describe('every frame declares what it can hold', () => {
   })
 
   it('fails loudly, and names the room and the number', () => {
+    // Five bricks and nothing else: the fixture drops the Choir's carving spot so
+    // the number under test is the five it says it is.
+    const { carvingAt: _nowhere, ...choir } = ROOM_TEMPLATES['passage']!
     const piled: RoomTemplate = {
-      ...ROOM_TEMPLATES['passage']!,
+      ...choir,
       id: 'piled',
       details: [1, 2, 3, 4, 5].map((n) => ({
         id: `brick-${n}`,
@@ -287,6 +290,13 @@ describe('the assignment table this wave shipped', () => {
     passage: ['drift'],
     hollow: ['drift'],
     cleft: ['drift'],
+    // The Bone Carver is the Choir's picture with a table in it, so it carries the
+    // ossuary's dust for the same reason the Choir does — and it carries it in the
+    // chapel too, because `ambienceFor` reads the **template's** territory and what
+    // is in a frame is a fact about the painting rather than about the slot the plan
+    // put it in. The niche is deliberately absent: an alcove about to ask whether you
+    // will pay should not be fidgeting, which is this table's own ruling.
+    carver: ['drift'],
   }
 
   for (const t of ROOM_LIBRARY) {
@@ -299,7 +309,7 @@ describe('the assignment table this wave shipped', () => {
     // Still is a choice. The Split, the Confluence, the Door and the way out
     // have nothing moving in them, and that is the wave's ruling rather than an
     // omission: a room that is about to ask a question should not be fidgeting.
-    for (const id of ['fork', 'confluence', 'gate', 'exit']) {
+    for (const id of ['fork', 'confluence', 'gate', 'exit', 'niche']) {
       expect(ambienceFor(ROOM_TEMPLATES[id]!), id).toEqual([])
     }
   })

@@ -41,6 +41,24 @@ export const AMBIENT_STEP_MS = 1000 / AMBIENT_HZ
 export const AMBIENT_STEPS = 4
 
 /**
+ * A standing horror's breath: whole pixels, one per step, over four steps.
+ *
+ * `0 1 1 0` rather than `0 1 0 1` — it holds at the top for a step, which is what
+ * makes one pixel read as a breath rather than as a flicker. The same shape `SWAY`
+ * has, for the same reason.
+ */
+const BREATH: readonly number[] = [0, 1, 1, 0]
+
+/**
+ * How many ticks of the shared clock one breath step takes.
+ *
+ * Three, so a full breath is twelve ticks — a little under two and a half seconds
+ * at 5 Hz. Slower than anything else in a room, because it is the one ambient the
+ * player is looking straight at. A first-pass value, reported rather than tuned.
+ */
+export const BREATH_TICK = 3
+
+/**
  * One quantum of light, as a fraction of opacity.
  *
  * The whole reason a light here is an integer: `--lit` is a **count** of these,
@@ -121,6 +139,9 @@ export class RoomAmbience {
   private last = 0
   private counter = 0
   private box = { width: 0, height: 0 }
+  /** The plate that is breathing, if one is, and which step of four it is up on. */
+  private breathing: HTMLElement | undefined
+  private breathStep = 0
 
   constructor(private readonly world: World) {
     // Fully stopped when the page is hidden. `requestAnimationFrame` already
@@ -171,6 +192,43 @@ export class RoomAmbience {
     this.mounted = []
     this.showing = undefined
     this.running = false
+    this.breathe(undefined)
+  }
+
+  /**
+   * Keep a standing horror breathing, on the same clock the room breathes on.
+   *
+   * **One pixel, in whole steps, off the one gate.** It is the only ambient motion
+   * in the game that is allowed inside a fight, and the reason is the one the room
+   * ambience is excluded for: *a fight owns the picture*, and the thing standing in
+   * it is the fight. Dust falling through a cascade has no claim on the frame; the
+   * opponent has nothing but.
+   *
+   * Every other law is the room's, unchanged. It is whole pixels and whole quanta,
+   * it divides the shared 5 Hz counter rather than keeping a clock of its own, it
+   * writes one custom property and reads no layout, and with motion off or reduced
+   * it never mounts — a plate that is not moving is the whole picture.
+   *
+   * Idempotent for the same plate, because `render` calls it on every paint.
+   * Passing `undefined` takes it down and puts the plate back where it was.
+   */
+  breathe(target: HTMLElement | undefined): void {
+    const live = target !== undefined && !reducedMotion()
+    if (!live || !target) {
+      if (this.breathing) this.breathing.style.removeProperty('--breath')
+      this.breathing = undefined
+      this.breathStep = 0
+      return
+    }
+    if (this.breathing === target) return
+    if (this.breathing) this.breathing.style.removeProperty('--breath')
+    this.breathing = target
+    this.breathStep = 0
+    this.paintBreath()
+    // The clock may be stopped — a fight mounts no room ambience at all — so the
+    // breath arms it. `start` is a no-op when it is already running, which is what
+    // keeps one gate one gate.
+    this.start()
   }
 
   // ── mounting ─────────────────────────────────────────────────────────
@@ -248,6 +306,22 @@ export class RoomAmbience {
       running.step = (running.step + 1) % AMBIENT_STEPS
       this.paint(running)
     }
+    if (this.breathing && this.counter % BREATH_TICK === 0) {
+      this.breathStep = (this.breathStep + 1) % AMBIENT_STEPS
+      this.paintBreath()
+    }
+  }
+
+  /**
+   * One step of the breath: a count of whole pixels, and nothing else.
+   *
+   * The stylesheet multiplies it by one pixel. There is nothing here for a browser
+   * to interpolate and no way for the plate to land between two pixels — and a blow
+   * overrides it for the frame it is on, which is correct: a thing being hit is not
+   * breathing.
+   */
+  private paintBreath(): void {
+    this.breathing?.style.setProperty('--breath', String(BREATH[this.breathStep] ?? 0))
   }
 
   /**
@@ -288,6 +362,6 @@ export class RoomAmbience {
       this.frame = undefined
       return
     }
-    if (this.running) this.start()
+    if (this.running || this.breathing) this.start()
   }
 }
