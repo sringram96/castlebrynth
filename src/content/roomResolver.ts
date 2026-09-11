@@ -18,8 +18,8 @@
  */
 
 import { ENEMY_LIST, enemy } from './enemies.js'
-import { ROOM_LIBRARY } from './rooms.js'
-import type { RoomRole, RoomTemplate, Territory, ThreatBand } from './roomTypes.js'
+import { AMBIENT_CAP, MOTE_CAP, ROOM_LIBRARY, ambienceFor, ambientSeat } from './rooms.js'
+import type { AmbientKind, Composition, RoomRole, RoomTemplate, Territory, ThreatBand } from './roomTypes.js'
 import type { Rng } from '../game/rng.js'
 
 export interface RoomRequest {
@@ -74,6 +74,201 @@ export function fits(template: RoomTemplate, request: RoomRequest): boolean {
   for (const tag of request.forbiddenTags ?? []) if (tags.has(tag)) return false
 
   return true
+}
+
+// ── the negative-space law ──────────────────────────────────────────────
+//
+// Crowding has two axes and the law governs both. It lives here, beside `fits`,
+// because it is the same kind of statement: **what a picture can hold.** A
+// composition already says that about ways in and out and about what may stand
+// in the frame; this says it about furniture and about presses.
+
+/** What one frame class allows. Provisional first-pass numbers, reported. */
+export interface FrameBudget {
+  /** Furniture seated into the painting, at its authoring-time maximum. */
+  readonly plates: number
+  /** Hotspots of any kind besides the ways out. */
+  readonly presses: number
+}
+
+/**
+ * The budget of every frame class, keyed by the class itself.
+ *
+ * **`composition` is the frame class.** There is deliberately no second field:
+ * a template already declares what its picture can hold, and a room carrying
+ * both a `composition` and a `frameClass` would be a room that could disagree
+ * with itself about its own painting.
+ *
+ * The wave that wrote this law named four classes; the library has seven
+ * compositions, so `junction` and `threshold` are this table's own and are
+ * reported as such. `duel` is the strictest reading of what the wave asked for:
+ * *the enemy, and the enemy* — a keeper's frame holds the thing standing in it
+ * and nothing else at all.
+ *
+ * Every number is first-pass and provisional, exactly as the tray's geometry
+ * and the territory grades are. What is **not** provisional is that a breach
+ * throws rather than reading as noise on a phone.
+ */
+export const FRAME_BUDGETS: Readonly<Record<Composition, FrameBudget>> = {
+  cramped: { plates: 2, presses: 3 },
+  'long-axis': { plates: 4, presses: 5 },
+  altar: { plates: 4, presses: 5 },
+  vertical: { plates: 3, presses: 4 },
+  junction: { plates: 2, presses: 4 },
+  threshold: { plates: 1, presses: 2 },
+  duel: { plates: 0, presses: 0 },
+}
+
+/**
+ * How much open painting has to be left between two seated things.
+ *
+ * The other half of the negative-space law, and it is geometry rather than a
+ * count: a frame can be inside both budgets and still read as a pile if the
+ * three things in it are touching. The 44 px non-overlap rule says *a thumb
+ * cannot mean both*; this says *the eye can see the room between them*.
+ *
+ * First-pass numbers, asserted in `test/unit/anchors.test.ts` at the phone's own
+ * geometry, exactly as the tray's seating is. **Ways out are not held to it** —
+ * they stand where the picture puts them, they are mandated by topology rather
+ * than chosen, and the 44 px law already keeps them clear of everything.
+ */
+export const CLEAR_WATER = 8
+
+/** And the focal detail, which is the one thing the eye should find, gets more. */
+export const FOCAL_MOAT = 16
+
+/**
+ * The furniture seated into one picture, at its authoring-time maximum.
+ *
+ * Everything that occupies **a place in the frame**: the objects that can be
+ * worked, the ritual if there is one, and the spots a found thing can lie in —
+ * the Marrow's floor counts two, because two things can be lying on it. A
+ * backdrop is not furniture and a way out is not furniture.
+ */
+export function platesIn(t: RoomTemplate): number {
+  return (
+    (t.interactables?.length ?? 0) +
+    (t.ritual ? 1 : 0) +
+    (t.lootAt?.length ?? 0) +
+    // Furniture is exactly what the plate budget is about: a plate seated into
+    // the painting that nothing in the game can move. The Carver's table and the
+    // chain across a niche are furniture, and a room may not dodge the law by
+    // declaring its crowding in a field the counter had not heard of.
+    (t.furniture?.length ?? 0) +
+    // And a spare seat counts **filled**, always. "Nothing is in it this run" is a
+    // promise about the generator rather than about the frame, and the law counts a
+    // composition at its authoring-time maximum.
+    (t.spareSeats?.length ?? 0)
+  )
+}
+
+/**
+ * Every hotspot a room can put on its picture except the ways out.
+ *
+ * **Exits are counted by topology and excluded.** They are mandated — one per
+ * slot the map may attach, asserted in `test/unit/anchors.test.ts` — and a
+ * budget that counted them would be a budget that punished a junction for
+ * being a junction.
+ *
+ * A found thing counts once. Its name and its TAKE are two presses on one
+ * object rather than two objects, and the 44 px law already holds them apart.
+ */
+export function pressesIn(t: RoomTemplate): number {
+  return (
+    t.details.length +
+    (t.interactables?.length ?? 0) +
+    (t.ritual ? 1 : 0) +
+    (t.lootAt?.length ?? 0) +
+    // A seat is one object with two presses on it — the pill that reads it and the
+    // verb that takes it — and it is counted as one, exactly as a loot anchor is.
+    // The budget is about *objects competing for a frame*, not about taps.
+    (t.spareSeats?.length ?? 0) +
+    // A carving is a press and not furniture: prose cut into a wall costs a
+    // hotspot and no plate at all.
+    (t.carvingAt ? 1 : 0)
+  )
+}
+
+const KINDS: readonly AmbientKind[] = ['flicker', 'glow', 'sway', 'drift']
+
+const whole = (n: number): boolean => Number.isInteger(n) && n > 0
+
+/**
+ * Everything wrong with the authored library, as sentences.
+ *
+ * Pure and total over content alone — it takes no map, no run and no state, so
+ * it can be called from a test, from the director, and from a tool. Every
+ * message names the template and the number, because a budget breach is a thing
+ * somebody has to go and fix in a file rather than a thing to work around.
+ */
+export function contentProblems(library: readonly RoomTemplate[] = ROOM_LIBRARY): readonly string[] {
+  const out: string[] = []
+
+  for (const t of library) {
+    const budget = FRAME_BUDGETS[t.composition]
+    if (!budget) {
+      out.push(`${t.id}: no frame budget for composition "${t.composition}"`)
+      continue
+    }
+
+    const plates = platesIn(t)
+    if (plates > budget.plates) {
+      out.push(`${t.id}: ${plates} plates in a ${t.composition} frame, which holds ${budget.plates}`)
+    }
+    const presses = pressesIn(t)
+    if (presses > budget.presses) {
+      out.push(
+        `${t.id}: ${presses} presses in a ${t.composition} frame, which holds ${budget.presses}`,
+      )
+    }
+
+    // And the quiet-motion law, which is welded to the one above: a room may
+    // breathe only inside the space the budgets cleared.
+    const sources = ambienceFor(t)
+    if (sources.length > AMBIENT_CAP) {
+      out.push(
+        `${t.id}: ${sources.length} ambient sources, and a room holds ${AMBIENT_CAP} ` +
+          `(its territory's counts as one)`,
+      )
+    }
+    for (const a of sources) {
+      if (!KINDS.includes(a.kind)) out.push(`${t.id}: ambient kind "${a.kind}" is not one anybody wrote`)
+      if (!whole(a.amplitude)) {
+        out.push(`${t.id}: ambient ${a.kind} has amplitude ${a.amplitude}, and amplitudes are whole`)
+      }
+      if (!whole(a.tick)) {
+        out.push(`${t.id}: ambient ${a.kind} ticks every ${a.tick}, and ticks are whole`)
+      }
+      if (a.kind === 'drift') {
+        if (a.target !== 'world') {
+          out.push(`${t.id}: drift falls through the world box and cannot be seated on "${a.target}"`)
+        }
+      } else if (ambientSeat(t, a.target) === undefined) {
+        out.push(`${t.id}: ambient ${a.kind} is seated on "${a.target}", which is not in this room`)
+      }
+    }
+  }
+
+  if (!whole(MOTE_CAP) || MOTE_CAP > 8) {
+    out.push(`the mote cap is ${MOTE_CAP}; dust that accumulates is weather`)
+  }
+
+  return out
+}
+
+/**
+ * The same walk, loudly.
+ *
+ * Called from `generateRun`, so a template that breaks the law fails at the
+ * press of START naming itself — which is the same treatment `validateRunMap`
+ * gives a broken descent, for the same reason: the alternative is a phone full
+ * of noise and nobody able to say which file it came from.
+ */
+export function assertContent(): void {
+  const problems = contentProblems()
+  if (problems.length > 0) {
+    throw new Error(`the room library breaks the negative-space law:\n  ${problems.join('\n  ')}`)
+  }
 }
 
 /** Everything that could stand at this moment, in library order. */

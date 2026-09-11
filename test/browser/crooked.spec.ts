@@ -239,8 +239,10 @@ test.describe('the treasure', () => {
   test('says it exists, twice, and never says where', async ({ page }) => {
     await boot(page)
     await act(page, 'start').click()
-    // The entry hall's skull. The first hint, and the quieter one.
-    await page.locator('[data-detail="skull"]').click()
+    // The entry hall's one LOOK. The negative-space audit demoted the skull's own
+    // hotspot and folded its line into this one, so the first hint rides the
+    // sentence it was written on rather than asking for the hotspot back.
+    await page.locator('[data-detail="candles"]').click()
     await expect(page.locator('#say')).toContainText('the same hand, scratched smaller')
 
     // And the carving at the transition, cut by the plan rather than the room.
@@ -374,6 +376,72 @@ test.describe('every grammar, down both branches', () => {
       })
     }
   }
+})
+
+test.describe('a standing horror breathes, on the room\'s own clock', () => {
+  /** How far the plate has been moved, as the browser has computed it. */
+  const breath = (page: Page): Promise<string> =>
+    page.locator('#world .layer-enemy').evaluate((el) => getComputedStyle(el).translate)
+
+  /** The count of pixels the ticker has written, which is the breath itself. */
+  const written = (page: Page): Promise<string> =>
+    page
+      .locator('#world .layer-enemy')
+      .evaluate((el) => (el as HTMLElement).style.getPropertyValue('--breath'))
+
+  test('moves one whole pixel, in steps, and inside the fight', async ({ page }) => {
+    // **The one ambient allowed inside a fight.** A fight owns the picture and what
+    // is standing in it *is* the fight — dust falling through a cascade has no claim
+    // on the frame; the opponent has nothing but.
+    await boot(page, '?room=hollow&mode=combat', { motion: true })
+    // Past anything the arrival itself was playing, so what is sampled below is the
+    // ticker rather than the tail of a sequence.
+    await page.waitForTimeout(400)
+
+    const counts = new Set<string>()
+    const offsets = new Set<string>()
+    for (let sample = 0; sample < 28; sample++) {
+      counts.add(await written(page))
+      offsets.add(await breath(page))
+      await page.waitForTimeout(120)
+    }
+    // It actually moves, and the only counts it is ever written at are zero and one:
+    // a count of whole pixels, multiplied by one pixel in the stylesheet.
+    expect([...counts].sort(), `saw counts ${[...counts].join(' | ')}`).toEqual(['0', '1'])
+
+    // And nothing lands between two pixels. There is no transition on `translate`,
+    // so every computed position is a whole number of them.
+    for (const offset of offsets) {
+      if (offset === 'none') continue
+      for (const part of offset.split(' ')) {
+        expect(Number(part.replace('px', '')), `${offset} is not a whole pixel`).toBe(
+          Math.round(Number(part.replace('px', ''))),
+        )
+      }
+    }
+  })
+
+  test('holds perfectly still with motion reduced', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await boot(page, '?room=hollow&mode=combat', { motion: true })
+    await page.waitForTimeout(400)
+    // Ceremony vanishes whole rather than resolving to a slower version of itself:
+    // the count is never written at all, so the plate has nothing to multiply.
+    for (let sample = 0; sample < 6; sample++) {
+      expect(await written(page)).toBe('')
+      await page.waitForTimeout(120)
+    }
+  })
+
+  test('does not breathe while it is dying', async ({ page }) => {
+    // A thing that is giving out does not breathe, and the death's own frames own
+    // that picture — `content/defeat.ts`, not the ticker.
+    await boot(page, '?room=gate&dying=1', { motion: true })
+    for (let sample = 0; sample < 5; sample++) {
+      expect(await written(page)).toBe('')
+      await page.waitForTimeout(120)
+    }
+  })
 })
 
 test.describe('the strip shows the mouth that was not taken', () => {

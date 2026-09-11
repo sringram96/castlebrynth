@@ -25,7 +25,7 @@
 
 import { BARGAIN_POOL, CARVER_POOL, DIE_PRICE, TREASURE_DIE } from '../content/dice.js'
 import type { CoreDieId } from '../content/dice.js'
-import { resolveEncounter, resolveRoom } from '../content/roomResolver.js'
+import { assertContent, resolveEncounter, resolveRoom } from '../content/roomResolver.js'
 import type { RoomRequest } from '../content/roomResolver.js'
 import { GRAMMARS, way } from '../content/runPlans.js'
 import type { PlacementId, PlanEdge, RoomSlot, RunPlan } from '../content/runPlans.js'
@@ -268,6 +268,11 @@ function requestFor(
  * rather than a GO button four rooms down that leads nowhere.
  */
 export function generateRun(seed: number): RunMap {
+  // The library's own law, first: a template that breaks the negative-space or
+  // quiet-motion budgets is a content fault, and the press of START is where a
+  // content fault belongs. It is a pure walk over `ROOM_LIBRARY` and takes no
+  // map, so it fails identically for every seed rather than for unlucky ones.
+  assertContent()
   const map = materializeRunPlan(generateRunPlan(seed), seed)
   const problems = validateRun(map)
   if (problems.length > 0) {

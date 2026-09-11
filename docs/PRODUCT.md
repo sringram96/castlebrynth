@@ -188,6 +188,14 @@ Two rooms answer a complaint that was true of every other one: *enter, look at
 picture, read prose, press exit.* A room is a backdrop, ambient motion, several
 concrete objects, state those objects keep, and actions with consequences.
 
+**Several is a number now.** Every frame declares what it can hold — furniture
+seated into the painting, and hotspots besides the ways out — and a breach fails
+at the press of START. What that cost these three rooms was their flavour LOOKs:
+a press on the bell beside the bell's own RING is two presses on one thing, and
+the line it carried is still in the room, verbatim, on the arrival or on the one
+LOOK that kept its place. See `docs/ART_DIRECTION.md` § *The negative-space
+law*.
+
 They are a matched set, and the pairing is the design:
 
 - **The Reliquary is optional and free.** GO ON is on screen from the first
@@ -343,7 +351,9 @@ contaminating the experiment. See `docs/COMBAT.md` § *What is not here*.
   the Confluence reuse the Split's picture, the Offertory and the Bone Carver reuse
   the Choir's with the Reliquary's furniture in them, and the niche reuses the Deep
   Way's with the vault's chain across it. Recorded as owed art, gated by a list in
-  `test/unit/assets.test.ts`, and not a licence for a sixth.
+  `test/unit/assets.test.ts`, and not a licence for a sixth. **Every one of those
+  composed paintings is on that ledger whatever its budget says** — they are all
+  inside the negative-space law now, and the reuse was always debt.
 - **A second worked room per branch.** The right-hand branch has one worked room
   and one press-and-leave transition; the left has a fight and a transition.
   Whether the reel wants more machinery or more fights is a playtest question.
@@ -356,6 +366,20 @@ contaminating the experiment. See `docs/COMBAT.md` § *What is not here*.
   beat. A painted treatment is owed and recorded under
   `POLISH_PROGRESS.md` § HUMAN ART REQUIRED; the ambient grades under them are
   measured first-pass values, reported rather than tuned.
+- **An enemy's idle life.** Rooms breathe now — see `ART_DIRECTION.md`
+  § *Quiet motion* — and **no ambient may be put on an enemy or run during a
+  fight.** A horror already has an idle loop of authored plates, which is a
+  different thing from a treatment on a room's furniture, and whether the two
+  should ever meet is a design conversation rather than a cap to raise.
+  Deliberately not started here.
+- **Should the strip breathe?** MAP is chrome over art and under the pixel-grid
+  law; whether the current frame should pulse, or a mouth should gutter, is the
+  obvious next thing quiet motion wants and is the first place it would stop
+  being a property of *rooms*. Recorded rather than smuggled in.
+- **Two per room, or one too many?** The ambient cap is two, counting the
+  territory's own, and the Offertory is the only room that spends both. Whether
+  a candle *and* dust is a room breathing or a room fussing is a hand question
+  and is pre-registered in `POLISH_PROGRESS.md` § The phone pass.
 - **The dice art has not been drawn.** The bones are rendered from the pip
   geometry the game has always drawn a face with. The plates that are owed —
   a bone body with faces 1–6 and a held state, and a Vial plate — are written

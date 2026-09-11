@@ -269,6 +269,51 @@ export type Composition =
 export type ThreatBand = 'low' | 'medium' | 'keeper'
 
 /**
+ * The four things a room is allowed to do with time.
+ *
+ * **Ambient motion moves like a sprite cycle, never like CSS** — the pixel-grid
+ * law, extended into time. Every kind below steps: whole pixels of travel, or
+ * whole quanta of light, on one shared clock. There is no easing curve here and
+ * there is nowhere to write one.
+ *
+ *   - `flicker` — stepped light on a flame. Uneven on purpose: a candle that
+ *     breathes smoothly is a lamp.
+ *   - `glow`    — stepped light that breathes. Even, and slower.
+ *   - `sway`    — whole-pixel horizontal steps. A hanging thing, moved by air.
+ *   - `drift`   — motes falling through the world box, a fixed few at a time.
+ */
+export type AmbientKind = 'flicker' | 'glow' | 'sway' | 'drift'
+
+/**
+ * One thing a room does while nobody is pressing anything.
+ *
+ * Declared **beside the seating it animates**, and it names that seating rather
+ * than a coordinate: `target` is the id of a detail, an interactable, the word
+ * `ritual`, or `world` for something that moves through the whole box. The seat
+ * is then the object's own, so moving the object moves its light with it and
+ * there is no second coordinate to disagree.
+ *
+ * It is ceremony, whole. It decides nothing, it survives nothing, and with
+ * motion off it does not exist — there is no reduced version of it, because a
+ * reduced version would imply it was carrying something.
+ */
+export interface Ambient {
+  readonly kind: AmbientKind
+  /** A detail id, an interactable id, `ritual`, or `world`. */
+  readonly target: string
+  /**
+   * How far it goes, and never a fraction.
+   *
+   * Whole **pixels** for the kinds that move — `sway`, `drift` — and whole
+   * **quanta of light** for the kinds that light. Content validation rejects
+   * anything that is not a positive integer.
+   */
+  readonly amplitude: number
+  /** Ticks of the shared clock between steps. 1 is the base rate. Integers. */
+  readonly tick: number
+}
+
+/**
  * How many ways in and out the picture can carry.
  *
  * The other half of art constraining generation. The Split was painted with
@@ -364,10 +409,13 @@ export interface RoomTemplate {
   readonly lootAt?: readonly LootAnchor[]
 
   /**
+  /**
    * Places the director may seat a generated thing, in declaration order.
    *
-   * Measured like every other anchor, and counted against the negative-space
-   * budget whether they are filled or not.
+   * Measured like every other anchor, and **counted against both budgets
+   * whether they are filled or not**: a seat is a plate and its pill is a press,
+   * and "nothing is in it this run" is a promise about the generator rather than
+   * about the painting.
    */
   readonly spareSeats?: readonly Seat[]
 
@@ -378,10 +426,22 @@ export interface RoomTemplate {
    * Where a cut carving stands, for a room that can carry one.
    *
    * `hint-carving` consumes no seat — it is prose, and a tap that answers — so
-   * it needs a place in the picture of its own. A template with none simply
-   * cannot host one, and the content test says which grammars rely on which.
+   * it needs a place in the picture of its own. It is a press, so it counts
+   * against the press budget; it is not furniture, so it costs no plate. A
+   * template with none simply cannot host one, and the content test says which
+   * grammars rely on which.
    */
   readonly carvingAt?: { readonly x: number; readonly y: number }
+
+  /**
+   * What moves in here while nobody is doing anything.
+   *
+   * At most **two** sources in any one room, and a territory's own ambient
+   * counts as one of the two — `ambienceFor` in `rooms.ts` joins them and
+   * content validation enforces the cap. Absent means still, and still is a
+   * choice: a threshold room before the door holds its breath.
+   */
+  readonly ambient?: readonly Ambient[]
 
   /**
    * The thing that is *in* this room, rather than drawn for it.

@@ -136,6 +136,19 @@ that produces a `GameState`.
 - **Combat chrome obeys the art's pixel grid and palette.** A fill is a whole
   number of cells, a drain steps rather than slides, corners are square, and
   colours come from the existing tokens. See `docs/ART_DIRECTION.md`.
+- **A frame holds what its composition says it holds.** Two budgets — furniture
+  seated into the painting, and hotspots besides the ways out — set by the
+  room's `composition`, which *is* the frame class; there is no second field.
+  Exits are excluded: they are mandated, not decorative. A breach throws at the
+  press of START. A LOOK whose only job is flavour has **no hotspot**, and its
+  line folds into the arrival or into the room's one focal LOOK **verbatim** —
+  the audit takes presses, never words.
+- **Ambient motion moves like a sprite cycle, never like CSS.** Declared in
+  content beside the seating it animates, whole pixels and whole quanta, one
+  shared 5 Hz ticker, transforms and opacity only. Explore and idle only: never
+  in a fight, never under a sequence, never behind an overlay, and **never under
+  motion off** — ceremony vanishes whole. At most two sources in a room, the
+  territory's counting as one.
 
 ## No art in the polish sweep
 

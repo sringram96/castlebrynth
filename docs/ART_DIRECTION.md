@@ -130,6 +130,135 @@ and the difference is a **treatment in the stylesheet**, never an invented
 drawing. It is a stand-in, it is recorded under `## HUMAN ART REQUIRED`, and it
 comes out the day the plate lands.
 
+## The negative-space law
+
+**The newest law, and it took things away rather than adding them.** A playtest
+said the rooms shout. Some frames — the ossuary above all — were packed with
+seated furniture, partly because movement and loot moved into the picture and
+the Offertory was stood up inside the Choir's cramped painting with the
+Reliquary's furniture in it. A picture with nothing empty left in it is a pile,
+and a pile is not a place.
+
+Crowding has two axes and the law governs both:
+
+- **plate budget** — furniture seated into the painting: the objects that can be
+  worked, the ritual if there is one, and the spots a found thing can lie in, at
+  their **authoring-time maximum**. The Marrow's floor counts two, because two
+  things can be lying on it.
+- **press budget** — hotspots of any kind besides the ways out: LOOKs, verbs,
+  takeables. **Exits are counted by topology and excluded** — they are mandated,
+  one per slot the map may attach, and a budget that counted them would punish a
+  junction for being a junction.
+
+**`composition` is the frame class.** There is deliberately no second field: a
+template already declares what its picture can hold, and a room carrying both a
+composition and a frame class would be a room that could disagree with itself
+about its own painting.
+
+| frame class | plates ≤ | presses ≤ |
+| --- | --- | --- |
+| `cramped` | 2 | 3 |
+| `long-axis` | 4 | 5 |
+| `altar` | 4 | 5 |
+| `vertical` | 3 | 4 |
+| `junction` | 2 | 4 |
+| `threshold` | 1 | 2 |
+| `duel` | 0 | 0 — *the enemy, and the enemy* |
+
+**Provisional first-pass values, reported rather than tuned**, exactly as the
+tray's geometry and the territory grades are. What is not provisional is the
+enforcement: `contentProblems` in `src/content/roomResolver.ts` walks every
+template and `generateRun` throws on a breach, so a room that breaks the law
+fails at the press of START naming itself. The browser suite counts the same two
+numbers off a rendered room on both branch walks, because a law about crowding
+checked only in a data structure is a law about a data structure.
+
+### Clear water
+
+The counts are half of it. A frame can be inside both budgets and still read as
+a pile if the things in it are touching, so geometry joins the existing 44 px
+non-overlap:
+
+- **seat boxes keep ≥ 8 px of open painting between them**;
+- **the focal detail keeps a ≥ 16 px moat** from everything the room seats.
+
+Both are first-pass, both are in `roomResolver.ts` beside the budgets, and both
+are asserted at the phone's own geometry in `test/unit/anchors.test.ts`. Ways
+out are not held to them — they stand where the picture puts them, and the 44 px
+law already keeps them clear of everything.
+
+### Quiet details
+
+**A LOOK whose only job is flavour has no hotspot.** It demoted when it sat on
+an object that already carries its own verb — a LOOK on the bell beside RING —
+or on the painted feature a way out already passes through. The backdrop still
+shows the thing; the room has stopped offering a press for every brick.
+
+**The writing is preserved by law.** A demoted line did not go anywhere: it
+folded into the room's arrival or into the one LOOK that kept its place,
+verbatim, and `test/unit/frames.test.ts` holds every one of them to still being
+in the room's prose. Twenty-two lines demoted; none was rewritten and none was
+cut.
+
+## Quiet motion: the grid, in time
+
+A room with no enemy in it was perfectly still, which reads as a slide rather
+than as a place. So rooms breathe — but only inside the space the law above
+cleared, and only on the art's own terms.
+
+**Ambient motion moves like a sprite cycle, never like CSS.** That is the pixel
+grid extended into time and it is the whole of the law:
+
+- **Declared in content**, beside the seating it animates: `ambient: { kind,
+  target, amplitude, tick }` on a template, and one per territory in
+  `TERRITORY_AMBIENCE`. `target` names an object the room already declares — a
+  detail, a worked object, the ritual, or `world` — so the light is seated on
+  the thing and there is never a second coordinate to disagree.
+- **Four kinds.** `flicker` (stepped light on a flame, uneven on purpose — a
+  flame that breathes smoothly is a lamp), `glow` (stepped light that breathes,
+  even and slower), `sway` (whole-pixel horizontal steps), `drift` (motes
+  falling through the world box). An unknown kind throws in content validation.
+- **Whole numbers, everywhere.** Amplitudes are whole pixels for the kinds that
+  move and whole quanta of light for the kinds that light; ticks are integers.
+  The ticker writes two counts — `--lit` and `--shift` — and the stylesheet
+  multiplies each by one step. No easing curve, no blur, no sub-pixel position,
+  no layout write, and nothing anywhere for a browser to interpolate through.
+- **One shared ticker**, 5 Hz, off a single rAF gate, each source on the base
+  rate or an integer divisor of it. Fully stopped when the page is hidden. A
+  timer per source is what drifts five overlays out of phase with the frame.
+- **When it runs:** explore mode, idle only. Nothing is mounted during a
+  sequence, during combat, or behind an open overlay — each of those owns the
+  picture, and ambience is the one thing on screen with no claim to it.
+- **Never under motion off.** Ambience is pure ceremony and the motion-off law
+  says ceremony vanishes whole: not a still version, not a dimmed one, no
+  element at all.
+- **At most two sources per room**, and a territory's counts as one of the two.
+  That is the cap that welds this law to the one above.
+
+What ships is a **treatment**, in the same family as the territory grade: light
+on the palette's own tokens over art a person painted. No pixel was authored for
+any of it, and the painted ember and mote plates that would replace it are
+recorded in `POLISH_PROGRESS.md` § HUMAN ART REQUIRED.
+
+| where | ambient |
+| --- | --- |
+| `ossuary` (territory) | `drift` — bone-dust motes, six at most, one pixel each |
+| the entry hall | `flicker` on the fresh candles |
+| the Font | `glow` breathe on the water |
+| the Reliquary | `flicker` on its five candles |
+| the Offertory | `flicker` on the brazier, beside the ossuary's dust |
+| the Chain Vault | `sway` on the hanging cage, one pixel |
+| the Deep Way | `glow` glint on the warm wall, low and slow |
+
+**Everything else stays still, and still is a choice.** The Split, the
+Confluence, the Door and the way out hold their breath: a room that is about to
+ask a question should not be fidgeting.
+
+The two eased CSS loops that used to live in the stylesheet — a candle varying
+by six percent on an `ease-in-out`, an altar breathing by three — are **gone**.
+They were smooth interpolation over posterised pixels, which is the one thing on
+a screen that comes out of a different program.
+
 ## Content validation
 
 Enemy art is a **content requirement, not a fallback**. An enemy without a
@@ -234,6 +363,22 @@ frame a blow is on screen:
 - **A die bounces one pixel** off its bay as it lands, under the squash it already
   had. A die that only squashes has landed on nothing.
 
+And one piece of *ambient* motion belongs with them, because it is the same pixel
+on the same grid: **a standing horror breathes one whole pixel**, on the shared
+5 Hz ticker, dividing it by three so a full breath is a little under two and a
+half seconds. It is the **one ambient source allowed inside a fight**, and the
+reason is the one the room's ambience is excluded for: *a fight owns the picture*,
+and what is standing in it is the fight. Dust falling through a cascade has no
+claim on the frame; the opponent has nothing but.
+
+Every other clause of the quiet-motion law holds over it unchanged — one gate
+rather than a clock of its own, a count of whole pixels written in TypeScript and
+multiplied by one pixel in the stylesheet, **no transition on `translate`**, no
+layout read, and nothing mounted at all under motion off. A blow takes `translate`
+for the frame it is on and overrides the breath, which is correct: a thing being
+hit is not breathing. Neither is a thing that is dying — `content/defeat.ts` owns
+that picture and the ticker stays off it.
+
 Every one of them is a picture of a number the reducer settled before the first
 frame ran, and every one of them is absent with `?motion=0` or
 `prefers-reduced-motion` — where the settled screen states all of it as text.
@@ -281,7 +426,8 @@ A painted treatment for the card is owed; see `POLISH_PROGRESS.md`.
 ## Motion budget
 
 Idle motion is tiny and high-impact: a slow enemy breath, a candle flicker,
-a vignette pulse. Combat impact is a bone turning over onto the face it already
+a vignette pulse. What an *ambient* one may be is § *Quiet motion* above, and
+it is narrower than this section: the budget says how much, the law says how. Combat impact is a bone turning over onto the face it already
 landed on, a one-frame brighten on the body, and a screen shake.
 
 **Nothing rises off the enemy.** The damage figure does exist now — it is on
