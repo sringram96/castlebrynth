@@ -16,6 +16,8 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 
+import { SEATED, SEATED_WORLD } from '../../src/content/tray.js'
+import type { SeatedText } from '../../src/content/tray.js'
 import { act, boot, dice, tappable, trayControls } from './helpers.js'
 
 /** Every screen the tray is up on, and what to press to get there. */
@@ -292,4 +294,170 @@ test.describe('every visible control answers a tap', () => {
       void act
     })
   }
+})
+
+/*
+ * ── the seating audit ───────────────────────────────────────────────────
+ *
+ * The second half of the same claim, and the one the playtest asked for:
+ * geometry is not only about boxes not overlapping, it is about **words
+ * sitting on the plates they were painted for**. A label centred in a box a
+ * few pixels wider than its recess reads as a word that drifted, and nothing
+ * in the stylesheet says it is wrong. The pile's count was exactly that.
+ *
+ * The audit is data, in `content/tray.ts` § SEATED, and what follows walks it:
+ * every text element is measured against **the painted region it lives in**,
+ * never against the viewport, and is centred there or seated per the one
+ * alignment the table declares. `fits` is the honest half — several painted
+ * recesses are narrower than the words they carry, and the answer to that is a
+ * painted housing recorded as owed art, never a squeezed font.
+ */
+/** Every screen the seating audit walks, across both modes. */
+const SEATED_SCREENS: readonly [string, string][] = [
+  ['the entry', '?room=entry'],
+  ['the fork', '?room=fork'],
+  ['the chapel, before the font', '?room=sanctuary&bones=18'],
+  ['a room with a thing standing in it', '?room=hollow'],
+  ['the vault, shut', '?room=chain-vault'],
+  ['a fight, before the throw', '?room=hollow&mode=combat'],
+  ['a fight, one throw in', '?room=deep&rolls=1&iron=5&items=grave-candle'],
+  ['a fight, out of throws', '?room=deep&rolls=3&talismans=pair-talisman&vials=2'],
+]
+
+/** How far off centre a word may be before it has drifted, in CSS pixels. */
+const DRIFT = 2.5
+
+interface Box {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+async function boxOf(page: Page, selector: string): Promise<Box | undefined> {
+  const found = page.locator(selector).first()
+  if ((await found.count()) === 0) return undefined
+  if (!(await found.isVisible())) return undefined
+  const box = await found.boundingBox()
+  return box ? { x: box.x, y: box.y, w: box.width, h: box.height } : undefined
+}
+
+/** One of the plate's own regions, in page coordinates. */
+async function regionOf(page: Page, host: string, seat: SeatedText): Promise<Box> {
+  const plate = (await page.locator(host).boundingBox())!
+  return {
+    x: plate.x + seat.region.x * plate.width,
+    y: plate.y + seat.region.y * plate.height,
+    w: seat.region.width * plate.width,
+    h: seat.region.height * plate.height,
+  }
+}
+
+function assertSeated(where: string, seat: SeatedText, text: Box, region: Box): void {
+  const midY = (a: Box): number => a.y + a.h / 2
+  const midX = (a: Box): number => a.x + a.w / 2
+
+  expect(
+    Math.abs(midY(text) - midY(region)),
+    `${where}: ${seat.id} is off its region's middle, vertically`,
+  ).toBeLessThanOrEqual(Math.max(DRIFT, region.h / 2))
+
+  if (seat.align === 'centre') {
+    expect(
+      Math.abs(midX(text) - midX(region)),
+      `${where}: ${seat.id} has drifted off the centre of its plate`,
+    ).toBeLessThanOrEqual(DRIFT)
+  } else {
+    expect(
+      Math.abs(text.x - region.x),
+      `${where}: ${seat.id} is not seated on its region's left edge`,
+    ).toBeLessThanOrEqual(DRIFT + 8)
+  }
+
+  if (seat.fits) {
+    expect(text.w, `${where}: ${seat.id} is wider than the paint that holds it`).toBeLessThanOrEqual(
+      region.w + DRIFT,
+    )
+  }
+}
+
+test.describe('the words sit where the paint says', () => {
+  for (const [where, fixture] of SEATED_SCREENS) {
+    test(where, async ({ page }) => {
+      await boot(page, fixture)
+      let checked = 0
+      for (const seat of SEATED) {
+        const text = await boxOf(page, seat.id)
+        if (!text) continue
+        assertSeated(where, seat, text, await regionOf(page, '#tray', seat))
+        checked++
+      }
+      expect(checked, `${where}: the audit found nothing to measure`).toBeGreaterThan(2)
+    })
+  }
+
+  test('covers every seated element the table names, across the screens', async ({ page }) => {
+    // An entry nobody ever renders is an assertion that cannot fail, which is
+    // worse than no assertion at all. Every row of the table has to be found
+    // on at least one screen of the game.
+    const seen = new Set<string>()
+    for (const [, fixture] of SEATED_SCREENS) {
+      await boot(page, fixture)
+      for (const seat of SEATED) {
+        if (await boxOf(page, seat.id)) seen.add(seat.id)
+      }
+    }
+    const missing = SEATED.filter((s) => !seen.has(s.id)).map((s) => s.id)
+    expect(missing, 'the audit names something no screen renders').toEqual([])
+  })
+
+  test('measures the room chrome against the world box, not the viewport', async ({ page }) => {
+    await boot(page, '?room=deep&rolls=1')
+    for (const seat of SEATED_WORLD) {
+      const text = await boxOf(page, seat.id)
+      if (!text) continue
+      assertSeated('the world', seat, text, await regionOf(page, '#world', seat))
+    }
+  })
+
+  test('keeps the pile count inside the glass that holds it', async ({ page }) => {
+    // The one that was actually wrong, stated on its own so the regression has
+    // a name: the number is centred on the orb, not on a box beside it.
+    await boot(page, '?room=fork&bones=17')
+    const orb = (await page.locator('#orb').boundingBox())!
+    const count = (await page.locator('#pile').boundingBox())!
+    expect(Math.abs(count.x + count.width / 2 - (orb.x + orb.width / 2))).toBeLessThanOrEqual(1)
+  })
+
+  test('names every text element the plate carries', async ({ page }) => {
+    // The other direction: a word added to the well or a bay without a row in
+    // the audit is a word nothing is holding to its plate.
+    await boot(page, '?room=deep&rolls=1&iron=5&items=grave-candle&talismans=pair-talisman&vials=1')
+    const named = new Set(SEATED.map((s) => s.id))
+    const loose = await page.evaluate(
+      (ids) => {
+        const out: string[] = []
+        const hosts = ['#well', '#satchel', '#talismans', '#beds']
+        for (const host of hosts) {
+          const root = document.querySelector(host)
+          if (!root) continue
+          for (const node of root.querySelectorAll('*')) {
+            const text = (node.textContent ?? '').trim()
+            if (!text || node.childElementCount > 0) continue
+            // Is this node, or an ancestor inside the host, named by the audit?
+            let named = false
+            for (const id of ids) {
+              if (node.closest(id as string)) named = true
+            }
+            if (!named) out.push(`${host} ${node.className || node.tagName}: ${text.slice(0, 24)}`)
+          }
+        }
+        return out
+      },
+      [...named],
+    )
+    // The scorecard's own entries are inside `#scorecard`, which the audit
+    // names; anything else that turns up here is a word with no plate.
+    expect(loose, 'a word on the plate is in no region the audit names').toEqual([])
+  })
 })

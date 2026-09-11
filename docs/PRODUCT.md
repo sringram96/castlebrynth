@@ -50,6 +50,27 @@ ratified this actually built:
   Title, death and getting out remain screens, because they are framings of a
   run rather than things in it.
 
+### The strip shows what was seen, and nothing else
+
+A reel deserves a filmstrip, and **MAP** is it: the rooms this run has stood
+in, in order, the current one bordered, and beside a junction it walked out of,
+the mouths it did not take — each carrying the word that was on its hotspot.
+
+**Ahead is void.** No sockets for rooms not reached, no count of what is left,
+no silhouette of the plan. That is the hiding rule stated the other way round:
+*we hide places, never rules*, and a road not walked is the one thing a run is
+allowed not to know. The room being stood in shows no mouths either — its ways
+out are in the picture, under the thumb, and printing them in the strip would
+make a record into a plan.
+
+It adds nothing to the save. Every frame is `run.path`, every mouth is an edge
+of the map the run was built with, and the death screen prints the same strip
+as the run's epitaph — the frames are the "rooms down" it already counts.
+
+Whether the strip should one day mark **deaths across runs** is a meta
+question, it needs state, and it is deliberately not this wave. See *Still
+open*.
+
 ## The player verbs
 
 Everything that ships supports one of these. If a feature cannot be explained
@@ -65,6 +86,7 @@ as support for one of them, it is out of scope.
 | **SCORE** | Commit the dice as one hand. The whole cascade, in one press. |
 | **DRINK** | Spend a Vial: five bones back. |
 | **TAKE** | Pick up a thing lying in the room. |
+| **MAP** | Read the run back: where it has been, and the roads it left. Explore only, and it changes nothing. |
 | **RESTART** | Begin a new run after death. |
 
 There is no **SKIP**. Leaving a thing where it fell is walking to the exit
@@ -253,6 +275,15 @@ contaminating the experiment. See `docs/COMBAT.md` § *What is not here*.
 - **A second worked room per branch.** The right-hand branch has one worked room
   and one press-and-leave transition; the left has a fight and a transition.
   Whether the reel wants more machinery or more fights is a playtest question.
+- **Should the strip mark deaths across runs?** A frame that said *this is
+  where the last one ended* is the obvious next thing a filmstrip wants, and it
+  is **meta state** — a ledger that survives a death — which is a product
+  decision and a save change. Deliberately not this wave, which added no state
+  at all. Recorded rather than smuggled in.
+- **The territory cards are unpainted.** `THE OSSUARY` is type on the arrival
+  beat. A painted treatment is owed and recorded under
+  `POLISH_PROGRESS.md` § HUMAN ART REQUIRED; the ambient grades under them are
+  measured first-pass values, reported rather than tuned.
 - **The dice art has not been drawn.** The bones are rendered from the pip
   geometry the game has always drawn a face with. The plates that are owed —
   a bone body with faces 1–6 and a held state, and a Vial plate — are written

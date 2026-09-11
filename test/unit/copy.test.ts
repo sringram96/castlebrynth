@@ -22,6 +22,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { REWARDS, reward } from '../../src/content/rewards.js'
+import { stripFor } from '../../src/content/faces.js'
 import { ENEMIES } from '../../src/content/enemies.js'
 import { ROOM_LIBRARY } from '../../src/content/rooms.js'
 import { WAYS, way } from '../../src/content/runPlans.js'
@@ -70,15 +71,30 @@ describe('the scorecard is its numbers', () => {
 })
 
 describe('a reward card states its exact mechanic', () => {
-  it('carries a number before TAKE is pressed', () => {
+  it('carries a number before TAKE is pressed — on the card, in digits', () => {
+    // The digits moved onto the **strip** for anything with faces: a card
+    // shows the six things the die can do rather than a sentence about them.
+    // What the card has to carry is unchanged, so what is asserted is the
+    // whole card rather than only its prose.
     for (const r of Object.values(REWARDS)) {
-      expect(r.rule, `${r.name} does not state a quantity`).toMatch(/\d/)
+      const printed = [r.rule, ...(stripFor(r.id) ?? []).map((c) => c.text)].join(' ')
+      expect(printed, `${r.name} does not state a quantity`).toMatch(/\d/)
     }
   })
 
   it('says what a Vial gives and where it stops', () => {
     expect(reward('vial').rule).toContain('5')
     expect(reward('vial').rule).toContain('30')
+  })
+
+  it('says when a thing fires and whether there is a press', () => {
+    // The two things a row of chips cannot say, and the reason the prose
+    // beside a strip still exists. Every die and the talisman are held to it.
+    for (const r of Object.values(REWARDS)) {
+      if (!stripFor(r.id)) continue
+      expect(r.rule, `${r.name} does not say whether there is a press`).toMatch(/No press\./)
+      expect(r.rule, `${r.name} does not say when it fires`).toMatch(/ROLL|ATTACK|score/)
+    }
   })
 })
 

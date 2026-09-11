@@ -33,13 +33,15 @@ import { attackPose, idleFrameMs, idlePose } from '../content/enemyPresentation.
 import { defeatOf, defeatStance } from '../content/defeat.js'
 import type { DefeatFrame } from '../content/defeat.js'
 import type { RewardId } from '../content/rewards.js'
-import type { TalismanId } from '../content/dice.js'
+import { carriedName as nameOf } from '../content/faces.js'
 import type { ScoreId } from '../combat/hands.js'
 import { reduce } from '../game/reducer.js'
 import type { Action } from '../game/reducer.js'
 import { save } from '../game/save.js'
 import type { CombatState, GameState } from '../game/state.js'
 import { roomAt } from '../game/map.js'
+import { firstEntryToTerritory, territoryAt } from '../game/strip.js'
+import { TERRITORY_CARD } from '../content/text.js'
 import { mountWorld, placeEnemy, showProp, showProps } from '../render/compositor.js'
 import type { World } from '../render/compositor.js'
 import { RoomAmbience } from '../render/ambience.js'
@@ -161,6 +163,18 @@ const CROSSING = {
 } as const
 
 /**
+ * How long a territory's card stands, from the beat the dark lifts.
+ *
+ * It is a word over the arrival and nothing else: no press, no pause in the
+ * run, nothing to wait for. It appears **once per territory per run**, on the
+ * first room of that stretch, and the fact that it is first is derived from
+ * the path — see `game/strip.ts`. With motion off there is no crossing beat to
+ * carry it and the card never appears at all; the say line and the strip carry
+ * where you are, as they always have.
+ */
+const TERRITORY_HOLD = 1250
+
+/**
  * The faces that flicker past on the way to the real one.
  *
  * A fixed list, exactly as the crown's tumble uses a counter rather than a
@@ -258,6 +272,8 @@ export class App {
   private enemyIdling: string | undefined
   private enemyIdleTimer: number | undefined
   private enemyIdleFrame = 0
+  /** How long the territory's card has left. Presentation, like every clock here. */
+  private cardTimer: number | undefined
 
   constructor(options: AppOptions) {
     this.state = options.initial
@@ -296,6 +312,9 @@ export class App {
     // A press always arrives at a settled screen. Nothing is ever locked out
     // waiting for a transition — an impatient thumb finishes it instead.
     this.settle()
+    // And a territory's card is over the moment the player does anything: it
+    // names an arrival and never delays one.
+    this.hideCard()
 
     const before = this.state
     const next = reduce(before, action)
@@ -399,6 +418,12 @@ export class App {
         return this.playInteract(before, after, action.interactionId)
       default:
         this.render()
+        // The first room of a descent is an arrival like any other, and it is
+        // the only one that is not crossed into — so the card is asked for
+        // here rather than in `playGo`. Without this THE THRESHOLD would be
+        // copy the game never says: the run starts there, and coming back up
+        // to the gate at the end is not a first entry.
+        if (action.type === 'START_RUN') this.nameTerritory(after)
         // CONTINUE back into a fight that was won and then reloaded lands
         // here. The reducer already granted the kill; all that is left is the
         // last picture of it and the press that finishes the win.
@@ -523,7 +548,10 @@ export class App {
         paintCascade(this.tray, run, record, 'items')
         record.itemRolls.forEach((roll, index) => {
           const die = this.tray.items.querySelector<HTMLElement>(`.item-die[data-index="${index}"]`)
-          if (die) popNumber(die, itemBadge(roll.result), roll.result.kind)
+          // The die's own name over its own number, every attack. A `+8`
+          // floating over an unlabelled object is a number whose cause the
+          // player has to have memorised; the name is what welds the two.
+          if (die) popNumber(die, itemBadge(roll.result), roll.result.kind, nameOf(roll.id))
         })
         if (record.itemCost > 0) {
           pileChange(this.tray.orb, -record.itemCost)
@@ -548,7 +576,8 @@ export class App {
       sequence.at(ATTACK.talisman, () => {
         paintCascade(this.tray, run, record, 'talisman')
         const bay = this.tray.talismans.querySelector<HTMLElement>('.talisman-slot')
-        if (bay) popNumber(bay, `+${record.talismanFlat}`, 'flat')
+        const named = record.talismansFired.map(nameOf).join(' · ')
+        if (bay) popNumber(bay, `+${record.talismanFlat}`, 'flat', named)
       })
     }
 
@@ -634,11 +663,49 @@ export class App {
       this.presenting = undefined
       this.render()
     })
-    sequence.at(CROSSING.open, () => this.world.root.classList.remove('dark'))
+    sequence.at(CROSSING.open, () => {
+      this.world.root.classList.remove('dark')
+      // And the card, if this is the first room of a new stretch. It rides the
+      // beat the dark lifts on, which is the same beat the new territory's
+      // grade has already crossfaded under.
+      this.nameTerritory(after)
+    })
     sequence.at(CROSSING.still, () => {
       this.world.root.classList.remove('crossing', 'dark')
       this.finish()
     })
+  }
+
+  /**
+   * Name the stretch of the descent, once, on the way into it.
+   *
+   * Derived and not stored: *is this the first room of this territory in the
+   * path* is a question the run's own history answers, so there is no "seen
+   * cards" set in the save and there is nowhere to write one. Everything here
+   * is a picture of a run that has already moved.
+   */
+  private nameTerritory(state: GameState): void {
+    const run = state.run
+    if (!run || !this.animated || !firstEntryToTerritory(run)) return
+    const copy = TERRITORY_CARD[territoryAt(run)]
+    if (!copy) return
+    const card = this.world.card
+    card.textContent = copy
+    card.dataset['territory'] = territoryAt(run)
+    card.hidden = false
+    card.classList.remove('showing')
+    void card.offsetWidth
+    card.classList.add('showing')
+    if (this.cardTimer !== undefined) window.clearTimeout(this.cardTimer)
+    this.cardTimer = window.setTimeout(() => this.hideCard(), TERRITORY_HOLD)
+  }
+
+  /** Take it down. On its own clock, and on the next press, whichever is first. */
+  private hideCard(): void {
+    if (this.cardTimer !== undefined) window.clearTimeout(this.cardTimer)
+    this.cardTimer = undefined
+    this.world.card.classList.remove('showing')
+    this.world.card.hidden = true
   }
 
   /**
@@ -1083,7 +1150,11 @@ export class App {
     renderTray(
       this.tray,
       state,
-      { held: this.currentHeld(state) },
+      // `busy` is *is a sequence on screen*, and it is the same fact
+      // `animating` reports to a test. A slot inspection is hidden while one
+      // is running: a card opening over the middle of a cascade would
+      // interrupt the one thing the cascade exists to show.
+      { held: this.currentHeld(state), busy: this.presenting !== undefined },
       {
         onMenu: () => this.open({ kind: 'menu' }),
         onFight: () => this.dispatch({ type: 'FIGHT' }),
@@ -1093,7 +1164,8 @@ export class App {
         onScore: (hand: ScoreId) => this.dispatch({ type: 'SCORE', hand }),
         onDrink: () => this.dispatch({ type: 'DRINK' }),
         onInspectReward: (id) => this.open({ kind: 'reward', id: id as RewardId }),
-        onInspectTalisman: (id) => this.open({ kind: 'talisman', id: id as TalismanId }),
+        onInspectCarried: (id) => this.open({ kind: 'carried', id }),
+        onMap: () => this.open({ kind: 'map' }),
       },
     )
 

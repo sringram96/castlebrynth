@@ -12,6 +12,12 @@
  * their card prints those tables verbatim: a found thing has to state its exact
  * mechanic before TAKE is pressed. Not a hint, not a category — the faces.
  *
+ * **And now literally the faces.** `content/faces.ts` derives a strip of chips
+ * from the thing's own `faces` table, and every place a card is read draws it:
+ * the loot card in the room, the tray slot inspection, the menu. What `rule`
+ * carries beside the strip is when the thing fires and whether there is a
+ * press — the two things a row of chips cannot say.
+ *
  * **The caps are the reducer's**, not the pool's. TAKE on a third item die is
  * refused there, and the room says so rather than the draw quietly pretending
  * the thing was never there.
@@ -79,7 +85,10 @@ const REWARD_LIST: readonly Reward[] = [
     name: 'Vial',
     short: 'VIAL',
     kind: 'vial',
-    rule: 'Drink it: 5 bones back, up to 30 in all.',
+    // The one carried thing with no faces, so its card names its **press**
+    // where a die's names its firing — the same contract read the other way
+    // round. See `content/faces.ts`.
+    rule: 'Press DRINK. 5 bones back, never past 30.',
     flavour: 'Thick, and still warm. Best not to ask.',
     weight: 6,
   },
@@ -110,6 +119,26 @@ export const REWARDS: Readonly<Record<RewardId, Reward>> = Object.fromEntries(
 export const LOOT_REWARDS: readonly RewardId[] = REWARD_LIST.filter((r) => r.weight > 0).map(
   (r) => r.id,
 )
+
+/**
+ * Which found thing a say line is about, if it is about one.
+ *
+ * The one seam between the reducer's prose and the faces that belong beside
+ * it. LOOK and TAKE both write `<name>. …` into `run.say`, and the word band
+ * draws that thing's strip under the sentence — *a found thing states its exact
+ * mechanic where it lies*, and since this wave the mechanic is the faces rather
+ * than a sentence about them.
+ *
+ * It is a match against **this table**, not a parse of English: the name it
+ * looks for is the same string the reducer printed, out of the same record. A
+ * copy change it does not recognise loses the strip and nothing else, which is
+ * the correct failure for a decoration that repeats what the card already says.
+ */
+export function thingSaidIn(say: string): RewardId | undefined {
+  return [...REWARD_LIST]
+    .sort((a, b) => b.name.length - a.name.length)
+    .find((r) => say.startsWith(r.name))?.id
+}
 
 export function reward(id: RewardId): Reward {
   const found = REWARDS[id]

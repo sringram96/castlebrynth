@@ -16,6 +16,7 @@ import type { GameState, RunState } from '../../src/game/state.js'
 import { LOOT_REWARDS, REWARDS, isRewardId, itemDieOf, reward } from '../../src/content/rewards.js'
 import type { RewardId } from '../../src/content/rewards.js'
 import { ITEM_DICE } from '../../src/content/dice.js'
+import { stripFor } from '../../src/content/faces.js'
 import { enemy } from '../../src/content/enemies.js'
 import { legalScores } from '../../src/combat/hands.js'
 import { Rng } from '../../src/game/rng.js'
@@ -87,9 +88,31 @@ describe('the reward table', () => {
     }
   })
 
-  it('states an exact mechanic on every card', () => {
+  it('states an exact mechanic on every card, in digits', () => {
+    // **In the strip, or in the sentence.** The law has not moved — a card
+    // states its exact mechanic before TAKE is pressed — but where the digits
+    // live has: a die's card now shows its own six faces, so its prose is free
+    // to say the two things a row of chips cannot, which are when it fires and
+    // whether there is a press. A thing with no faces at all, which is the
+    // Vial, still has to carry its numbers in the sentence.
     for (const id of Object.keys(REWARDS) as RewardId[]) {
-      expect(reward(id).rule, id).toMatch(/\d/)
+      const printed = [reward(id).rule, ...(stripFor(id) ?? []).map((c) => c.text)].join(' ')
+      expect(printed, `${id} states no quantity anywhere on its card`).toMatch(/\d/)
+    }
+  })
+
+  it('gives every die with faces a strip, and the Vial a press instead', () => {
+    for (const id of Object.keys(REWARDS) as RewardId[]) {
+      const strip = stripFor(id)
+      if (id === 'vial') {
+        expect(strip, 'a Vial has no faces to show').toBeUndefined()
+        expect(reward(id).rule, 'a Vial does not name its press').toMatch(/DRINK/)
+        continue
+      }
+      expect(strip, `${id} has no strip`).toBeDefined()
+      expect(strip!.length, `${id} has an empty strip`).toBeGreaterThan(0)
+      // And the prose says the half a strip cannot: is there a press?
+      expect(reward(id).rule, `${id} does not say whether there is a press`).toMatch(/No press\./)
     }
   })
 

@@ -93,7 +93,7 @@ test.describe('the first run', () => {
 
     await expect(overlay.locator('#pile-total')).toContainText('BONES')
     await expect(overlay).toContainText('Vial')
-    await expect(overlay).toContainText('5 bones back, up to 30 in all')
+    await expect(overlay).toContainText('5 bones back, never past 30')
 
     // The whole fight, in its lines, and the scorecard under them.
     await expect(overlay.locator('#rules li')).toHaveCount(7)

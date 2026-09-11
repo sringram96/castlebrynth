@@ -17,6 +17,8 @@
 
 import type { Point, Rect } from '../content/tray.js'
 import { TRAY } from '../content/tray.js'
+import { stripFor } from '../content/faces.js'
+import type { FaceChip } from '../content/faces.js'
 import type { DieValue } from '../combat/roll.js'
 import type { Reward } from '../content/rewards.js'
 
@@ -202,13 +204,52 @@ export function dieButton(
   return b
 }
 
-/** One carried utility, as its own card. Exact mechanic, then flavour. */
+/**
+ * A thing's faces, as a row of chips.
+ *
+ * The one component, everywhere a carried thing is read: the loot card lying in
+ * the room, the tray slot inspection, the menu. It restates nothing — the chips
+ * are `content/faces.ts` mapped, which is the die's own table — so a die
+ * authored tomorrow is legible tomorrow and a card can never disagree with the
+ * cascade about what a face does.
+ *
+ * Every chip carries its kind as data as well as its colour, because *which
+ * face costs you bones* is not a thing to convey in red alone.
+ */
+export function faceStripView(chips: readonly FaceChip[]): HTMLElement {
+  const strip = el('div', 'faces')
+  strip.dataset['faces'] = String(chips.length)
+  strip.setAttribute('role', 'list')
+  for (const chip of chips) {
+    const pip = el('span', `face-chip face-${chip.kind}`, chip.text)
+    pip.dataset['face'] = chip.kind
+    pip.setAttribute('role', 'listitem')
+    strip.append(pip)
+  }
+  return strip
+}
+
+/** The faces of a thing, by id, or nothing for a thing that has none. */
+export function faceStripFor(id: string): HTMLElement | undefined {
+  const chips = stripFor(id)
+  return chips ? faceStripView(chips) : undefined
+}
+
+/**
+ * One carried utility, as its own card.
+ *
+ * **The faces first**, then the two things a strip cannot say — when it fires,
+ * and whether there is a press — then flavour. A thing with no faces at all,
+ * which is the Vial, has a press instead, and its rule names it.
+ */
 export function rewardCard(r: Reward, count?: number): HTMLElement {
   const card = el('article', `card reward-card reward-${r.kind}`)
   card.dataset['rewardId'] = r.id
   const head = el('h3', 'card-name', r.name)
   if (count !== undefined && count > 1) head.append(el('span', 'card-count', `×${count}`))
   card.append(head)
+  const strip = faceStripFor(r.id)
+  if (strip) card.append(strip)
   card.append(el('p', 'card-rule', `EFFECT · ${r.rule}`))
   if (r.flavour) {
     card.append(el('hr', 'card-rule-line'))

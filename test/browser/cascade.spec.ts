@@ -93,10 +93,13 @@ test.describe('the beats, in order', () => {
         text: String(faces[index]),
       })
     }
-    // The item's result, on the item die — not on an aggregate.
-    expect(seen).toContainEqual({ on: 'item-die:0', text: '+8' })
-    // And the talisman's flat, on the talisman.
-    expect(seen).toContainEqual({ on: 'talisman-slot', text: '+12' })
+    // The item's result, on the item die — not on an aggregate — **carrying
+    // its own name**. A `+8` over an unlabelled object is a number whose cause
+    // the player has to have already memorised; the name is what welds the
+    // face to the card that stated it, and it is printed every time.
+    expect(seen).toContainEqual({ on: 'item-die:0', text: 'Splinter Fetish+8' })
+    // And the talisman's flat, on the talisman, named the same way.
+    expect(seen).toContainEqual({ on: 'talisman-slot', text: 'Talisman of the Pair+12' })
     // Nothing flew anywhere. Every pop was anchored to a die, the talisman or
     // the pile — there is no aggregate for a number to migrate to.
     for (const pop of seen) {
@@ -173,7 +176,9 @@ test.describe('a cost is a cost', () => {
     expect(record.retaliation).toBe(0)
     expect(await livingBones(page)).toBe(24)
     // The cost landed on the player's health, which is where a cost is paid.
-    expect((await pops(page)).some((p) => p.on === 'item-die:0' && p.text === '−2')).toBe(true)
+    expect(
+      (await pops(page)).some((p) => p.on === 'item-die:0' && p.text === 'Splinter Fetish−2'),
+    ).toBe(true)
   })
 
   test('ends the run at the item beat, and the blow never lands', async ({ page }) => {
@@ -273,8 +278,8 @@ test.describe('motion off reaches the same numbers, in the same tick', () => {
   })
 })
 
-test.describe('an item die is never a press', () => {
-  test('there is no control for it anywhere, in any position of an attack', async ({ page }) => {
+test.describe('an item die has no press that changes anything', () => {
+  test('there is no verb for it anywhere, in any position of an attack', async ({ page }) => {
     const positions = [
       '?seed=5&room=deep&mode=combat&iron=5&items=grave-candle,splinter-fetish',
       '?seed=5&room=deep&rolls=1&iron=5&items=grave-candle,splinter-fetish',
@@ -283,18 +288,50 @@ test.describe('an item die is never a press', () => {
     for (const fixture of positions) {
       await boot(page, fixture)
       await expect(page.locator('#items .item-die')).toHaveCount(2)
-      await expect(page.locator('#items button')).toHaveCount(0)
-      await expect(page.locator('#iron button')).toHaveCount(0)
+      // The only press on the rail is a **reading**. There is no roll, no
+      // reroll, no fire, and no hold — the whole of the ruling is that an item
+      // die is a treat that lands mid-cascade rather than a fourth decision,
+      // and reading a card is not a decision in the attack.
+      for (const host of ['#items', '#iron']) {
+        const acts = await page
+          .locator(`${host} button`)
+          .evaluateAll((nodes) => nodes.map((n) => (n as HTMLElement).dataset['act']))
+        for (const found of acts) expect(found, `${host} offers ${found}`).toBe('inspect-slot')
+      }
       for (const gone of ['item-roll', 'item-reroll', 'fire-item', 'iron-reroll']) {
         await expect(act(page, gone), `${gone} is on the tray`).toHaveCount(0)
       }
     }
   })
 
-  test('neither the iron nor the items are art that eats a press', async ({ page }) => {
+  test('reading a slot changes nothing at all', async ({ page }) => {
+    await boot(page, FLAT)
+    const before = await state(page)
+    await page.locator('#items .item-die').first().click()
+    await expect(page.locator('#overlay')).toBeVisible()
+    // The card, with the die's own faces on it.
+    await expect(page.locator('#overlay .faces .face-chip').first()).toBeVisible()
+    await act(page, 'close').click()
+    const after = await state(page)
+    expect(after).toEqual(before)
+  })
+
+  test('is not offered at all while the cascade is running', async ({ page }) => {
+    // Never interruptive: a card opening over the middle of an attack would
+    // cover the one thing the cascade exists to show. Hidden, not disabled.
+    await boot(page, FLAT, { motion: true })
+    await page.locator('.score-entry[data-hand="pair"]').click()
+    await expect(page.locator('#items button')).toHaveCount(0)
+    await expect(page.locator('#iron button')).toHaveCount(0)
+    await expect.poll(() => animating(page), { timeout: 8000 }).toBe(false)
+    // And back the instant the screen settles.
+    await expect(page.locator('#items button[data-act="inspect-slot"]').first()).toBeVisible()
+  })
+
+  test('the faces themselves are art, and never eat a press', async ({ page }) => {
     await boot(page, FLAT)
     const inert = await page.evaluate(() =>
-      [...document.querySelectorAll('.iron-die, .item-die, .iron-face, .item-face')].map(
+      [...document.querySelectorAll('.iron-face, .item-face')].map(
         (n) => getComputedStyle(n).pointerEvents,
       ),
     )

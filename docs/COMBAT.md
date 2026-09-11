@@ -94,10 +94,20 @@ reintroduce any always-on damage-reduction stat anywhere.**
 
 `run.itemDice`, hard cap **two**, enforced in the reducer.
 
-They **never appear at ROLL or REROLL and there is no press for them, ever.**
+They **never appear at ROLL or REROLL and there is no verb for them, ever.**
 They roll automatically at Attack as a beat in the scoring cascade. That is the
 whole point: an item die is a treat that lands mid-cascade, not a decision tax.
 Any design that adds a fourth press or an item reroll is explicitly rejected.
+
+**The one press a slot has is reading it.** Tapping a filled slot — an item
+die, the iron, the talisman — opens that thing's card: its name, its faces as a
+strip, when it fires, and whether there is a press. It changes nothing, it
+writes nothing, and it is **not offered while a cascade is running**. This is
+the talisman bay's ruling extended to the rail, and it exists for the reason
+the bay did: a carried thing whose faces can only be learned by watching them
+happen is not a stated mechanic. It is not a decision inside a turn, and it is
+not the fourth press: nothing about the attack changes when it is pressed or
+when it is not.
 
 Faces are **flat adds**, **blanks**, or **cost faces** paid in bones. There are
 no multiplier faces — global and compounding multipliers were measured and
@@ -219,6 +229,14 @@ is a multiplier that will disagree with itself**, and the same rule now covers
 an item die's faces and a talisman's bonus: `content/dice.ts` is the one table,
 and the reward card, the menu and the cascade all read it.
 
+**And the card now draws them rather than describing them.** A carried thing's
+card shows its six faces as a strip of chips — `+3 +3 +5 +5 · ·` — derived from
+that same `faces` table by `content/faces.ts`, everywhere the thing is read:
+the loot card where it lies, the tray slot inspection, the menu. A die authored
+later gets a strip for free, and a rule string can no longer disagree with the
+table beside it. What the prose carries is the two things a row of chips cannot
+say: **when the thing fires**, and **whether there is a press**.
+
 ### A roll can be several hands at once
 
 `5 5 5 2 2 4` is a Pair *and* a Two Pair *and* a Triple *and* a Full House. The
@@ -316,8 +334,12 @@ Feedback stays **spatially grounded on its source**:
 - **One running readout** of `sum × line`, resolving through the cascade to
   `sum × line + flats = total`. It is the **only aggregate on screen**.
 - Each core die pops its own value **on itself**.
-- Item results fire **on the item die**.
-- The talisman's flat fires **on the talisman**.
+- Item results fire **on the item die**, carrying **the die's own name**:
+  `GRAVE CANDLE +5`, `SPLINTER FETISH −2`. Every attack, not only the first —
+  repetition is how a face gets welded to the card that stated it, and a number
+  over an unlabelled object is a number whose cause has to be memorised. The
+  name is on the source; nothing migrates to an aggregate.
+- The talisman's flat fires **on the talisman**, named the same way.
 - The enemy's loss lands **on the enemy**.
 - Costs land **on the player's health**.
 - Captions under the iron state what it is holding **before commitment**.
@@ -470,7 +492,9 @@ The list a change has to keep true.
 14. Damage is `max(1, floor(sum × mult) + itemFlats + talismanFlat)`.
 15. Everything the loadout adds to damage is flat.
 16. There is no multiplier anywhere but `HAND_DEFINITIONS`.
-17. Item dice never appear at ROLL or REROLL and have no press.
+17. Item dice never appear at ROLL or REROLL and have no verb: no roll, no
+    reroll, no fire. The only press on a slot is a read-only inspection, which
+    changes nothing and is absent mid-cascade.
 18. At most two item dice, enforced in the reducer.
 19. An item cost charges before the blow lands; a lethal cost ends the run and
     the blow never lands.

@@ -74,6 +74,16 @@ export interface World {
   readonly weapon: HTMLImageElement
   readonly strike: HTMLImageElement
   readonly fx: HTMLElement
+  /**
+   * The territory's ambient grade: one tint over everything painted.
+   *
+   * It carries `data-territory` and the stylesheet does the rest, so rooms of
+   * one stretch of the descent share air without a pixel of `public/` moving.
+   * It decides nothing and it is never a control.
+   */
+  readonly grade: HTMLElement
+  /** The card that names a territory, once, on first entry to it. */
+  readonly card: HTMLElement
   /** Where the room's tappable details live. The only layer that takes taps. */
   readonly hits: HTMLElement
   readonly hud: HTMLElement
@@ -126,6 +136,25 @@ export function mountWorld(root: HTMLElement): World {
   const fx = layer('div', 'fx', Layer.Fx)
   fx.id = 'fx'
 
+  // The territory's air, and the card that names it.
+  //
+  // Neither is a layer and neither is in the enum: the enum is the whole
+  // guarantee that a backdrop cannot end up over an enemy, and a grade is not
+  // a piece of the room — it is a tint over everything painted, a treatment
+  // rather than a repaint, and no file in `public/` is touched by it. They are
+  // direct children of the world box on purpose: a blend mode mixes with the
+  // stacking context it sits in, and a grade nested inside a layer would blend
+  // with that layer's own contents rather than with the picture.
+  const grade = document.createElement('i')
+  grade.id = 'grade'
+  grade.className = 'grade'
+  grade.style.zIndex = String(Layer.Fx)
+  const card = document.createElement('div')
+  card.id = 'territory-card'
+  card.className = 'territory-card'
+  card.hidden = true
+  card.style.zIndex = String(Layer.Hud)
+
   // The hit layer sits with the HUD, above every piece of art, and is the only
   // world layer that is not pointer-events: none.
   const hits = layer('div', 'hits', Layer.Hud)
@@ -133,8 +162,22 @@ export function mountWorld(root: HTMLElement): World {
   const hud = layer('div', 'hud', Layer.Hud)
   hud.id = 'hud'
 
-  root.append(backdrop, midground, enemy, foreground, fx, hits, hud)
-  return { root, backdrop, midground, prop, enemy, foreground, weapon, strike, fx, hits, hud }
+  root.append(backdrop, midground, enemy, foreground, fx, grade, hits, hud, card)
+  return {
+    root,
+    backdrop,
+    midground,
+    prop,
+    enemy,
+    foreground,
+    weapon,
+    strike,
+    fx,
+    grade,
+    card,
+    hits,
+    hud,
+  }
 }
 
 /**

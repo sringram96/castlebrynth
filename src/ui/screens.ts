@@ -32,12 +32,14 @@ import {
   itemDie as itemDieById,
   talisman as talismanById,
 } from '../content/dice.js'
-import type { CoreDieId, TalismanId } from '../content/dice.js'
+import type { CoreDieId } from '../content/dice.js'
+import { carried } from '../content/faces.js'
 import { enemy as enemyById } from '../content/enemies.js'
 import { carriedNames } from '../game/reducer.js'
 import { roomArt, url } from '../render/assets.js'
 import type { GameState } from '../game/state.js'
-import { button, el, rewardCard } from './components.js'
+import { button, el, faceStripFor, rewardCard } from './components.js'
+import { stripPanel } from './strip.js'
 
 export interface ScreenHandlers {
   readonly onStart: () => void
@@ -128,7 +130,10 @@ function title(state: GameState, on: ScreenHandlers, discarded?: string): HTMLEl
 
 function dead(state: GameState, on: ScreenHandlers): HTMLElement {
   const box = el('section', 'screen screen-dead')
-  const panel = el('div', 'screen-panel')
+  // Scrolling, because the run's own strip is under the three facts now and a
+  // long descent is a tall epitaph. The forward route is still a real button
+  // and is still on the screen when it opens.
+  const panel = el('div', 'screen-panel screen-scroll')
   panel.append(el('h2', 'screen-head', 'YOU DID NOT COME BACK'))
   panel.append(el('p', 'screen-line', DEATH_LINE))
   if (state.run?.cause) panel.append(el('p', 'screen-cause', state.run.cause))
@@ -169,6 +174,12 @@ function dead(state: GameState, on: ScreenHandlers): HTMLElement {
     }),
   )
   panel.append(acts)
+
+  // And the reel itself, as the epitaph: the same strip MAP opens, showing the
+  // same frames the count above counts, with the roads it walked past beside
+  // them. It is **under** the forward route on purpose — a screen's way on may
+  // never be the thing you have to scroll to find.
+  if (run) panel.append(stripPanel(run))
   box.append(panel)
   return box
 }
@@ -212,11 +223,17 @@ function complete(state: GameState, on: ScreenHandlers): HTMLElement {
  * Neither of them can change anything. The Pouch could, and it is gone with
  * the fielding decision it existed to carry — the choice inside a fight is
  * which hand to score, and that is made on the tray where the dice are.
+ *
+ * `map` is the strip — the run's own reel, read back. It is an inspection like
+ * the others: it changes nothing, it writes nothing, and it shows only the
+ * rooms that have been stood in.
  */
 export type Overlay =
   | { readonly kind: 'menu' }
   | { readonly kind: 'reward'; readonly id: RewardId }
-  | { readonly kind: 'talisman'; readonly id: TalismanId }
+  /** One thing in a tray slot: the iron die, an item die, the talisman. */
+  | { readonly kind: 'carried'; readonly id: string }
+  | { readonly kind: 'map' }
 
 export function renderOverlay(
   host: HTMLElement,
@@ -229,9 +246,11 @@ export function renderOverlay(
   const panel =
     view.kind === 'menu'
       ? menuPanel(state)
-      : view.kind === 'talisman'
-        ? talismanPanel(view)
-        : focusPanel(view)
+      : view.kind === 'map'
+        ? mapPanel(state)
+        : view.kind === 'carried'
+          ? carriedPanel(view)
+          : focusPanel(view)
   if (!panel) return
   panel.append(
     button({ act: 'close', label: VERBS.close, onPress: onClose, className: 'act act-big act-primary' }),
@@ -252,11 +271,30 @@ function focusPanel(view: Overlay & { kind: 'reward' }): HTMLElement {
   return panel
 }
 
-/** The same, for a talisman — which is carried but never taken as a reward. */
-function talismanPanel(view: Overlay & { kind: 'talisman' }): HTMLElement {
+/**
+ * The same, for a thing that is carried rather than taken as a reward.
+ *
+ * One panel for all three of them — the iron die, an item die, the talisman —
+ * because the question a player is asking of a filled slot is the same
+ * question every time: *what is this, and what can it do?* It is read-only,
+ * it writes nothing, and it is the press behind an occupied tray slot.
+ */
+function carriedPanel(view: Overlay & { kind: 'carried' }): HTMLElement | null {
+  const thing = carried(view.id)
+  if (!thing) return null
   const panel = el('div', 'screen-panel screen-focus')
   panel.dataset['focus'] = view.id
-  panel.append(loadoutCard(talismanById(view.id)))
+  panel.append(loadoutCard(thing))
+  return panel
+}
+
+/** The strip: every room this run has stood in, and the roads it left. */
+function mapPanel(state: GameState): HTMLElement | null {
+  const run = state.run
+  if (!run) return null
+  const panel = el('div', 'screen-panel screen-strip')
+  panel.dataset['focus'] = 'map'
+  panel.append(stripPanel(run))
   return panel
 }
 
@@ -264,8 +302,8 @@ function talismanPanel(view: Overlay & { kind: 'talisman' }): HTMLElement {
  * One carried loadout thing, as its own card.
  *
  * The same shape a reward card has, built from the same fields, so a player
- * never has to reconcile two descriptions of one object. Exact mechanic first,
- * flavour under a rule.
+ * never has to reconcile two descriptions of one object. **The faces first**,
+ * then when it fires and whether there is a press, then flavour.
  */
 function loadoutCard(thing: {
   readonly id: string
@@ -276,6 +314,8 @@ function loadoutCard(thing: {
   const card = el('article', 'card reward-card reward-loadout')
   card.dataset['rewardId'] = thing.id
   card.append(el('h3', 'card-name', thing.name))
+  const strip = faceStripFor(thing.id)
+  if (strip) card.append(strip)
   card.append(el('p', 'card-rule', `EFFECT · ${thing.rule}`))
   if (thing.flavour) {
     card.append(el('hr', 'card-rule-line'))

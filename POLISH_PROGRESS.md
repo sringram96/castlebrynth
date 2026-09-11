@@ -310,6 +310,20 @@ Status: DONE — see below.
 9. Are room descriptions atmospheric without hiding what changed?
 10. Does SCORE feel like an event?
 
+Added by the legibility wave, and these are the ones a phone has to settle:
+
+11. After one fight carrying a die, can a player say what its faces are —
+    without opening anything?
+12. Does a pop that carries its name (`GRAVE CANDLE +5`) read, or is the name
+    too small to land in the time it is up?
+13. Does MAP answer *where am I* or *where can I go*? It is meant to answer
+    only the first. If it reads as a plan, the mouths are doing too much.
+14. Crossing from the ossuary into the chapel: does it read as going further
+    down, or as the picture changing?
+15. Does the territory card land on the arrival, or on top of the way out?
+16. Is a 38 × 44 slot on the rail reachable with a thumb, given it sits between
+    two dice at the same pitch?
+
 Two of these have a specific thing to look at:
 
 - **6** is also where the 38 × 44 die target lands. If the answer is "the dice
@@ -941,3 +955,175 @@ derived value in the pipeline.
 empty and their gates are still armed: a manifest row names a file, and
 `test/unit/assets.test.ts` holds every row to a real file of the declared size.
 No row was added for anything above, so nothing promises art nobody has drawn.
+
+---
+
+## HUMAN ART REQUIRED — the legible reel
+
+The legibility wave. Faces drawn rather than described, a strip of where the
+run has been, and one grade of air per territory. **No pixel was authored,
+generated, traced, recoloured, cropped or otherwise touched**, and
+`test/unit/untouched.test.ts` asserts it: `public/` and the masters are byte
+for byte what they were on the base commit.
+
+Everything below is running on CSS chips and stylesheet tints over the art that
+already exists. Each is a stand-in, each has a shape a painter can replace, and
+each comes out the day the plate lands.
+
+### The face strip
+
+A carried thing's card now shows **its faces** rather than a sentence about
+them: `+3 +3 +5 +5 · ·` for the Grave Candle, `0 0 3 3 5 7` for the Rustplate,
+`PAIR TWO PAIR +12` for the talisman. It renders in three places — the loot
+card where the thing lies, the tray slot inspection, and the MENU loadout.
+
+What is owed is **a chip housing**: a small painted plate a figure sits in, in
+the game's own metal, at the sizes the strip uses.
+
+| | what it is | size |
+| --- | --- | --- |
+| `ui/chip-flat` | the plate a `+5` sits on — warm, lit | 26 × 20 |
+| `ui/chip-cost` | the same, in the blood tone, for a `−2` | 26 × 20 |
+| `ui/chip-blank` | a dark plate with a dim pip cut into it | 26 × 20 |
+| `ui/chip-block` | cold iron, for the Rustplate's faces | 26 × 20 |
+| `ui/chip-line` | wider: it carries a word (`TWO PAIR`), not a figure | 52 × 20 |
+
+Until they land the chips are bordered boxes on the palette's tokens, square
+cornered and on a whole-pixel pitch, per `ART_DIRECTION.md` § Combat chrome.
+
+### The strip's furniture, and a MAP glyph
+
+**MAP** opens the run's own reel: a frame per room stood in, the current one
+bordered, and dark mouth-marks for the roads that were read and not taken.
+
+| | what it is | size |
+| --- | --- | --- |
+| `ui/strip-frame` | a film frame, 9-sliceable, in the tray's metal | 320 × 26 |
+| `ui/strip-frame-here` | the same, lit, for the room being stood in | 320 × 26 |
+| `ui/strip-mouth` | a dark arch mark, for a road not taken | 44 × 26 |
+| `ui/map-glyph` | a glyph for the MAP bed. A folded chart, or a thread | 44 × 44 |
+
+Until they land, a frame is a bordered box and the bed carries the word `MAP`.
+
+### Slot-card housing
+
+Tapping a filled tray slot opens that thing's card. It is the same
+`.reward-card` panel the loot inspection has always used, on the overlay's flat
+scrim. **A painted card housing is owed** — a plate with a lip, at
+`min(100%, 460px)` — and it is the same owed thing the reward card has wanted
+since the dice wave; it is named here because the card is now reached three
+ways rather than one.
+
+### A painted treatment for a territory card
+
+On first entry to a stretch of the descent, the arrival beat carries a word:
+`THE THRESHOLD`, `THE OSSUARY`, `THE CHAPEL`, `THE DEEP`. It is set in the
+game's type at 20px with wide tracking, and that is all it is.
+
+What is owed is **a painted title treatment** — the four words drawn, in the
+letterforms the title screen uses, as transparent plates at 480 wide. They
+would be `ui/card-threshold`, `ui/card-ossuary`, `ui/card-chapel`,
+`ui/card-deep`. It is the one place in the game where typography is the whole
+of the image, so it is the one place where drawn letters would be worth their
+bytes.
+
+### Two regions whose paint cannot hold their text
+
+The seating audit (`content/tray.ts` § SEATED, asserted in
+`test/browser/seating.spec.ts`) measures every word on the plate against the
+**painted region it lives in**. Two rows are marked `fits: false`, and they are
+not code faults:
+
+- **the relic bays.** `RELIC_BAY` is 0.0452 of a 730px plate — 19 px on a phone
+  — and `VIAL` is not 19 px wide at a legible size. The word is centred on the
+  bay's centre, which is the part the code can be held to, and it overhangs the
+  recess left and right.
+- **the three beds.** Painted 45 source px deep, about 26 CSS px, against a
+  44 px touch floor. The overhang is even, top and bottom, and it is decoration
+  it overhangs rather than another control.
+
+Both want **a painted housing sized to its word** rather than a smaller font.
+A squeezed font is not a fix; it is the same failure one step further on.
+
+### What was found and fixed rather than owed
+
+**The pile's count was off its glass.** `ORB_TEXT` ran 0.045 → 0.220 of the
+plate, whose middle is 0.1325, while the orb's own middle is 0.12465 — about
+five pixels of drift on a phone, which is exactly what "the words drift off
+their plates" meant. The box is now the orb's own width on the orb's own
+centre, and `seating.spec.ts` holds it to within a pixel.
+
+### Nothing else moved
+
+No manifest row was added, so nothing promises art nobody has drawn. The
+ambient grades are four colours and two blend modes in `src/style.css`, each
+**measured off that territory's own backdrops** and written down in
+`docs/ART_DIRECTION.md` as provisional first-pass values; they tint the picture
+and never repaint it.
+
+---
+
+## The phone pass — the legible reel
+
+**Not done.** This wave was built in a remote container with no phone in it,
+and the standing rule is that a pass which could not settle something says so
+rather than inventing a value in its place. What ran instead is Chromium at
+390 × 844 with real presses, which can prove that a beat fires in order with
+the right numbers — it did, 302 times — and cannot answer whether any of it
+*feels* right under a thumb, or show a dark-value failure at real brightness
+on a panel that does not have the failure mode being decided.
+
+So: the numbers below are openly marked as guesses, and the cut order is
+**pre-registered here, before the phone**, so that a later tuning result is a
+measurement rather than a preference wearing a measurement's coat.
+
+### What a pass has to settle, in order of how much it matters
+
+1. **The deep's grade, in the dark.** `#604f3b` at hard-light 55% is the only
+   one of the four that is not a gentle soft-light wash, and the Chain Vault
+   and the Marrow's room are the two darkest paintings in the game. The
+   question is whether it crushes the darkest fifth of those walls into a flat
+   block. A desktop panel will not show that. **If it does: drop the opacity
+   before changing the hue** — the hue was measured off the paintings and the
+   strength was not.
+2. **The territory card's dwell.** `TERRITORY_HOLD` is 1250 ms from the beat
+   the dark lifts, over a crossing that is itself 760 ms. It is the only new
+   thing on the critical path of a press. If the run feels like it is waiting
+   for a word, cut it — and it is the **first** thing to cut, before any beat
+   of the attack, because it is the only one that teaches nothing.
+3. **The name over a pop.** 6.5 px, wrapping, up for 760 ms while a number
+   rises. If the name cannot be read in that time it is doing nothing but
+   crowding the figure, and the fix is the pop's dwell rather than the type
+   size — a name under its own legibility floor says less than no name.
+4. **A 38 × 44 slot on the rail.** The iron and the item dice keep the crown's
+   pitch, so a read target is narrower than a thumb and sits between two
+   others at the same pitch. The accepted deviation is documented; whether it
+   is *reachable* is a hand question.
+5. **A chip at 26 × 20 with an 11 px figure.** Six of them in a row inside the
+   word band, over art. Readable at arm's length, or a smear?
+
+### The cut order, if the hand says the turn drags
+
+The attack's beats are named constants at the top of `src/app/app.ts` and
+**their order is law while their durations are not**. This wave added no beat
+to the attack, so the standing order is unchanged and the card goes in front
+of it:
+
+| order | knob | now | why |
+| --- | --- | --- | --- |
+| 1 | `TERRITORY_HOLD` | 1250 ms | the only new thing on the critical path, and the only one that teaches nothing |
+| 2 | `CROSSING.still` | 760 ms | the tail of the crossing after the picture has landed |
+| 3 | `ATTACK.dice` · `DIE_POP` | 200 · 34 ms | six dice is 204 ms of stagger — the largest single block |
+| 4 | `ATTACK.blow` → `rest` | 840 → 950 ms | the longest pause; *then, and only then* survives a shorter one |
+| never | `ATTACK.items` · `talisman` | 520 · 660 ms | **these are the beats that teach the loadout.** A face that goes past at the speed of a die teaches nothing, and a thing the player cannot see land is a thing they cannot price |
+
+Cut to the felt beat, then record before and after in one table. A cut with no
+number beside it is a preference.
+
+### What is still owed
+
+The whole of it: device and OS, the served commit hash, what read, what lied,
+what dragged. Until that exists, every number this wave introduced —
+`TERRITORY_HOLD`, the four grade strengths, the chip and name type sizes — is
+a **first-pass value, reported rather than tuned**, exactly as the balance
+report's figures are.

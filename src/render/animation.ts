@@ -146,14 +146,25 @@ export function pileChange(orb: HTMLElement, delta: number): void {
  * is no aggregate for any of them to fly to — the readout in the well is the
  * only running total, and nothing here migrates into it.
  *
+ * **A pop carries its name when it has one.** `GRAVE CANDLE +5`, over the
+ * candle. Every time, not only the first: repetition is how the cause gets
+ * welded to the card, a name costs no state and no beat, and a `+5` appearing
+ * over an unlabelled object is a number whose reason the player has to have
+ * already memorised. The name is still on the source — nothing migrates to an
+ * aggregate, and the readout in the well remains the only one.
+ *
  * Like everything in this file it is handed a string the reducer already
  * settled. It reads no rule and computes no number.
  */
-export function popNumber(host: HTMLElement, text: string, kind = 'value'): void {
+export function popNumber(host: HTMLElement, text: string, kind = 'value', name?: string): void {
   const tag = document.createElement('b')
   tag.className = `pop pop-${kind}`
   tag.dataset['pop'] = kind
-  tag.textContent = text
+  if (name) {
+    tag.dataset['name'] = name
+    tag.append(Object.assign(document.createElement('i'), { className: 'pop-name', textContent: name }))
+  }
+  tag.append(document.createTextNode(text))
   host.append(tag)
   if (reducedMotion()) {
     // Nothing is lost: with motion off the settled screen already states every
