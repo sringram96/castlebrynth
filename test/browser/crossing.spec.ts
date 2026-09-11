@@ -188,3 +188,191 @@ test.describe('crossing is a beat, and it decides nothing', () => {
     expect(await where(page)).toBe('cleft')
   })
 })
+
+/**
+ * Record every animation frame of a crossing: the scale the world is at, how
+ * opaque the void is, and which classes are on.
+ *
+ * A poll cannot ask this question. The defect these tests exist for was a
+ * *single frame* — the frame the scale snapped back on — and the only way to
+ * catch a one-frame discontinuity is to look at every frame.
+ */
+async function recordCrossing(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const frames: { t: number; scale: number; veil: number; cls: string }[] = []
+    const world = document.getElementById('world')!
+    // **The frame clock, not the wall clock.** A CSS animation advances on the
+    // timestamp the compositor hands `requestAnimationFrame`, and under load the
+    // two diverge badly: callbacks arrive in bursts 1ms apart in wall time while
+    // the animation has moved a whole delayed frame between them. Timing the
+    // movement against `performance.now()` measured the browser's scheduling
+    // rather than the animation, and called an honest ease a snap.
+    const read = (t: number): void => {
+      const m = new DOMMatrixReadOnly(getComputedStyle(world).transform)
+      frames.push({
+        t,
+        scale: m.a,
+        veil: Number(getComputedStyle(world, '::before').opacity),
+        cls: world.className,
+      })
+      requestAnimationFrame(read)
+    }
+    requestAnimationFrame(read)
+    ;(window as unknown as Record<string, unknown>)['__frames'] = frames
+  })
+}
+
+/**
+ * Wait for the crossing to be over **and off the world**.
+ *
+ * `animating()` goes false on the sequence's last beat, which is the frame the
+ * classes are removed on — a frame too early to ask what the world came to
+ * rest at. Nothing of the transition being left is the claim the older tests in
+ * this file already make; this waits for it before measuring.
+ */
+async function settled(page: Page): Promise<void> {
+  await expect.poll(() => animating(page), { timeout: 6000 }).toBe(false)
+  await expect(page.locator('#world')).not.toHaveClass(/crossing|dark|arriving/)
+}
+
+interface Frame {
+  readonly t: number
+  readonly scale: number
+  readonly veil: number
+  readonly cls: string
+}
+
+const framesOf = (page: Page): Promise<Frame[]> =>
+  page.evaluate(
+    () => ((window as unknown as Record<string, unknown>)['__frames'] as Frame[] | undefined) ?? [],
+  )
+
+test.describe('a crossing is one movement, not an animation and a cut', () => {
+  test('never jumps: no frame moves the world more than the ease would', async ({ page }) => {
+    // The whole of the complaint, as a number. The old sequence declared its
+    // transition on `.crossing`, so removing the class took the transition with
+    // it and the scale went from 1.035 to 1 **in one frame** — a 3.5% jolt, and
+    // the reason the arrival read as a terse change of scenery rather than as
+    // the end of a movement.
+    //
+    // The ceiling is **per millisecond, not per frame**, because a frame is not
+    // a fixed quantity of time: under a loaded four-worker run this browser
+    // delivers frames three times slower than it does alone, and a fixed
+    // per-frame budget either fails on a slow machine or passes a snap on a
+    // fast one. The two curves are 0.035 of travel over 340ms (ease-in) and
+    // over 420ms (ease-out); an ease peaks at about twice its average rate, so
+    // the fastest honest movement is near 0.21 per second. `PEAK` is that with
+    // a fifth of headroom, `FLOOR` absorbs subpixel rounding, and a snap — the
+    // whole 0.035 inside one frame — clears it by four times over.
+    const PEAK = 0.00025
+    const FLOOR = 0.001
+    // A pair further apart than this says nothing: the browser stalled, and
+    // over a long enough gap the honest ease really does travel that far.
+    const STALLED = 100
+
+    await boot(page, '?room=entry', { motion: true })
+    await recordCrossing(page)
+    await act(page, 'go').click()
+    await settled(page)
+
+    const frames = await framesOf(page)
+    let judged = 0
+    for (let i = 1; i < frames.length; i++) {
+      const now = frames[i]!
+      const before = frames[i - 1]!
+      const dt = now.t - before.t
+      if (dt <= 0 || dt > STALLED) continue
+      judged++
+      const jump = Math.abs(now.scale - before.scale)
+      const allowed = PEAK * dt + FLOOR
+      expect(
+        jump,
+        `${dt.toFixed(0)}ms frame moved ${jump.toFixed(5)}, over the ${allowed.toFixed(5)} an ` +
+          `ease could (${before.cls || 'settled'} → ${now.cls || 'settled'})`,
+      ).toBeLessThan(allowed)
+    }
+    // A run too slow to have judged anything must say so rather than pass on an
+    // empty loop.
+    expect(judged, 'every frame pair was stalled: nothing was actually measured').
+      toBeGreaterThan(6)
+  })
+
+  test('hands the movement over under a void that is already solid', async ({ page }) => {
+    // The swap itself must never be on screen. The room being left stops
+    // leaning and the room being entered starts settling in the same beat, and
+    // that beat is behind full black — otherwise the handover is a visible
+    // stutter and the destination is glimpsed before it is revealed.
+    await boot(page, '?room=entry', { motion: true })
+    await recordCrossing(page)
+    await act(page, 'go').click()
+    await settled(page)
+
+    const frames = await framesOf(page)
+    const handover = frames.findIndex((f) => f.cls.includes('arriving'))
+    expect(handover, 'the arrival never took over the movement').toBeGreaterThan(0)
+    expect(frames[handover]!.veil, 'the handover happened in the open').toBe(1)
+  })
+
+  test('is still settling when the dark lifts on it', async ({ page }) => {
+    // What makes the two halves one crossing rather than two events: you come
+    // up out of the dark into a room that is *still moving*. A destination that
+    // has already finished settling by the time it is visible is a slideshow
+    // advancing, which is the framing the dark exists to avoid.
+    await boot(page, '?room=entry', { motion: true })
+    await recordCrossing(page)
+    await act(page, 'go').click()
+    await settled(page)
+
+    const frames = await framesOf(page)
+    // The first frame on which the void is no longer solid: the reveal.
+    const lifting = frames.findIndex((f, i) => i > 0 && f.veil < 1 && frames[i - 1]!.veil === 1)
+    expect(lifting, 'the void never lifted').toBeGreaterThan(0)
+    expect(frames[lifting]!.scale, 'the room was already at rest when it was revealed').
+      toBeGreaterThan(1)
+    // And it does come to rest, rather than being left mid-movement.
+    expect(frames[frames.length - 1]!.scale).toBe(1)
+  })
+
+  test('closes the void over frames rather than in one', async ({ page }) => {
+    // A cut through black, still — the two rooms are never on screen together —
+    // but a cut does not have to arrive as a pop. The void used to be a
+    // pseudo-element conjured by the class, which has nothing to fade from.
+    await boot(page, '?room=entry', { motion: true })
+    await recordCrossing(page)
+    await act(page, 'go').click()
+    await settled(page)
+
+    const frames = await framesOf(page)
+    // **Both edges**, counted separately. Checking only that partial frames
+    // exist somewhere passes on a void that slams shut and then fades open,
+    // which is half the defect and reads as the worse half: the moment the room
+    // is taken away is the one the eye is already on.
+    let closing = 0
+    let lifting = 0
+    for (let i = 1; i < frames.length; i++) {
+      const now = frames[i]!.veil
+      const before = frames[i - 1]!.veil
+      if (now <= 0 || now >= 1) continue
+      if (now > before) closing++
+      if (now < before) lifting++
+    }
+    expect(closing, 'the void slammed shut in a single frame').toBeGreaterThan(2)
+    expect(lifting, 'the void vanished in a single frame').toBeGreaterThan(2)
+  })
+
+  test('and motion off still has no crossing at all', async ({ page }) => {
+    // The parity that outranks all of the above: with motion off there is no
+    // sequence, so there is no veil, no lean and no settle — the destination is
+    // simply the screen, in the tick of the press.
+    await boot(page, '?room=entry')
+    await recordCrossing(page)
+    await act(page, 'go').click()
+    expect(await where(page)).toBe('passage')
+
+    const frames = await framesOf(page)
+    for (const f of frames) {
+      expect(f.veil).toBe(0)
+      expect(f.scale).toBe(1)
+    }
+  })
+})

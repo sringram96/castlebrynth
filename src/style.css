@@ -707,9 +707,55 @@ button {
  * mid-crossing lands in the destination, settled. With motion off the sequence
  * never starts and neither class is ever added.
  */
+/*
+ * The push, and the settle that answers it.
+ *
+ * The transition lives on `#world` rather than on `.crossing`, which is the
+ * whole of why the old one read as two unrelated events: a transition declared
+ * on the class is gone the instant the class is, so the scale **snapped** back
+ * to 1 the moment `land` fired. Declared here it eases in both directions, and
+ * a beat that is interrupted hands off from wherever it actually got to.
+ *
+ * `.arriving` is the other half, and it is new. The room being left used to be
+ * the only thing that moved: you leaned into a doorway and then a finished,
+ * motionless picture was simply on screen. Two movements that mirror each
+ * other — lean in, dark, settle out — read as one crossing; one movement and a
+ * cut reads as an animation followed by a slide change.
+ */
+#world {
+  /*
+   * How far the frame leans into a doorway. **One number**, because the push
+   * and the settle are the two halves of one movement and a lean written twice
+   * is a lean that will disagree with itself — which is exactly what it did:
+   * the settle started from 1.02 while the push ended at 1.035, and handed the
+   * world a 1.5% jolt on the handover frame. It was under full black and no
+   * player would ever have seen it, which is the reason to have measured it
+   * rather than watched for it.
+   */
+  --lean: 1.035;
+
+  transition: transform 340ms ease-in;
+}
+
 #world.crossing {
-  transform: scale(1.035);
-  transition: transform 220ms ease-in;
+  transform: scale(var(--lean));
+}
+
+#world.arriving {
+  animation: world-settle 420ms ease-out forwards;
+}
+
+/*
+ * The release. It starts where the push ended, so the curve is continuous
+ * across the beat that swaps the rooms underneath it.
+ */
+@keyframes world-settle {
+  from {
+    transform: scale(var(--lean));
+  }
+  to {
+    transform: scale(1);
+  }
 }
 
 /*
@@ -726,19 +772,50 @@ button {
   display: none;
 }
 
-#world.dark::before {
+/*
+ * The dark, which is still the beat that does the work.
+ *
+ * It is a **cut through black** and not a crossfade — the two rooms are never
+ * on screen together, and the palette changes while nothing is visible — but a
+ * cut does not have to arrive as a pop. The void now closes fast and lifts
+ * slower, which is the shape of a doorway: you lose the room quickly and come
+ * up out of the dark into the next one.
+ *
+ * The pseudo-element is on `#world` rather than on `.dark` so that it exists
+ * to be faded. A `::before` conjured by the class has nothing to transition
+ * from, which is why both edges used to be instant.
+ */
+#world::before {
   content: "";
   position: absolute;
   inset: 0;
   z-index: 6;
   background: var(--void);
   pointer-events: none;
+  opacity: 0;
+  transition: opacity 240ms ease-out;
 }
 
+#world.dark::before {
+  opacity: 1;
+  transition: opacity 160ms ease-in;
+}
+
+/*
+ * Reduced motion keeps the dark and loses the movement.
+ *
+ * The crossing still happens — it is how the game says you went somewhere —
+ * but nothing scales. The void's fade stays: it is a change of light, not of
+ * position, and a hard cut to black is the harsher thing to hand somebody who
+ * asked for less movement.
+ */
 @media (prefers-reduced-motion: reduce) {
-  #world.crossing {
+  #world,
+  #world.crossing,
+  #world.arriving {
     transform: none;
     transition: none;
+    animation: none;
   }
 }
 
@@ -1753,12 +1830,25 @@ button.score-crap {
   width: 100%;
 }
 
+/*
+ * A way on, and what it smells like.
+ *
+ * Centred, like everything else the well carries. It used to be the one
+ * left-aligned thing in a region whose every other state — the brief, the
+ * attack line, the shut-room reason — is centred, so a room with two ways out
+ * read as a differently built tray than the room before it.
+ *
+ * `text-wrap: balance` is what makes centring survive the wrap: a centred line
+ * that breaks two words before its end leaves a stub under a long first line,
+ * and these are two-line lines more often than not.
+ */
 .route {
   margin: 0;
   font-size: 10.5px;
   line-height: 1.35;
   color: var(--ink-dim);
-  text-align: left;
+  text-align: center;
+  text-wrap: balance;
 }
 
 .route-label {
