@@ -448,7 +448,9 @@ export function applyFixture(base: GameState, search: string): GameState {
     return {
       ...state,
       mode: 'dead',
-      run: { ...state.run!, bones: 0, cause: 'A fixture. Nothing killed me.' },
+      // Dev-only, and still held to the story: nothing kills anybody in this
+      // game. Running out is running out of knowing why you came.
+      run: { ...state.run!, bones: 0, cause: 'A fixture. Nothing took it.' },
     }
   }
   if (mode === 'complete') {

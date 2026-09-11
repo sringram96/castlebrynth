@@ -26,7 +26,15 @@ import { ladderChips, stripFor } from '../../src/content/faces.js'
 import { ENEMIES } from '../../src/content/enemies.js'
 import { ROOM_LIBRARY } from '../../src/content/rooms.js'
 import { WAYS, way } from '../../src/content/runPlans.js'
-import { ATTACK_LINE, HOW_A_FIGHT_GOES, VERBS } from '../../src/content/text.js'
+import {
+  ATTACK_LINE,
+  COMPLETE_LINE,
+  DEATH_LINE,
+  HOW_A_FIGHT_GOES,
+  TITLE_LINE,
+  TITLE_STALE,
+  VERBS,
+} from '../../src/content/text.js'
 import { CRAP_NAME, HAND_DEFINITIONS } from '../../src/combat/hands.js'
 
 /** Everything the player can read, so a banned word cannot hide in a corner. */
@@ -45,6 +53,10 @@ function everySentence(): string[] {
   // to every rule below.
   for (const w of Object.values(WAYS)) out.push(w.label, w.sense)
   out.push(...HOW_A_FIGHT_GOES, ...Object.values(ATTACK_LINE), ...Object.values(VERBS))
+  // The four lines that open and close a run. They were the one corner of the
+  // player-facing copy no rule in this file reached, which is how the game came
+  // to state its premise once on the title screen and contradict it at the door.
+  out.push(TITLE_LINE, TITLE_STALE, DEATH_LINE, COMPLETE_LINE)
   return out.filter(Boolean)
 }
 
@@ -274,5 +286,56 @@ describe('nothing player-facing uses the old vocabulary', () => {
     for (const line of everySentence()) {
       expect(line, `"${line}" calls the pile a hand`).not.toMatch(/\bthe pile is (a|my) hand\b/i)
     }
+  })
+})
+
+/**
+ * The run says what it is for.
+ *
+ * The premise is that **bone remembers**: the thirty in the pile are what he
+ * still knows, and at zero he does not die — he stops knowing why he came down
+ * and walks back to the stair. These are the four ways that can quietly stop
+ * being true, written as rules rather than as a snapshot of the sentences, so
+ * the prose stays free to improve and the contract does not.
+ */
+describe('the run says what it is for', () => {
+  it('states the errand on the title, in the first sentence a player reads', () => {
+    // Not *which* errand — who he is looking for is the one thing the character
+    // cannot remember and the game therefore never says. What must survive is
+    // that there **is** one, because it is the only answer to "why am I doing
+    // this" the game ever offers.
+    expect(TITLE_LINE).toMatch(/looking for|to look|find/i)
+  })
+
+  it('never calls the end of a run a death, anywhere a player can read it', () => {
+    // Nothing kills him. A screen that says otherwise is the one lie the game
+    // cannot afford, because the whole premise is that running out is *worse*
+    // than dying — he goes back up, and he no longer knows what for.
+    for (const line of everySentence()) {
+      expect(line, `"${line}" calls running out a death`).not.toMatch(
+        /\b(died|death|killed|dying|slain)\b/i,
+      )
+    }
+  })
+
+  it('says at the end whether the errand survived, rather than whether the run did', () => {
+    // Both endings are about the same thing and it is not victory: one of them
+    // still knows to look and the other does not.
+    expect(DEATH_LINE, 'the losing end does not say what was actually lost').toMatch(
+      /remember|forgot|forgotten/i,
+    )
+    expect(COMPLETE_LINE, 'the winning end does not say the errand outlived it').toMatch(
+      /look|looking|remember/i,
+    )
+  })
+
+  it('keeps the Font the one thing that cannot give back a named one', () => {
+    // This sentence shipped long before the story did and is now load-bearing
+    // for it: the basin returns what the castle took, and never the ones that
+    // mattered. If it is ever softened, the premise loses the only place it is
+    // dramatised instead of asserted.
+    const font = ROOM_LIBRARY.find((r) => r.ritual)
+    expect(font, 'no room in the library has a font any more').toBeDefined()
+    expect(font!.ritual!.prompt).toMatch(/never one that had a name/i)
   })
 })

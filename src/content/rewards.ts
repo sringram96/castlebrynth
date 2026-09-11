@@ -89,7 +89,10 @@ const REWARD_LIST: readonly Reward[] = [
     // where a die's names its firing — the same contract read the other way
     // round. See `content/faces.ts`.
     rule: 'Press DRINK. 5 bones back, never past 30.',
-    flavour: 'Thick, and still warm. Best not to ask.',
+    // What separates it from the Font, which gives back what this place took
+    // and never a named one. The Vial gives back too — it just gives back
+    // somebody else's.
+    flavour: 'Thick, and still warm. Whatever is in it, it was never mine.',
     weight: 6,
   },
   // Item dice are upside and are drawn less often than the consumable that

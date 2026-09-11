@@ -1570,3 +1570,105 @@ value, reported rather than tuned**, exactly as the balance report's figures are
 > followed, and the beats that exist today are the ones in `src/app/app.ts`. The
 > record lives here rather than in `CHRONICLE.md` for the same reason: this file is
 > the active ledger.
+
+---
+
+# HUMAN ART REQUIRED — the rooms that share a picture
+
+Raised by a player, not by a wave: *"I only see the same background for every
+room now."* The report is accurate, it is about the backdrops rather than about
+anything the crooked-bones wave broke, and no coding agent may draw the fix —
+`CLAUDE.md` § *No art in the polish sweep*. So it is measured and written down
+here instead.
+
+## What is actually on screen
+
+`ROOM_ART` holds **eleven** paintings and `ROOM_LIBRARY` holds about twenty
+rooms, so borrowing is the norm rather than the exception. Three of the
+borrowers land on one painting:
+
+| painting | rooms that wear it |
+| --- | --- |
+| `shrine.png` | `fork` (owns it), `cleft`, `confluence` |
+| `choir.png` | `passage` (owns it), `offertory`, `carver` |
+| `deep.png` | `deep` (owns it), `niche` |
+
+`cleft`, `fork` and `confluence` are the **junctions** — the Split divides, the
+ways meet, the fork forks — so they are structural, and at least two of them sit
+on every walk of every grammar. Measured over the first 120 seeds, every
+distinct walk of all three grammars shows one painting **three times**:
+
+| grammar | rooms on the walk | distinct paintings |
+| --- | --- | --- |
+| DESCENT | 11–13 | 8–10 |
+| THE LONG WAY | 11–13 | 7–9 |
+| THE TITHE | 9–11 | 7–8 |
+
+THE TITHE is the one that reads worst, and it is worth writing out, because it
+is what the report is describing:
+
+```
+entry · shrine · hall · shrine · reliquary · shrine · deep · gate · brazier
+```
+
+The same picture on the second, fourth and sixth room of a nine-room run — every
+other room for the whole middle of the descent.
+
+**This is not new with the crooked bones**, and the entry should not pretend it
+is: before that wave the descent already showed `shrine` three times in ten
+rooms. What the wave changed is the *spacing*. THE TITHE has no Font and no
+`passage`, so the run is shorter and the junctions compress until they alternate;
+and `carver` and `niche` added two more borrowers, which put a third `choir` and
+a second `deep` on the long way. A repeat every third room reads as economy. A
+repeat every other room reads as a bug, which is exactly how it was reported.
+
+## What is wanted
+
+Four 480 × 720 scenes. Two of them — `carver` and `niche` — are already owed
+above under *the crooked bones* and are the same paintings, not new ones; the two
+this entry adds are:
+
+- **`cleft` — the Split, dividing.** A passage that opens into two mouths, one
+  ahead and one narrower to the side, with the two exits readable as *different
+  ways* rather than as one arch. Its anchors are already declared and measured by
+  `test/unit/anchors.test.ts`; the painting has to seat them at roughly
+  `(0.28, 0.52)` and `(0.72, 0.52)`.
+- **`confluence` — the ways meeting.** The other half of the same idea and the
+  room that most needs to *not* look like the Split: two passages arriving into
+  one space, with a single way on out of it. One mouth, low and central.
+
+With those four painted, the same measurement over the same 120 seeds gives:
+
+| grammar | distinct paintings, now | once painted |
+| --- | --- | --- |
+| DESCENT | 8–10 of 11–13 | 10–13 of 11–13 |
+| THE LONG WAY | 7–9 of 11–13 | 9–12 of 11–13 |
+| THE TITHE | 7–8 of 9–11 | 9–11 of 9–11 — every room distinct |
+
+and no walk shows any painting more than twice.
+
+## What is left over, and is not an art problem
+
+The remaining twice-over is `fork`, which some grammars use **as a template**
+twice in one run. That is the director reusing a room rather than two rooms
+sharing a picture, and the lever for it is `RunPlan`, not a brush. It is not
+being changed here: one repeated junction in a thirteen-room run is the kind of
+economy a descent can carry, and it is only visible at all once the three-way
+repeats above are gone.
+
+## What was not done instead
+
+Two things were considered and rejected rather than shipped quietly:
+
+- **Mirroring a borrowed backdrop** so `cleft` reads as a different room. It is
+  a transform of existing pixels and therefore inside the rule, but it flips the
+  candle-light direction in a pixel-painting whose lighting is hand-placed, and a
+  room that is another room backwards is a trick the eye catches on the second
+  run.
+- **Re-cropping the cover-fit per borrower.** Also inside the rule, and it would
+  desynchronise every seated plate and hotspot in the room from the backdrop they
+  are registered against — the one guarantee `ART_DIRECTION.md` makes about scene
+  plates.
+
+Both are available if the paintings are a long way off and the repeat has to be
+broken sooner. Neither is a fix.

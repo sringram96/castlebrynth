@@ -461,3 +461,72 @@ test.describe('the words sit where the paint says', () => {
     expect(loose, 'a word on the plate is in no region the audit names').toEqual([])
   })
 })
+
+/**
+ * The well is **one centred region**, in every state it has.
+ *
+ * It always meant to be — `.well` has said `text-align: center` since it was
+ * built — but the routes overrode it to `left`, and the routes are what the
+ * well carries in most rooms of most runs. So the tray's commonest state was
+ * the one state that read as a differently built tray: a room with two ways
+ * out sat its words hard against the left edge of a recess whose every other
+ * occupant is centred in it.
+ */
+test.describe('the well is one centred region', () => {
+  const WELL_STATES: readonly (readonly [string, string])[] = [
+    ['a fork, with two ways on', '?room=cleft'],
+    ['a room with one way on', '?room=entry'],
+    ['a room with a thing standing in it', '?room=hollow'],
+    ['the chapel, before the font', '?room=sanctuary&bones=12'],
+    ['a room that is shut', '?room=offertory'],
+    ['a fight, mid-throw', '?room=hollow&mode=combat&rolls=1'],
+  ]
+
+  for (const [state, fixture] of WELL_STATES) {
+    test(state, async ({ page }) => {
+      await boot(page, fixture)
+      const off = await page.evaluate(() => {
+        const out: string[] = []
+        const well = document.getElementById('well')!
+        for (const node of well.querySelectorAll('*')) {
+          const align = getComputedStyle(node).textAlign
+          // `start`/`end` are the logical spellings of left and right, and a
+          // button's own centring is its own business — what is audited here is
+          // prose, which is anything with words and no element children.
+          const prose = (node.textContent ?? '').trim() !== '' && node.childElementCount === 0
+          if (!prose || node.closest('button')) continue
+          if (align !== 'center') out.push(`${node.className || node.tagName}: ${align}`)
+        }
+        return out
+      })
+      expect(off, 'a line in the well is not centred in it').toEqual([])
+    })
+  }
+
+  test('centres the wrapped half of a route too, not just its first line', async ({ page }) => {
+    // Declaring `text-align: center` is not the same as looking centred: a
+    // route is a gold label and a sentence, and it wraps more often than not.
+    // This measures the **last visual line** of each route against the box it
+    // sits in, which is the thing an eye actually judges.
+    await boot(page, '?room=cleft')
+    const drift = await page.evaluate(() => {
+      const out: number[] = []
+      const routes = document.getElementById('routes')!
+      const box = routes.getBoundingClientRect()
+      for (const route of routes.querySelectorAll('.route')) {
+        const range = document.createRange()
+        range.selectNodeContents(route)
+        const lines = [...range.getClientRects()].filter((r) => r.width > 0)
+        const last = lines[lines.length - 1]
+        if (!last || lines.length < 2) continue
+        out.push(last.left + last.width / 2 - (box.left + box.width / 2))
+      }
+      return out
+    })
+    expect(drift.length, 'no route wrapped, so nothing was measured').toBeGreaterThan(0)
+    for (const d of drift) {
+      expect(Math.abs(d), `a wrapped route line sits ${d.toFixed(1)}px off centre`).
+        toBeLessThanOrEqual(2)
+    }
+  })
+})

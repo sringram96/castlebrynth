@@ -148,20 +148,33 @@ const RITUAL = {
  *   dark   the screen closes. **This is the beat that does the work**: a
  *          palette change under a cut reads as travel, and the same change
  *          under a slide reads as a slideshow advancing.
- *   land   the destination is painted, behind the dark
+ *   land   the destination is painted, behind the dark, and takes over the
+ *          movement: it comes up slightly large and settles.
  *   open   the dark lifts on the new room, and the arrival line with it
  *   still  the ambience settles and the sequence is over
  *
- * First-pass numbers, provisional, and reported rather than tuned. Motion off
- * arrives in the same tick — there is no beat at all and the destination is
- * simply the screen.
+ * The beats **overlap on purpose**, and that is the difference between this
+ * and the first pass. Every edge used to be a hard one: the push was cut off
+ * mid-transition by a void that appeared in a single frame, the scale snapped
+ * back the instant the class left, and the next room arrived finished and
+ * motionless. Three cuts in six hundred milliseconds read as an animation
+ * followed by a change of scenery rather than as going somewhere.
+ *
+ * Now the void closes over `dark`→`dark + 160` and is fully opaque at 330,
+ * comfortably before `land` repaints underneath it; the settle runs from
+ * `land` for 420ms, so the room is still moving when the dark lifts on it at
+ * `open`; and `still` is where the last of it comes to rest. Nothing here is a
+ * tuned number — they are the first set that makes the beats touch.
+ *
+ * Motion off arrives in the same tick — there is no beat at all and the
+ * destination is simply the screen.
  */
 const CROSSING = {
   push: 0,
-  dark: 200,
+  dark: 170,
   land: 430,
   open: 520,
-  still: 760,
+  still: 900,
 } as const
 
 /**
@@ -674,7 +687,12 @@ export class App {
     sequence.at(CROSSING.push, () => this.world.root.classList.add('crossing'))
     sequence.at(CROSSING.dark, () => this.world.root.classList.add('dark'))
     sequence.at(CROSSING.land, () => {
+      // The movement changes hands here, under the dark, so the swap itself is
+      // never seen: the room being left stops leaning and the room being
+      // arrived in starts settling. One is the answer to the other, which is
+      // what makes the two halves one crossing.
       this.world.root.classList.remove('crossing')
+      this.world.root.classList.add('arriving')
       this.presenting = undefined
       this.render()
     })
@@ -686,7 +704,7 @@ export class App {
       this.nameTerritory(after)
     })
     sequence.at(CROSSING.still, () => {
-      this.world.root.classList.remove('crossing', 'dark')
+      this.world.root.classList.remove('crossing', 'dark', 'arriving')
       this.finish()
     })
   }
@@ -1130,7 +1148,7 @@ export class App {
     this.presenting = undefined
     this.sequence = undefined
     clearCascade(this.tray)
-    this.world.root.classList.remove('crossing', 'dark')
+    this.world.root.classList.remove('crossing', 'dark', 'arriving')
     weaponThrust(this.world, 'rest')
     enemyAdvance(this.world, 'arrive')
     this.render()

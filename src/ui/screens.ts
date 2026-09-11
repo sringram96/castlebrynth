@@ -135,7 +135,10 @@ function dead(state: GameState, on: ScreenHandlers): HTMLElement {
   // long descent is a tall epitaph. The forward route is still a real button
   // and is still on the screen when it opens.
   const panel = el('div', 'screen-panel screen-scroll')
-  panel.append(el('h2', 'screen-head', 'YOU DID NOT COME BACK'))
+  // **Nobody died.** He came back — he just came back not knowing what for,
+  // which is the run's actual ending and is worse. A heading that says he did
+  // not come back is the one sentence on this screen that would be false.
+  panel.append(el('h2', 'screen-head', 'YOU FORGOT WHAT YOU CAME FOR'))
   panel.append(el('p', 'screen-line', DEATH_LINE))
   if (state.run?.cause) panel.append(el('p', 'screen-cause', state.run.cause))
 
@@ -193,8 +196,15 @@ function complete(state: GameState, on: ScreenHandlers): HTMLElement {
   panel.append(el('p', 'screen-line', COMPLETE_LINE))
   const run = state.run
   if (run) {
+    // The same two facts the other ending prints, and pluralised the same way.
+    // It used to say "1 rooms" on a one-room run, which is the sort of thing
+    // that reads as nobody having looked at the screen it is on.
     panel.append(
-      el('p', 'screen-note', `${run.bones} bones left · ${run.path.length} rooms`),
+      el(
+        'p',
+        'screen-note',
+        `${run.bones} bones left · ${run.path.length} ${run.path.length === 1 ? 'room' : 'rooms'} down`,
+      ),
     )
   }
   const acts = el('div', 'screen-acts')
@@ -497,7 +507,11 @@ function menuPanel(state: GameState): HTMLElement | null {
     el(
       'p',
       'screen-line',
-      'Bones are what I have left, not what I throw. Thirty is as many as I can carry.',
+      // The sentence the whole story hangs on, and the first half of it has been
+      // here since the pile was built. What is new is the second half saying
+      // what "what I have left" *is* — which is the only place the premise is
+      // written down in mechanical terms rather than as atmosphere.
+      'Bones are what I have left, not what I throw. Thirty is everything I still know. Every one that breaks down here takes what was in it.',
     ),
   )
 
