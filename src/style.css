@@ -1141,6 +1141,19 @@ body[data-motion='off'] .enemy-fill {
   }
 }
 
+/*
+ * The word band, centred — and the gold rule moved off its left edge to do it.
+ *
+ * This is the prose a player actually reads in every room, and it was the last
+ * text on the screen still set to `start` while the well, the briefs, the
+ * routes and every screen panel were centred. A left-ruled, left-set block
+ * under a centred tray reads as two different programs.
+ *
+ * The rule becomes a hairline **above** the band rather than beside it: a
+ * left border and centred text disagree about where the line begins, and the
+ * accent is worth keeping. `text-wrap: balance` is what stops a centred
+ * three-line arrival from ending on one orphaned word.
+ */
 .say {
   position: absolute;
   left: 14px;
@@ -1149,10 +1162,12 @@ body[data-motion='off'] .enemy-fill {
   margin: 0;
   padding: 9px 12px;
   background: rgb(6 5 4 / 0.78);
-  border-left: 2px solid rgb(207 166 82 / 0.55);
+  border-top: 1px solid rgb(207 166 82 / 0.55);
   font-size: 13px;
   line-height: 1.45;
   color: var(--ink);
+  text-align: center;
+  text-wrap: balance;
   pointer-events: none;
 }
 
@@ -1164,6 +1179,85 @@ body[data-motion='off'] .enemy-fill {
    after it is over rather than only while it is moving. */
 .say-beat {
   display: block;
+}
+
+/*
+ * ── the words, off the picture ───────────────────────────────────────
+ *
+ * A room is a painting and the game spends most of its time writing on it. This
+ * takes the writing off: the band, the tray, the hotspots and the HUD all go,
+ * and what is left is the picture at the full height of the screen — the world
+ * is `flex: 1 1 auto` and the tray `flex: 0 0 auto`, so hiding the tray hands
+ * the world the rest with no arithmetic anywhere.
+ *
+ * It changes **nothing**. No run state, no save, no mode — `app.ts` holds the
+ * flag and clears it the moment a sequence or an overlay wants the picture.
+ *
+ * The toggle itself stays, in the same corner, in both directions. It recedes
+ * rather than disappears: a control that hides itself once pressed is a control
+ * that leaves somebody stranded in a blank room, and the one thing this feature
+ * must never do is take the game away.
+ */
+/*
+ * Top left, and **not** beside the band it dismisses.
+ *
+ * Bottom left was the obvious home and it was wrong twice over: it sat on top
+ * of the word band's first line, and the band's height is however many lines
+ * the room wrote, so no fixed offset above it would have cleared a three-line
+ * arrival either. Up here nothing else is anchored — the enemy bar centres its
+ * name and its track, so the corner beside it is empty, and the territory card
+ * sits 30% down the frame.
+ *
+ * It also belongs out of the thumb's main arc on purpose. A control that
+ * changes nothing should not be the easiest thing on the screen to hit.
+ */
+.view-toggle {
+  position: absolute;
+  left: 8px;
+  top: max(8px, env(safe-area-inset-top));
+  min-width: var(--touch);
+  min-height: var(--touch);
+  padding: 0 10px;
+  pointer-events: auto;
+  border: 1px solid rgb(207 166 82 / 0.3);
+  background: rgb(6 5 4 / 0.72);
+  color: var(--ink-dim);
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  border-radius: 0;
+  transition: opacity 160ms ease-out;
+}
+
+body[data-viewing='yes'] .view-toggle {
+  opacity: 0.35;
+  border-color: rgb(207 166 82 / 0.16);
+}
+
+body[data-viewing='yes'] #tray,
+body[data-viewing='yes'] .say,
+body[data-viewing='yes'] #hits {
+  display: none;
+}
+
+/* Everything the HUD carries except the way back. */
+body[data-viewing='yes'] #hud > *:not(.view-toggle) {
+  display: none;
+}
+
+/*
+ * The vignette goes too. It is there to keep HUD text off a busy focal region,
+ * and with no text on the picture it is only a gradient over somebody's
+ * painting — which is the exact thing this mode exists to get out of the way.
+ */
+body[data-viewing='yes'] #world::after {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .view-toggle {
+    transition: none;
+  }
 }
 
 .say-beat + .say-beat {
