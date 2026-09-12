@@ -30,17 +30,31 @@ const dice = (...values: number[]): readonly DieValue[] => values as DieValue[]
 const matches = (...values: number[]): readonly NamedHandId[] => matchingHands(dice(...values))
 
 describe('the table', () => {
-  it('holds the eight named hands and their multipliers', () => {
+  it('holds the twelve named hands and their multipliers', () => {
     expect(HAND_DEFINITIONS.map((h) => [h.id, h.multiplier])).toEqual([
       ['pair', 1.0],
       ['two-pair', 1.25],
       ['triple', 1.5],
+      ['small-straight', 1.6],
       ['straight', 1.75],
       ['full-house', 2.0],
       ['four-kind', 2.5],
+      ['three-pair', 2.6],
+      ['run-of-six', 2.8],
+      ['two-triples', 2.9],
       ['five-kind', 3.0],
       ['six-kind', 4.0],
     ])
+  })
+
+  it('prints weakest to strongest, with no two hands sharing a multiplier', () => {
+    // The table's order *is* the scorecard's order, so a row out of sequence is
+    // a card that reads as unsorted. And two hands at one multiplier would make
+    // the choice between them arbitrary, which is the one thing a scorecard
+    // must never be.
+    const m = HAND_DEFINITIONS.map((h) => h.multiplier)
+    expect([...m].sort((a, b) => a - b)).toEqual(m)
+    expect(new Set(m).size).toBe(m.length)
   })
 
   it('keeps CRAP off the card and at half', () => {
@@ -132,8 +146,17 @@ describe('recognising a hand', () => {
     )
   })
 
-  it('finds nothing in six distinct faces that do not run', () => {
-    expect(matches(1, 2, 3, 4, 6)).toEqual([])
+  it('finds nothing in faces that neither repeat nor run', () => {
+    // Five faces, no repeat, and the longest run in them is three — 4, 5, 6.
+    // `1, 2, 3, 4, 6` used to be the example here and is a SHORT RUN now.
+    expect(matches(1, 2, 4, 5, 6)).toEqual([])
+  })
+
+  it('always finds THE LADDER in six distinct faces, because there is only one way', () => {
+    // Six distinct faces off six-sided bones can only ever be 1 to 6, so the
+    // whole run is not one outcome among many — it is the *only* shape a roll
+    // with no repeat at all can take.
+    expect(matches(3, 1, 6, 4, 2, 5)).toContain('run-of-six')
   })
 
   it('finds nothing at all in an empty table', () => {
@@ -192,13 +215,15 @@ describe('what the player may press', () => {
 
   it('offers CRAP only when nothing unused qualifies', () => {
     // Pair is unused and the roll makes one, so CRAP is not on offer.
-    expect(legalScores(dice(1, 2, 3, 4, 6, 6), [])).toEqual(['pair'])
+    // Omitting a 3 is what keeps a five-face roll clear of a SHORT RUN: the
+    // faces left are 1, 2, 4, 5, 6, whose longest run is 4-5-6.
+    expect(legalScores(dice(1, 2, 4, 5, 6, 6), [])).toEqual(['pair'])
     // The same roll once Pair is gone.
-    expect(legalScores(dice(1, 2, 3, 4, 6, 6), ['pair'])).toEqual(['crap'])
+    expect(legalScores(dice(1, 2, 4, 5, 6, 6), ['pair'])).toEqual(['crap'])
   })
 
   it('offers CRAP for a roll that makes nothing at all', () => {
-    expect(legalScores(dice(1, 2, 3, 4, 6), [])).toEqual(['crap'])
+    expect(legalScores(dice(1, 2, 4, 5, 6), [])).toEqual(['crap'])
   })
 
   it('never offers CRAP alongside a named hand', () => {
@@ -211,7 +236,7 @@ describe('what the player may press', () => {
   it('offers CRAP again and again: it is not a category that runs out', () => {
     // `used` can never contain it — the reducer refuses to write it — so the
     // same bad roll is answerable for ever.
-    const roll = dice(1, 2, 3, 4, 6)
+    const roll = dice(1, 2, 4, 5, 6)
     expect(legalScores(roll, [])).toEqual(['crap'])
     expect(legalScores(roll, [...NAMED_HANDS])).toEqual(['crap'])
   })

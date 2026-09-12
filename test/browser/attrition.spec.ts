@@ -84,12 +84,9 @@ test.describe('bones are health, and only health', () => {
     expect(offered).toContain('full-house')
     expect(offered).not.toContain('five-kind')
     expect(offered).not.toContain('six-kind')
-    // And these dice make no straight, so it is information rather than a
-    // control — which is the scorecard's rule, not the pile's.
-    await expect(page.locator('.score-entry[data-hand="straight"]')).toHaveAttribute(
-      'data-legal',
-      'no',
-    )
+    // And these dice make no straight, so it is not on the card at all — which
+    // is the scorecard's rule, not the pile's.
+    await expect(page.locator('.score-entry[data-hand="straight"]')).toHaveCount(0)
   })
 
   test('marks the pile low, because the next exchange could end it', async ({ page }) => {

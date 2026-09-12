@@ -502,7 +502,9 @@ describe('CRAP is still infinite', () => {
     // through the loop would be asserting nothing. That is the ladder working:
     // the cost of having nothing left to score is now a number on the screen.
     for (let attack = 0; attack < 4; attack++) {
-      const table = withDice(state, [1, 2, 3, 4, 6, 6], 0)
+      // `1, 2, 3, 4, …` is a SHORT RUN now, so the roll that leaves nothing but
+      // CRAP has to skip a 3: the faces here run no further than 4-5-6.
+      const table = withDice(state, [1, 2, 4, 5, 6, 6], 0)
       const spent: GameState = {
         ...table,
         run: {

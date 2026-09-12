@@ -62,17 +62,16 @@ export interface WorldHandlers {
    */
   readonly onClaim: (index: number) => void
   /**
-   * Whether the words are currently off the picture.
+   * Whether the word band has been waved away.
    *
-   * **Presentation, and never state.** It is not in `GameState`, not in the
-   * save and not in a fixture: a reload lands with the room dressed as usual,
-   * exactly as the picker and the hold draft do. Rendering is still deciding
-   * nothing about the run — it is deciding what is painted over it, which is
-   * the only thing rendering has ever been allowed to decide.
+   * **Presentation, and never state.** Not in `GameState`, not in the save, not
+   * a fixture key — a reload comes back with the words on, exactly as the picker
+   * and the hold draft come back cleared. Rendering is still deciding nothing
+   * about the run; it is deciding whether one paragraph is painted over it.
    */
-  readonly viewing: boolean
-  /** Take the words off the picture, or put them back. Changes no run state. */
-  readonly onView: () => void
+  readonly bandOff: boolean
+  /** Wave the words away, or ask for them back. Changes no run state. */
+  readonly onToggleBand: () => void
 }
 
 /**
@@ -93,6 +92,7 @@ export function renderWorld(world: World, state: GameState, handlers: WorldHandl
     delete world.grade.dataset['territory']
     world.hits.replaceChildren()
     world.hud.replaceChildren()
+    world.room.hidden = true
     return
   }
 
@@ -199,7 +199,31 @@ function renderHits(world: World, state: GameState, handlers: WorldHandlers): vo
 
   // Nothing in the world is tappable while a fight is on: the fight is the
   // room, and a stray detail tap during a turn is noise.
+  world.room.hidden = state.mode !== 'explore'
   if (state.mode !== 'explore') return
+
+  // **The room itself, as one press.**
+  //
+  // Tapping a part of the picture nothing is standing on waves the word band
+  // away, so the painting can be looked at; tapping again asks for it back, and
+  // so does touching anything real, because any press at all un-dismisses.
+  //
+  // It is a sibling *before* `#hits` — see `mountWorld` — so every hotspot
+  // paints and presses over it, and it can only ever catch a tap that would
+  // have landed on nothing. It is mounted once rather than rebuilt here,
+  // because it is not one of the room's presses: `#hits` is what the frame's
+  // negative-space budget counts, and this is global chrome.
+  //
+  // The tray does not move. A picture with no tray under it is not a state this
+  // game has: what goes is one paragraph, and only while it is in the way.
+  world.room.hidden = false
+  world.room.dataset['act'] = 'band'
+  world.room.dataset['bandOff'] = handlers.bandOff ? 'yes' : 'no'
+  world.room.setAttribute(
+    'aria-label',
+    handlers.bandOff ? 'Show what the room said' : 'Hide what the room said',
+  )
+  world.room.onclick = handlers.onToggleBand
 
   // The focal object first, and only while it still has something to give.
   // It carries its verb where the thing itself is rather than in the tray,
@@ -542,34 +566,4 @@ function renderHud(world: World, state: GameState, handlers: WorldHandlers): voi
   if (beats.length === 0) say.hidden = true
   world.hud.append(say)
 
-  // And the one control that changes nothing.
-  //
-  // It lives in the HUD because the HUD is already a layer that takes no
-  // pointer events and lets its children opt in — so this costs the compositor
-  // no new layer and the fixed order is untouched. It is **not** in `#hits`:
-  // the hotspots are the room's presses and are counted against the frame's
-  // budget, and a piece of global chrome is neither.
-  //
-  // Same corner in every room, in both directions. A toggle that moves, or that
-  // hides itself once pressed, is a toggle that strands somebody in a picture
-  // with no way back to the game.
-  //
-  // **Out of a fight only**, and it is the same ruling the right bed already
-  // keeps for MAP: *a fight is the room*. Everything the HUD carries in a fight
-  // — the name, what is left of it, which rung the ladder is on — is the
-  // tactical contract, and it is stated before anything is committed precisely
-  // so it cannot be taken off the screen. Hidden, never disabled, so in a fight
-  // there is simply no such press.
-  if (state.mode !== 'explore') return
-
-  const viewing = handlers.viewing
-  world.hud.append(
-    button({
-      act: 'view',
-      label: viewing ? VERBS.show : VERBS.hide,
-      describe: viewing ? 'Show the words again' : 'Hide the words and look at the room',
-      onPress: handlers.onView,
-      className: 'view-toggle',
-    }),
-  )
 }

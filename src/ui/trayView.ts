@@ -568,23 +568,37 @@ function renderScorecard(
       talismanFlat: talismanFlatOf(run.talismans, hand),
     }).damage
 
-  for (const hand of HAND_DEFINITIONS) {
-    const isUsed = used.has(hand.id)
-    const isLegal = legal.has(hand.id)
-    const entry = isLegal
-      ? button({
-          act: 'score',
-          label: '',
-          describe: `Score ${hand.name}, ${showMultiplier(hand.multiplier)} — ${previewOf(hand.id)}`,
-          onPress: () => on.onScore(hand.id),
-          className: 'score-entry',
-        })
-      : el('span', 'score-entry')
+  // **Only the lines the dice actually make**, and only the ones still unspent.
+  //
+  // The card used to print all twelve at every moment, greying out the ones the
+  // roll did not contain and striking through the ones already gone. That is a
+  // card the player has to *search* on every throw to find the two or three
+  // rows that are real, and it forced twelve cells into a recess that could
+  // give each one 47 x 21 px — half the touch floor this project sets itself.
+  //
+  // Counted over all 46 656 rolls, a throw offers **one to five** legal lines
+  // and never a sixth, and 82% of throws offer three or fewer. So what is drawn
+  // is the live ones, at a size a thumb can hit.
+  //
+  // What is lost is the at-a-glance view of which categories are gone, and it
+  // is genuinely a loss — *what is left* is the decision a long fight is made
+  // of. It is not lost from the game: MENU carries the whole table, every hand
+  // and every multiplier, at a size worth reading.
+  const showing = HAND_DEFINITIONS.filter((hand) => legal.has(hand.id))
+  for (const hand of showing) {
+    const entry = button({
+      act: 'score',
+      label: '',
+      describe: `Score ${hand.name}, ${showMultiplier(hand.multiplier)} — ${previewOf(hand.id)}`,
+      onPress: () => on.onScore(hand.id),
+      className: 'score-entry',
+    })
     entry.dataset['hand'] = hand.id
-    entry.dataset['used'] = isUsed ? 'yes' : 'no'
-    entry.dataset['legal'] = isLegal ? 'yes' : 'no'
-    if (matched.has(hand.id) && !isUsed) entry.dataset['matched'] = 'yes'
+    entry.dataset['used'] = used.has(hand.id) ? 'yes' : 'no'
+    entry.dataset['legal'] = 'yes'
+    if (matched.has(hand.id)) entry.dataset['matched'] = 'yes'
     entry.append(el('b', 'score-name', hand.name))
+    entry.append(el('b', 'score-short', hand.short))
     entry.append(el('i', 'score-mult', showMultiplier(hand.multiplier)))
     card.append(entry)
   }
@@ -603,10 +617,22 @@ function renderScorecard(
     b.dataset['hand'] = 'crap'
     b.dataset['legal'] = 'yes'
     b.append(el('b', 'score-name', CRAP_NAME))
+    b.append(el('b', 'score-short', CRAP_NAME))
     b.append(el('i', 'score-mult', showMultiplier(CRAP_MULTIPLIER)))
     card.append(b)
   }
 
+  // How many cells the row ended up with, so the stylesheet can pick the label
+  // that fits one rather than a script measuring text.
+  card.dataset['count'] = String(card.childElementCount)
+  // And which lines are gone, as data rather than as a drawn row.
+  //
+  // The card stopped printing spent hands, which is the point of it — but *what
+  // is left* is still the decision a long fight is made of, and the player gets
+  // it from MENU, which carries the whole table one press away. This is that
+  // same fact, in the form a harness can read, so a policy playing the game
+  // through the screen is not made to guess at something the player can check.
+  card.dataset['spent'] = combat.usedHands.join(',')
   host.append(card)
 }
 

@@ -37,9 +37,13 @@ export type NamedHandId =
   | 'pair'
   | 'two-pair'
   | 'triple'
+  | 'small-straight'
   | 'straight'
   | 'full-house'
   | 'four-kind'
+  | 'three-pair'
+  | 'run-of-six'
+  | 'two-triples'
   | 'five-kind'
   | 'six-kind'
 
@@ -50,6 +54,16 @@ export interface HandDefinition {
   readonly id: NamedHandId
   /** The label on the scorecard. Short: the well is narrow. */
   readonly name: string
+  /**
+   * The same hand in four characters or fewer.
+   *
+   * The card shows only the lines the dice actually make, so it is one row of
+   * between one and five — five being the most that can ever be legal at once,
+   * counted over all 46 656 rolls. At one, two or three the row is wide enough
+   * for the whole name; at four or five it is not, and an abbreviation the
+   * player can still read beats a name clipped mid-word.
+   */
+  readonly short: string
   readonly multiplier: number
   /** The pattern in one sentence, in digits where digits will do. */
   readonly rule: string
@@ -100,14 +114,22 @@ function fullHouse(counts: ReadonlyMap<DieValue, number>): boolean {
   return false
 }
 
-/** Five distinct consecutive faces. On ordinary d6s: 1–5 or 2–6. */
-function straight(counts: ReadonlyMap<DieValue, number>): boolean {
+/**
+ * A run of `length` distinct consecutive faces, anywhere on the table.
+ *
+ * One function for all three lengths, because three hand-written face lists
+ * would be three chances to write `[2, 3, 4, 5, 6]` wrong. On ordinary d6s a
+ * run of five is 1–5 or 2–6, and a run of six is the only roll that holds
+ * every face at once.
+ */
+function runOf(counts: ReadonlyMap<DieValue, number>, length: number): boolean {
   const has = (v: number): boolean => (counts.get(v as DieValue) ?? 0) > 0
-  const runs: readonly number[][] = [
-    [1, 2, 3, 4, 5],
-    [2, 3, 4, 5, 6],
-  ]
-  return runs.some((run) => run.every(has))
+  for (let start = 1; start + length - 1 <= 6; start++) {
+    let whole = true
+    for (let i = 0; i < length; i++) if (!has(start + i)) whole = false
+    if (whole) return true
+  }
+  return false
 }
 
 /**
@@ -116,10 +138,45 @@ function straight(counts: ReadonlyMap<DieValue, number>): boolean {
  * These multipliers are **provisional tuning values**, not product law, and
  * this is the one place to change them. Ordered weakest to strongest, which is
  * the order the scorecard prints in.
+ *
+ * ## What each hand is worth, measured
+ *
+ * Six d6s is 46 656 rolls, so how often a shape turns up is not an estimate —
+ * it is a count. Over every roll, with plain bones:
+ *
+ *     PAIR           98.46%   x1        FOUR            5.22%   x2.5
+ *     TWO PAIR       55.62%   x1.25     THREE PAIR      3.86%   x2.6
+ *     TRIPLE         36.73%   x1.5      THE LADDER      1.54%   x2.8
+ *     SHORT RUN      27.01%   x1.6      TWO TRIPLES     0.64%   x2.9
+ *     FULL HOUSE     17.04%   x2        FIVE            0.40%   x3
+ *     STRAIGHT        9.26%   x1.75     SIX             0.01%   x4
+ *
+ * The four added here are placed **by that count**, in the gaps between the
+ * rungs that already existed, so that rarer never pays less among them. No
+ * existing multiplier was touched: the wave that wanted more hands did not ask
+ * for the old ones to be re-priced, and re-pricing them is a separate decision
+ * with its own balance run.
+ *
+ * ## One inversion, reported rather than tuned
+ *
+ * **FULL HOUSE turns up at 17.04% and pays x2; STRAIGHT turns up at 9.26% and
+ * pays x1.75.** The rarer hand pays less, and it has been that way since the
+ * table was written. Fixing it means swapping two numbers a lot of other
+ * measurements sit on, so it is written down here and in `COMBAT.md` § Balance
+ * for a decision rather than quietly corrected.
+ *
+ * ## What the crooked dice do to the new ones
+ *
+ * THE LADDER needs all six faces at once, so it is the first hand in the game a
+ * loaded bone can put **out of reach**: a Jawbone rolls only 1s and 6s, and a
+ * hand carrying two of them can no longer make a run of six at all. That is the
+ * intended shape of the trade — a crooked die changes what the throw comes up
+ * with, and what it comes up with is now sometimes a door closing.
  */
 export const HAND_DEFINITIONS: readonly HandDefinition[] = [
   {
     id: 'pair',
+    short: 'PAIR',
     name: 'PAIR',
     multiplier: 1.0,
     rule: 'Two bones alike.',
@@ -127,6 +184,7 @@ export const HAND_DEFINITIONS: readonly HandDefinition[] = [
   },
   {
     id: 'two-pair',
+    short: '2 PR',
     name: 'TWO PAIR',
     multiplier: 1.25,
     rule: 'Two different faces, twice each.',
@@ -134,20 +192,31 @@ export const HAND_DEFINITIONS: readonly HandDefinition[] = [
   },
   {
     id: 'triple',
+    short: 'TRIP',
     name: 'TRIPLE',
     multiplier: 1.5,
     rule: 'Three bones alike.',
     matches: (counts) => highestMultiplicity(counts) >= 3,
   },
   {
+    id: 'small-straight',
+    short: 'RUN4',
+    name: 'SHORT RUN',
+    multiplier: 1.6,
+    rule: 'Four in a row.',
+    matches: (counts) => runOf(counts, 4),
+  },
+  {
     id: 'straight',
+    short: 'RUN5',
     name: 'STRAIGHT',
     multiplier: 1.75,
     rule: 'Five in a row: 1–5 or 2–6.',
-    matches: (counts) => straight(counts),
+    matches: (counts) => runOf(counts, 5),
   },
   {
     id: 'full-house',
+    short: 'FULL',
     name: 'FULL HOUSE',
     multiplier: 2.0,
     rule: 'Three alike and two others alike.',
@@ -155,13 +224,39 @@ export const HAND_DEFINITIONS: readonly HandDefinition[] = [
   },
   {
     id: 'four-kind',
+    short: '4 OF',
     name: 'FOUR',
     multiplier: 2.5,
     rule: 'Four bones alike.',
     matches: (counts) => highestMultiplicity(counts) >= 4,
   },
   {
+    id: 'three-pair',
+    short: '3 PR',
+    name: 'THREE PAIR',
+    multiplier: 2.6,
+    rule: 'Three different faces, twice each.',
+    matches: (counts) => valuesAtLeast(counts, 2) >= 3,
+  },
+  {
+    id: 'run-of-six',
+    short: 'LADR',
+    name: 'THE LADDER',
+    multiplier: 2.8,
+    rule: 'Every face at once: 1 to 6.',
+    matches: (counts) => runOf(counts, 6),
+  },
+  {
+    id: 'two-triples',
+    short: '2 TR',
+    name: 'TWO TRIPLES',
+    multiplier: 2.9,
+    rule: 'Two different faces, three each.',
+    matches: (counts) => valuesAtLeast(counts, 3) >= 2,
+  },
+  {
     id: 'five-kind',
+    short: '5 OF',
     name: 'FIVE',
     multiplier: 3.0,
     rule: 'Five bones alike.',
@@ -169,6 +264,7 @@ export const HAND_DEFINITIONS: readonly HandDefinition[] = [
   },
   {
     id: 'six-kind',
+    short: '6 OF',
     name: 'SIX',
     multiplier: 4.0,
     rule: 'All six alike.',

@@ -262,21 +262,19 @@ export class App {
    * must never be something a save can be stuck inside.
    */
   /**
-   * Whether the words are off the picture.
+   * Whether the word band has been waved away.
    *
    * **Presentation-local, and deliberately not a mode.** It produces no
-   * `GameState`, reaches no reducer and is in no save — the game is in exactly
-   * the same run with the chrome up or down, and a reload comes back dressed.
-   * It is also not a fixture key, for the same reason `?plan=` is not one: the
-   * ends of the game are testable without it, and a URL that could boot into a
-   * blank picture is a URL that could make a broken screen look intentional.
+   * `GameState`, reaches no reducer and is in no save; it is not a fixture key
+   * either, for the same reason `?plan=` is not one.
    *
-   * It is cleared rather than remembered whenever something else claims the
-   * picture — see `sequenceStarted` and `open` — because every beat in this
-   * game exists to show the player an outcome, and a beat played under hidden
-   * chrome is a beat that did not happen.
+   * What it hides is **one paragraph**, and never the tray: a picture with no
+   * tray under it is not a state this game has. It is cleared by any press the
+   * player makes — see `dispatch` — because the words coming back is what
+   * *asking a question of the room* should do, and a LOOK whose answer stayed
+   * hidden would be a control that appeared to do nothing.
    */
-  private viewing = false
+  private bandOff = false
 
   private opened: Overlay | undefined
   /**
@@ -357,6 +355,10 @@ export class App {
     // And a territory's card is over the moment the player does anything: it
     // names an arrival and never delays one.
     this.hideCard()
+    // So are the waved-away words. Asking the room a question and getting a
+    // silent answer would be a control that appeared to do nothing, so any
+    // press at all brings the band back before the reducer writes into it.
+    this.bandOff = false
 
     const before = this.state
     const next = reduce(before, action)
@@ -433,10 +435,6 @@ export class App {
   }
 
   private start(): Sequence {
-    // Every beat in this game exists to show an outcome the reducer already
-    // computed. Playing one under hidden chrome would be showing it to nobody,
-    // so the picture comes back before the sequence does.
-    this.viewing = false
     const sequence = new Sequence(this.animated)
     this.sequence = sequence
     return sequence
@@ -1181,12 +1179,11 @@ export class App {
     const state = this.presenting ?? this.state
     const run = state.run
 
-    // The words come off the picture only where there is a picture to look at
-    // and nothing else is claiming it. Derived on every paint rather than
-    // trusted from the flag, so a sequence or an overlay that starts by any
-    // route at all cannot leave a beat playing under a cleared screen.
-    const viewing =
-      this.viewing &&
+    // The band is only ever waved away in a settled room. Derived on every
+    // paint rather than trusted from the flag, so a sequence or an overlay
+    // cannot leave a beat writing into a paragraph nobody can see.
+    const bandOff =
+      this.bandOff &&
       run !== undefined &&
       state.mode === 'explore' &&
       this.presenting === undefined &&
@@ -1196,8 +1193,8 @@ export class App {
     // subtree to prove the grade crosses over *inside* the dark rather than at
     // the cut — so an unconditional write does not just waste a DOM touch, it
     // adds samples to somebody else's ordering test and makes it flaky.
-    const want = viewing ? 'yes' : 'no'
-    if (document.body.dataset['viewing'] !== want) document.body.dataset['viewing'] = want
+    const want = bandOff ? 'yes' : 'no'
+    if (document.body.dataset['bandOff'] !== want) document.body.dataset['bandOff'] = want
 
     renderWorld(this.world, state, {
       onLook: (detailId: string) => this.dispatch({ type: 'LOOK', detailId }),
@@ -1215,9 +1212,9 @@ export class App {
       // hold draft is, so a reload here loses the picker and leaves the die on
       // its seat, uncharged.
       onClaim: (index: number) => this.open({ kind: 'picker', index }),
-      viewing,
-      onView: () => {
-        this.viewing = !this.viewing
+      bandOff,
+      onToggleBand: () => {
+        this.bandOff = !this.bandOff
         this.render()
       },
     })
@@ -1330,9 +1327,6 @@ export class App {
    * than each reaching for the ticker themselves.
    */
   private open(view: Overlay): void {
-    // An overlay is the screen. Coming back out of one onto a blank picture
-    // with no controls would be the game losing its own thread.
-    this.viewing = false
     this.opened = view
     this.overlay.hidden = false
     this.render()

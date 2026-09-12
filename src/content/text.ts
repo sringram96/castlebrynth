@@ -63,16 +63,6 @@ export const VERBS = {
   close: 'CLOSE',
   /** The strip: where this run has been, and the roads it did not take. */
   map: 'MAP',
-  /**
-   * Take the words off the picture, and put them back.
-   *
-   * The one control in the game that changes nothing — not the run, not the
-   * save, not a single field of `GameState`. It is a pair rather than one verb
-   * because a toggle that keeps one label makes the player guess which way it
-   * is pointing, and the room behind it is the only thing that would tell them.
-   */
-  hide: 'HIDE',
-  show: 'SHOW',
 } as const
 
 /**

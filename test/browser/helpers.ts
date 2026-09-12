@@ -25,11 +25,17 @@ export async function scoresOnOffer(page: Page): Promise<string[]> {
     .evaluateAll((nodes) => nodes.map((n) => (n as HTMLElement).dataset['hand']!))) as string[]
 }
 
-/** Every hand the scorecard shows as already spent. */
+/**
+ * Every hand this fight has already spent.
+ *
+ * Read off the card's own data rather than off a drawn row: the card prints
+ * only the lines the dice make and the player has not used, so a spent hand has
+ * no cell to find. The player gets the same fact from MENU, which carries the
+ * whole table.
+ */
 export async function scoresSpent(page: Page): Promise<string[]> {
-  return (await page
-    .locator('.score-entry[data-used="yes"]')
-    .evaluateAll((nodes) => nodes.map((n) => (n as HTMLElement).dataset['hand']!))) as string[]
+  const spent = (await page.locator('#scorecard').getAttribute('data-spent')) ?? ''
+  return spent.split(',').filter(Boolean)
 }
 
 /**
@@ -231,25 +237,18 @@ const MIN_WIDTH: Readonly<Record<string, number>> = {
   // would make it wider than the die beside it and start the overlap the
   // crown's pitch exists to prevent. It is the full 44px tall.
   'inspect-slot': 34,
-  // The scorecard is eight entries wide in a region the plate gives about 214
-  // px to, so an entry is roughly 52 px across and shorter than a thumb. It is
-  // stated here rather than silently allowed: the alternative is not showing
-  // the multipliers, and a scorecard the player cannot read is a scorecard
-  // that decides the fight in the dark.
-  score: 44,
 }
 
 /**
  * Controls that are honestly shorter than the touch floor.
  *
- * One region, and it is the scorecard. Eight entries and a fallback in an
- * 84 px band cannot each be 44 px tall; what they can be is separated, so a
- * tap lands on the entry it looks like it lands on. `tappable` still checks
- * the hit test, which is the assertion that actually matters.
+ * **There are none, and that is new.** The scorecard was the one entry here:
+ * eight entries and a fallback could not each be 44px tall inside a painted
+ * recess 194px wide, so 20px was carried as a documented exception. The card
+ * left the recess — see `#sheet` — and every entry is the full 44px, so the
+ * exception went with it rather than being widened to fit four more hands.
  */
-const MIN_HEIGHT: Readonly<Record<string, number>> = {
-  score: 20,
-}
+const MIN_HEIGHT: Readonly<Record<string, number>> = {}
 
 /**
  * Every visible control must answer a real tap at its own centre.
