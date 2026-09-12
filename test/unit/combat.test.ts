@@ -273,20 +273,20 @@ describe('SCORE', () => {
   })
 
   it('never trusts the caller about what is legal', () => {
-    const table = withDice(facing(), 1, 2, 3, 4, 6)
+    const table = withDice(facing(), 1, 2, 4, 5, 6)
     // The only legal answer here is CRAP. Anything else is refused outright.
-    for (const hand of ['pair', 'triple', 'straight', 'full-house'] as ScoreId[]) {
+    for (const hand of ['pair', 'triple', 'small-straight', 'straight', 'full-house'] as ScoreId[]) {
       expect(reduce(table, { type: 'SCORE', hand })).toBe(table)
     }
     expect(reduce(table, { type: 'SCORE', hand: 'crap' })).not.toBe(table)
   })
 
   it('never writes CRAP onto the scorecard', () => {
-    let state = withDice(facing(), 1, 2, 3, 4, 6)
+    let state = withDice(facing(), 1, 2, 4, 5, 6)
     state = reduce(state, { type: 'SCORE', hand: 'crap' })
     expect(combatOf(state).usedHands).toEqual([])
     // And it can be spent again, and again.
-    state = reduce(withDice(state, 1, 2, 3, 4, 6), { type: 'SCORE', hand: 'crap' })
+    state = reduce(withDice(state, 1, 2, 4, 5, 6), { type: 'SCORE', hand: 'crap' })
     expect(combatOf(state).usedHands).toEqual([])
     expect(combatOf(state).round).toBe(3)
   })
@@ -356,15 +356,35 @@ describe('what it costs to leave a thing standing', () => {
   })
 
   it('is the same number every time, with no draw behind it', () => {
-    let state = facing('deep', { bones: 30, ironDice: [] })
-    const seen: number[] = []
-    for (let attack = 0; attack < 3; attack++) {
-      state = reduce(state, { type: 'ROLL' })
-      const before = state.run!.bones
-      state = scoreAnything(state)
-      seen.push(before - state.run!.bones)
+    // **What this is about is the absence of a die roll**, not a particular
+    // sequence. It used to assert `[5, 5, 5]`, which stopped being true the
+    // moment the scorecard grew hands: a fight that scores harder walks the
+    // Marrow down through `above: 80` sooner, and it starts breaking four. That
+    // is the ladder working, not the determinism failing.
+    //
+    // So the claim is stated as determinism: the same fight played twice gives
+    // the same costs, and every cost is a rung the enemy actually has.
+    const play = (): number[] => {
+      let state = facing('deep', { bones: 30, ironDice: [] })
+      const seen: number[] = []
+      for (let attack = 0; attack < 3; attack++) {
+        state = reduce(state, { type: 'ROLL' })
+        const before = state.run!.bones
+        state = scoreAnything(state)
+        seen.push(before - state.run!.bones)
+      }
+      return seen
     }
-    expect(seen).toEqual([5, 5, 5])
+
+    const first = play()
+    expect(first, 'the same fight cost two different things').toEqual(play())
+    const rungs = new Set((enemy('marrow').breakRule?.rungs ?? []).map((r) => r.breaks))
+    for (const cost of first) {
+      expect(rungs.has(cost), `${cost} is not a rung the Marrow has`).toBe(true)
+    }
+    // And it does step down as the thing is worn through, rather than sitting
+    // on one number for the whole fight.
+    expect(new Set(first).size, 'nothing about the ladder was exercised').toBeGreaterThan(1)
   })
 
   it('starts the next attack automatically, with a clear table', () => {

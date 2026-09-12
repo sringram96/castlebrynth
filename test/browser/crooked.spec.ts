@@ -321,7 +321,7 @@ test.describe('one rule each, printed before the press', () => {
     await expect(page.locator('#brief-ladder')).toContainText('CRAP 12')
 
     // A named line: eight.
-    await boot(page, '?room=gate&bones=30&rolls=3&dice=1,1,2,3,4,6&iron=0')
+    await boot(page, '?room=gate&bones=30&rolls=3&dice=1,1,2,4,5,6&iron=0')
     await expect(page.locator('#enemy-hits')).toHaveAttribute('data-damage', '8')
     await page.locator('.score-entry[data-hand="pair"]').click()
     await settled(page)
@@ -329,7 +329,7 @@ test.describe('one rule each, printed before the press', () => {
 
     // The same dice with PAIR already spent: nothing named fits, CRAP is the
     // answer, and the door charges four more for it.
-    await boot(page, '?room=gate&bones=30&rolls=3&dice=1,1,2,3,4,6&iron=0&used=pair')
+    await boot(page, '?room=gate&bones=30&rolls=3&dice=1,1,2,4,5,6&iron=0&used=pair')
     await expect(page.locator('.score-entry[data-hand="crap"]')).toBeVisible()
     await page.locator('.score-entry[data-hand="crap"]').click()
     await settled(page)

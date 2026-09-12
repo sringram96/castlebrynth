@@ -810,9 +810,19 @@ button {
   transition: opacity 240ms ease-out;
 }
 
+/*
+ * 120ms, not 160. The void has to be **solid before `land` repaints under it**
+ * or the handover is glimpsed, and the beats are separate timers that drift
+ * differentially under load: closing over 160 from `dark` at 170 left it solid
+ * at 330 against a `land` at 430, and a hundred milliseconds was not enough —
+ * it failed about once in four hundred browser tests. 120 lands it at 290 and
+ * a 140ms margin, which is what the settle needed at the other end too. It also
+ * reads better: losing the room quickly is the half of a doorway that should
+ * be quick.
+ */
 #world.dark::before {
   opacity: 1;
-  transition: opacity 160ms ease-in;
+  transition: opacity 120ms ease-in;
 }
 
 /*
@@ -1182,86 +1192,50 @@ body[data-motion='off'] .enemy-fill {
 }
 
 /*
- * ── the words, off the picture ───────────────────────────────────────
+ * ── waving the words away ────────────────────────────────────────────
  *
- * A room is a painting and the game spends most of its time writing on it. This
- * takes the writing off: the band, the tray, the hotspots and the HUD all go,
- * and what is left is the picture at the full height of the screen — the world
- * is `flex: 1 1 auto` and the tray `flex: 0 0 auto`, so hiding the tray hands
- * the world the rest with no arithmetic anywhere.
+ * A room is a painting and the game writes a paragraph across the bottom of it.
+ * Tapping a part of the picture nothing is standing on takes that paragraph
+ * away; tapping again, or touching anything real, brings it back.
  *
- * It changes **nothing**. No run state, no save, no mode — `app.ts` holds the
- * flag and clears it the moment a sequence or an overlay wants the picture.
+ * **The tray never goes.** A picture with no tray under it is not a state this
+ * game has — what is dismissable is one paragraph, and only while it is in the
+ * way of looking at the room.
  *
- * The toggle itself stays, in the same corner, in both directions. It recedes
- * rather than disappears: a control that hides itself once pressed is a control
- * that leaves somebody stranded in a blank room, and the one thing this feature
- * must never do is take the game away.
+ * The press itself is the first child of `#hits`, so every hotspot is a later
+ * sibling and wins both the paint and the tap. It can only ever catch presses
+ * that would otherwise have landed on nothing.
  */
-/*
- * Top left, and **not** beside the band it dismisses.
- *
- * Bottom left was the obvious home and it was wrong twice over: it sat on top
- * of the word band's first line, and the band's height is however many lines
- * the room wrote, so no fixed offset above it would have cleared a three-line
- * arrival either. Up here nothing else is anchored — the enemy bar centres its
- * name and its track, so the corner beside it is empty, and the territory card
- * sits 30% down the frame.
- *
- * It also belongs out of the thumb's main arc on purpose. A control that
- * changes nothing should not be the easiest thing on the screen to hit.
- */
-.view-toggle {
+.hit-room {
   position: absolute;
-  left: 8px;
-  top: max(8px, env(safe-area-inset-top));
-  min-width: var(--touch);
-  min-height: var(--touch);
-  padding: 0 10px;
-  pointer-events: auto;
-  border: 1px solid rgb(207 166 82 / 0.3);
-  background: rgb(6 5 4 / 0.72);
-  color: var(--ink-dim);
-  font: inherit;
-  font-size: 10px;
-  letter-spacing: 0.18em;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  /* `.hit` pulls itself back by half a touch target so a hotspot sits centred
+     on the anchor the art declares. This one is anchored to the whole picture
+     and must not inherit that, or it hangs 22px off the left edge. */
+  margin: 0;
   border-radius: 0;
-  transition: opacity 160ms ease-out;
+  padding: 0;
+  border: 0;
+  background: none;
+  pointer-events: auto;
+  /* It is a press over a painting and must never read as a control. */
+  cursor: default;
+  -webkit-tap-highlight-color: transparent;
 }
 
-body[data-viewing='yes'] .view-toggle {
-  opacity: 0.35;
-  border-color: rgb(207 166 82 / 0.16);
-}
-
-body[data-viewing='yes'] #tray,
-body[data-viewing='yes'] .say,
-body[data-viewing='yes'] #hits {
-  display: none;
-}
-
-/* Everything the HUD carries except the way back. */
-body[data-viewing='yes'] #hud > *:not(.view-toggle) {
+body[data-band-off='yes'] .say {
   display: none;
 }
 
 /*
- * The vignette goes too. It is there to keep HUD text off a busy focal region,
- * and with no text on the picture it is only a gradient over somebody's
- * painting — which is the exact thing this mode exists to get out of the way.
+ * The vignette goes with it. It exists to keep the band's text off a busy
+ * focal region, so with the band gone it is only a gradient over somebody's
+ * painting — which is the thing being got out of the way.
  */
-body[data-viewing='yes'] #world::after {
+body[data-band-off='yes'] #world::after {
   display: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .view-toggle {
-    transition: none;
-  }
-}
-
-.say-beat + .say-beat {
-  color: var(--ink-dim);
 }
 
 /* ── the tray ────────────────────────────────────────────────────────── */
@@ -1848,10 +1822,29 @@ button.item-die {
  * make is information, and a greyed control that explains nothing is what this
  * replaces.
  */
+/*
+ * ── the scorecard ────────────────────────────────────────────────────
+ *
+ * **One row, and only the lines the dice actually make.**
+ *
+ * It used to print all twelve hands at every moment, greying out what the roll
+ * did not contain — twelve cells in a painted recess that could give each one
+ * 47 x 21 px, against a 44px touch floor this project sets itself, carried as a
+ * documented exception rather than fixed. Choosing a line is the whole decision
+ * an attack is made of; it was the last press that should have been hard to hit.
+ *
+ * Counted over all 46 656 rolls a throw offers **one to five** legal lines and
+ * never a sixth, and 82% of throws offer three or fewer. So the row is between
+ * one and five wide, every cell is the full 44px tall, and the width is what is
+ * left over — 66px at three, 40px at five. That is the same accepted deviation
+ * the crown's six bays already keep, and for the same reason: height is the
+ * floor, width is the painted pitch, and nothing overlaps.
+ */
 .scorecard {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1px 2px;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 3px;
   width: 100%;
   align-content: center;
 }
@@ -1859,31 +1852,57 @@ button.item-die {
 .score-entry {
   display: grid;
   place-items: center;
-  gap: 0;
-  padding: 1px 0;
-  border: 1px solid transparent;
+  gap: 1px;
+  /* The floor this card was breaking, and the reason it now shows only what is
+     live: twelve of these do not fit the recess, and five do. */
+  min-height: var(--touch);
+  padding: 2px 1px;
+  border: 1px solid rgb(207 166 82 / 0.2);
   border-radius: 2px;
-  background: transparent;
+  background: rgb(18 15 11 / 0.85);
   color: var(--ink-dim);
   line-height: 1.05;
   font: inherit;
 }
 
-.score-name {
-  font-size: 7px;
+/*
+ * Which label fits. At one, two or three across the cell is wide enough for the
+ * whole name; at four or five it is not, and an abbreviation a player can read
+ * beats a name clipped mid-word. The stylesheet picks, because the card already
+ * knows its own count and a script measuring text would be a second opinion.
+ */
+.score-short {
+  display: none;
+}
+
+.scorecard[data-count="4"] .score-name,
+.scorecard[data-count="5"] .score-name,
+.scorecard[data-count="6"] .score-name {
+  display: none;
+}
+
+.scorecard[data-count="4"] .score-short,
+.scorecard[data-count="5"] .score-short,
+.scorecard[data-count="6"] .score-short {
+  display: block;
+}
+
+.score-name,
+.score-short {
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.02em;
   text-align: center;
-  /* One line, always. A hand whose label wrapped would make its row taller
-     than the other seven and the grid would stop being a grid. */
+  /* One line, always. A label that wrapped would make its cell taller than its
+     neighbours and the row would stop being a row. */
   white-space: nowrap;
 }
 
 .score-mult {
   font-style: normal;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 700;
-  color: var(--ink-dim);
+  color: var(--gold);
 }
 
 /* Spent. Still on the card, because *what is left* is the decision the fight
@@ -1901,7 +1920,6 @@ button.item-die {
 /* Live. A real button, lit, and the whole commitment of the attack. */
 button.score-entry {
   pointer-events: auto;
-  min-height: 20px;
   border-color: rgb(207 166 82 / 0.7);
   background: linear-gradient(to bottom, rgb(58 41 18 / 0.85), rgb(18 13 8 / 0.9));
   color: #f6e6bd;
@@ -1911,10 +1929,10 @@ button.score-entry .score-mult {
   color: var(--gold);
 }
 
-/* The fallback. It spans the row it lands on, because it is not one of eight
-   categories and must not read like one that can run out. */
+/* The fallback. It only ever appears alone — it is offered exactly when no
+   named line is left — so it fills the row by being the only thing in it. */
 button.score-crap {
-  grid-column: 1 / -1;
+  border-color: rgb(207 166 82 / 0.35);
 }
 
 /* The line under the card is a prompt rather than prose, and it has one line

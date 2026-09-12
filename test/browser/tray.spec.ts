@@ -193,8 +193,9 @@ test.describe('the scorecard', () => {
 
   test('never overlaps one entry with another', async ({ page }) => {
     await boot(page, '?room=deep&rolls=1&dice=6,6,6,4,4,3')
+    // Four lines out of `6 6 6 4 4 3`: a pair, two pair, a triple, a full house.
     const seated = await boxes(page, '.score-entry')
-    expect(seated).toHaveLength(8)
+    expect(seated).toHaveLength(4)
     for (let i = 0; i < seated.length; i++) {
       for (let j = i + 1; j < seated.length; j++) {
         const a = seated[i]!
@@ -418,6 +419,62 @@ test.describe('the words sit where the paint says', () => {
       if (!text) continue
       assertSeated('the world', seat, text, await regionOf(page, '#world', seat))
     }
+  })
+
+  test('gives every hand on the card a real touch target', async ({ page }) => {
+    // **The measurement this whole change exists for.** The card used to sit in
+    // the well, which the painting gives 51% of the plate's width to, and
+    // twelve hands in a 194 x 43 box came out at 47 x 21 px each — against a
+    // 44px floor this project states in its own CLAUDE.md, carried as a
+    // documented exception rather than fixed. Choosing a line is the whole
+    // decision an attack is made of; it is the last press that should be hard
+    // to hit.
+    await boot(page, '?room=hollow&mode=combat&rolls=1')
+    const cells = page.locator('#scorecard .score-entry')
+    await expect(cells).not.toHaveCount(0)
+    for (const cell of await cells.all()) {
+      const box = (await cell.boundingBox())!
+      const hand = await cell.getAttribute('data-hand')
+      expect(box.height, `${hand} is under the touch floor`).toBeGreaterThanOrEqual(44)
+      expect(box.width, `${hand} is under the touch floor`).toBeGreaterThanOrEqual(44)
+    }
+  })
+
+  test('fits every hand’s label on one line, without clipping it', async ({ page }) => {
+    // `copy.test.ts` caps the label length; this is what that cap is *for*. A
+    // name that overflows its cell is the failure the cap exists to prevent, so
+    // the cap is checked against the real cell rather than believed.
+    await boot(page, '?room=hollow&mode=combat&rolls=1')
+    for (const name of await page.locator('#scorecard .score-name').all()) {
+      const fits = await name.evaluate(
+        (n) => n.scrollWidth <= n.clientWidth + 1 && n.getClientRects().length === 1,
+      )
+      expect(fits, `${await name.textContent()} does not fit its cell on one line`).toBe(true)
+    }
+  })
+
+  test('shows only the lines the dice actually make', async ({ page }) => {
+    // The card used to print all twelve at every moment. What it draws now is
+    // exactly the legal set — never a greyed row to search past, and never a
+    // struck-through one.
+    await boot(page, '?room=hollow&mode=combat&rolls=1&dice=5,5,5,2,2,4')
+    const hands = await page.locator('#scorecard .score-entry').evaluateAll((ns) =>
+      ns.map((n) => (n as HTMLElement).dataset['hand']),
+    )
+    expect(hands).toEqual(['pair', 'two-pair', 'triple', 'full-house'])
+    // Every one of them a real button, because every one of them is playable.
+    await expect(page.locator('#scorecard button.score-entry')).toHaveCount(4)
+  })
+
+  test('keeps the whole card to one row inside the well', async ({ page }) => {
+    // Five legal lines is the most that can ever happen — counted over all
+    // 46 656 rolls — so the row never needs to become a grid, and the recess
+    // never needs the card to leave it.
+    await boot(page, '?room=hollow&mode=combat&rolls=1&dice=6,6,6,6,6,6')
+    const tops = await page.locator('#scorecard .score-entry').evaluateAll((ns) =>
+      [...new Set(ns.map((n) => Math.round(n.getBoundingClientRect().top)))],
+    )
+    expect(tops, 'the card wrapped to a second row').toHaveLength(1)
   })
 
   test('keeps the pile count inside the glass that holds it', async ({ page }) => {

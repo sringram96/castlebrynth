@@ -195,15 +195,11 @@ test.describe('the first fight', () => {
 
     const combat = (await state(page)).run!.combat!
     expect(combat.usedHands).toEqual(['two-pair'])
-    // Full House and Triple both matched, and both survive for later.
-    await expect(page.locator('.score-entry[data-hand="two-pair"]')).toHaveAttribute(
-      'data-used',
-      'yes',
-    )
-    await expect(page.locator('.score-entry[data-hand="full-house"]')).toHaveAttribute(
-      'data-used',
-      'no',
-    )
+    // Full House and Triple both matched, and both survive for later. The card
+    // itself is empty by now — scoring clears the table and opens the next
+    // round — so the claim is made where it actually lives: the spent set is
+    // exactly the one line the player chose.
+    await expect(page.locator('#scorecard')).toHaveAttribute('data-spent', 'two-pair')
   })
 
   test('an attack settles the whole exchange in one press', async ({ page }) => {

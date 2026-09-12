@@ -136,7 +136,7 @@ as support for one of them, it is out of scope.
 | **DRINK** | Spend a Vial: five bones back. |
 | **TAKE** | Pick up a thing lying in the room. |
 | **MAP** | Read the run back: where it has been, and the roads it left. Explore only, and it changes nothing. |
-| **HIDE / SHOW** | Take the words off the picture, and put them back. Explore only, and it changes nothing. |
+| **the room itself** | Tap a part of the picture nothing is standing on to wave the word band away, and again to bring it back. Explore only, and it changes nothing. |
 | **RESTART** | Begin a new run after death. |
 
 There is no **SKIP**. Leaving a thing where it fell is walking to the exit
@@ -148,23 +148,22 @@ There is deliberately **no verb for an item die**. Item dice fire automatically
 at SCORE, as a beat in the cascade; adding a press for them was explicitly
 rejected. See `COMBAT.md` § Item dice.
 
-**HIDE is the one control that produces no `GameState`.** A room is a painting
-and the game spends most of its time writing on it, so the words come off on
-request: the band, the tray, the hotspots and the HUD all go, and the picture
-takes the whole screen. It is presentation-local — not in the save, not a
-fixture key, not a mode — and it is cleared the instant a sequence or an
-overlay wants the picture, because a beat played under hidden chrome is a beat
-shown to nobody.
+**The picture is itself a press, and it produces no `GameState`.** A room is a
+painting and the game writes a paragraph across the bottom of it; tapping a
+part of the picture nothing is standing on takes that paragraph away, and
+tapping again — or touching anything at all — brings it back. It is
+presentation-local: not in the save, not a fixture key, not a mode.
 
-It is **explore only**, and that is the same ruling the right bed already keeps
-for MAP: *a fight is the room.* What the HUD carries in a fight — the name,
-what is left of it, which rung of the ladder the turn is on — is the tactical
-contract, printed before anything is committed precisely so it cannot be taken
-off the screen. In a fight there is simply no such press.
+**The tray never goes.** A picture with no tray under it is not a state this
+game has. What is dismissable is one paragraph, and only while it is in the way
+of looking at the room. An earlier pass cleared the whole screen to the bare
+painting and that was wrong for exactly this reason.
 
-The toggle sits in the same corner in both directions and recedes rather than
-disappears. A control that hides itself once pressed strands the player in a
-blank room, and the one thing this feature must never do is take the game away.
+The press is a sibling *before* `#hits`, so every hotspot paints and presses
+over it and it can only ever catch a tap that would have landed on nothing. It
+is deliberately not one of `#hits`' children: those are the room's own presses
+and are counted against the frame's negative-space budget, and global chrome is
+not the room's. It is **explore only** — a fight is the room.
 
 ## Three grammars
 

@@ -272,17 +272,54 @@ not the same thing:
   took no part in the pattern.
 - **they make a shape.** The shape supplies exactly one multiplier.
 
-| hand | multiplier | what it takes |
+| hand | multiplier | how often | what it takes |
+|---|---|---|---|
+| **CRAP** | ×0.50 | — | the fallback. Not a category. |
+| **PAIR** | ×1.00 | 98.46% | two dice alike |
+| **TWO PAIR** | ×1.25 | 55.62% | two different faces, twice each |
+| **TRIPLE** | ×1.50 | 36.73% | three dice alike |
+| **SHORT RUN** | ×1.60 | 27.01% | four distinct consecutive faces |
+| **STRAIGHT** | ×1.75 | 9.26% | five distinct consecutive faces: 1–5 or 2–6 |
+| **FULL HOUSE** | ×2.00 | 17.04% | three of one face and two of a *different* one |
+| **FOUR** | ×2.50 | 5.22% | four dice alike |
+| **THREE PAIR** | ×2.60 | 3.86% | three different faces, twice each |
+| **THE LADDER** | ×2.80 | 1.54% | every face at once: 1 to 6 |
+| **TWO TRIPLES** | ×2.90 | 0.64% | two different faces, three each |
+| **FIVE** | ×3.00 | 0.40% | five dice alike |
+| **SIX** | ×4.00 | 0.01% | all six alike |
+
+The **how often** column is a count, not an estimate: six d6s is 46 656 rolls
+and `hands.ts` enumerates them. Four of these are six-dice shapes the table did
+not have — a short run, three pair, two triples, and the whole run of 1 to 6,
+which used to score as a plain STRAIGHT despite being the rarest ordered roll
+in the game. They are priced **into the gaps between the rungs that already
+existed**, by that count, and no existing multiplier was touched.
+
+**One inversion, reported rather than tuned.** FULL HOUSE turns up at 17.04%
+and pays ×2; STRAIGHT turns up at 9.26% and pays ×1.75. The rarer hand pays
+less, and has since the table was written. Swapping them is a decision with its
+own balance run, so it is written down rather than quietly corrected.
+
+**What the four cost, measured.** Whole-run survival before and after, same
+seeds, same policies:
+
+| policy | before | after |
 |---|---|---|
-| **CRAP** | ×0.50 | the fallback. Not a category. |
-| **PAIR** | ×1.00 | two dice alike |
-| **TWO PAIR** | ×1.25 | two different faces, twice each |
-| **TRIPLE** | ×1.50 | three dice alike |
-| **STRAIGHT** | ×1.75 | five distinct consecutive faces: 1–5 or 2–6 |
-| **FULL HOUSE** | ×2.00 | three of one face and two of a *different* one |
-| **FOUR** | ×2.50 | four dice alike |
-| **FIVE** | ×3.00 | five dice alike |
-| **SIX** | ×4.00 | all six alike |
+| safe · heuristic | 29% | 42% |
+| safe · heuristic · taking | 43% | 55% |
+| deep · heuristic · taking | 84% | 92% |
+
+More named lines means fewer throws with nothing worth scoring, so the game got
+easier by a real margin. All sixteen invariants still hold, no gate assumes any
+of it, and the numbers are **reported rather than tuned**: whether the slice
+wants that difficulty is a product decision, and the levers are the enemy
+health totals rather than the new multipliers.
+
+**And the card draws only what the dice make.** A throw offers between one and
+five legal lines — five is the maximum that can ever occur — and 82% of throws
+offer three or fewer, so the scorecard is a single row of live buttons at the
+full 44px touch floor instead of twelve cells at 47 × 21. What is spent is no
+longer struck through on the card; MENU carries the whole table, one press away.
 
 These multipliers are **provisional tuning values**, not product law. They live
 in exactly one place — `HAND_DEFINITIONS` in `src/combat/hands.ts` — and every

@@ -147,12 +147,21 @@ test.describe('reduced motion is the same game', () => {
     await expect(first).toHaveAttribute('aria-label', /held$/)
   })
 
-  test('a spent hand is struck through as well as dimmed', async ({ page }) => {
-    await boot(page, '?room=deep&rolls=1&used=pair,triple')
-    const spent = page.locator('.score-entry[data-used="yes"]').first()
-    await expect(spent).toHaveCount(1)
-    const decoration = await spent.evaluate((n) => getComputedStyle(n).textDecorationLine)
-    expect(decoration).toContain('line-through')
+  test('the card offers the same lines with motion off as with it on', async ({ page }) => {
+    // A spent hand used to be struck through, and the claim here was that the
+    // strike survived motion being off — that a state was carried by more than
+    // an animation. The card does not draw spent hands at all now, so the claim
+    // becomes the stronger one underneath it: **the set of choices is the same
+    // game either way.** Nothing about which lines are live is presentational.
+    const offered = async (motion: boolean): Promise<string[]> => {
+      await boot(page, '?room=deep&rolls=1&dice=6,6,6,4,4,3&used=pair,triple', { motion })
+      return page
+        .locator('#scorecard button.score-entry')
+        .evaluateAll((ns) => ns.map((n) => (n as HTMLElement).dataset['hand']!))
+    }
+    const still = await offered(false)
+    expect(still.length, 'nothing was offered at all').toBeGreaterThan(0)
+    expect(await offered(true)).toEqual(still)
   })
 })
 

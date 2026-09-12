@@ -11,11 +11,20 @@ import { expect, test } from '@playwright/test'
 import { act, boot } from './helpers.js'
 
 test.describe('the scorecard explains itself where the fight is', () => {
-  test('every hand and its multiplier is on the tray, all the time', async ({ page }) => {
-    await boot(page, '?room=deep&rolls=1')
+  test('every line the dice make is on the tray, with what it pays', async ({ page }) => {
+    // The card prints what is playable, not the whole table — see
+    // `combat-controls.spec.ts` § the scorecard. What it must never do is offer
+    // a choice without its price.
+    await boot(page, '?room=deep&rolls=1&dice=6,6,6,4,4,3')
     const card = page.locator('#scorecard')
-    for (const name of ['PAIR', 'TWO PAIR', 'TRIPLE', 'STRAIGHT', 'FULL HOUSE', 'FOUR', 'FIVE', 'SIX']) {
+    for (const [name, mult] of [
+      ['PAIR', '×1'],
+      ['TWO PAIR', '×1.25'],
+      ['TRIPLE', '×1.5'],
+      ['FULL HOUSE', '×2'],
+    ] as const) {
       await expect(card).toContainText(name)
+      await expect(card).toContainText(mult)
     }
   })
 
@@ -23,7 +32,10 @@ test.describe('the scorecard explains itself where the fight is', () => {
     await boot(page, '?room=deep&rolls=1')
     await act(page, 'menu').click()
     const table = page.locator('#hand-table')
-    await expect(table.locator('.hand-row')).toHaveCount(9)
+    // Twelve hands and the fallback. This is the page that carries the whole
+    // table now that the card carries only the live rows, so its count is what
+    // keeps that trade honest.
+    await expect(table.locator('.hand-row')).toHaveCount(13)
     await expect(table).toContainText('Three alike and two others alike.')
     await expect(table).toContainText('Five in a row: 1–5 or 2–6.')
     // The fallback is on the card, and it is plainly not one of the eight.

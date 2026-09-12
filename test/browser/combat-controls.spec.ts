@@ -64,19 +64,20 @@ test.describe('an unavailable action is absent', () => {
     }
   })
 
-  test('a hand that cannot be scored is text, not a dead button', async ({ page }) => {
-    // 1 2 3 4 6 6 makes a pair and nothing else. The other seven entries are
-    // still on the card, because *what is left* is the decision — and not one
-    // of them is a control.
-    await boot(page, '?room=deep&rolls=1&dice=1,2,3,4,6,6')
-    await expect(page.locator('.score-entry')).toHaveCount(8)
+  test('a hand that cannot be scored is absent, not a dead button', async ({ page }) => {
+    // `1 2 4 5 6 6` makes a pair and nothing else — no repeat beyond the sixes
+    // and no four in a row, since the faces skip the 3.
+    //
+    // The card used to print all of them and grey out the rest. It does not any
+    // more, which is this project's own rule applied to the region that was
+    // breaking it: **an unavailable action is hidden, never shown disabled.**
+    // Every cell drawn is a real button, because every cell drawn is playable.
+    await boot(page, '?room=deep&rolls=1&dice=1,2,4,5,6,6')
+    await expect(page.locator('.score-entry')).toHaveCount(1)
     await expect(page.locator('button.score-entry')).toHaveCount(1)
     expect(await scoresOnOffer(page)).toEqual(['pair'])
     for (const hand of ['triple', 'straight', 'full-house', 'six-kind']) {
-      await expect(page.locator(`.score-entry[data-hand="${hand}"]`)).toHaveAttribute(
-        'data-legal',
-        'no',
-      )
+      await expect(page.locator(`.score-entry[data-hand="${hand}"]`)).toHaveCount(0)
     }
   })
 
@@ -180,21 +181,38 @@ test.describe('REROLL', () => {
 })
 
 test.describe('the scorecard', () => {
-  test('prints every hand and its multiplier, all the time', async ({ page }) => {
-    await boot(page, '?room=deep&rolls=1')
+  test('prints the multiplier on every line it offers', async ({ page }) => {
+    // Not every hand — only the ones the dice make. What must never happen is a
+    // live choice whose price is not on it: the whole decision is *this shape,
+    // at this multiplier, for this many*, and a cell without its figure is the
+    // player being asked to commit on a number they were not shown.
+    //
+    // `6 6 6 4 4 3` makes a pair, two pair, a triple and a full house.
+    await boot(page, '?room=deep&rolls=1&dice=6,6,6,4,4,3')
     const card = page.locator('#scorecard')
     await expect(card).toBeVisible()
     for (const [hand, multiplier] of [
       ['pair', '×1'],
       ['two-pair', '×1.25'],
       ['triple', '×1.5'],
-      ['straight', '×1.75'],
       ['full-house', '×2'],
-      ['four-kind', '×2.5'],
-      ['five-kind', '×3'],
-      ['six-kind', '×4'],
     ] as const) {
       await expect(card.locator(`[data-hand="${hand}"] .score-mult`)).toHaveText(multiplier)
+    }
+    // And nothing on the card that is not one of them.
+    await expect(card.locator('.score-entry')).toHaveCount(4)
+  })
+
+  test('keeps the whole table one press away, in MENU', async ({ page }) => {
+    // The cost of drawing only what is live: *what is left* stops being visible
+    // during the fight. It is not lost — MENU carries all twelve with their
+    // multipliers — and that is the thing that makes hiding the rest fair.
+    await boot(page, '?room=deep&rolls=1&dice=6,6,6,4,4,3')
+    await act(page, 'menu').first().click()
+    const menu = page.locator('.screen-panel')
+    for (const name of ['PAIR', 'TWO PAIR', 'TRIPLE', 'SHORT RUN', 'STRAIGHT', 'FULL HOUSE',
+      'FOUR', 'THREE PAIR', 'THE LADDER', 'TWO TRIPLES', 'FIVE', 'SIX']) {
+      await expect(menu).toContainText(name)
     }
   })
 
@@ -213,19 +231,25 @@ test.describe('the scorecard', () => {
     )
   })
 
-  test('marks a spent hand and stops offering it', async ({ page }) => {
+  test('stops offering a spent hand, and stops drawing it', async ({ page }) => {
     await boot(page, '?room=deep&rolls=1&dice=6,6,6,4,4,3&used=triple,pair')
-    expect(await scoresSpent(page)).toEqual(expect.arrayContaining(['pair', 'triple']))
     expect(await scoresOnOffer(page)).not.toContain('triple')
+    expect(await scoresOnOffer(page)).not.toContain('pair')
     expect(await scoresOnOffer(page)).toContain('full-house')
+    // Gone rather than struck through: a spent line is not a choice, and the
+    // row is short enough to read precisely because it holds only choices.
+    await expect(page.locator('.score-entry[data-hand="triple"]')).toHaveCount(0)
+    // The fight still knows, and says so where a harness and a MENU press can
+    // both find it.
+    await expect(page.locator('#scorecard')).toHaveAttribute('data-spent', /triple/)
   })
 
   test('offers CRAP only when nothing unspent qualifies, and never alongside', async ({ page }) => {
-    await boot(page, '?room=deep&rolls=1&dice=1,2,3,4,6,6')
+    await boot(page, '?room=deep&rolls=1&dice=1,2,4,5,6,6')
     expect(await scoresOnOffer(page)).toEqual(['pair'])
     await expect(page.locator('[data-hand="crap"]')).toHaveCount(0)
 
-    await boot(page, '?room=deep&rolls=1&dice=1,2,3,4,6,6&used=pair')
+    await boot(page, '?room=deep&rolls=1&dice=1,2,4,5,6,6&used=pair')
     expect(await scoresOnOffer(page)).toEqual(['crap'])
     await expect(page.locator('button[data-hand="crap"]')).toBeVisible()
     await expect(page.locator('button[data-hand="crap"] .score-mult')).toHaveText('×0.5')

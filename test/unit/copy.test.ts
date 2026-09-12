@@ -64,7 +64,13 @@ describe('the scorecard is its numbers', () => {
   it('gives every hand a short name and a multiplier', () => {
     for (const hand of HAND_DEFINITIONS) {
       expect(hand.name, `${hand.id} has no label`).toBe(hand.name.toUpperCase())
-      expect(hand.name.length, `${hand.id} is too long for the well`).toBeLessThanOrEqual(10)
+      // The limit is the **cell**, and the cell moved. It was ten characters
+      // because the card lived in a painted recess 194px wide and an entry got
+      // 47px of it; the card stands on its own sheet now at three columns of
+      // 122px, and `tray.spec.ts` measures that no label actually wraps rather
+      // than trusting this number. Twelve is what 122px holds at the card's
+      // type size, with a character in hand.
+      expect(hand.name.length, `${hand.id} is too long for its cell`).toBeLessThanOrEqual(12)
       expect(hand.multiplier, `${hand.id} has no multiplier`).toBeGreaterThan(0)
     }
   })

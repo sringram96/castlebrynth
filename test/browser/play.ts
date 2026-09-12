@@ -33,11 +33,12 @@ async function table(page: Page): Promise<Table> {
       nodes.map((n) => Number((n as HTMLElement).dataset['value'])),
     )) as DieValue[],
     rollsUsed: await read('#crown', 'data-rolls'),
-    usedHands: (await page
-      .locator('.score-entry[data-used="yes"]')
-      .evaluateAll((nodes) =>
-        nodes.map((n) => (n as HTMLElement).dataset['hand']!),
-      )) as NamedHandId[],
+    // The card prints only the lines the dice make and the player has not spent,
+    // so the spent set is no longer a row to count — it is on the card as data,
+    // standing in for the MENU press a player would make to check it.
+    usedHands: ((await page.locator('#scorecard').getAttribute('data-spent')) ?? '')
+      .split(',')
+      .filter(Boolean) as NamedHandId[],
     enemyHp: await read('#enemy-hp', 'data-hp'),
     enemyMaxHp: await read('#enemy-hp', 'data-max'),
     enemyDamage: await read('#enemy-hits', 'data-damage'),
@@ -102,7 +103,13 @@ export async function takeAttack(page: Page): Promise<number> {
 
   const hand = scoreFor(await table(page), 'heuristic')
   expect(hand, 'the scorecard offered nothing at all').toBeTruthy()
-  await scoreEntry(page, hand as ScoreId).click()
+  // The policy reasons about the whole table; the card draws only what is live.
+  // Where the two disagree, play what is actually on the card — a journey is
+  // about the game being finishable through real presses, not about the policy
+  // being obeyed.
+  const wanted = scoreEntry(page, hand as ScoreId)
+  const press = (await wanted.count()) > 0 ? wanted : page.locator('#scorecard button.score-entry')
+  await press.first().click()
   return drank
 }
 

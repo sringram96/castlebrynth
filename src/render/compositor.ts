@@ -85,6 +85,8 @@ export interface World {
   /** The card that names a territory, once, on first entry to it. */
   readonly card: HTMLElement
   /** Where the room's tappable details live. The only layer that takes taps. */
+  /** The picture as one press: it waves the word band away and back. */
+  readonly room: HTMLButtonElement
   readonly hits: HTMLElement
   readonly hud: HTMLElement
 }
@@ -162,7 +164,26 @@ export function mountWorld(root: HTMLElement): World {
   const hud = layer('div', 'hud', Layer.Hud)
   hud.id = 'hud'
 
-  root.append(backdrop, midground, enemy, foreground, fx, grade, hits, hud, card)
+  /**
+   * The picture itself, as one press, and **under `hits` on purpose.**
+   *
+   * It waves the word band off the painting and back on, and it is a sibling
+   * *before* `hits` so that every hotspot paints and presses over it: it can
+   * only ever catch a tap that would otherwise have landed on nothing.
+   *
+   * It is deliberately not a child of `hits`. Those are the room's own presses
+   * and are counted against the frame's negative-space budget — see
+   * `content/roomResolver.ts` — and a piece of global chrome is not one of the
+   * room's. Putting it in there made every budget audit in the suite count one
+   * press too many, which is the audit being right.
+   */
+  const room = document.createElement('button')
+  room.type = 'button'
+  room.id = 'room-press'
+  room.className = 'hit-room'
+  room.hidden = true
+
+  root.append(backdrop, midground, enemy, foreground, fx, grade, room, hits, hud, card)
   return {
     root,
     backdrop,
@@ -175,6 +196,7 @@ export function mountWorld(root: HTMLElement): World {
     fx,
     grade,
     card,
+    room,
     hits,
     hud,
   }
