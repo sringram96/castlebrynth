@@ -105,13 +105,16 @@ test.describe('a carried thing explains itself in one card', () => {
 })
 
 test.describe('the fight says its numbers out loud', () => {
-  test('the word band reads back the whole exchange', async ({ page }) => {
+  test('the result is short and MENU can read back the whole exchange', async ({ page }) => {
     // 6 6 6 4 4 3 as a Full House: 29 × 2, 58 off a 120, and five bones for
     // leaving it standing.
     await boot(page, '?room=deep&bones=30&rolls=3&dice=6,6,6,4,4,3')
     await page.locator('.score-entry[data-hand="full-house"]').click()
 
-    const say = page.locator('#say')
+    await expect(page.locator('#say')).toHaveText('58 damage · 5 bones lost')
+    await act(page, 'menu').click()
+    await page.locator('.combat-history summary').click()
+    const say = page.locator('.combat-history')
     await expect(say).toContainText('FULL HOUSE')
     await expect(say).toContainText('29 × 2 — 58')
     await expect(say).toContainText('The Marrow: 120 → 62')

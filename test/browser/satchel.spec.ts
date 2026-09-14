@@ -14,7 +14,7 @@ import { act, boot, dice, livingBones, state, tappable } from './helpers.js'
 test.describe('the Vial', () => {
   test('shows its count and restores exactly five', async ({ page }) => {
     await boot(page, '?room=fork&bones=12&vials=2')
-    await expect(page.locator('.satchel-slot[data-slot-id="vial"] .satchel-count')).toHaveText('2')
+    await expect(page.locator('.satchel-slot[data-slot-id="vial"] .satchel-count')).toHaveText('×2')
     expect(await livingBones(page)).toBe(12)
 
     await act(page, 'drink').click()
@@ -66,9 +66,9 @@ test.describe('the bays', () => {
         .locator('.satchel-slot')
         .evaluateAll((nodes) => nodes.map((n) => (n as HTMLElement).dataset['slotId']))
 
-    await boot(page, '?room=fork')
+    await boot(page, '?room=hollow')
     expect(await order()).toEqual(['vial'])
-    await boot(page, '?room=fork&vials=3')
+    await boot(page, '?room=hollow&vials=3')
     expect(await order()).toEqual(['vial'])
   })
 
@@ -77,7 +77,7 @@ test.describe('the bays', () => {
     // left showing rather than the Vial being re-centred: the recesses are
     // part of the picture, and moving a control would be the tray pretending
     // its own geometry changed.
-    await boot(page, '?room=fork&vials=1')
+    await boot(page, '?room=hollow&vials=1')
     await expect(act(page, 'pouch')).toHaveCount(0)
     await expect(page.locator('#pouch-rows')).toHaveCount(0)
     const box = await page.locator('.satchel-slot[data-slot-id="vial"]').boundingBox()
@@ -89,7 +89,7 @@ test.describe('the bays', () => {
   })
 
   test('is a real, tappable button', async ({ page }) => {
-    await boot(page, '?room=fork&vials=1')
+    await boot(page, '?room=hollow&vials=1')
     for (const slot of await page.locator('.satchel-slot').all()) {
       await tappable(page, slot)
     }

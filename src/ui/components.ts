@@ -201,6 +201,11 @@ export function dieButton(
   b.dataset['held'] = view.held ? 'yes' : 'no'
   if (spec.act === 'hold') b.setAttribute('aria-pressed', view.held ? 'true' : 'false')
   b.append(view.value === undefined ? dieBack() : dieFace(view.value))
+  if (view.held) {
+    const held = el('span', 'held-label', 'HELD')
+    held.setAttribute('aria-hidden', 'true')
+    b.append(held)
+  }
   return b
 }
 

@@ -370,6 +370,14 @@ one. It is never written into `usedHands`, so it can never run out.
 
 ---
 
+### Reading the attack controls
+
+Playable hand buttons state their damage as well as their multiplier. The
+preview includes the known talisman bonus; a `+` marks possible item-die upside.
+Tapping one attacks immediately and spends that named hand. REROLL carries its
+remaining count, and held dice carry a HELD label in addition to their lit rim.
+The result over the room is one line; MENU → LAST ATTACK holds the full log.
+
 ## The equation
 
 ```

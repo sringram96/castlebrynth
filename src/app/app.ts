@@ -56,7 +56,8 @@ import {
 } from '../content/interactions.js'
 import { TRAY_ART, enemyArt, enemyPose, isScenePlate, propArt, url } from '../render/assets.js'
 import { AssetLoader, criticalAssetsForState, likelyNextAssets } from '../render/loader.js'
-import { clearCascade, mountTray, paintCascade, paintTumble, renderTray } from '../ui/trayView.js'
+import { clearCascade, encounterTray, mountTray, paintCascade, paintTumble, renderTray } from '../ui/trayView.js'
+import { renderExplore } from '../ui/exploreView.js'
 import type { HoldDraft, Tray } from '../ui/trayView.js'
 import { itemBadge } from '../combat/loadout.js'
 import { renderWorld } from '../ui/worldView.js'
@@ -247,6 +248,7 @@ export class App {
   private readonly world: World
   private readonly ambience: RoomAmbience
   private readonly tray: Tray
+  private readonly explore: HTMLElement
   private readonly screen: HTMLElement
   private readonly overlay: HTMLElement
   private readonly discarded: string | undefined
@@ -268,13 +270,11 @@ export class App {
    * `GameState`, reaches no reducer and is in no save; it is not a fixture key
    * either, for the same reason `?plan=` is not one.
    *
-   * What it hides is **one paragraph**, and never the tray: a picture with no
-   * tray under it is not a state this game has. It is cleared by any press the
-   * player makes — see `dispatch` — because the words coming back is what
-   * *asking a question of the room* should do, and a LOOK whose answer stayed
-   * hidden would be a control that appeared to do nothing.
+   * Rooms start with the description tucked away behind READ. Inspecting or
+   * changing something reveals its answer; moving on clears the picture again.
+   * Tray visibility is derived independently from the presence of a fight.
    */
-  private bandOff = false
+  private bandOff = true
 
   private opened: Overlay | undefined
   /**
@@ -329,13 +329,16 @@ export class App {
     worldRoot.id = 'world'
     const trayRoot = document.createElement('div')
     trayRoot.id = 'tray'
+    this.explore = document.createElement('nav')
+    this.explore.id = 'explore-controls'
+    this.explore.setAttribute('aria-label', 'Exploration controls')
     this.screen = document.createElement('div')
     this.screen.id = 'screen'
     this.overlay = document.createElement('div')
     this.overlay.id = 'overlay'
     this.overlay.hidden = true
 
-    root.append(worldRoot, trayRoot, this.screen, this.overlay)
+    root.append(worldRoot, trayRoot, this.explore, this.screen, this.overlay)
 
     this.world = mountWorld(worldRoot)
     this.ambience = new RoomAmbience(this.world)
@@ -355,10 +358,8 @@ export class App {
     // And a territory's card is over the moment the player does anything: it
     // names an arrival and never delays one.
     this.hideCard()
-    // So are the waved-away words. Asking the room a question and getting a
-    // silent answer would be a control that appeared to do nothing, so any
-    // press at all brings the band back before the reducer writes into it.
-    this.bandOff = false
+    // Answers to deliberate actions stay readable. A new room starts clear.
+    this.bandOff = ['GO', 'START_RUN', 'CONTINUE', 'TITLE'].includes(action.type)
 
     const before = this.state
     const next = reduce(before, action)
@@ -789,7 +790,15 @@ export class App {
               ? `.item-die[data-index="${now.itemDice.length - 1}"]`
               : undefined
     if (!bay) return
-    const node = this.tray.root.querySelector<HTMLElement>(bay)
+    // The beat lands on the bay that actually took the thing, whichever row is
+    // carrying it. The explore row seats the Vial and the talisman under the
+    // same class names the tray does, so one selector finds either. MENU is the
+    // fallback only for what the row does not show — the iron and the item
+    // dice, which are loadout and appear when the fight does.
+    const node = this.tray.root.hidden
+      ? (this.explore.querySelector<HTMLElement>(bay) ??
+        this.explore.querySelector<HTMLElement>('[data-act="menu"]'))
+      : this.tray.root.querySelector<HTMLElement>(bay)
     if (!node) return
     node.classList.remove('filling')
     void node.offsetWidth
@@ -807,7 +816,13 @@ export class App {
   private playDrink(before: GameState, after: GameState): void {
     const gained = (after.run?.bones ?? 0) - (before.run?.bones ?? 0)
     this.render()
-    if (gained > 0) pileChange(this.tray.orb, gained)
+    if (gained > 0) pileChange(this.pileTarget(), gained)
+  }
+
+  private pileTarget(): HTMLElement {
+    return this.tray.root.hidden
+      ? this.explore.querySelector<HTMLElement>('#explore-pile') ?? this.tray.orb
+      : this.tray.orb
   }
 
   /**
@@ -856,7 +871,7 @@ export class App {
       this.presenting = { ...before, run: { ...run, bones: after.run!.bones, say: '' } }
       this.render()
       show(ritual.roll)
-      pileChange(this.tray.orb, restored)
+      pileChange(this.pileTarget(), restored)
     })
 
     sequence.at(RITUAL.said, () => {
@@ -900,7 +915,7 @@ export class App {
       this.presenting = undefined
       this.render()
       if (lost > 0) {
-        pileChange(this.tray.orb, -lost)
+        pileChange(this.pileTarget(), -lost)
         shake(this.world, lost)
       }
       return
@@ -956,7 +971,7 @@ export class App {
         }
         this.render()
         show()
-        pileChange(this.tray.orb, -lost)
+        pileChange(this.pileTarget(), -lost)
         shake(this.world, lost)
       })
     }
@@ -1186,8 +1201,7 @@ export class App {
       this.bandOff &&
       run !== undefined &&
       state.mode === 'explore' &&
-      this.presenting === undefined &&
-      this.opened === undefined
+      this.presenting === undefined
     // Written only when it changes. Every paint setting it unconditionally is a
     // body attribute mutation per frame, and `air.spec.ts` watches the body's
     // subtree to prove the grade crosses over *inside* the dark rather than at
@@ -1284,6 +1298,18 @@ export class App {
         onMap: () => this.open({ kind: 'map' }),
       },
     )
+
+    renderExplore(this.explore, state, encounterTray(state), bandOff, {
+      onMenu: () => this.open({ kind: 'menu' }),
+      onMap: () => this.open({ kind: 'map' }),
+      onDrink: () => this.dispatch({ type: 'DRINK' }),
+      onInspectVial: () => this.open({ kind: 'reward', id: 'vial' }),
+      onInspectCarried: (id) => this.open({ kind: 'carried', id }),
+      onToggleBand: () => {
+        this.bandOff = !this.bandOff
+        this.render()
+      },
+    })
 
     renderScreen(
       this.screen,

@@ -69,7 +69,6 @@ import { HAND_DICE, MAX_ROLLS } from '../combat/roll.js'
 import type { DieValue } from '../combat/roll.js'
 import { enemy as enemyById } from '../content/enemies.js'
 import { roomAt } from '../game/map.js'
-import { exitsOpen, stateOf } from '../content/interactions.js'
 import type { AttackRecord, CombatState, GameState, RunState } from '../game/state.js'
 import { button, dieButton, dieFace, el, faceStripView, place, seat, seatBed } from './components.js'
 
@@ -188,11 +187,19 @@ export function mountTray(root: HTMLElement, frameSrc: string): Tray {
 
 export function renderTray(tray: Tray, state: GameState, view: TrayView, on: TrayHandlers): void {
   const run = state.run
-  tray.root.hidden = !(run && (state.mode === 'explore' || state.mode === 'combat'))
-  if (!run || tray.root.hidden) return
+  tray.root.hidden = !encounterTray(state)
+  if (!run) return
+
+  // Keep the pile current for feedback, but remove hidden controls entirely.
+  renderPile(tray, run)
+  if (tray.root.hidden) {
+    for (const host of [tray.crown, tray.iron, tray.items, tray.satchel, tray.talismans, tray.well, tray.beds]) {
+      host.replaceChildren()
+    }
+    return
+  }
 
   const combat = state.mode === 'combat' ? run.combat : undefined
-  renderPile(tray, run)
   renderAttack(tray, run, combat, view, on)
   renderIron(tray, run, combat, view, on)
   renderItems(tray, run, combat, view, on)
@@ -200,6 +207,15 @@ export function renderTray(tray: Tray, state: GameState, view: TrayView, on: Tra
   renderTalismans(tray, run, view, on)
   renderWell(tray, state, combat, on)
   renderBeds(tray, state, combat, view, on)
+}
+
+/** Show the tray for the encounter briefing, the fight and its finishing beat. */
+export function encounterTray(state: GameState): boolean {
+  const run = state.run
+  if (!run) return false
+  if (state.mode === 'combat') return true
+  if (state.mode !== 'explore') return false
+  return !!roomAt(run).enemy && !run.cleared.includes(run.roomId)
 }
 
 /**
@@ -589,7 +605,7 @@ function renderScorecard(
     const entry = button({
       act: 'score',
       label: '',
-      describe: `Score ${hand.name}, ${showMultiplier(hand.multiplier)} — ${previewOf(hand.id)}`,
+      describe: `Attack with ${hand.name}, ${showMultiplier(hand.multiplier)} — ${previewOf(hand.id)} damage${run.itemDice.length ? ', plus item dice' : ''}. Once per fight`,
       onPress: () => on.onScore(hand.id),
       className: 'score-entry',
     })
@@ -600,6 +616,7 @@ function renderScorecard(
     entry.append(el('b', 'score-name', hand.name))
     entry.append(el('b', 'score-short', hand.short))
     entry.append(el('i', 'score-mult', showMultiplier(hand.multiplier)))
+    entry.append(el('span', 'score-damage', `${previewOf(hand.id)}${run.itemDice.length ? '+' : ''} DMG`))
     card.append(entry)
   }
 
@@ -610,7 +627,7 @@ function renderScorecard(
     const b = button({
       act: 'score',
       label: '',
-      describe: `Score ${CRAP_NAME}, ${showMultiplier(CRAP_MULTIPLIER)} — ${previewOf('crap')}`,
+      describe: `Attack with ${CRAP_NAME}, ${showMultiplier(CRAP_MULTIPLIER)} — ${previewOf('crap')} damage${run.itemDice.length ? ', plus item dice' : ''}. Reusable`,
       onPress: () => on.onScore('crap'),
       className: 'score-entry score-crap',
     })
@@ -619,6 +636,7 @@ function renderScorecard(
     b.append(el('b', 'score-name', CRAP_NAME))
     b.append(el('b', 'score-short', CRAP_NAME))
     b.append(el('i', 'score-mult', showMultiplier(CRAP_MULTIPLIER)))
+    b.append(el('span', 'score-damage', `${previewOf('crap')}${run.itemDice.length ? '+' : ''} DMG`))
     card.append(b)
   }
 
@@ -819,9 +837,7 @@ function renderWell(
     return
   }
 
-  // Out of a fight the well carries the decision, not the prose. What was
-  // looked at is already in the word band over the world; repeating it here
-  // would spend the one region that can make a fork legible.
+  // Before combat, the tray carries only the encounter briefing.
   const here = roomAt(run)
 
   if (here.enemy && !run.cleared.includes(here.instanceId)) {
@@ -845,40 +861,6 @@ function renderWell(
     tray.well.append(box)
     return
   }
-
-  // A room whose ritual is unresolved reads exactly as a room whose enemy is
-  // still up: the thing in the middle of it, named, and what it will do.
-  if (here.ritual && run.ritual?.roomId !== run.roomId) {
-    const box = el('div', 'brief')
-    box.id = 'brief'
-    box.append(el('span', 'brief-name', here.ritual.name))
-    box.append(el('p', 'well-line', here.ritual.prompt))
-    tray.well.append(box)
-    return
-  }
-
-  // A shut room says what it is waiting for, exactly as an unresolved font
-  // does — the exits are not offered, so the well has to carry the reason.
-  if (!exitsOpen(stateOf(run.rooms, run.roomId, here.id))) {
-    const box = el('div', 'brief')
-    box.id = 'brief'
-    box.append(el('span', 'brief-name', here.name))
-    box.append(el('p', 'well-line', run.say))
-    tray.well.append(box)
-    return
-  }
-
-  // Each way on, and what it smells like. This is the whole of the fork.
-  const routes = el('div', 'routes')
-  routes.id = 'routes'
-  for (const exit of here.exits) {
-    const line = el('p', 'route')
-    line.append(el('b', 'route-label', exit.label))
-    line.append(document.createTextNode(` ${exit.sense}`))
-    routes.append(line)
-  }
-  if (here.exits.length === 0) routes.append(el('p', 'well-line', run.say))
-  tray.well.append(routes)
 }
 
 /**
@@ -952,7 +934,7 @@ function renderBeds(
         1,
         button({
           act: 'reroll',
-          label: VERBS.reroll,
+          label: `${VERBS.reroll} · ${MAX_ROLLS - combat.rollsUsed}`,
           describe: `Throw ${free} ${free === 1 ? 'die' : 'dice'} again. The iron stays as it is`,
           onPress: on.onReroll,
           className: 'act act-primary',

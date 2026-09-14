@@ -251,8 +251,14 @@ test.describe('motion off reaches the same numbers, in the same tick', () => {
     await expect(page.locator('#readout')).toHaveAttribute('data-total', '49')
     await expect(page.locator('#enemy-hp')).toHaveAttribute('data-hp', '71')
     expect(await livingBones(page)).toBe(26)
+    // Over the art the exchange is one line: what was dealt, and what it cost.
     await expect(page.locator('#say')).toContainText('49')
-    await expect(page.locator('#say')).toContainText('The iron takes all of it')
+    await expect(page.locator('#say')).toContainText('0 bones lost')
+    // The prose receipt is not lost with it — it is one press away, whole, and
+    // still names the beat that made the loss nothing.
+    await act(page, 'menu').click()
+    const receipt = page.locator('.combat-history')
+    await expect(receipt).toContainText('The iron takes all of it')
   })
 
   test('the same presses produce the same exchange with motion on', async ({ page }) => {

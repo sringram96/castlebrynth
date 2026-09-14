@@ -265,13 +265,6 @@ export const SEATED: readonly SeatedText[] = [
   { id: '#readout', region: WELL, align: 'centre', fits: true },
   { id: '#scorecard', region: WELL, align: 'centre', fits: true },
   { id: '#attack-line', region: WELL, align: 'centre', fits: true },
-  {
-    id: '#routes',
-    region: WELL,
-    align: 'left',
-    fits: true,
-    note: 'A list of ways on. Ragged left, because that is how a list reads.',
-  },
   { id: '#brief', region: WELL, align: 'centre', fits: true },
   {
     id: '.satchel-slot .satchel-label',

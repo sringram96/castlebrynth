@@ -456,6 +456,10 @@ and nothing is lost.
   button rather than a differently coloured word.
 - **A held bone is not conveyed by colour alone.** It lifts out of its bay,
   takes a lit rim, and says so in `aria-pressed` and in its accessible name.
+- **Between encounters the full tray is hidden** and a slim control row sits
+  below the picture, carrying the pile, READ, MAP, MENU and whatever the run
+  is actually holding. Descriptions come through READ; inspecting or working a
+  thing reveals its answer without it.
 - The well overhangs its painted recess on three sides and carries its own
   scrim, because eight scorecard entries and a row of live buttons do not fit
   the plate as painted. That is a stated deviation, not a drift: see

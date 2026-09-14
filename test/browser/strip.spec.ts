@@ -113,7 +113,10 @@ test.describe('a junction remembers the road it did not take', () => {
     await act(page, 'go').click()
     const cleft = (await state(page)).run!.roomId
     const notTaken = await nodeFor(page, 'offertory')
-    const label = await (await wayTo(page, 'offertory')).textContent()
+    // The doorway's own label, not the whole hotspot: in the picture the button
+    // also carries an arrow and, at a fork, its consequence. The strip records
+    // the way, and the way is the label.
+    const label = await (await wayTo(page, 'offertory')).locator('.exit-label').textContent()
 
     await (await wayTo(page, 'hollow')).click()
     expect(await where(page)).toBe('hollow')

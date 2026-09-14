@@ -30,6 +30,8 @@ test.describe('the first minute says what this is', () => {
 
   test('says in the first room that he has been here and does not remember', async ({ page }) => {
     await boot(page, '?room=entry')
+    await act(page, 'words').click()
+    await expect(page.locator('#say')).toBeVisible()
     // The word band over the world, which is the arrival line — the one place
     // the premise is put in a room instead of on a screen.
     await expect(page.locator('#say, .say').first()).toContainText(/before/i)

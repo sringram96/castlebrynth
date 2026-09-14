@@ -41,13 +41,14 @@ test.describe('the chapel is a room with one thing in it', () => {
     // The one verb, and it is on the object rather than in the tray.
     const font = act(page, 'ritual')
     await expect(font).toBeVisible()
-    await expect(font).toHaveText('ROLL')
+    await expect(font).toContainText('RESTORE')
+    await expect(font).toContainText('+3–8 bones')
     await expect(font).toHaveAttribute('aria-label', /roll the die/i)
     // Not offered and not greyed out: there is no way on to press yet.
     await expect(act(page, 'go')).toHaveCount(0)
     // And the well says what the thing is, the way it names an enemy.
-    await expect(page.locator('#well')).toContainText('The Font')
-    await expect(page.locator('#well')).toContainText('It gives back bones')
+    await expect(page.locator('#tray')).toBeHidden()
+    await expect(page.locator('#explore-controls')).toBeVisible()
   })
 
   test('answers a real tap at its own centre, at 44px', async ({ page }) => {

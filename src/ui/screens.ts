@@ -543,7 +543,7 @@ function menuPanel(state: GameState): HTMLElement | null {
     satchel.append(rewardCard(REWARDS.vial, run.vials))
     panel.append(satchel)
   } else {
-    panel.append(el('p', 'screen-line', 'Empty. A Vial sits in the bay on the right of the tray.'))
+    panel.append(el('p', 'screen-line', 'No Vials.'))
   }
 
   // The whole fight, in five lines. It is short enough to be worth reading and
@@ -560,6 +560,12 @@ function menuPanel(state: GameState): HTMLElement | null {
   // An encounter's rule belongs to its fight, not to the global card. It is
   // printed here only while standing in front of the thing it applies to.
   const combat = run.combat
+  if (combat?.log.length) {
+    const history = el('details', 'combat-history')
+    history.append(el('summary', undefined, 'LAST ATTACK'))
+    for (const beat of combat.log) history.append(el('p', 'screen-line', beat))
+    panel.append(history)
+  }
   const rule = combat ? enemyById(combat.enemyId).rule : undefined
   if (rule) {
     const note = el('p', 'rule-encounter', rule)

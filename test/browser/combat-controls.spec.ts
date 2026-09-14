@@ -275,9 +275,9 @@ test.describe('the enemy HUD', () => {
 
 test.describe('the well says what the attack wants next', () => {
   const lines: readonly [string, string][] = [
-    ['?room=deep&mode=combat', 'Throw the bones.'],
-    ['?room=deep&rolls=1', 'Hold, and throw the rest again.'],
-    ['?room=deep&rolls=3', 'Nothing left to throw. Score it.'],
+    ['?room=deep&mode=combat', 'ROLL to begin.'],
+    ['?room=deep&rolls=1', 'Tap dice to hold. Tap a hand to attack.'],
+    ['?room=deep&rolls=3', 'Tap a hand to attack.'],
   ]
 
   for (const [fixture, line] of lines) {

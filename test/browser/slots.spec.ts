@@ -25,7 +25,7 @@ const slots = (page: Page) => page.locator('#iron button, #items button')
 test.describe('an occupied slot opens its card', () => {
   test('reads an item die in the room, out of a fight', async ({ page }) => {
     await boot(page, '?room=fork&items=grave-candle')
-    await page.locator('#items .item-die[data-item-id="grave-candle"]').click()
+    await act(page, 'menu').click()
 
     await expect(overlay(page)).toBeVisible()
     // Name, faces, when-line, flavour — the whole card, in that order.
@@ -35,9 +35,9 @@ test.describe('an occupied slot opens its card', () => {
     await expect(overlay(page)).toContainText('It only burns over the dead')
   })
 
-  test('reads the iron die, which is on the rail between fights too', async ({ page }) => {
+  test('reads the iron die in MENU between fights', async ({ page }) => {
     await boot(page, '?room=fork&iron=3')
-    await page.locator('#iron .iron-die').click()
+    await act(page, 'menu').click()
     await expect(chips(page)).toHaveText(['0', '0', '3', '3', '5', '7'])
     await expect(overlay(page)).toContainText('Rolls with your six at ROLL')
     await expect(overlay(page)).toContainText('No press.')
@@ -45,7 +45,7 @@ test.describe('an occupied slot opens its card', () => {
 
   test('reads the talisman, whose faces are the lines it answers to', async ({ page }) => {
     await boot(page, '?room=fork&talismans=pair-talisman')
-    await act(page, 'inspect-talisman').click()
+    await act(page, 'menu').click()
     await expect(chips(page)).toHaveText(['PAIR', 'TWO PAIR', '+12'])
     await expect(overlay(page)).toContainText('Fires when the line I score is PAIR or TWO PAIR')
   })
@@ -62,7 +62,8 @@ test.describe('an occupied slot opens its card', () => {
     for (const fixture of ['?room=fork&items=grave-candle', '?room=deep&rolls=1&items=grave-candle']) {
       await boot(page, fixture)
       const before = await state(page)
-      await slots(page).first().click()
+      if (fixture.includes('fork')) await act(page, 'menu').click()
+      else await slots(page).first().click()
       await act(page, 'close').click()
       expect(await state(page), fixture).toEqual(before)
     }
@@ -118,7 +119,7 @@ test.describe('the faces are drawn everywhere the thing is read', () => {
       'aria-label',
       /\+3, \+3, \+5, \+5, blank, blank/,
     )
-    await boot(page, '?room=fork&iron=3')
+    await boot(page, '?room=hollow&iron=3')
     await expect(page.locator('#iron button')).toHaveAttribute('aria-label', /0, 0, 3, 3, 5, 7/)
   })
 })
