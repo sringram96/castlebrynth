@@ -228,7 +228,9 @@ describe('the rooms say what changed', () => {
     // the cage. What it pays has to be on the button before the press — we
     // hide places, never rules.
     expect(risky.sense, 'the deep route does not state what it pays').toMatch(/iron/i)
-    expect(risky.sense, 'the deep route does not state its toll').toMatch(/pay/i)
+    // The vault only takes a bone for pulling an unweighted lever. A correct
+    // solution is free, so the route must not promise an unavoidable toll.
+    expect(risky.sense).not.toMatch(/\btoll\b/i)
   })
 
   it('keeps every way on to two words, because it goes on a button', () => {

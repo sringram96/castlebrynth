@@ -30,8 +30,8 @@ test.describe('the left branch, and the stair', () => {
     // them before the press.
     expect(await where(page)).toBe('cleft')
     await expect(act(page, 'go')).toHaveCount(2)
-    await expect(page.locator('.routes')).toContainText('Something is feeding down there')
-    await expect(page.locator('.routes')).toContainText('The quiet is doing a lot of work')
+    await expect(page.locator('#hits')).toContainText('Fight ahead.')
+    await expect(page.locator('#hits')).toContainText('2-bone toll.')
     await (await wayTo(page, 'hollow')).click()
 
     // The Gnawing. A room with a living enemy has no way on.
@@ -125,7 +125,7 @@ test.describe('the right branch, and the deep way', () => {
     // carries a **node** id, so it is found through the map.
     const deep = await wayTo(page, 'chain-vault')
     await expect(deep).toBeVisible()
-    await expect(page.locator('.routes')).toContainText('iron waits in the cage')
+    await expect(page.locator('#hits')).toContainText('iron in the cage')
     await deep.click()
     expect(await where(page)).toBe('chain-vault')
 
@@ -269,6 +269,7 @@ test.describe('loot lies in the room', () => {
     // A win goes back to the room. The full screen is hidden, the tray is
     // there, and whatever fell is on the floor.
     expect(await screenName(page)).toBeNull()
-    await expect(page.locator('#tray')).toBeVisible()
+    await expect(page.locator('#tray')).toBeHidden()
+    await expect(page.locator('#explore-controls')).toBeVisible()
   })
 })

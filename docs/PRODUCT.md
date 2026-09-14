@@ -136,7 +136,7 @@ as support for one of them, it is out of scope.
 | **DRINK** | Spend a Vial: five bones back. |
 | **TAKE** | Pick up a thing lying in the room. |
 | **MAP** | Read the run back: where it has been, and the roads it left. Explore only, and it changes nothing. |
-| **the room itself** | Tap a part of the picture nothing is standing on to wave the word band away, and again to bring it back. Explore only, and it changes nothing. |
+| **READ** | Open the room description; HIDE TEXT closes it. Tapping empty painting is an optional shortcut. |
 | **RESTART** | Begin a new run after death. |
 
 There is no **SKIP**. Leaving a thing where it fell is walking to the exit
@@ -148,22 +148,30 @@ There is deliberately **no verb for an item die**. Item dice fire automatically
 at SCORE, as a beat in the cascade; adding a press for them was explicitly
 rejected. See `COMBAT.md` § Item dice.
 
-**The picture is itself a press, and it produces no `GameState`.** A room is a
-painting and the game writes a paragraph across the bottom of it; tapping a
-part of the picture nothing is standing on takes that paragraph away, and
-tapping again — or touching anything at all — brings it back. It is
-presentation-local: not in the save, not a fixture key, not a mode.
+**Exploration gives the picture back to the player.** The tray appears only
+while a live enemy is present: its briefing, the fight and the finishing beat.
+After the fight it collapses into a slim row below the picture: bones, READ,
+MAP and MENU, plus DRINK when a carried Vial can help and the talisman bay
+when the run is carrying one. What is carried stays legible between fights;
+it is the tray's furniture that goes, never a rule.
 
-**The tray never goes.** A picture with no tray under it is not a state this
-game has. What is dismissable is one paragraph, and only while it is in the way
-of looking at the room. An earlier pass cleared the whole screen to the bare
-painting and that was wrong for exactly this reason.
+Room descriptions start hidden. READ opens the full description; HIDE TEXT
+closes it. Inspecting or working something opens its answer automatically,
+and moving to another room clears the words again. These choices are local
+presentation state; they never change the run or its save. Tapping empty
+painting remains an optional shortcut, with the explicit button always available
+outside encounters.
 
-The press is a sibling *before* `#hits`, so every hotspot paints and presses
-over it and it can only ever catch a tap that would have landed on nothing. It
-is deliberately not one of `#hits`' children: those are the room's own presses
-and are counted against the frame's negative-space budget, and global chrome is
-not the room's. It is **explore only** — a fight is the room.
+The first room teaches two marks in one line: **Tap ↑ to move · ? to inspect**.
+Exits retain short verb labels and forks put each route's consequence beside
+its own doorway. The Font names its recovery, priced dice name their cost,
+and room actions that break bones print that cost before the press.
+
+During combat, tapping a hand attacks immediately. Each offered hand shows
+its multiplier and damage (a `+` means item dice can add more). Held dice say
+HELD as well as lifting and lighting; REROLL shows how many rerolls remain.
+The result over the room is one short damage/loss line. MENU → LAST ATTACK
+retains the full exchange for reading at leisure.
 
 ## Three grammars
 

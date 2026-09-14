@@ -218,7 +218,7 @@ test.describe('the satchel', () => {
   })
 
   test('shows a count even when it is nothing', async ({ page }) => {
-    await boot(page, '?room=fork')
+    await boot(page, '?room=hollow')
     await expect(page.locator('.satchel-slot[data-slot-id="vial"] .satchel-count')).toHaveText('0')
     await expect(page.locator('.satchel-slot[data-slot-id="vial"]')).toHaveAttribute(
       'data-live',
@@ -260,7 +260,7 @@ test.describe('the beds', () => {
 
 test.describe('the plate itself', () => {
   test('its content band fills the viewport and only decoration overflows', async ({ page }) => {
-    await boot(page, '?room=fork')
+    await boot(page, '?room=hollow')
     const viewport = page.viewportSize()!
     const tray = (await page.locator('#tray').boundingBox())!
     // The painted margin is allowed off the sides; the pile on the left and
@@ -315,11 +315,7 @@ test.describe('every visible control answers a tap', () => {
  */
 /** Every screen the seating audit walks, across both modes. */
 const SEATED_SCREENS: readonly [string, string][] = [
-  ['the entry', '?room=entry'],
-  ['the fork', '?room=fork'],
-  ['the chapel, before the font', '?room=sanctuary&bones=18'],
   ['a room with a thing standing in it', '?room=hollow'],
-  ['the vault, shut', '?room=chain-vault'],
   ['a fight, before the throw', '?room=hollow&mode=combat'],
   ['a fight, one throw in', '?room=deep&rolls=1&iron=5&items=grave-candle'],
   ['a fight, out of throws', '?room=deep&rolls=3&talismans=pair-talisman&vials=2'],
@@ -480,7 +476,7 @@ test.describe('the words sit where the paint says', () => {
   test('keeps the pile count inside the glass that holds it', async ({ page }) => {
     // The one that was actually wrong, stated on its own so the regression has
     // a name: the number is centred on the orb, not on a box beside it.
-    await boot(page, '?room=fork&bones=17')
+    await boot(page, '?room=hollow&bones=17')
     const orb = (await page.locator('#orb').boundingBox())!
     const count = (await page.locator('#pile').boundingBox())!
     expect(Math.abs(count.x + count.width / 2 - (orb.x + orb.width / 2))).toBeLessThanOrEqual(1)
@@ -560,19 +556,24 @@ test.describe('the well is one centred region', () => {
     })
   }
 
-  test('centres the wrapped half of a route too, not just its first line', async ({ page }) => {
-    // Declaring `text-align: center` is not the same as looking centred: a
-    // route is a gold label and a sentence, and it wraps more often than not.
-    // This measures the **last visual line** of each route against the box it
-    // sits in, which is the thing an eye actually judges.
-    await boot(page, '?room=cleft')
+  test('centres the wrapped half of a fork’s consequence, not just its first line', async ({
+    page,
+  }) => {
+    // The well no longer carries the fork: the ways out are hotspots in the
+    // picture and each says what it costs beneath its own label. The claim the
+    // routes block used to answer still holds, on the thing that replaced it —
+    // declaring `text-align: center` is not the same as looking centred, and a
+    // consequence is a sentence that wraps more often than not. This measures
+    // the **last visual line** of each one against the doorway it hangs under,
+    // which is the thing an eye actually judges. The fork is the room that
+    // proves it: its deep leg carries a sentence too long for one line at 390.
+    await boot(page, '?room=fork')
     const drift = await page.evaluate(() => {
       const out: number[] = []
-      const routes = document.getElementById('routes')!
-      const box = routes.getBoundingClientRect()
-      for (const route of routes.querySelectorAll('.route')) {
+      for (const sense of document.querySelectorAll('.exit-sense')) {
+        const box = sense.getBoundingClientRect()
         const range = document.createRange()
-        range.selectNodeContents(route)
+        range.selectNodeContents(sense)
         const lines = [...range.getClientRects()].filter((r) => r.width > 0)
         const last = lines[lines.length - 1]
         if (!last || lines.length < 2) continue
@@ -580,9 +581,9 @@ test.describe('the well is one centred region', () => {
       }
       return out
     })
-    expect(drift.length, 'no route wrapped, so nothing was measured').toBeGreaterThan(0)
+    expect(drift.length, 'no consequence wrapped, so nothing was measured').toBeGreaterThan(0)
     for (const d of drift) {
-      expect(Math.abs(d), `a wrapped route line sits ${d.toFixed(1)}px off centre`).
+      expect(Math.abs(d), `a wrapped consequence line sits ${d.toFixed(1)}px off centre`).
         toBeLessThanOrEqual(2)
     }
   })

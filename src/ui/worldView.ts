@@ -214,8 +214,7 @@ function renderHits(world: World, state: GameState, handlers: WorldHandlers): vo
   // because it is not one of the room's presses: `#hits` is what the frame's
   // negative-space budget counts, and this is global chrome.
   //
-  // The tray does not move. A picture with no tray under it is not a state this
-  // game has: what goes is one paragraph, and only while it is in the way.
+  // READ offers the same action explicitly below the picture.
   world.room.hidden = false
   world.room.dataset['act'] = 'band'
   world.room.dataset['bandOff'] = handlers.bandOff ? 'yes' : 'no'
@@ -232,12 +231,13 @@ function renderHits(world: World, state: GameState, handlers: WorldHandlers): vo
   if (here.ritual && !resolvedRitual(state)) {
     const b = button({
       act: 'ritual',
-      label: here.ritual.label,
-      describe: here.ritual.describe,
+      label: run.bones >= 30 ? 'CONTINUE' : 'RESTORE',
+      describe: `${here.ritual.describe}. Restore 3 to 8 bones, up to 30.`,
       onPress: handlers.onRitual,
       className: 'hit hit-focal hit-ritual',
     })
     b.dataset['ritual'] = here.ritual.art
+    b.append(el('span', 'action-cost', run.bones >= 30 ? 'Bones full' : '+3–8 bones · max 30'))
     b.style.left = `${here.ritual.at.x * 100}%`
     b.style.top = `${here.ritual.at.y * 100}%`
     world.hits.append(b)
@@ -266,6 +266,7 @@ function renderHits(world: World, state: GameState, handlers: WorldHandlers): vo
       })
       b.dataset['interact'] = thing.id
       b.dataset['prop'] = thing.art
+      if (action.cost) b.append(el('span', 'action-cost', `−${action.cost} ${action.cost === 1 ? 'bone' : 'bones'}`))
       b.style.left = `${thing.at.x * 100}%`
       b.style.top = `${thing.at.y * 100}%`
       world.hits.append(b)
@@ -372,6 +373,7 @@ function renderHits(world: World, state: GameState, handlers: WorldHandlers): vo
     })
     take.dataset['claimIndex'] = String(index)
     take.dataset['claimId'] = offer.die
+    if (offer.price !== undefined) take.append(el('span', 'action-cost', `−${offer.price} bones`))
     take.style.left = `${offer.at.x * 100}%`
     take.style.top = `${(offer.at.y + LOOT_TAKE_DROP) * 100}%`
     world.hits.append(take)
@@ -383,7 +385,7 @@ function renderHits(world: World, state: GameState, handlers: WorldHandlers): vo
   if (carving && here.carvingAt) {
     const b = button({
       act: 'look',
-      label: '',
+      label: '?',
       describe: 'Inspect the carving',
       onPress: () => handlers.onLook('carving'),
       className: `hit${run.looked.includes('carving') ? ' hit-seen' : ''}`,
@@ -404,12 +406,21 @@ function renderHits(world: World, state: GameState, handlers: WorldHandlers): vo
       if (!exit.at) continue
       const b = button({
         act: 'go',
-        label: exit.label,
+        label: '',
         describe: `${exit.label} — ${exit.sense}`,
         onPress: () => handlers.onGo(exit.to),
         className: 'hit hit-focal hit-go',
       })
       b.dataset['to'] = exit.to
+      const arrow = el('span', 'exit-arrow', '↑')
+      arrow.setAttribute('aria-hidden', 'true')
+      b.append(arrow, el('span', 'exit-label', exit.label))
+      // At a fork the consequence belongs to its doorway, before the press.
+      // Single exits need only the verb; repeating their prose adds no choice.
+      if (here.exits.length > 1) {
+        b.classList.add('hit-choice')
+        b.append(el('span', 'exit-sense', exit.sense))
+      }
       b.style.left = `${exit.at.x * 100}%`
       b.style.top = `${exit.at.y * 100}%`
       world.hits.append(b)
@@ -419,7 +430,7 @@ function renderHits(world: World, state: GameState, handlers: WorldHandlers): vo
   for (const detail of here.details) {
     const b = button({
       act: 'look',
-      label: '',
+      label: '?',
       // "Inspect", because this is the word's proper subject: one concrete
       // thing in the room. The global overlay is MENU and is not this.
       describe: `Inspect the ${detail.id.replace(/-/g, ' ')}`,
@@ -436,6 +447,14 @@ function renderHits(world: World, state: GameState, handlers: WorldHandlers): vo
 function renderHud(world: World, state: GameState, handlers: WorldHandlers): void {
   const run = state.run!
   world.hud.replaceChildren()
+
+  // The one teaching line, and it belongs to the room it teaches in: the node
+  // the descent starts at. Keyed to the node rather than to `path.length`,
+  // because how far the run walked is not what makes a room the first one —
+  // and a fixture that stands you in the entry hall would otherwise miss it.
+  if (state.mode === 'explore' && run.roomId === run.map.start && !roomAt(run).enemy) {
+    world.hud.append(el('p', 'room-hint', 'Tap ↑ to move · ? to inspect'))
+  }
 
   const combat = run.combat
   if (combat && state.mode === 'combat') {
@@ -543,7 +562,12 @@ function renderHud(world: World, state: GameState, handlers: WorldHandlers): voi
   // while moving is missing for anyone who turned motion off.
   const say = el('p', 'say')
   say.id = 'say'
-  const beats = run.say ? [run.say] : (combat && state.mode === 'combat' ? combat.log : [])
+  const record = combat?.lastAttack
+  const beats = run.say
+    ? [run.say]
+    : combat && state.mode === 'combat' && record && combat.log.length > 0
+      ? [`${record.damage} damage · ${record.bonesBefore - record.bonesAfter} bones lost`]
+      : []
   for (const beat of beats) say.append(el('span', 'say-beat', beat))
 
   // And the faces of the thing the band is talking about.

@@ -1198,9 +1198,8 @@ body[data-motion='off'] .enemy-fill {
  * Tapping a part of the picture nothing is standing on takes that paragraph
  * away; tapping again, or touching anything real, brings it back.
  *
- * **The tray never goes.** A picture with no tray under it is not a state this
- * game has — what is dismissable is one paragraph, and only while it is in the
- * way of looking at the room.
+ * Exploration keeps the description behind READ; inspecting a thing opens it.
+ * The full tray appears only when a live encounter needs it.
  *
  * The press itself is the first child of `#hits`, so every hotspot is a later
  * sibling and wins both the paint and the tap. It can only ever catch presses
@@ -1236,6 +1235,139 @@ body[data-band-off='yes'] .say {
  */
 body[data-band-off='yes'] #world::after {
   display: none;
+}
+
+/* A single row below the picture, with no decorative panel over the room. */
+#explore-controls {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 6px max(2px, env(safe-area-inset-bottom));
+  background: var(--void);
+  border-top: 1px solid var(--ink-dim);
+}
+
+#explore-controls[hidden] { display: none; }
+
+.explore-pile {
+  position: relative;
+  margin-right: auto;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.explore-pile[data-low='yes'] { color: var(--gold); }
+
+.explore-button {
+  min-height: var(--touch);
+  min-width: var(--touch);
+  border: 0;
+  background: transparent;
+  padding: 0 6px;
+  font-size: 11px;
+  white-space: nowrap;
+  color: var(--ink);
+}
+
+.explore-vial { color: var(--gold); display: grid; place-content: center; }
+.explore-vial .satchel-count { font-size: 9px; color: var(--ink-dim); }
+.explore-talisman { color: var(--gold); display: grid; place-content: center; }
+.explore-talisman .bay-count { font-size: 9px; color: var(--ink-dim); }
+.explore-button.filling { outline: 2px solid var(--gold); outline-offset: -2px; }
+.explore-button:focus-visible, .hit:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: -2px;
+}
+
+.room-hint {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: max(12px, env(safe-area-inset-top));
+  margin: 0;
+  padding: 8px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--ink);
+  background: rgb(6 5 4 / 0.78);
+  pointer-events: none;
+}
+
+.hit[data-act='look'] {
+  isolation: isolate;
+  color: var(--gold);
+  font-size: 17px;
+  font-weight: 700;
+  text-shadow: 0 1px 3px var(--void);
+}
+
+.hit[data-act='look']::after {
+  inset: 9px;
+  background: rgb(6 5 4 / 0.55);
+  z-index: -1;
+  animation: none;
+}
+
+.exit-arrow {
+  font-size: 17px;
+  line-height: 1;
+  color: var(--gold);
+}
+
+.hit-choice {
+  width: min(36vw, 170px);
+  min-width: var(--touch);
+  height: auto;
+  min-height: var(--touch);
+  margin-left: 0;
+  transform: translateX(-50%);
+  gap: 4px;
+  padding: 7px 6px;
+  white-space: normal;
+}
+
+/* Additional effect/cost text must not shift the target away from its object. */
+.hit-ritual, .hit-interact, .hit-go, .hit-loot, .hit-take {
+  margin-left: 0;
+  transform: translateX(-50%);
+}
+
+.exit-sense {
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.3;
+  letter-spacing: 0;
+  text-wrap: balance;
+}
+
+.action-cost { font-size: 10px; letter-spacing: 0; }
+
+.held-label {
+  position: absolute;
+  bottom: 0;
+  font-size: 8px;
+  line-height: 10px;
+  color: var(--gold);
+  background: var(--void);
+  padding: 0 1px;
+  pointer-events: none;
+}
+
+.score-damage {
+  font-size: 9px;
+  line-height: 1.1;
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--ink);
+}
+
+.combat-history summary {
+  cursor: pointer;
+  min-height: var(--touch);
+  padding: 12px;
+  color: var(--gold);
 }
 
 /* ── the tray ────────────────────────────────────────────────────────── */
@@ -1938,9 +2070,10 @@ button.score-crap {
 /* The line under the card is a prompt rather than prose, and it has one line
    to say it in. */
 .attack-read .well-line {
-  font-size: 8.5px;
-  line-height: 1.2;
-  white-space: nowrap;
+  font-size: 10px;
+  line-height: 1.1;
+  white-space: normal;
+  text-wrap: balance;
 }
 
 .well-rule {
@@ -2093,6 +2226,8 @@ button.score-crap {
   background: linear-gradient(to bottom, rgb(58 41 18 / 0.94), rgb(18 13 8 / 0.94));
   box-shadow: 0 0 14px rgb(207 166 82 / 0.34);
 }
+
+.act[data-act='reroll'] { font-size: 11px; letter-spacing: 0.03em; }
 
 .act-waiting {
   opacity: 0.62;

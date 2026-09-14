@@ -58,7 +58,7 @@ test.describe('a run carries its map', () => {
 
   test('the fork still offers STAIR and DEEP, and both reach the keeper', async ({ page }) => {
     await boot(page, '?room=fork')
-    const labels = await page.locator('[data-act="go"]').allTextContents()
+    const labels = await page.locator('[data-act="go"] .exit-label').allTextContents()
     expect(labels.sort()).toEqual(['DEEP', 'STAIR'])
 
     // Converging is a fact about the map, so it is read off the map: from

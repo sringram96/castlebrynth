@@ -30,6 +30,8 @@ export interface InteractionAction {
   /** Two words or fewer — it goes on a button. */
   readonly label: string
   readonly describe: string
+  /** Visible before a press that breaks bones. Outcomes still belong to the reducer. */
+  readonly cost?: number
 }
 
 /** One art plate that is currently up, as `<art>.<frame>`. */
@@ -149,12 +151,12 @@ export function actionFor(state: RoomInteractionState, id: string): InteractionA
         // slot's own carving catches what is left, exactly as the Reliquary's
         // handle does.
         return state.candles === 'out'
-          ? { label: 'OFFER', describe: 'Two bones into the slot. That is what it says it costs.' }
+          ? { label: 'OFFER', describe: 'Two bones into the slot. That is what it says it costs.', cost: 2 }
           : undefined
       case 'offertory-recess':
         // The greedy press, and it is a real press with a real cost. It moves
         // nothing, and it can be made as many times as there is blood for it.
-        return { label: 'PRY', describe: 'Force the stone lid' }
+        return { label: 'PRY', describe: 'Force the stone lid. Lose 1 bone.', cost: 1 }
       default:
         return undefined
     }
@@ -195,7 +197,9 @@ export function actionFor(state: RoomInteractionState, id: string): InteractionA
         ? { label: 'LOWER', describe: 'Lower the hanging cage' }
         : { label: 'RAISE', describe: 'Raise the hanging cage' }
     case 'vault-lever':
-      return { label: 'PULL', describe: 'Pull the iron lever' }
+      return state.cage === 'raised'
+        ? { label: 'PULL', describe: 'Pull the iron lever. The unweighted gate costs 1 bone.', cost: 1 }
+        : { label: 'PULL', describe: 'Pull the iron lever' }
     default:
       return undefined
   }

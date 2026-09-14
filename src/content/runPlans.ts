@@ -113,13 +113,13 @@ export const WAYS: Readonly<Record<string, Way>> = {
   'chapel-out': { label: 'GO ON', sense: 'The chapel gives onto the passage again.' },
   // The first fork. Left is a fight; right is a price. Both stated before the
   // press, because the run hides places and never rules.
-  'left-fight': { label: 'GO ON', sense: 'Something is feeding down there. I can hear it.' },
-  'right-work': { label: 'NARROW', sense: 'Quieter. Narrower. The quiet is doing a lot of work.' },
+  'left-fight': { label: 'GO ON', sense: 'Fight ahead.' },
+  'right-work': { label: 'NARROW', sense: '2-bone toll.' },
   'ways-meet': { label: 'GO ON', sense: 'This passage rejoins the other. One of me arrives either way.' },
-  stair: { label: 'STAIR', sense: 'Shorter route to the door.' },
+  stair: { label: 'STAIR', sense: 'Shorter route.' },
   // Amended: the deep way now *certainly* pays iron, and the printed-contract
   // law means it has to say so before the press rather than after the gate.
-  deep: { label: 'DEEP', sense: 'One more fight. Pay at the gate; iron waits in the cage.' },
+  deep: { label: 'DEEP', sense: 'Extra fight · iron in the cage.' },
   'gate-up': { label: 'GO ON', sense: 'The gate is up. The tunnel goes on.' },
   rejoin: { label: 'GO ON', sense: 'This tunnel rejoins the path to the door.' },
   through: { label: 'THROUGH', sense: 'The door is open.' },

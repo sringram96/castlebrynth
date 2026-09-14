@@ -107,11 +107,11 @@ export const STRIP_AHEAD = 'Ahead of me: nothing I have seen.'
  */
 export const ATTACK_LINE = {
   /** Nothing on the table. */
-  waiting: 'Throw the bones.',
+  waiting: 'ROLL to begin.',
   /** Dice down, and a throw still in hand. */
-  open: 'Hold, and throw the rest again.',
+  open: 'Tap dice to hold. Tap a hand to attack.',
   /** Dice down, and nothing left to throw with. */
-  last: 'Nothing left to throw. Score it.',
+  last: 'Tap a hand to attack.',
 } as const
 
 /** What the iron says before it has been thrown. */

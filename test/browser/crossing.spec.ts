@@ -63,12 +63,12 @@ test.describe('a way out stands where the art says', () => {
 
   test('carries the label on the hotspot and the sense where way copy prints', async ({ page }) => {
     await boot(page, '?room=cleft')
-    await expect(page.locator('[data-act="go"]').first()).toHaveText('GO ON')
-    await expect(page.locator('[data-act="go"]').nth(1)).toHaveText('NARROW')
+    await expect(page.locator('[data-act="go"] .exit-label').first()).toHaveText('GO ON')
+    await expect(page.locator('[data-act="go"] .exit-label').nth(1)).toHaveText('NARROW')
     // The sense line is still in the well, before the press, exactly where way
     // copy has always printed.
-    await expect(page.locator('#well .routes')).toContainText('Something is feeding down there')
-    await expect(page.locator('#well .routes')).toContainText('The quiet is doing a lot of work')
+    await expect(page.locator('#hits')).toContainText('Fight ahead.')
+    await expect(page.locator('#hits')).toContainText('2-bone toll.')
   })
 
   test('is not on the tray any more, in any room', async ({ page }) => {

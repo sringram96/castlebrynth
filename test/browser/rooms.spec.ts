@@ -110,7 +110,7 @@ test.describe('the Reliquary', () => {
     await expect(thing(page, 'reliquary-chest')).toHaveCount(0)
     // Optional in the strongest sense: the way out is there before anything.
     await expect(act(page, 'go')).toBeVisible()
-    await expect(act(page, 'go')).toHaveText('GO ON')
+    await expect(act(page, 'go').locator('.exit-label')).toHaveText('GO ON')
   })
 
   test('answers a real tap at each object, at 44px', async ({ page }) => {
@@ -197,7 +197,9 @@ test.describe('the Chain Vault', () => {
 
     await expect(say(page)).toContainText('ends at an iron gate')
     await expect(thing(page, 'vault-chain')).toHaveText('LOWER')
-    await expect(thing(page, 'vault-lever')).toHaveText('PULL')
+    // The lever charges, so the lever says so — on the verb, before the press.
+    await expect(thing(page, 'vault-lever')).toContainText('PULL')
+    await expect(thing(page, 'vault-lever').locator('.action-cost')).toHaveText('−1 bone')
     // Not hidden by CSS — not rendered, because the reducer would refuse it.
     await expect(act(page, 'go')).toHaveCount(0)
     // The rule is on the wall, for anyone who looks — and the wall is the only
@@ -270,7 +272,9 @@ test.describe('the deep route, end to end', () => {
   test('runs fork → vault → Deep Way, and the stair still does not', async ({ page }) => {
     await boot(page, '?room=fork')
     const deep = await wayTo(page, 'chain-vault')
-    await expect(deep).toHaveText('DEEP')
+    // A fork's doorway carries its label and, beneath it, what taking it costs.
+    await expect(deep.locator('.exit-label')).toHaveText('DEEP')
+    await expect(deep.locator('.exit-sense')).toHaveText('Extra fight · iron in the cage.')
     await deep.click()
     expect(await where(page)).toBe('chain-vault')
 
@@ -290,7 +294,8 @@ test.describe('the deep route, end to end', () => {
     // of their own now, so the label is the thing that is stable and the room
     // immediately behind it is not.
     const stair = wayLabelled(page, 'STAIR')
-    await expect(stair).toHaveText('STAIR')
+    await expect(stair.locator('.exit-label')).toHaveText('STAIR')
+    await expect(stair.locator('.exit-sense')).toHaveText('Shorter route.')
     await stair.click()
     await walkOn(page, 'gate')
     expect(await where(page)).toBe('gate')

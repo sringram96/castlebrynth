@@ -30,7 +30,8 @@ test.describe('the first run', () => {
 
     await expect(page.locator('#screen')).toBeHidden()
     await expect(page.locator('#backdrop')).toBeVisible()
-    await expect(page.locator('#tray')).toBeVisible()
+    await expect(page.locator('#tray')).toBeHidden()
+    await expect(page.locator('#explore-pile')).toHaveText('30 BONES')
     await expect(page.locator('#say')).toContainText('The stair ends in a long hall')
 
     // The pile is the life, and it reads at arm's length.
