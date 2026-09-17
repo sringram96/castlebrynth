@@ -100,17 +100,23 @@ const BELL = {
    * from a chain: what has to stay put is the bar at the ceiling, and the lip
    * is the end that moves.
    *
-   * **`at` is set for the swing, not for the rest pose**, and that is the one
-   * number a still bell would get wrong. Registering on the bar means the body
-   * travels: the far frames put the skirt 24px either side of where it hangs,
-   * so the family sweeps 150px of the scene rather than the 98 it occupies
-   * standing. A 320px phone sees the scene from x 72 to x 408 — cover-fit eats
-   * the rest — so the sweep is placed inside that band with a margin, which
-   * moves the bell about 35px right of the stance the portrait had. It hangs
-   * over the altar rather than beside it now, which is what the room's own
-   * arrival line has always said it does.
+   * **`top` is 0, so the hanger meets the top edge of the frame.** There is no
+   * chain and no beam painted above the yoke, so a bell with sky over it floats;
+   * a bell whose mount runs off the top of the picture is held by something the
+   * frame does not show. That is a placement answering an art problem, which is
+   * the only way this file is allowed to answer one.
+   *
+   * **`at` is set for the swing rather than for the rest pose**, and that is the
+   * one number a still bell would get wrong. Registering on the bar means the
+   * body travels: the far frames put the skirt 26px left and 19px right of
+   * where it hangs, so the family sweeps 143px of the scene rather than the 98
+   * it occupies standing. A 390 × 844 phone — the viewport every layout claim
+   * in `ART_DIRECTION.md` is made about — sees the scene from x 62 to x 418,
+   * because cover-fit eats the rest. So the sweep sits inside that with a few
+   * pixels to spare, and that is as far left as the bell goes: the portrait it
+   * replaced hung 21px further out, and had no swing to fit.
    */
-  place: { width: 0.205, at: 0.317, top: 0.028 },
+  place: { width: 0.205, at: 0.288, top: 0.0 },
   /**
    * The bar, in the rest cell's own pixels, and the axis the family turns about.
    *

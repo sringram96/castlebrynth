@@ -315,7 +315,7 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
       // that turns about its bar sweeps wider than the bell is: it is seated to
       // keep all five plates on a 320px screen, which moved it right and up.
       // `tools/sheet.mjs` prints the box these two numbers are read off.
-      { id: 'reliquary-bell', art: 'bell', at: { x: 0.317, y: 0.16 }, describe: 'Ring the ritual bell' },
+      { id: 'reliquary-bell', art: 'bell', at: { x: 0.286, y: 0.125 }, describe: 'Ring the ritual bell' },
       {
         id: 'reliquary-brazier',
         art: 'brazier',

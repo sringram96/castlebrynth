@@ -1844,13 +1844,19 @@ The delivered bell is mounted on a yoke and has no chain, so:
 - `bell-idle` is replaced. A swing in one drawing either side of a rest pose in
   another is two bells.
 - the family is **registered** and `stances.bell` is gone from `tools/art.mjs`.
-  Where it hangs is `{ width: 0.205, at: 0.317, top: 0.028 }` in
-  `tools/sheet.mjs`, read off the rest frame only.
+  Where it hangs is `{ width: 0.205, at: 0.288, top: 0 }` in `tools/sheet.mjs`,
+  read off the rest frame only.
 - **`at` is set for the swing rather than the rest pose.** Registered on the
   bar, the family sweeps 143 px where the bell standing still occupies 98, and
-  a 320 px phone only sees the scene from x 72. Placed for the rest pose alone
-  the far frame hangs 22 px off the left edge of the screen. It moved right.
-- the RING button moved with it, `{ 0.214, 0.19 }` → `{ 0.317, 0.16 }`, and is
+  a 390 × 844 phone sees the scene from x 62 — cover-fit eats the rest. Placed
+  for the rest pose alone the far frame hangs off the left edge. So it sits
+  21 px right of the portrait's stance, and that is as far left as a bell that
+  swings can go.
+- **`top` is 0**, so the hanger runs off the top of the frame rather than
+  ending in mid-air. There is no chain and no beam painted above the yoke; a
+  mount that leaves the picture is held by something the picture does not show,
+  and that is a placement answering an art problem rather than a brush.
+- the RING button moved with it, `{ 0.214, 0.19 }` → `{ 0.286, 0.125 }`, and is
   on the skirt where it was.
 - `bell-swing` and its `transform-origin` are **deleted** from `src/style.css`.
   Nothing in the stylesheet turns the bell now, and the swing moved from
@@ -1865,10 +1871,11 @@ cost — the bell is 2% of the scene either way, and there are five of it now.
 
 Reported rather than fixed, because both are the painter's call:
 
-- **there is no chain.** The old bell hung from one that left the top of the
-  frame; this one is mounted on a bar with nothing above it, so it reads as
-  fixed into the dark rather than hung from anything. A beam, or a chain, is a
-  plate nobody has painted.
+- **there is no chain, and the placement is what answers it.** The old bell
+  hung from one that left the top of the frame; this one is mounted on a bar
+  with nothing painted above it, so it is seated with its hanger running off
+  the top edge instead. That reads as held from above rather than floating, and
+  it is a compromise: a beam or a chain is a plate nobody has painted.
 - **the frames are not one drawing turned.** The overlaps above say 93–97%, and
   what the remaining few per cent look like is the ornament on the skirt
   shifting very slightly between frames. At 80 ms a frame it reads as a bell

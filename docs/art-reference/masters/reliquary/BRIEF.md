@@ -59,9 +59,11 @@ chest    { width: 0.235, at: 0.80, foot: 0.83 }
 The bell used to be here — `{ width: 0.19, at: 0.235, foot: 0.29 }` — and left
 when its swing was painted. It is registered now, and its placement lives in
 `tools/sheet.mjs` as the one number that is read off the **rest frame only**:
-`{ width: 0.205, at: 0.317, top: 0.028 }`. `at` is further right than the stance
-was, because a family registered on its bar sweeps wider than the bell standing
-still and all five plates have to stay on a 320px screen.
+`{ width: 0.205, at: 0.288, top: 0 }`. `at` is 21px further right than the
+stance was, because a family registered on its bar sweeps 143px where the still
+bell occupies 98 and all five plates have to stay on the screen; `top` is 0 so
+the hanger runs off the top of the frame, because nothing is painted above the
+yoke and a bell with sky over it floats.
 
 All three numbers are fractions of the 480 × 720 scene, read off the plate's
 **opaque box**: how wide it is, where its centre is, and where its bottom edge
@@ -81,7 +83,7 @@ fractions converted into the world box's.
 The bell is what that reads like in practice. The swing that arrived is a
 different bell from the one that hung here — a yoke and a bar where there was a
 chain — so its placement was re-set, `ROOMS.reliquary` moved the RING button
-from `{ 0.214, 0.19 }` to `{ 0.317, 0.16 }` to stay on it, and `src/style.css`
+from `{ 0.214, 0.19 }` to `{ 0.286, 0.125 }` to stay on it, and `src/style.css`
 lost the `transform-origin` it used to measure off the old stance. Nothing in
 the stylesheet turns the bell any more.
 
