@@ -202,13 +202,13 @@ describe('ruling 2 — the iron die', () => {
       const [roll] = rollIron(['rustplate'], new Rng(seed * 2654435761))
       expect(ITEM_CAP).toBe(2)
       expect(roll).toBeDefined()
-      expect([0, 0, 3, 3, 5, 7]).toContain(roll!.block)
+      expect([0, 0, 0, 0, 1, 2]).toContain(roll!.block)
     }
   })
 
   it('states what it is holding before commitment, in words', () => {
-    expect(ironCaption({ id: 'rustplate', face: 4, block: 5 })).toBe(
-      'Rustplate holds: blocks 5 this turn.',
+    expect(ironCaption({ id: 'rustplate', face: 5, block: 2 })).toBe(
+      'Rustplate holds: blocks 2 this turn.',
     )
     expect(ironCaption({ id: 'rustplate', face: 0, block: 0 })).toBe('Rustplate came up empty.')
   })

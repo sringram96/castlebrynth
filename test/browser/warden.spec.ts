@@ -67,21 +67,28 @@ test.describe('eight bones an exchange', () => {
   test('takes eight less what the iron came up holding', async ({ page }) => {
     // The enemy's number is unchanged and still public. What changed is that
     // the iron stands in front of it, for this turn and no other.
-    await boot(page, '?room=gate&bones=30&rolls=3&dice=1,1,2,3,4,6&iron=5')
+    await boot(page, '?room=gate&bones=30&rolls=3&dice=1,1,2,3,4,6&iron=2')
     await expect(page.locator('#enemy-hits')).toHaveAttribute('data-damage', '8')
-    await expect(page.locator('#iron-caption')).toContainText('blocks 5 this turn')
+    await expect(page.locator('#iron-caption')).toContainText('blocks 2 this turn')
     await page.locator('.score-entry[data-hand="pair"]').click()
-    expect(await livingBones(page)).toBe(27)
+    expect(await livingBones(page)).toBe(24)
     const record = (await state(page)).run!.combat!.lastAttack!
     expect(record.enemyHit).toBe(8)
-    expect(record.block).toBe(5)
-    expect(record.retaliation).toBe(3)
+    expect(record.block).toBe(2)
+    expect(record.retaliation).toBe(6)
   })
 
-  test('takes all of it when the iron came up on a seven', async ({ page }) => {
-    await boot(page, '?room=gate&bones=30&rolls=3&dice=1,1,2,3,4,6&iron=7')
-    await page.locator('.score-entry[data-hand="pair"]').click()
-    expect(await livingBones(page)).toBe(29)
+  test('is never wholly blocked, on any face the plate has', async ({ page }) => {
+    // The Rustplate tops out at a two and the Warden swings eight, so the
+    // deep route's prize narrows this exchange and can never delete it. That
+    // is the point of the low table — the route that charges a toll and adds
+    // a fight may not come out safer than the stair. See docs/COMBAT.md.
+    for (const [block, left] of [[0, 22], [1, 23], [2, 24]] as const) {
+      await boot(page, `?room=gate&bones=30&rolls=3&dice=1,1,2,3,4,6&iron=${block}`)
+      await page.locator('.score-entry[data-hand="pair"]').click()
+      expect(await livingBones(page), `iron=${block}`).toBe(left)
+      expect((await state(page)).run!.combat!.lastAttack!.retaliation).toBe(8 - block)
+    }
   })
 
   test('does not narrow the attack, however far down it takes you', async ({ page }) => {

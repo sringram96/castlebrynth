@@ -150,10 +150,19 @@ rejected. See `COMBAT.md` § Item dice.
 
 **Exploration gives the picture back to the player.** The tray appears only
 while a live enemy is present: its briefing, the fight and the finishing beat.
-After the fight it collapses into a slim row below the picture: bones, READ,
-MAP and MENU, plus DRINK when a carried Vial can help and the talisman bay
-when the run is carrying one. What is carried stays legible between fights;
-it is the tray's furniture that goes, never a rule.
+After the fight it collapses into a slim row below the picture: life, the six
+casting bones, READ, MAP and MENU, plus DRINK when a carried Vial can help and
+the talisman bay when the run is carrying one. The six are one control, not
+six — a hit target is 44 px and the row is slim — so the strip **shows** the
+build, a crooked replacement staying visibly crooked for the rest of the run,
+and its press opens the loadout, where every one of the six is read with its
+name and its faces. What is carried stays legible between fights; it is the
+tray's furniture that goes, never the build.
+
+Crossings inherit their direction from the doorway in the painting. A left or
+right mouth moves laterally; a central descent moves downward. Darkness is
+still reserved for the threshold itself and for territory changes, but the
+geometry before and after it must agree with the hotspot the player pressed.
 
 Room descriptions start hidden. READ opens the full description; HIDE TEXT
 closes it. Inspecting or working something opens its answer automatically,

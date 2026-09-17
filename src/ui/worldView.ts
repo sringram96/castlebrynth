@@ -90,6 +90,7 @@ export function renderWorld(world: World, state: GameState, handlers: WorldHandl
     hideEnemy(world)
     hideProp(world)
     delete world.grade.dataset['territory']
+    delete world.grade.dataset['place']
     world.hits.replaceChildren()
     world.hud.replaceChildren()
     world.room.hidden = true
@@ -109,6 +110,7 @@ export function renderWorld(world: World, state: GameState, handlers: WorldHandl
   // under the dark. Rooms of one territory now share a palette; the stylesheet
   // owns what each one is, and no pixel of `public/` is touched by it.
   world.grade.dataset['territory'] = here.territory
+  world.grade.dataset['place'] = here.id
 
   // The monster, if there is one still standing here.
   const standing = here.enemy && !run.cleared.includes(run.roomId) ? here.enemy : undefined

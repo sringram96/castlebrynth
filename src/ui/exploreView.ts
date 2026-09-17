@@ -1,5 +1,6 @@
 import { BONE_CEILING, roomToRecover } from '../content/bones.js'
-import { talisman as talismanById } from '../content/dice.js'
+import { coreDie, talisman as talismanById } from '../content/dice.js'
+import { handSaid } from '../content/faces.js'
 import { VERBS } from '../content/text.js'
 import type { GameState } from '../game/state.js'
 import { button, el } from './components.js'
@@ -32,6 +33,32 @@ export function renderExplore(
   pile.dataset['low'] = run.bones <= 6 ? 'yes' : 'no'
   pile.setAttribute('aria-label', `${run.bones} of ${BONE_CEILING} bones remaining`)
   host.append(pile)
+
+  // The six are the run's build, not combat furniture. They stay on screen
+  // between encounters so a replacement that cost a bone and a slot is still
+  // visibly owned once the picker and the fight tray have gone away: a plain
+  // bone is a dot, a crooked one sits gold and off true.
+  //
+  // **A readout, not six buttons** — the same kind of thing the pile beside it
+  // is. A hit target is 44px in its smallest dimension and the row is a slim
+  // strip under the picture, so six of them could not fit beside the verbs,
+  // and one that opened the loadout would be a second MENU next to MENU. What
+  // the strip is for is *seeing* the build; reading it is MENU, two controls
+  // along, where each of the six has its name, its faces and its flavour.
+  const hand = el('span', 'explore-hand')
+  hand.id = 'explore-hand'
+  hand.setAttribute('role', 'img')
+  hand.setAttribute('aria-label', `My six: ${handSaid(run.hand)}`)
+  run.hand.forEach((id, slot) => {
+    const die = coreDie(id)
+    const mark = el('span', 'explore-die', id === 'bone' ? '·' : die.short.slice(0, 1))
+    mark.dataset['slot'] = String(slot)
+    mark.dataset['dieId'] = id
+    mark.dataset['plain'] = id === 'bone' ? 'yes' : 'no'
+    mark.setAttribute('aria-hidden', 'true')
+    hand.append(mark)
+  })
+  host.append(hand)
 
   if (run.vials > 0) {
     const canDrink = roomToRecover(run) > 0

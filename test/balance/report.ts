@@ -617,8 +617,8 @@ invariant(
   HAND_DICE === 6,
 )
 invariant(
-  'the deep route costs more than the safe one',
-  deepNaive.escape <= safeNaive.escape,
+  'the deep route costs more than the safe one, even when both take what they find',
+  deepNaive.escape <= safeNaive.escape && deepCarried.escape < safeCarried.escape,
 )
 invariant(
   'CRAP is a fallback and not the game: it is a minority of scored hands',

@@ -733,13 +733,19 @@ button {
    * rather than watched for it.
    */
   --lean: 1.035;
+  --travel-x: 0px;
+  --travel-y: -8px;
 
   transition: transform 340ms ease-in;
 }
 
 #world.crossing {
-  transform: scale(var(--lean));
+  transform: translate(var(--travel-x), var(--travel-y)) scale(var(--lean));
 }
+
+#world[data-crossing='left'] { --travel-x: 12px; --travel-y: 0px; }
+#world[data-crossing='right'] { --travel-x: -12px; --travel-y: 0px; }
+#world[data-crossing='down'] { --travel-x: 0px; --travel-y: -10px; }
 
 /*
  * The settle, and **it must finish before `still` takes the class off it.**
@@ -765,7 +771,7 @@ button {
  */
 @keyframes world-settle {
   from {
-    transform: scale(var(--lean));
+    transform: translate(calc(0px - var(--travel-x)), calc(0px - var(--travel-y))) scale(var(--lean));
   }
   to {
     transform: scale(1);
@@ -1242,6 +1248,14 @@ body[data-band-off='yes'] #world::after {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
+  /*
+   * The row is one line at every width the game is measured at. It wraps
+   * rather than overflows because the failure it is guarding against is a
+   * verb pushed off the right edge of a small phone carrying everything: a
+   * second line costs the picture forty pixels, and a MENU nobody can reach
+   * costs the run.
+   */
+  flex-wrap: wrap;
   gap: 2px;
   padding: 2px 6px max(2px, env(safe-area-inset-bottom));
   background: var(--void);
@@ -1259,6 +1273,63 @@ body[data-band-off='yes'] #world::after {
 }
 
 .explore-pile[data-low='yes'] { color: var(--gold); }
+
+/*
+ * The build, between fights.
+ *
+ * Six marks, in slot order, and **not a control**: it is a readout like the
+ * pile beside it. A crooked slot is gold and sits off true, so a replacement
+ * is visible from across the room without reading anything; the names and the
+ * faces are in MENU, two along.
+ */
+.explore-hand {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 0 4px;
+  border-inline: 1px solid rgb(143 126 91 / 0.45);
+}
+
+.explore-die {
+  display: grid;
+  place-items: center;
+  width: 8px;
+  height: 12px;
+  border: 1px solid currentColor;
+  border-radius: 40% 40% 34% 34%;
+  font-size: 7px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--ink-dim);
+  transform: rotate(var(--crook, 0deg));
+}
+
+.explore-die[data-plain='no'] {
+  color: var(--gold);
+  --crook: -6deg;
+}
+
+.explore-die:nth-child(even)[data-plain='no'] { --crook: 6deg; }
+
+/*
+ * A 320px phone has about twenty-five pixels for the six once the verbs have
+ * what they need, so the marks close up into one bar of ticks: which slots are
+ * crooked still reads at a glance, and the letter — never legible at this size
+ * anyway — goes rather than a verb leaving the screen.
+ */
+@media (max-width: 360px) {
+  .explore-hand { padding-inline: 0; gap: 0; border-inline: 0; }
+  .explore-die { width: 4px; height: 10px; font-size: 0; }
+  .explore-button { padding-inline: 3px; }
+
+  /*
+   * And when that row is also carrying a Vial or a talisman there is no
+   * twenty-five pixels to spare at all: the verbs come first. The build is
+   * not lost with it — MENU is in the row at every width, and it names the
+   * six and draws their faces.
+   */
+  #explore-controls:has(.satchel-slot, .talisman-slot) .explore-hand { display: none; }
+}
 
 .explore-button {
   min-height: var(--touch);
@@ -2865,6 +2936,26 @@ button.score-crap {
   background-color: #604f3b;
   mix-blend-mode: hard-light;
   opacity: 0.55;
+}
+
+/* A place, where a territory is not enough — and **after** every territory
+   rule, because the two are the same specificity and a place has the last
+   word by standing last.
+
+   The same inherited shrine painting serves three spatial facts. Their light
+   now tells them apart without pretending replacement art exists: the Cleft
+   is ochre and lateral, the Split stays warm, and the Confluence is the cold
+   place where two routes have compressed back into one. */
+.grade[data-place="cleft"] {
+  background: linear-gradient(90deg, #806f3f, #2d2115 48%, #806f3f);
+  mix-blend-mode: color;
+  opacity: 0.48;
+}
+
+.grade[data-place="confluence"] {
+  background: radial-gradient(ellipse at 50% 78%, #8e6337 0%, #312823 58%, #171514 100%);
+  mix-blend-mode: hard-light;
+  opacity: 0.58;
 }
 
 /*

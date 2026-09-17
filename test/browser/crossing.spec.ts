@@ -118,6 +118,14 @@ test.describe('a held exit renders nothing', () => {
 })
 
 test.describe('crossing is a beat, and it decides nothing', () => {
+  test('the doorway determines the direction of travel', async ({ page }) => {
+    await boot(page, '?room=fork', { motion: true })
+    await act(page, 'go').first().click()
+    await expect(page.locator('#world')).toHaveAttribute('data-crossing', /left|right/)
+    await settled(page)
+    await expect(page.locator('#world')).not.toHaveAttribute('data-crossing')
+  })
+
   test('holds the room being left, then lands on the one being entered', async ({ page }) => {
     await boot(page, '?room=entry', { motion: true })
     const from = await where(page)

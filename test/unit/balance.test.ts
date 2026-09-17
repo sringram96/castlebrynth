@@ -123,24 +123,18 @@ describe('the slice is finishable', () => {
   })
 
   it('the deep route is genuinely the harder one, on what it costs', () => {
-    // **Re-based by the reel wave.** It used to say the deep route escapes
-    // less often, and that stopped being true the moment the Rustplate moved
-    // into the cage: the long way now certainly pays iron, so a run that takes
-    // it and picks the iron up is *more* likely to get out. That is the
-    // ratified design — route is build — and it is measured in the report.
-    //
-    // What still holds, and is what the rule was always about, is the price:
-    // the long way is an extra toll and an extra fight, so it breaks more
-    // bones. And on the **bare** reading — a run that takes nothing — it is
-    // still the worse gamble.
+    // It is an extra toll and an extra fight. Its Rustplate is the better prize,
+    // but no longer erases that price and turns the dangerous mouth into the
+    // safe answer.
     const bare = (deep: boolean): number =>
       MANY.filter((seed) => simulateRun(seed, 'heuristic', { deep, bare: true }).reachedExit).length
     expect(bare(true)).toBeLessThanOrEqual(bare(false))
 
-    // Bare on both counts, and for the same reason: a run that picks the iron
-    // out of the cage is a run whose extra fight is being paid for by the
-    // thing the extra fight is standing in front of, and that is upside rather
-    // than a route being cheaper.
+    const taking = (deep: boolean): number =>
+      MANY.filter((seed) => simulateRun(seed, 'heuristic', { deep, bare: false }).reachedExit).length
+    expect(taking(true)).toBeLessThan(taking(false))
+
+    // Bare isolates the route's price from its reward.
     const broken = (deep: boolean): number =>
       MANY.reduce((n, seed) => n + simulateRun(seed, 'heuristic', { deep, bare: true }).bonesLost, 0)
     expect(broken(true)).toBeGreaterThan(broken(false))

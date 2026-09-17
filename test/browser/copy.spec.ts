@@ -46,7 +46,7 @@ test.describe('the scorecard explains itself where the fight is', () => {
     // A fresh run carries nothing, so the loadout is put on: this test is
     // about whether MENU can *state* a carried thing, not about what a run
     // happens to have found by the fork.
-    await boot(page, '?room=fork&vials=2&iron=3&talismans=pair-talisman')
+    await boot(page, '?room=fork&vials=2&iron=2&talismans=pair-talisman')
 
     await act(page, 'menu').click()
     const overlay = page.locator('#overlay')
@@ -67,7 +67,7 @@ test.describe('the scorecard explains itself where the fight is', () => {
     // when the thing fires, and whether there is a press.
     await expect(overlay.locator('#hand-slots')).toContainText('6 dice')
     const iron = overlay.locator('[data-reward-id="rustplate"]')
-    await expect(iron.locator('.face-chip')).toHaveText(['0', '0', '3', '3', '5', '7'])
+    await expect(iron.locator('.face-chip')).toHaveText(['0', '0', '0', '0', '1', '2'])
     await expect(iron).toContainText('Rolls with your six at ROLL')
     await expect(iron).toContainText('No press.')
     const charm = overlay.locator('[data-reward-id="pair-talisman"]')

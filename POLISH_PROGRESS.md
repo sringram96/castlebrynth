@@ -973,7 +973,7 @@ each comes out the day the plate lands.
 ### The face strip
 
 A carried thing's card now shows **its faces** rather than a sentence about
-them: `+3 +3 +5 +5 · ·` for the Grave Candle, `0 0 3 3 5 7` for the Rustplate,
+them: `+3 +3 +5 +5 · ·` for the Grave Candle, `0 0 0 0 1 2` for the Rustplate,
 `PAIR TWO PAIR +12` for the talisman. It renders in three places — the loot
 card where the thing lies, the tray slot inspection, and the MENU loadout.
 
@@ -1672,3 +1672,76 @@ Two things were considered and rejected rather than shipped quietly:
 
 Both are available if the paintings are a long way off and the repeat has to be
 broken sooner. Neither is a fix.
+
+---
+
+## Persistent and spatial: the build on screen, a crossing that knows its door, and an iron table that is not a second health bar
+
+Four changes, one theme: **what the run is should be legible where the run is.**
+No pixel was authored, generated, traced, recoloured, cropped or otherwise
+touched — `test/unit/untouched.test.ts` still holds `public/` and the masters
+byte for byte.
+
+### The six, between fights
+
+The tray is what a fight is played on and it leaves with the fight. The build
+did not stay behind it: a slot bought with a bone and a slot given up was
+invisible in the room it was spent in.
+
+The slim row now carries six marks in slot order, beside the pile. A plain bone
+is a dim dot; a crooked one is gold and sits a few degrees off true, so a
+replacement reads from across the room without anything being read.
+
+**It is a readout, not six buttons, and that is a size decision rather than a
+taste one.** A hit target is 44 px in its smallest dimension; six of them plus
+the pile, DRINK, the talisman bay and three verbs do not fit one slim row on a
+phone, and a single control that opened MENU would be a second MENU beside
+MENU. So the marks are a picture — `role="img"`, with the whole build in the
+accessible name — and reading them is MENU, two along, which now prints the six
+as cards with their face strips (`#hand-dice`, one card per kind with a count).
+
+At 360 px and under the marks close up into one bar of ticks, and when that row
+is *also* carrying a Vial or a talisman they yield entirely: the verbs come
+first, and the build is one press away at every width. `#explore-controls`
+wraps rather than overflows, so the failure that is guarded against — MENU
+pushed off the right edge of a small phone — cannot happen.
+
+### The crossing carries the doorway's direction
+
+A crossing leaned and cut to dark whichever way out was pressed. It now travels
+with the mouth: a hotspot left of 0.42 of the frame pulls the picture right, one
+right of 0.58 pulls it left, and anything central descends. The settle answers
+it from the opposite side, so the two halves of the crossing are one movement.
+`#world` carries `data-crossing`, the stylesheet owns the offsets, and the
+whole of it is transform and opacity on the existing painting.
+
+### The Rustplate is re-tabled, and this is the commit that says so
+
+`[0, 0, 3, 3, 5, 7]` → `[0, 0, 0, 0, 1, 2]`.
+
+`docs/COMBAT.md` has carried the finding since the loadout wave — the iron die
+swung the boss row 32% → 91% and made the deep route, which charges a toll and
+adds a fight, the *easier* one at 90% against the stair's 41%. It said the
+lever was the faces and that changing them belonged in a commit that said so.
+This is that commit.
+
+On the new table the boss row swings 44% → 73%, whole runs come out 55% stair /
+47% deep, and the report's route gate was tightened to assert it on the taking
+policy as well as the bare one. The Warden's eight can no longer be blocked
+whole on any face the plate has, which `warden.spec.ts` now asserts across
+every face; the case where the iron takes an answer entirely moved to the
+Gnawing, which swings the two the plate can cover.
+
+### The Cleft and the Confluence read as different places
+
+Both borrow the shrine painting — see `## HUMAN ART REQUIRED — the rooms that
+share a picture`, which still stands and is unchanged. Until those paintings
+land, `.grade` takes a `data-place` alongside its `data-territory`: the Cleft
+is ochre and lateral, the Confluence is the cold place where two roads have
+compressed into one. It is the same stylesheet layer the territories already
+tint through, over untouched pixels, and it comes out the day the plates do.
+
+### Gates
+
+`npm run typecheck` clean · `npm test` 636 · `npx playwright test` 426 ·
+`npm run balance` every invariant green, the route gate tightened.

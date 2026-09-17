@@ -87,7 +87,7 @@ test.describe('the first run', () => {
   test('MENU states the pile, the satchel, the rules and the scorecard', async ({ page }) => {
     // The loadout is put on rather than found: what is under test is that MENU
     // can state a carried thing at a size a person can read it at.
-    await boot(page, '?room=fork&vials=2&iron=3&talismans=pair-talisman')
+    await boot(page, '?room=fork&vials=2&iron=2&talismans=pair-talisman')
 
     await act(page, 'menu').click()
     const overlay = page.locator('#overlay')

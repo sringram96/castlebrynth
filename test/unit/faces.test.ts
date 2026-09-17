@@ -71,7 +71,7 @@ describe('every die in the tables has a strip', () => {
   })
 
   it('draws the Rustplate exactly as its table stands', () => {
-    expect(stripFor('rustplate')!.map((c) => c.text)).toEqual(['0', '0', '3', '3', '5', '7'])
+    expect(stripFor('rustplate')!.map((c) => c.text)).toEqual(['0', '0', '0', '0', '1', '2'])
   })
 
   it('draws the Splinter Fetish with its costs marked as costs', () => {

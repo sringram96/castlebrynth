@@ -129,8 +129,9 @@ get there.
 
 **Armour is not a stat. It is a die that rolls alongside the six.**
 
-`run.ironDice` — at most one, `Rustplate`, faces `[0, 0, 3, 3, 5, 7]`.
-First-pass values, reported rather than tuned.
+`run.ironDice` — at most one, `Rustplate`, faces `[0, 0, 0, 0, 1, 2]`.
+The low block is deliberate: the deep route already charges a toll and adds a
+fight, and its prize must not make that route safer than the stair.
 
 **A fresh run has none.** It lies in the Chain Vault's cage, on the deep route,
 and the way's own line says so before the press: *One more fight. Pay at the
@@ -140,7 +141,7 @@ gate; iron waits in the cage.* Which route a run takes is which build it gets.
   never holdable and **REROLL does not touch it**: what it shows is the turn's
   terrain. *(Provisional — see* Open questions*.)*
 - Its settled effect is stated in a caption **before commitment**:
-  `Rustplate holds: blocks 5 this turn.` / `Rustplate came up empty.`
+  `Rustplate holds: blocks 2 this turn.` / `Rustplate came up empty.`
 - Its effect is a flat block against the enemy's answer this turn:
   `answer = max(0, enemyHit − block)`.
 - It contributes **nothing to the sum** and **nothing to line qualification**.
@@ -782,14 +783,19 @@ Whole runs:
 | safe · heuristic, taking what it finds | 41% | gate 59% |
 | deep · heuristic, taking what it finds | **90%** | gate 10% |
 
-What the loadout is worth, on the Warden at 26 with a Vial (heuristic):
+What the loadout is worth, on the Warden at 26 with a Vial (heuristic), on the
+**current** iron table:
 
 | | win | attacks | bones lost |
 |---|---|---|---|
-| bare | 32% | 4.0 | 29.3 |
-| + iron | **91%** | 5.0 | 20.0 |
-| + iron + talisman | 93% | 5.2 | 21.0 |
-| + everything | 94% | 4.5 | 17.3 |
+| bare | 44% | 4.0 | 28.3 |
+| + iron | **73%** | 4.3 | 26.9 |
+| + iron + talisman | 67% | 4.5 | 28.7 |
+| + everything | 69% | 4.0 | 25.0 |
+
+The rows above this one were measured by earlier waves and have drifted with
+them; `npm run balance` prints the live figures, and it is the report rather
+than this page that is the measurement.
 
 **Median fight length: 2–5 attacks, mean 3.1 across cells.** The standing
 concern — that fights end near three and a half attacks, which starves anything
@@ -821,18 +827,20 @@ less often**, because what it skips is the Gnawing's Vial. Neither branch is
 meant to be the correct answer, and the numbers are printed so a person can
 decide whether that spread is the one the design wants.
 
-### Two findings nobody should skip
+### Two findings from the earlier iron table (superseded)
 
-- **The deep route is now the *easier* one at 90%**, where the safe route is
+- **The deep route was the *easier* one at 90%**, where the safe route was
   41%. That is a direct consequence of the Rustplate living in the cage: the
   long way is an extra toll and an extra fight, and it pays for both with the
   die that swings the boss from 32% to 91%. It is the ratified shape — route is
   build — and it is a large enough swing to be a product decision rather than a
-  fact. **Reported, not tuned.** The lever is where the iron lives.
-- **A naive run now gets out 0% of the time on either route.** It was 2%. What
-  changed is that a fresh run is bare, so the beginner's route no longer starts
-  with the die that was doing most of the work. The skill gap is still a
-  tutorial problem rather than a depth one, and the levers are unchanged: the
+  fact. The September UX pass corrected this at the faces: current taking-policy
+  survival is 55% stair / 47% deep.
+- **A naive run barely gets out at all** — 2% on the stair and 0% on the deep
+  route. What changed is that a fresh run is bare, so the beginner's route no
+  longer starts with the die that was doing most of the work. The skill gap is
+  still a tutorial problem rather than a depth one, and the levers are
+  unchanged: the
   health totals, the damage figures, and how loudly the interface teaches that
   REROLL is free.
 
@@ -860,21 +868,25 @@ Named in the report's own output rather than only here:
   the reel wave. It is the same rule as the bare cells, stated about the game
   rather than about the report.
 
-### The finding from the loadout wave, restated
+### The finding from the loadout wave, and what answered it
 
-**The iron die is doing most of the work.** 32% → 91% on the boss row, from one
-die with first-pass faces. That is a much larger swing than the talisman (+2
-points) or both item dice (+1 more), and it is exactly the dominance the
-always-on armour stat was rejected for — now attached to a die rather than a
-stat, which is the ratified shape, but at faces that may be too generous.
+**The iron die was doing most of the work.** 32% → 91% on the boss row, from
+one die with first-pass faces — a much larger swing than the talisman (+2
+points) or both item dice (+1 more), and exactly the dominance the always-on
+armour stat was rejected for, now attached to a die rather than a stat.
 
-It matters more than it did, because the die is no longer starting equipment:
-it is behind one branch of one fork, so the swing above is now the *price of a
-route* rather than a thing every run has.
+It mattered more than it had, because the die is no longer starting equipment:
+it is behind one branch of one fork, so that swing was the *price of a route*
+rather than a thing every run has — and it made the route that charges a toll
+and adds a fight the safer one.
 
-It is **reported, not tuned**. `[0, 0, 3, 3, 5, 7]` against a boss that swings
-8 blocks the whole hit a third of the time. If that is the wrong number, the fix
-is the faces, and it belongs in a commit that says so.
+**The fix was the faces, and this is the commit that says so.**
+`[0, 0, 3, 3, 5, 7]` is now `[0, 0, 0, 0, 1, 2]`: the same die, rolled the same
+way, holding a plausible amount of a blow rather than most of one. The boss row
+swings 44% → 73% on it, the whole-run rows come out 55% stair / 47% deep, and
+the Warden's eight can no longer be blocked whole on any face the plate has.
+The old table is retained above as the measurement that motivated this one; it
+is no longer live content.
 
 None of these numbers were tuned to make a target pass. They are what the
 provisional values produce, printed so a person can decide.
