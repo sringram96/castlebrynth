@@ -8,7 +8,9 @@ before the dungeon kills you.
 
 ## Read these first
 
-Four documents, about twenty minutes in total, and they are the whole contract.
+Read the maze contract first, then the four supporting documents.
+
+- **`docs/MAZE.md`** — the current seeded maze, area progression and revisit rules.
 
 - **`docs/PRODUCT.md`** — what the game is, what the slice contains, what is
   deliberately parked.
@@ -78,19 +80,21 @@ that produces a `GameState`.
 - **A room template names no destination.** `content/rooms.ts` owns what
   happens in a place; the generated `RunMap` owns where it leads. A room
   instance is a map node, never a template id — `roomAt(run)` is the only join.
-  A template *does* say **where in its picture** each way out stands; the map
-  binds its edges to those anchors in declaration order.
-- **The run is a forward-only reel.** The map is a DAG and `validateRunMap`
-  asserts it. The maze feeling is seeing the mouths of roads you cannot take,
-  not walking back up one. Written to be repealed in one line — see
-  `cyclesIn` — rather than re-litigated.
+  Maze templates declare compass seats; authored fixture templates bind
+  painted doorway anchors in declaration order.
+- **New runs are seeded mazes with loops and backtracking.** The user repealed
+  the DAG rule and approved areas, section bosses and progression items.
+  `validateMaze` enforces reachable keys and unavoidable section bosses.
+  Cleared enemies, claimed loot and each font's result survive revisits.
+  DAG validation remains only for the explicitly selected legacy fixtures.
 - **We hide places, never rules.** A way says what it costs and what it pays
   before the press; a room that charges prints the price on the verb before the
   verb charges; a found thing states its exact mechanic where it lies.
 - **Movement is in the picture, and loot happens in the world.** There is no GO
   button in the tray and no reward screen: an open exit is a hotspot on the
-  painted feature it passes through, and what a fight pays falls beside the
-  body with its own LOOK and its own TAKE. A held exit renders **nothing**.
+  painted feature in authored fixtures, or a fixed compass seat in mazes.
+  Fight loot falls beside the body with its own LOOK and TAKE. A live enemy
+  holds exits hidden. A key lock remains inspectable and names its requirement.
 - **A run starts with six bare bones and nothing else.** Every carried thing is
   found somewhere, and which route a run takes is which build it gets.
 - **Every draw is positioned by the node it happens in**, never by how far the
@@ -153,6 +157,11 @@ that produces a `GameState`.
 
 ## No art in the polish sweep
 
+The later maze request authorizes incorporating the six previously generated
+Bellworks room images unchanged. These additions are recorded in `docs/MAZE.md`;
+the historical polish freeze below does not forbid that authorized work.
+The map's SVG is UI geometry, not replacement world art.
+
 While `POLISH_PROGRESS.md` is open, **no coding agent may author, generate,
 redraw, repaint, trace, recolour, crop, upscale or otherwise modify any visual
 asset** — no PNG, SVG, sprite sheet, icon, particle texture or CSS-drawn
@@ -171,7 +180,7 @@ testable: `?room=gate&bones=4&mode=combat`, `?mode=dead`, `?rolls=1`,
 `?offertory=paid`, `?vault=solved`. `?room=` names an authored template and
 stands you in the first room of the run that used it; `?node=a8b` names one
 exact room.
-`?plan=descent|long-way|tithe` pins which of the three **grammars** a press of
-DESCEND builds, by choosing the lowest seed that produces it. It is not a fixture
-on its own: the run is still one the game could have dealt.
+`?maze=1&seed=1` previews the generated maze with persistence disabled.
+`?plan=descent|long-way|tithe` explicitly selects a historical authored grammar
+for regression testing. Without it, DESCEND builds the new maze.
 See `src/game/fixture.ts`.

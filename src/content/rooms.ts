@@ -68,6 +68,7 @@
  */
 
 import { DIE_PRICE } from './dice.js'
+import { MAZE_ROOMS } from './mazeRooms.js'
 import type { Ambient, RoomTemplate, Territory } from './roomTypes.js'
 
 export type {
@@ -94,6 +95,7 @@ export type {
 const THROUGH = { minEntrances: 1, maxEntrances: 1, minExits: 1, maxExits: 1 } as const
 
 export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
+  ...MAZE_ROOMS,
   entry: {
     id: 'entry',
     name: 'The Long Hall',

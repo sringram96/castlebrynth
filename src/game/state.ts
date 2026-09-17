@@ -33,6 +33,7 @@ import type { IronRoll, ItemRoll } from '../combat/loadout.js'
 import type { DieValue } from '../combat/roll.js'
 import type { CoreDieId, IronDieId, ItemDieId, TalismanId } from '../content/dice.js'
 import type { RewardId } from '../content/rewards.js'
+import type { KeyId } from '../content/areas.js'
 import type { RunMap } from './map.js'
 
 /**
@@ -64,7 +65,8 @@ import type { RunMap } from './map.js'
  * could only ever have been bones. There is no migration ladder and there is not
  * going to be one: an old save is detected, discarded, and reported.
  */
-export const SAVE_VERSION = 12
+// 13: cyclic spatial maps, progression keys, and independently spent fonts.
+export const SAVE_VERSION = 13
 
 /**
  * The screens.
@@ -280,8 +282,7 @@ export type RoomInteractionState =
  * `taken` is a flag rather than a removal for the same reason `RitualState`
  * records a roll: the draw happened once, in the reducer, and a record that
  * deleted itself would leave nothing to stop a second visit drawing again.
- * A forward DAG means there is no second visit — which is exactly why walking
- * away has to be legible as a decision rather than as a bug.
+ * Maze backtracking makes this record essential: returning cannot pay twice.
  */
 export interface LootItem {
   readonly id: RewardId
@@ -289,6 +290,10 @@ export interface LootItem {
 }
 
 export interface RunState {
+  /** Progression keys are retained after use and do not occupy combat slots. */
+  readonly keys?: readonly KeyId[]
+  /** One recorded result per font, preserved across revisits and reloads. */
+  readonly rituals?: Readonly<Record<string, RitualState>>
   readonly seed: number
   /**
    * The descent, settled.
@@ -364,7 +369,7 @@ export interface RunState {
   /** What the last press said. The word band reads this. */
   readonly say: string
   readonly combat?: CombatState
-  /** The ritual this run has resolved, and what it gave. */
+  /** Most recent ritual, retained for its presentation and legacy fixtures. */
   readonly ritual?: RitualState
   /**
    * Where each room's objects have been left, keyed by **node** id.
@@ -398,8 +403,7 @@ export interface RunState {
    *
    * Sparse: a room nothing was bought in has no entry. A claimed seat is marked
    * rather than removed — the same ruling `LootItem.taken` is under, and for the
-   * same reason: the draw happened once, and a forward DAG means walking away is
-   * a decision rather than a bug.
+   * same reason: the draw happened once, and returning must never sell it again.
    */
   readonly claimed?: Readonly<Record<string, readonly number[]>>
   /** Why the run ended. */

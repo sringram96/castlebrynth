@@ -38,6 +38,18 @@ export const ROOM_ART: Readonly<Record<string, Asset>> = {
   sanctuary: asset('sanctuary', 'rooms/sanctuary.png', 480, 720),
   reliquary: asset('reliquary', 'rooms/reliquary.png', 480, 720),
   'chain-vault': asset('chain-vault', 'rooms/chain-vault.png', 480, 720),
+  // The Bellworks, delivered as six finished paintings and built like every
+  // other backdrop: cover-cropped to the scene, resampled and posterised by
+  // `npm run art`. They arrived at master shape and master weight — 1024x1536
+  // and 2.3-2.8 MB each — so they live in `docs/art-reference/masters/` and
+  // what is served is the quarter-megabyte plate the pipeline makes of them.
+  // Not one pixel of the delivery is authored, retouched or recoloured.
+  'bellworks-hanging': asset('bellworks-hanging', 'rooms/bellworks-hanging.png', 480, 720),
+  'bellworks-rope': asset('bellworks-rope', 'rooms/bellworks-rope.png', 480, 720),
+  'bellworks-weight': asset('bellworks-weight', 'rooms/bellworks-weight.png', 480, 720),
+  'bellworks-nest': asset('bellworks-nest', 'rooms/bellworks-nest.png', 480, 720),
+  'bellworks-service': asset('bellworks-service', 'rooms/bellworks-service.png', 480, 720),
+  'bellworks-balcony': asset('bellworks-balcony', 'rooms/bellworks-balcony.png', 480, 720),
 }
 
 /**

@@ -93,8 +93,6 @@ export function territoryAt(run: RunState, nodeId: string = run.roomId): Territo
  * first is first.
  */
 export function firstEntryToTerritory(run: RunState): boolean {
-  const here = run.roomId
-  const territory = territoryAt(run, here)
-  const first = run.path.find((nodeId) => run.map.nodes[nodeId]?.territory === territory)
-  return first === undefined ? true : first === here
+  const territory = territoryAt(run)
+  return !run.path.slice(0, -1).some(nodeId => run.map.nodes[nodeId]?.territory === territory)
 }

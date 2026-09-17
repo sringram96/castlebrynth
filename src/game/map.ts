@@ -27,6 +27,7 @@
  */
 
 import type { CoreDieId } from '../content/dice.js'
+import type { AreaId, Direction, KeyId } from '../content/areas.js'
 import { exitsOpen, stateOf } from '../content/interactions.js'
 import { template } from '../content/rooms.js'
 import type { RoomRole, RoomTemplate, Territory } from '../content/roomTypes.js'
@@ -35,6 +36,8 @@ import type { RunState } from './state.js'
 
 /** One way on, as the map generated it. */
 export interface MapExit {
+  readonly direction?: Direction
+  readonly requiresKey?: KeyId
   /** Two words or fewer — it goes on a button. */
   readonly label: string
   /** A **node** id. Never a template id. */
@@ -114,6 +117,10 @@ export interface DieOffer {
  * of room, which is precisely the bug that would otherwise be invisible.
  */
 export interface RunRoom {
+  readonly area?: AreaId
+  readonly position?: { readonly x: number; readonly y: number }
+  readonly key?: KeyId
+  readonly sectionBoss?: boolean
   readonly id: string
   readonly templateId: string
 
@@ -145,6 +152,7 @@ export interface RunRoom {
 }
 
 export interface RunMap {
+  readonly layout?: 'maze'
   readonly start: string
   readonly nodes: Readonly<Record<string, RunRoom>>
   /** The territories the descent passes through, in order, without repeats. */
@@ -159,6 +167,9 @@ export interface RunMap {
  * what was put in it.
  */
 export interface ResolvedRoom extends RoomTemplate {
+  readonly area?: AreaId
+  readonly key?: KeyId
+  readonly sectionBoss?: boolean
   /** The node id. This — not `id` — is what run state is keyed by. */
   readonly instanceId: string
   readonly depth: number
@@ -185,8 +196,18 @@ export interface ResolvedRoom extends RoomTemplate {
  */
 export function exitsAvailable(run: RunState, here: ResolvedRoom = roomAt(run)): boolean {
   if (here.enemy && !run.cleared.includes(here.instanceId)) return false
-  if (here.ritual && run.ritual?.roomId !== here.instanceId) return false
+  if (run.map.layout !== 'maze' && here.ritual && !ritualIn(run, here.instanceId)) return false
   return exitsOpen(stateOf(run.rooms, here.instanceId, here.id))
+}
+
+/** A key is retained, so both directions remain usable after opening a route. */
+export function exitUnlocked(run: RunState, exit: MapExit): boolean {
+  return !exit.requiresKey || (run.keys ?? []).includes(exit.requiresKey)
+}
+
+/** Each font keeps its own result across visits, not just the most recent one. */
+export function ritualIn(run: RunState, nodeId = run.roomId) {
+  return run.rituals?.[nodeId] ?? (run.ritual?.roomId === nodeId ? run.ritual : undefined)
 }
 
 export function nodeAt(map: RunMap, nodeId: string): RunRoom {
@@ -213,6 +234,9 @@ export function roomAt(run: RunState, nodeId: string = run.roomId): ResolvedRoom
     exits: node.exits,
     dice: node.dice ?? [],
     carvings: node.carvings ?? [],
+    ...(node.area ? { area: node.area } : {}),
+    ...(node.key ? { key: node.key } : {}),
+    ...(node.sectionBoss ? { sectionBoss: true } : {}),
     ...(node.enemyId ? { enemy: node.enemyId } : {}),
   }
 }

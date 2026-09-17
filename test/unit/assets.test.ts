@@ -510,7 +510,8 @@ describe('every room has a backdrop', () => {
   }
 
   it('gives every room a backdrop, and names the ones that are borrowed', () => {
-    const own = ROOM_LIBRARY.filter((r) => !(r.id in BORROWED)).map((r) => r.art)
+    // Maze cells deliberately reuse room paintings; this is the authored reel's debt list.
+    const own = ROOM_LIBRARY.filter((r) => !r.tags.includes('maze') && !(r.id in BORROWED)).map((r) => r.art)
     expect(new Set(own).size, 'two rooms with their own art share a painting').toBe(own.length)
     for (const id of Object.keys(BORROWED)) {
       expect(ROOM_TEMPLATES[id], `${id} is listed as borrowed and does not exist`).toBeDefined()
@@ -521,9 +522,17 @@ describe('every room has a backdrop', () => {
     }
   })
 
-  it('ships every backdrop at the one scene size', () => {
+  it('ships every backdrop at the scene, and none at master size', () => {
+    // **No exceptions, including for a delivery.** The Bellworks paintings
+    // arrived at 1024 x 1536 and were briefly served that way, which is four
+    // times the pixels a phone can use and ten times what every other room in
+    // the game costs. They are masters now and `npm run art` makes the plates,
+    // so this is back to one rule for every room.
     for (const asset of Object.values(ROOM_ART)) {
-      expect([asset.width, asset.height]).toEqual([480, 720])
+      expect({ id: asset.id, box: [asset.width, asset.height] }).toEqual({
+        id: asset.id,
+        box: [SCENE.width, SCENE.height],
+      })
     }
   })
 

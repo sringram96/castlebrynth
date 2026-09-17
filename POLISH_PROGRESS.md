@@ -1,5 +1,20 @@
 # Polish sweep: clarity, motion, tray
 
+## Later maze addition — 2026-09-17
+
+Branch: `codex/generated-maze-areas`. The user explicitly superseded the DAG
+rule and requested areas, section bosses, progression items and a minimap.
+`docs/MAZE.md` is that implementation's contract and validation record.
+Six already approved Bellworks kit PNGs are incorporated unchanged; the
+historical no-new-art statement below describes its original sweep only.
+Map SVG is UI geometry. Key pickups use named controls rather than new sprites.
+Bosses reuse the existing three enemies and combat rules. The build, 747 unit
+tests and 56 focused mobile browser tests pass. Screenshot review corrected
+map overflow, and the older hand's touch targets were enlarged. All 13 maze
+and exploration UX checks passed together after those fixes. See MAZE.md.
+
+---
+
 Working branch: `claude/polish-clarity-motion-tray-cvvq2h`.
 
 > The specification named `polish/clarity-motion-tray`. This session is pinned

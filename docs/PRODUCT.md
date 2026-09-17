@@ -3,6 +3,13 @@
 What Castlebrynth is, and what is in the vertical slice. Read this first.
 Read time: five minutes.
 
+**Current exploration contract: [MAZE.md](MAZE.md).** The user requested more
+areas, section bosses, progression items, a useful minimap and a new random
+maze each run. That decision repeals the forward-only DAG, filmstrip-only map,
+and prohibition on progression keys. The Ossuary, Bellworks and Deep form the
+new default run. Combat rules remain unchanged. Sections below explicitly
+marked historical describe the authored fixture content still used by tests.
+
 ## The pitch
 
 > Castlebrynth is a portrait pixel-horror roguelike where you descend through
@@ -42,11 +49,10 @@ laws stop being assertions and start being consequences:
   swapped one-for-one at the Carver. The thirty are what you have left to lose.
   `src/content/text.ts` has said *"bones are what I have left, not what I
   throw"* since the pile was built; the story is what that sentence means.
-- **There is no way back up**, because the descent is what costs you. Going
-  deeper is how you find him and going deeper is what makes you forget him,
-  and that tension is the only question the run ever asks.
-- **The map shows what you walked and nothing else.** *"Ahead of me: nothing I
-  have seen"* is not a missing minimap. It is the affliction, on screen.
+- **The castle can be retraced.** Familiar rooms and loops let the player form
+  a spatial memory. Crossing the final exit still ends the run.
+- **The map remembers discovered places.** Nearby openings appear as unknown
+  rooms; their contents remain hidden until visited.
 
 Two pieces of copy that predate the story now carry it and must not be
 softened: the Font's *"never one that had a name"*, and the ending screens,
@@ -60,9 +66,9 @@ slice, **he is never named** — the narrator cannot remember, which is the
 difference between eerie and confusing — and the Vial gives back somebody
 else's, where the Font gives back yours.
 
-## The run is a reel
+## Historical authored fixtures: the reel
 
-**Ratified, and it is the frame everything else hangs on.** A descent is an
+**Superseded for normal play by MAZE.md.** The earlier descent is an
 authored reel — Dragon's Lair by way of a dice game — and it is **forward
 only**: the map is a directed acyclic graph and `validateRunMap` asserts it.
 
@@ -99,7 +105,7 @@ ratified this actually built:
   Title, death and getting out remain screens, because they are framings of a
   run rather than things in it.
 
-### The strip shows what was seen, and nothing else
+### Historical fixture map: the strip
 
 A reel deserves a filmstrip, and **MAP** is it: the rooms this run has stood
 in, in order, the current one bordered, and beside a junction it walked out of,
@@ -128,21 +134,21 @@ as support for one of them, it is out of scope.
 | Verb | What it means |
 | --- | --- |
 | **LOOK** | Tap a visible thing in the room. Always answers. Never commits. |
-| **GO** | Choose the next room. |
+| **GO** | Follow a compass passage, including returning through a visited room. |
 | **ROLL** | Throw six ordinary d6s, and the iron die with them. The first press of an attack. |
 | **HOLD** | Tap a die to keep it. A draft; nothing is committed. |
 | **REROLL** | Throw the unheld ones again. Twice at most. |
 | **SCORE** | Commit the dice as one hand. The whole cascade, in one press. |
 | **DRINK** | Spend a Vial: five bones back. |
 | **TAKE** | Pick up a thing lying in the room. |
-| **MAP** | Read the run back: where it has been, and the roads it left. Explore only, and it changes nothing. |
+| **MAP** | Read discovered rooms, unexplored openings, locks and room resources. Explore only; it changes nothing. |
 | **READ** | Open the room description; HIDE TEXT closes it. Tapping empty painting is an optional shortcut. |
 | **RESTART** | Begin a new run after death. |
 
 There is no **SKIP**. Leaving a thing where it fell is walking to the exit
 without touching it, which is what skipping always meant and now needs no
-button of its own. The descent is forward only, so the thing stays behind and
-the word band says so on the way through.
+button of its own. In the maze, the thing stays in its room and can be collected
+on a later visit. Taking it marks that room's reward permanently claimed.
 
 There is deliberately **no verb for an item die**. Item dice fire automatically
 at SCORE, as a beat in the cascade; adding a press for them was explicitly
@@ -182,7 +188,7 @@ HELD as well as lifting and lighting; REROLL shows how many rerolls remain.
 The result over the room is one short damage/loss line. MENU → LAST ATTACK
 retains the full exchange for reading at leisure.
 
-## Three grammars
+## Historical authored fixtures: three grammars
 
 **A run is one of three descents, and the seed chooses.** They agree on almost
 nothing: where the Font is, whether there is a Font at all, where the place that
@@ -223,7 +229,7 @@ saying where.
 So sometimes the treasure is behind the mouth you did not take, and the strip
 will show you that mouth for the rest of the run.
 
-## The slice
+## Historical authored fixture slice
 
 Thirteen rooms per descent, three fights, two decision points, one ending each
 way — and four reels through each grammar.
@@ -260,7 +266,7 @@ entry → passage → cleft ┤                               ├→ confluence 
 
 A third fork was considered and is **not** here. See *Still open*.
 
-## Rooms you work
+## Authored interaction rooms retained in fixtures
 
 Two rooms answer a complaint that was true of every other one: *enter, look at
 picture, read prose, press exit.* A room is a backdrop, ambient motion, several
@@ -352,9 +358,10 @@ permanent knowledge clues · refusal flags · the Book of Ends as state ·
 procedural region lean and lock · the provable-winnability generator ·
 hand-size wounds and upgrades · classes · QTE windows · merchants and currency
 
-Four carried nouns exist for this baseline: **Vials**, **item dice**, the
-**iron die** and a **talisman**. Adding a fifth is a product decision, not an
-engineering one — and note what the reel wave added, which is *placement* and
+The earlier combat baseline carries **Vials**, **item dice**, the
+**iron die** and a **talisman**. The user has now approved a separate set of
+progression keys: they open routes and do not modify combat or occupy die slots.
+The earlier reel wave added *placement* and
 not vocabulary: the iron and the talisman already existed and stopped being
 starting equipment.
 

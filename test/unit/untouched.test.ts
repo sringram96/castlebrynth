@@ -22,19 +22,17 @@
 
 import { describe, expect, it } from 'vitest'
 import { execSync } from 'node:child_process'
-import { statSync } from 'node:fs'
+import { readFileSync, statSync } from 'node:fs'
 
 import { SAVE_VERSION } from '../../src/game/state.js'
+import { SCENE } from '../../src/render/assets.js'
+import { decode } from '../../tools/png.mjs'
 
-describe('the save is untouched', () => {
-  it('was bumped once for the crooked bones wave, and only once', () => {
-    // **12, and it is the whole wave's bump.** Eight core dice rather than one,
-    // priced dice and cut prose on a `RunRoom`, a record of which of them have
-    // been claimed, three grammars, and a ladder where an enemy's damage was —
-    // all of it is one shape change and it gets one number. A thirteenth inside
-    // this wave would mean two saves nobody ever wrote were readable; the policy
-    // is unchanged, which is that an old save is discarded and reported.
-    expect(SAVE_VERSION).toBe(12)
+describe('the maze save schema', () => {
+  it('was bumped for maze positions, progression keys, and per-room fonts', () => {
+    // The maze is a new product decision and a new saved shape. Version 12
+    // remains incompatible under the existing discard-and-report policy.
+    expect(SAVE_VERSION).toBe(13)
   })
 })
 
@@ -99,6 +97,22 @@ const ART_THAT_MOVED = [
   'public/assets/props/reliquary-bell-ring-2.png',
   'public/assets/props/reliquary-bell-ring-3.png',
   'public/assets/props/reliquary-bell-ring-4.png',
+  // The Bellworks, the second delivery and the first that is a *room*. Six
+  // finished paintings, kept as masters because that is their shape and their
+  // weight, and served as the plates `npm run art` makes of them — the same
+  // cover-crop, resample and posterise every other backdrop in the game gets.
+  'docs/art-reference/masters/bellworks/balcony.png',
+  'docs/art-reference/masters/bellworks/hanging.png',
+  'docs/art-reference/masters/bellworks/nest.png',
+  'docs/art-reference/masters/bellworks/rope.png',
+  'docs/art-reference/masters/bellworks/service.png',
+  'docs/art-reference/masters/bellworks/weight.png',
+  'public/assets/rooms/bellworks-balcony.png',
+  'public/assets/rooms/bellworks-hanging.png',
+  'public/assets/rooms/bellworks-nest.png',
+  'public/assets/rooms/bellworks-rope.png',
+  'public/assets/rooms/bellworks-service.png',
+  'public/assets/rooms/bellworks-weight.png',
 ]
 
 describe('no pixel was authored here', () => {
@@ -120,29 +134,35 @@ describe('no pixel was authored here', () => {
       .filter((file) => /\.(png|jpe?g|webp|gif|svg)$/i.test(file))
   }
 
-  it('moves nothing under public/ but the bell', () => {
+  it('moves nothing under public/ but the two deliveries', () => {
     for (const file of moved('public/')) {
-      expect(ART_THAT_MOVED, `${file} moved and is not the bell`).toContain(file)
+      expect(ART_THAT_MOVED, `${file} moved and is not a delivered painting`).toContain(file)
     }
   })
 
-  it('moves nothing under the masters but the bell and the sheet it came on', () => {
+  it('moves nothing under the masters but the two deliveries', () => {
     for (const file of moved('docs/art-reference/')) {
-      expect(ART_THAT_MOVED, `${file} moved and is not the bell`).toContain(file)
+      expect(ART_THAT_MOVED, `${file} moved and is not a delivered painting`).toContain(file)
     }
   })
 
-  it('builds the runtime plates from the masters, so the two cannot disagree', () => {
-    // Every master the sheet produced is in the build. A master cut and never
-    // built is a swing that plays in the masters folder and nowhere else, and
-    // `npm run art` is the only thing that should ever close that gap.
+  it('serves a built plate for every master, never the master itself', () => {
+    // **The rule this is really holding is `ART_DIRECTION.md`'s**: masters live
+    // under `docs/art-reference/` and are never served. Every delivery so far
+    // has arrived at master shape — 1024 × 1536, megabytes — and the pipeline
+    // is what makes something a phone can use out of it, so a master with no
+    // plate beside it is art that never reached the game, and a served file
+    // still at master size is the delivery shipped raw.
     //
     // On disk rather than through git, because a file that is new is not in a
     // diff until it is committed and this has to answer in a dirty tree too.
-    for (const master of ART_THAT_MOVED.filter((f) => f.includes('masters/'))) {
-      const frame = master.split('/').pop()!.replace('.png', '')
-      const built = new URL(`../../public/assets/props/reliquary-${frame}.png`, import.meta.url)
-      expect(statSync(built).size, `${frame} was cut but never built`).toBeGreaterThan(0)
+    const served = ART_THAT_MOVED.filter((f) => f.startsWith('public/'))
+    expect(served.length, 'a delivery with no built plate at all').toBeGreaterThan(0)
+    for (const file of served) {
+      const plate = new URL(`../../${file}`, import.meta.url)
+      expect(statSync(plate).size, `${file} was named but never built`).toBeGreaterThan(0)
+      const { width, height } = decode(readFileSync(plate))
+      expect({ file, width, height }).toEqual({ file, width: SCENE.width, height: SCENE.height })
     }
   })
 })

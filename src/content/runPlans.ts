@@ -59,7 +59,7 @@ export interface RoomSlot {
  * the validator checks: an optional branch that did not rejoin would be a run
  * whose long route never reached the keeper.
  */
-export type PlanEdgeKind = 'forward' | 'optional' | 'return'
+export type PlanEdgeKind = 'forward' | 'optional' | 'return' | 'passage'
 
 export interface PlanEdge {
   readonly from: string
@@ -107,6 +107,10 @@ export interface Way {
  * the chapel still says "the body is down" and still reads.
  */
 export const WAYS: Readonly<Record<string, Way>> = {
+  'maze-north': { label: 'N', sense: 'Passage north.' },
+  'maze-east': { label: 'E', sense: 'Passage east.' },
+  'maze-south': { label: 'S', sense: 'Passage south.' },
+  'maze-west': { label: 'W', sense: 'Passage west.' },
   'hall-on': { label: 'GO ON', sense: 'The hall continues to a dark archway.' },
   'past-the-body': { label: 'GO ON', sense: 'The body is down. The corridor continues behind it.' },
   'chapel-on': { label: 'GO ON', sense: 'The chapel opens onto a dead one.' },

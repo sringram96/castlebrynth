@@ -42,6 +42,7 @@ import type { CombatState, GameState } from '../game/state.js'
 import { roomAt } from '../game/map.js'
 import { firstEntryToTerritory, territoryAt } from '../game/strip.js'
 import { TERRITORY_CARD } from '../content/text.js'
+import { areaById } from '../content/areas.js'
 import { mountWorld, placeEnemy, showProp, showProps } from '../render/compositor.js'
 import type { World } from '../render/compositor.js'
 import { RoomAmbience } from '../render/ambience.js'
@@ -241,6 +242,7 @@ export interface AppOptions {
    * whole point: a run that was not asked for gets a seed off the clock.
    */
   readonly startSeed?: number
+  readonly classicPlan?: boolean
 }
 
 export class App {
@@ -255,6 +257,7 @@ export class App {
   private readonly persist: boolean
   private readonly motion: boolean
   private readonly startSeed: number | undefined
+  private readonly classicPlan: boolean
   readonly assets: AssetLoader
   /**
    * What the overlay is showing, if anything.
@@ -320,6 +323,7 @@ export class App {
     this.persist = options.persist ?? true
     this.motion = options.motion ?? true
     this.startSeed = options.startSeed
+    this.classicPlan = options.classicPlan ?? false
     this.assets = options.loader ?? new AssetLoader()
 
     const root = options.root
@@ -704,7 +708,8 @@ export class App {
     const exit = destination
       ? roomAt(before.run!).exits.find((candidate) => candidate.to === destination)
       : undefined
-    this.world.root.dataset['crossing'] = !exit?.at
+    this.world.root.dataset['crossing'] = exit?.direction === 'north' ? 'up'
+      : exit?.direction === 'south' ? 'down' : !exit?.at
       ? 'down'
       : exit.at.x < 0.42
         ? 'left'
@@ -752,7 +757,8 @@ export class App {
   private nameTerritory(state: GameState): void {
     const run = state.run
     if (!run || !this.animated || !firstEntryToTerritory(run)) return
-    const copy = TERRITORY_CARD[territoryAt(run)]
+    const area = roomAt(run).area
+    const copy = area ? areaById(area).name.toUpperCase() : TERRITORY_CARD[territoryAt(run)]
     if (!copy) return
     const card = this.world.card
     card.textContent = copy
@@ -1233,6 +1239,7 @@ export class App {
       onInteract: (interactionId: string) => this.dispatch({ type: 'INTERACT', interactionId }),
       onGo: (to: string) => this.dispatch({ type: 'GO', to }),
       onTake: (index: number) => this.dispatch({ type: 'TAKE', index }),
+      onTakeKey: () => this.dispatch({ type: 'TAKE_KEY' }),
       // Taking a core die opens the picker and commits **nothing**. The hand is
       // six and nothing sits outside it, so which one goes is the decision, and
       // the decision is a beat of its own — presentation-local, exactly as the
@@ -1328,7 +1335,7 @@ export class App {
       this.screen,
       state,
       {
-        onStart: () => this.dispatch({ type: 'START_RUN', ...(this.startSeed !== undefined ? { seed: this.startSeed } : {}) }),
+        onStart: () => this.dispatch({ type: 'START_RUN', ...(this.startSeed !== undefined ? { seed: this.startSeed } : {}), ...(this.classicPlan ? { layout: 'classic' } : {}) }),
         onContinue: () => this.dispatch({ type: 'CONTINUE' }),
         onTitle: () => this.dispatch({ type: 'TITLE' }),
       },

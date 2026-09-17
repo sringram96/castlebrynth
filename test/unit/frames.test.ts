@@ -301,7 +301,8 @@ describe('the assignment table this wave shipped', () => {
 
   for (const t of ROOM_LIBRARY) {
     it(`${t.id} moves exactly as the table says`, () => {
-      expect(ambienceFor(t).map((a) => a.kind)).toEqual(MOVES[t.id] ?? [])
+      const expected = t.tags.includes('maze') ? (t.territory === 'ossuary' ? ['drift'] : []) : MOVES[t.id] ?? []
+      expect(ambienceFor(t).map((a) => a.kind)).toEqual(expected)
     })
   }
 

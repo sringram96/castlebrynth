@@ -4,6 +4,8 @@ import { handSaid } from '../content/faces.js'
 import { VERBS } from '../content/text.js'
 import type { GameState } from '../game/state.js'
 import { button, el } from './components.js'
+import { mazeMapView } from './mazeMap.js'
+import { areaById } from '../content/areas.js'
 
 export interface ExploreHandlers {
   readonly onMenu: () => void
@@ -26,6 +28,7 @@ export function renderExplore(
   host.hidden = state.mode !== 'explore' || encounter || !state.run
   const run = state.run
   if (host.hidden || !run) return
+  host.dataset['layout'] = run.map.layout ?? 'classic'
 
   const pile = el('span', 'explore-pile', `${run.bones} BONES`)
   pile.id = 'explore-pile'
@@ -108,6 +111,13 @@ export function renderExplore(
   words.setAttribute('aria-expanded', String(!bandOff))
   words.setAttribute('aria-controls', 'say')
   host.append(words)
-  host.append(button({ act: 'map', label: VERBS.map, onPress: on.onMap, className: 'explore-button' }))
+  const area = run.map.nodes[run.roomId]?.area
+  const mapButton = button({ act: 'map', label: VERBS.map, onPress: on.onMap, className: 'explore-button' })
+  if (area) {
+    mapButton.classList.add('explore-minimap')
+    mapButton.setAttribute('aria-label', `${areaById(area).name}. Open map and carried keys`)
+    mapButton.prepend(mazeMapView(run, area, true))
+  }
+  host.append(mapButton)
   host.append(button({ act: 'menu', label: VERBS.menu, onPress: on.onMenu, className: 'explore-button' }))
 }

@@ -198,7 +198,7 @@ export interface Loadout {
  * the director actually built.
  */
 export function fightIn(templateId: string, seed: number, loadout: Loadout = {}): GameState {
-  const started = reduce(TITLE, { type: 'START_RUN', seed })
+  const started = reduce(TITLE, { type: 'START_RUN', layout: 'classic', seed })
   const run = started.run!
   const node = firstNodeOf(run.map, templateId)
   if (!node) throw new Error(`this run has no ${templateId} in it`)
@@ -264,7 +264,7 @@ export function simulateRun(
     hand = undefined as readonly CoreDieId[] | undefined,
   } = {},
 ): RunResult {
-  let state = reduce(TITLE, { type: 'START_RUN', seed })
+  let state = reduce(TITLE, { type: 'START_RUN', layout: 'classic', seed })
   if (hand) state = { ...state, run: { ...state.run!, hand } }
   const fights: FightResult[] = []
   const acquired: RewardId[] = []

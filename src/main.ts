@@ -45,6 +45,7 @@ const app = new App({
   persist: !hasFixture(search),
   motion,
   loader,
+  classicPlan: new URLSearchParams(search).has('plan') && new URLSearchParams(search).get('maze') !== '1',
   ...(startSeed !== undefined ? { startSeed } : {}),
 })
 

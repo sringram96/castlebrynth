@@ -142,7 +142,7 @@ describe('the door', () => {
   })
 
   it('starts a run in one press, standing in the first room', () => {
-    const started = reduce(TITLE, { type: 'START_RUN', seed: 1 })
+    const started = reduce(TITLE, { type: 'START_RUN', layout: 'classic', seed: 1 })
     expect(started.mode).toBe('explore')
     expect(started.run!.roomId).toBe(started.run!.map.start)
     expect(started.run!.bones).toBe(BONE_CEILING)
@@ -150,7 +150,7 @@ describe('the door', () => {
   })
 
   it('offers CONTINUE only when there is somewhere live to go back to', () => {
-    const running = reduce(TITLE, { type: 'START_RUN', seed: 1 })
+    const running = reduce(TITLE, { type: 'START_RUN', layout: 'classic', seed: 1 })
     const back = reduce(running, { type: 'TITLE' })
     expect(back.resume).toBe('explore')
     expect(reduce(back, { type: 'CONTINUE' }).mode).toBe('explore')
@@ -163,10 +163,10 @@ describe('the door', () => {
   it('leaves nothing of the old run behind', () => {
     // The invariant the stuck-on-death bug turned on.
     const dead: GameState = {
-      ...reduce(TITLE, { type: 'START_RUN', seed: 1 }),
+      ...reduce(TITLE, { type: 'START_RUN', layout: 'classic', seed: 1 }),
       mode: 'dead',
     }
-    const again = reduce(dead, { type: 'START_RUN', seed: 2 })
+    const again = reduce(dead, { type: 'START_RUN', layout: 'classic', seed: 2 })
     expect(again.run!.combat).toBeUndefined()
     expect(again.run!.loot).toBeUndefined()
     expect(again.run!.cause).toBeUndefined()
@@ -179,7 +179,7 @@ describe('the short route', () => {
     // **Pinned to the descent**, because this spec walks its rooms by name: the
     // Gnawing, then the Font, then the door. THE LONG WAY puts the Font first and
     // THE TITHE has none at all, and both of those are walked end to end below.
-    let state = reduce(TITLE, { type: 'START_RUN', seed: seedFor('descent') })
+    let state = reduce(TITLE, { type: 'START_RUN', layout: 'classic', seed: seedFor('descent') })
     state = walkTo(state, 'hollow')
 
     // The Gnawing. A room with a living enemy has no exits, whatever the map
@@ -213,7 +213,7 @@ describe('the short route', () => {
 
 describe('the deep route', () => {
   it('goes through the vault and the Marrow', () => {
-    let state = reduce(TITLE, { type: 'START_RUN', seed: seedFor('descent') })
+    let state = reduce(TITLE, { type: 'START_RUN', layout: 'classic', seed: seedFor('descent') })
     state = walkTo(state, 'hollow')
     state = clearReward(fightItOut(reduce(state, { type: 'FIGHT' })))
     if (state.mode === 'dead') return
@@ -267,7 +267,7 @@ describe('every grammar is walkable, down every branch', () => {
   for (const plan of GRAMMARS) {
     for (const branch of ['first', 'second'] as const) {
       it(`${plan.id}, taking the ${branch} mouth at every fork`, () => {
-        let state = reduce(TITLE, { type: 'START_RUN', seed: seedFor(plan.id) })
+        let state = reduce(TITLE, { type: 'START_RUN', layout: 'classic', seed: seedFor(plan.id) })
         for (let step = 0; step < 40; step++) {
           if (state.mode === 'complete' || state.mode === 'dead') break
           const here = roomAt(state.run!)
@@ -292,7 +292,7 @@ describe('every grammar is walkable, down every branch', () => {
 
   it('every grammar offers two mouths at both of its forks', () => {
     for (const plan of GRAMMARS) {
-      const map = reduce(TITLE, { type: 'START_RUN', seed: seedFor(plan.id) }).run!.map
+      const map = reduce(TITLE, { type: 'START_RUN', layout: 'classic', seed: seedFor(plan.id) }).run!.map
       const junctions = Object.values(map.nodes).filter((n) => n.role === 'junction')
       expect(junctions, plan.id).toHaveLength(2)
       for (const j of junctions) expect(j.exits, `${plan.id}/${j.id}`).toHaveLength(2)
@@ -306,7 +306,7 @@ describe('every room can be left', () => {
     // any more, so the thing that must not be a dead end is a node of the
     // generated map.
     for (const seed of [1, 2, 3, 44, 900]) {
-      const run = reduce(TITLE, { type: 'START_RUN', seed }).run!
+      const run = reduce(TITLE, { type: 'START_RUN', layout: 'classic', seed }).run!
       for (const node of Object.values(run.map.nodes)) {
         const here = roomAt(run, node.id)
         expect(
@@ -319,13 +319,13 @@ describe('every room can be left', () => {
 
   it('never generates a map the validator rejects', () => {
     for (const seed of [1, 2, 3, 44, 900, 12345]) {
-      const run = reduce(TITLE, { type: 'START_RUN', seed }).run!
+      const run = reduce(TITLE, { type: 'START_RUN', layout: 'classic', seed }).run!
       expect(validateRun(run.map), `seed ${seed}`).toEqual([])
     }
   })
 
   it('leads only to nodes that exist', () => {
-    const run = reduce(TITLE, { type: 'START_RUN', seed: 7 }).run!
+    const run = reduce(TITLE, { type: 'START_RUN', layout: 'classic', seed: 7 }).run!
     for (const node of Object.values(run.map.nodes)) {
       for (const exit of roomAt(run, node.id).exits) {
         expect(run.map.nodes[exit.to], `${node.id} → ${exit.to}`).toBeDefined()
@@ -334,7 +334,7 @@ describe('every room can be left', () => {
   })
 
   it('refuses an exit the room does not have', () => {
-    const state = reduce(TITLE, { type: 'START_RUN', seed: 1 })
+    const state = reduce(TITLE, { type: 'START_RUN', layout: 'classic', seed: 1 })
     expect(reduce(state, { type: 'GO', to: nodeOf(state.run!, 'gate') })).toBe(state)
   })
 
@@ -348,7 +348,7 @@ describe('every room can be left', () => {
 
 describe('the run can end', () => {
   it('dies when the last bone breaks, and says what took it', () => {
-    let state = reduce(TITLE, { type: 'START_RUN', seed: 3 })
+    let state = reduce(TITLE, { type: 'START_RUN', layout: 'classic', seed: 3 })
     state = walkTo(state, 'hollow')
     // One bone, one attack. It throws one die, does at least one damage, and
     // the Gnawing breaks three of a pile that has one.
@@ -358,12 +358,12 @@ describe('the run can end', () => {
     expect(state.run!.bones).toBe(0)
     expect(state.run!.cause).toBeTruthy()
     // And the death screen has a way out that is not a reload.
-    expect(reduce(state, { type: 'START_RUN', seed: 4 }).mode).toBe('explore')
+    expect(reduce(state, { type: 'START_RUN', layout: 'classic', seed: 4 }).mode).toBe('explore')
     expect(reduce(state, { type: 'TITLE' }).mode).toBe('title')
   })
 
   it('never fights with nothing left to throw', () => {
-    const state = reduce(TITLE, { type: 'START_RUN', seed: 1 })
+    const state = reduce(TITLE, { type: 'START_RUN', layout: 'classic', seed: 1 })
     const empty: GameState = {
       ...state,
       run: {
@@ -394,7 +394,7 @@ describe('the save', () => {
   it('boots to the title, whatever it was doing', () => {
     const store = storage()
     const fighting = reduce(
-      walkTo(reduce(TITLE, { type: 'START_RUN', seed: seedFor('descent') }), 'hollow'),
+      walkTo(reduce(TITLE, { type: 'START_RUN', layout: 'classic', seed: seedFor('descent') }), 'hollow'),
       { type: 'FIGHT' },
     )
     save(fighting, store)
@@ -420,7 +420,7 @@ describe('the save', () => {
     }
     store.setItem('castlebrynth', JSON.stringify({ version: 11, mode: 'combat', meta: {} }))
     expect(load(store).discarded).toBe('incompatible')
-    expect(SAVE_VERSION).toBe(12)
+    expect(SAVE_VERSION).toBe(13)
   })
 
   it('survives an empty and a corrupt store', () => {
@@ -438,7 +438,7 @@ describe('the save', () => {
     const store = storage()
     const mid = play(
       reduce(
-        walkTo(reduce(TITLE, { type: 'START_RUN', seed: seedFor('descent', 8) }), 'hollow'),
+        walkTo(reduce(TITLE, { type: 'START_RUN', layout: 'classic', seed: seedFor('descent', 8) }), 'hollow'),
         { type: 'FIGHT' },
       ),
       { type: 'ROLL' },
@@ -455,13 +455,13 @@ describe('determinism', () => {
   it('a seed replays exactly', () => {
     const once = fightItOut(
       reduce(
-        walkTo(reduce(TITLE, { type: 'START_RUN', seed: seedFor('descent', 44) }), 'hollow'),
+        walkTo(reduce(TITLE, { type: 'START_RUN', layout: 'classic', seed: seedFor('descent', 44) }), 'hollow'),
         { type: 'FIGHT' },
       ),
     )
     const twice = fightItOut(
       reduce(
-        walkTo(reduce(TITLE, { type: 'START_RUN', seed: seedFor('descent', 44) }), 'hollow'),
+        walkTo(reduce(TITLE, { type: 'START_RUN', layout: 'classic', seed: seedFor('descent', 44) }), 'hollow'),
         { type: 'FIGHT' },
       ),
     )
@@ -472,7 +472,7 @@ describe('determinism', () => {
     const throwOf = (seed: number): readonly number[] =>
       reduce(
         reduce(
-          walkTo(reduce(TITLE, { type: 'START_RUN', seed }), 'hollow'),
+          walkTo(reduce(TITLE, { type: 'START_RUN', layout: 'classic', seed }), 'hollow'),
           { type: 'FIGHT' },
         ),
         { type: 'ROLL' },

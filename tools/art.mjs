@@ -388,7 +388,30 @@ const REG = 'docs/art-reference/masters/regions/'
 const HALL = `${REG}ossuary/hall.png`
 const DEPTH = `${REG}jungle-hell/depth.png`
 
+const BELLWORKS = 'docs/art-reference/masters/bellworks/'
+
+/**
+ * The Bellworks, delivered as six finished paintings.
+ *
+ * They are **not** composed here. Every other backdrop in this table is a
+ * region master with plates laid over it, because that is what the pre-reset
+ * art gave us; these six arrived already composed, one painting per room, and
+ * the pipeline's job on them is only the job it does on the last step of every
+ * other one — cover-crop to the scene's aspect, resample to 480 × 720,
+ * posterise, and make it opaque.
+ *
+ * That is also why they are masters rather than runtime files. They arrived as
+ * 1024 × 1536 PNGs of 2.3–2.8 MB, which is master shape and master weight, and
+ * `ART_DIRECTION.md` says masters live here and are never served: shipped raw
+ * they would be fifteen megabytes of runtime art, ten times what every other
+ * room costs, decoded on a phone at four times the size it can use. Through
+ * the pipeline they are a quarter of a megabyte each, and no pixel of the
+ * delivery is authored, retouched or recoloured on the way.
+ */
+const BELLWORKS_ROOMS = ['hanging', 'rope', 'weight', 'nest', 'service', 'balcony']
+
 const BACKDROPS = [
+  ...BELLWORKS_ROOMS.map((id) => ({ id: `bellworks-${id}`, base: `${BELLWORKS}${id}.png` })),
   {
     // The front door. The hall, closed off by a gate too big for it.
     id: 'threshold',

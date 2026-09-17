@@ -90,6 +90,7 @@ const num = (raw: string | null): number | undefined => {
 }
 
 const KEYS: readonly string[] = [
+  'maze',
   'seed',
   'room',
   'node',
@@ -261,8 +262,9 @@ export function applyFixture(base: GameState, search: string): GameState {
   // rather than quietly leaving the run standing in the entry hall.
   const asked = pinnedSeed(search) ?? 1
   const wantedRoom = p.get('room')
-  const seed = wantedRoom ? seedWithRoom(wantedRoom, asked) : asked
-  let state: GameState = reduce({ ...base, mode: 'title' }, { type: 'START_RUN', seed })
+  const maze = p.get('maze') === '1'
+  const seed = wantedRoom && !maze ? seedWithRoom(wantedRoom, asked) : asked
+  let state: GameState = reduce({ ...base, mode: 'title' }, { type: 'START_RUN', seed, ...(!maze ? { layout: 'classic' as const } : {}) })
   let run = state.run ?? newRun(seed)
 
   // Standing somewhere else in *this run's map*.

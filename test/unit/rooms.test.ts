@@ -588,7 +588,7 @@ describe('what a save carries', () => {
   })
 
   it('was bumped, because the shape of a run changed', () => {
-    expect(SAVE_VERSION).toBe(12)
+    expect(SAVE_VERSION).toBe(13)
     // And the policy is unchanged: an older save is discarded, never migrated.
     // 8 is the War of Bones, whose run carried a two-part pile and whose fight
     // carried two lines of thrown bones. Neither shape can be read here, and

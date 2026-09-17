@@ -528,8 +528,10 @@ a product decision.
 
 ## Recovery
 
-**The Font** — one press, once per run. `d6 + 2` bones, capped by the room left
-under the ceiling.
+**A Font** — one press, once per room per run. `d6 + 2` bones, capped by the room
+left under the ceiling. The maze has one per area; a player may leave it unused
+and return later. Each result is saved by node id, so visiting another font or
+reloading cannot refill one. Historical authored fixtures retain their exit gate.
 
 **A Vial** — a satchel consumable. Five bones, capped the same way. Legal in
 `explore` and in a live fight; not over a death, and not at a full pile. It
@@ -573,9 +575,9 @@ time.** `mode: 'reward'` is gone and is not coming back under another name.
 - **TAKE** grants it, fills its slot, and marks it taken. The caps are the
   reducer's: TAKE on a third item die is refused, no TAKE is drawn, and the
   refusal prints in the room as a sentence rather than as a grey button.
-- **Walking on without taking is legal.** The thing stays in the room's state,
-  and in a forward DAG that means it stays behind. The say line owns it:
-  *I left it. The door does not open twice.*
+- **Walking on without taking is legal.** The thing stays in the room's state.
+  In the maze it can be collected on a later visit. Claimed rewards never refill.
+  The old irreversible wording is used only by authored DAG fixtures.
 
 An **authored find beats the pool, always**. A template that names a `find`
 contains exactly that; a template that names nothing draws, and the draw
@@ -600,9 +602,9 @@ Each event names a **channel** (`src/game/rng.ts`):
 
 A fight's position in the stream is `(node, round, roll number, channel)`, and
 the node's id is hashed rather than its depth counted. It used to be the path
-length, which was an honest position only while the descent was a line: the map
-is a DAG and both branches of the Cleft arrive at the same room, so a draw that
-depended on *how far you had walked* would be a chest you could shake. The font
+length, which was an honest position only while the descent was a line. Both
+converging branches and the maze's return passages revisit a node, so a draw
+that depended on *how far you had walked* would be a chest you could shake. The font
 and the chests are keyed the same way, with constants of their own.
 
 The iron and the item dice have channels of their own, so adding either could
@@ -741,6 +743,11 @@ Named rather than quietly settled.
 ---
 
 ## Balance
+
+The route tables below measure the historical authored grammars. They are not
+measurements of the new three-area maze. Its initial exploratory run sample and
+remaining playtest gates are recorded in `MAZE.md`; no combat tables changed
+as part of the maze addition.
 
 `npm run balance` runs 400 seeds per cell **through the real reducer** with a
 policy where the thumb goes. It is not a second model of combat: change a

@@ -4,16 +4,23 @@ A portrait pixel-horror roguelike for the phone.
 
 You go down with thirty bones.
 
-When something blocks the room, you throw up to six of them, hold what you
+When something blocks the room, you throw six casting bones, hold what you
 want, and throw the rest again — twice, at most. The numbers add up; the
 pattern they make multiplies the total; that is the damage. Every named hand
 can be spent once per fight, and when nothing fits there is always CRAP, which
 is weak and never runs out.
 
 If the thing survives, it breaks a fixed number of your bones, and it told you
-which number before you threw. As the pile gets thin, so does your hand.
+which number before you threw. The hand stays six; the pile is your life.
 
 Then you die, and go down again.
+
+New runs build a **32-room seeded maze** across **the Ossuary, the Bellworks
+and the Deep**. Find each area's key, build your hand, and defeat its keeper
+to continue. Passages loop and can be retraced; enemies and rewards stay
+resolved. MAP remembers discovered places and nearby unexplored openings.
+The Bellworks uses six new room backdrops. Dice combat follows the same rules.
+See [the maze contract](docs/MAZE.md) for progression and verification status.
 
 ## Play
 
@@ -67,8 +74,8 @@ npm run art            # rebuild the runtime art from the masters
 
 ## For contributors
 
-Start at `docs/PRODUCT.md`, then `docs/COMBAT.md`, `docs/ART_DIRECTION.md` and
-`docs/CONTRIBUTING.md`. Twenty minutes, and they are the whole contract.
+Start at `docs/MAZE.md`, then `docs/PRODUCT.md`, `docs/COMBAT.md`,
+`docs/ART_DIRECTION.md` and `docs/CONTRIBUTING.md`.
 
 `archive/` holds the pre-reset design stack. It is history and binds nothing.
 `RESET_PROGRESS.md` records what was cut, what was kept, and why.
