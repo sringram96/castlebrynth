@@ -118,13 +118,18 @@ button {
 /*
  * ── the Reliquary's four objects ─────────────────────────────────────
  *
- * The one room whose art is **a portrait per object** rather than a plate per
+ * The room whose art was **a portrait per object** rather than a plate per
  * position. An altar, a bell, a candle stand and a chest were painted once
  * each; the pipeline seats each one where it stands and the compositor lays
  * them into the same box as the backdrop. So everything below is the room's
  * *other* states drawn out of the plates that exist — the flame going out, the
- * bell answering, the chest taking the knock — and not one of them touches a
- * pixel of the delivered art.
+ * chest taking the knock — and not one of them touches a pixel of the
+ * delivered art.
+ *
+ * **The bell has left this section**, and it left the way every object here is
+ * meant to: its positions were painted, so it stopped being a plate with a
+ * treatment on it and became a family with frames. What is below is what is
+ * still owed a painting.
  *
  * Two attributes carry it, both written by the compositor from state and read
  * by nothing else:
@@ -161,48 +166,20 @@ button {
 }
 
 /*
- * The bell, swung.
+ * **The bell has no rule here any more, and that is the point.**
  *
- * Six stops, on the chain's own pivot. The plate is the whole scene, so
- * rotating it rotates the bell about the point the chain leaves the frame and
- * moves nothing else — every other pixel in the plate is transparent.
+ * It used to swing on `transform-origin: 21.4% 1.6%` — a rotation of the one
+ * plate that existed, about the point the chain left the frame, with six stops
+ * in a keyframe. The swing is painted now: four plates of a bell part-way
+ * over, registered to each other on the bar by `tools/sheet.mjs`, played as
+ * beats by `content/interactions.ts`. A drawing of a bell at 15° is a thing a
+ * rotation of a hanging bell cannot be, because the skirt and the mouth
+ * foreshorten and the clapper is somewhere else.
  *
- * `transform-origin` is where the bell's chain meets the ceiling. It is a
- * fraction of the **element**, which is the world box, not of the painting
- * inside it — the plate is cover-fitted, so the two differ by the width the
- * crop eats. The stance in `tools/art.mjs` puts the bell's box at 0.235 of the
- * scene across and its top at 0.016 down; 0.235 of the scene is 0.214 of the
- * screen, which is the same number `ROOMS.reliquary` seats the bell's button at.
- * Measured, not guessed, and both move if the stance does.
+ * So there is no `bell-swing` keyframe, no pivot in this file, and nothing
+ * here to drift out of agreement with the stance. The one thing CSS still owes
+ * the Reliquary is the two objects that are still portraits, below.
  */
-.prop[data-prop="reliquary-bell"] {
-  transform-origin: 21.4% 1.6%;
-}
-
-.prop[data-prop="reliquary-bell"][data-move="swing"] {
-  animation: bell-swing 380ms ease-in-out 1;
-}
-
-@keyframes bell-swing {
-  0% {
-    transform: rotate(0deg);
-  }
-  18% {
-    transform: rotate(7deg);
-  }
-  38% {
-    transform: rotate(-9deg);
-  }
-  58% {
-    transform: rotate(5deg);
-  }
-  79% {
-    transform: rotate(-3deg);
-  }
-  100% {
-    transform: rotate(0deg);
-  }
-}
 
 /*
  * The chest, knocked by the mechanism under it.

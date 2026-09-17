@@ -120,9 +120,17 @@ shapes and the pipeline supports both: **registered**, every frame painted where
 the object stands on the background's own canvas, which is what a family that
 moves must be; or a **portrait plus a stance**, the object centred in its own
 frame with its place in the room declared once in `tools/art.mjs`, which is what
-an object painted once may be. The Reliquary's altar, bell, candle stand and
-chest are the second kind. Placement is the pipeline's job in both; the pixels
-are the painter's, and no code may touch them.
+an object painted once may be. The Reliquary's altar, candle stand and chest are
+the second kind; its bell is the first, because it swings. Placement is the
+pipeline's job in both; the pixels are the painter's, and no code may touch them.
+
+A third delivery is **a contact sheet** — every position on one frame, in a
+grid, each drawn where the painter drew it. It is not a shape the pipeline can
+read: `npm run sheet` turns one into registered masters first, by solving each
+cell's angle against the rest pose and registering the family on the axis the
+object actually turns about rather than on its own box. The bell is the worked
+example, and `tools/sheet.mjs` is where a sheet's grid, frame order and
+placement are declared.
 
 When an object has one authored plate and more than one position — a candle
 stand that is lit and also out — the position is carried as `look` on the plate

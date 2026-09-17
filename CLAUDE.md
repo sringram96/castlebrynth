@@ -31,6 +31,7 @@ npm run build          # typecheck + bundle
 npm test               # unit tests
 npm run test:browser   # Playwright, Chromium at 390x844
 npm run art            # rebuild public/assets from the masters
+npm run sheet          # cut a delivered contact sheet into registered masters
 npm run balance        # deterministic fight simulation
 ```
 

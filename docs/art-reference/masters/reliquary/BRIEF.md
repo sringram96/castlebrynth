@@ -31,10 +31,18 @@ frame as `background.png`. Not centred. Not filling the frame. `buildRooms` in
 aligned at 1024 × 1536 they are aligned at 480 × 720, and there is no per-frame
 CSS offset anywhere to paper over it if they are not.
 
-**Every multi-frame family must arrive this way.** `bell-ring-1`, `bell-ring-2`
-and `bell-settle` are the clearest case: a bell in three portraits would be
-seated by its own box three times, and its box changes as it swings, so it would
-climb the ceiling on the way over.
+**Every multi-frame family must arrive this way.** The bell was the clearest
+case and is now the worked example: a bell in three portraits would be seated by
+its own box three times, and its box changes as it swings, so it would climb the
+ceiling on the way over.
+
+> **The bell's swing arrived on a contact sheet** — six bells on one landscape
+> frame, each drawn in its own cell at its own place, which is neither shape
+> above. `tools/sheet.mjs` is what made a family of it: it solves the angle of
+> each cell against the rest pose, registers every plate on the **bar** rather
+> than on its box, and writes five registered masters. A sheet is an accepted
+> delivery now, and that tool is where its grid, its frame order and its
+> placement in the room are declared. `npm run sheet`, then `npm run art`.
 
 ### Portrait plus a stance — the way the four delivered objects arrived
 
@@ -44,10 +52,16 @@ enemy plate is painted, and **where it stands declared once** in
 
 ```
 altar    { width: 0.34, at: 0.50, foot: 0.79 }
-bell     { width: 0.19, at: 0.235, foot: 0.29 }
 brazier  { width: 0.18, at: 0.185, foot: 0.80 }
 chest    { width: 0.235, at: 0.80, foot: 0.83 }
 ```
+
+The bell used to be here — `{ width: 0.19, at: 0.235, foot: 0.29 }` — and left
+when its swing was painted. It is registered now, and its placement lives in
+`tools/sheet.mjs` as the one number that is read off the **rest frame only**:
+`{ width: 0.205, at: 0.317, top: 0.028 }`. `at` is further right than the stance
+was, because a family registered on its bar sweeps wider than the bell standing
+still and all five plates have to stay on a 320px screen.
 
 All three numbers are fractions of the 480 × 720 scene, read off the plate's
 **opaque box**: how wide it is, where its centre is, and where its bottom edge
@@ -62,9 +76,14 @@ are two different places.
 Repaint it as the same silhouette in the same frame and the stance still holds.
 Change the object's shape and the stance has to be re-set by eye against the
 room — and so do the button coordinates in `ROOMS.reliquary`, which are the same
-fractions converted into the world box's. `src/style.css` also measures one
-thing off a stance: the bell's `transform-origin`, which is where its chain
-leaves the ceiling.
+fractions converted into the world box's.
+
+The bell is what that reads like in practice. The swing that arrived is a
+different bell from the one that hung here — a yoke and a bar where there was a
+chain — so its placement was re-set, `ROOMS.reliquary` moved the RING button
+from `{ 0.214, 0.19 }` to `{ 0.317, 0.16 }` to stay on it, and `src/style.css`
+lost the `transform-origin` it used to measure off the old stance. Nothing in
+the stylesheet turns the bell any more.
 
 ## The framing rules
 
@@ -87,7 +106,7 @@ either side, and the middle of the room left empty.
 | object | frames | state |
 | --- | --- | --- |
 | altar | `altar-still` | ✅ delivered. The room's hero, and the mechanism the PULL works — there is no lever. |
-| bell | `bell-idle` | ✅ delivered. `bell-ring-1` `bell-ring-2` `bell-settle` are owed, **registered**. |
+| bell | `bell-idle` `bell-ring-1…4` | ✅ delivered, and **registered on the bar**. The swing is painted; nothing is owed. |
 | brazier | `brazier-lit` | ✅ delivered. `brazier-out` is owed and is the most valuable missing plate. |
 | chest | `chest-closed` | ✅ delivered. `chest-open` is owed; `chest-opening` optional. |
 
@@ -99,9 +118,17 @@ is a CSS treatment of the lit plate and there are still five flame shapes in it.
 **`chest-open` shows what is inside without naming it.** The word band says
 `Inside: <relic name>`; the plate should read as *something is in there*.
 
-**`bell-settle` is a resting state.** It is what the bell looks like for the rest
-of the run once it has been rung, and it survives a reload — so it is a bell that
-has *finished* moving, not a blurred frame.
+**`bell-settle` was never painted, and is not owed.** It asked for a resting
+state — what the bell looks like for the rest of the run once it has been rung —
+and the sheet that arrived draws a rung bell and an unrung one the same, so
+`bell-idle` is both. If a bell that has *finished* moving should read differently
+from one that has not yet been asked to, that is a new plate and a product
+decision, not a missing frame.
+
+**If the bell is repainted, it is repainted whole.** The five plates are one
+drawing in five positions, and a rest pose from one hand with a swing from
+another is two bells. The swing plays on `bell-idle` either side of it, so a
+replacement `bell-idle` alone would show the join.
 
 ## The five ambient loops
 

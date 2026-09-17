@@ -66,21 +66,31 @@ export const PROP_ART: Readonly<Record<string, Asset>> = {
   'chalice.4': asset('chalice.4', 'props/chalice-4.png', 480, 720),
   'chalice.5': asset('chalice.5', 'props/chalice-5.png', 480, 720),
   'chalice.6': asset('chalice.6', 'props/chalice-6.png', 480, 720),
-  // The Reliquary's four objects. **One plate each, and that is the delivery
-  // rather than an oversight**: the set that arrived is a settled altar, a
-  // hanging bell, a lit candle stand and a shut chest, and nothing else. So a
-  // frame here is the object's *portrait*, not its position — where each of
-  // them is standing is carried by `platesFor`'s `look` and drawn by CSS, and
-  // the states with no authored plate (`brazier.out`, `chest.open`, every frame
-  // of a swing) are treatments of the plate that is here rather than rows that
-  // point at files nobody painted. `## HUMAN ART REQUIRED` in
-  // POLISH_PROGRESS.md is what is still owed.
+  // The Reliquary's four objects. **Three of them are one plate each, and that
+  // is the delivery rather than an oversight**: a settled altar, a lit candle
+  // stand and a shut chest, and nothing else. So a frame for those is the
+  // object's *portrait*, not its position — where each of them is standing is
+  // carried by `platesFor`'s `look` and drawn by CSS, and the states with no
+  // authored plate (`brazier.out`, `chest.open`) are treatments of the plate
+  // that is here rather than rows that point at files nobody painted.
+  // `## HUMAN ART REQUIRED` in POLISH_PROGRESS.md is what is still owed.
+  //
+  // **The bell is the one that is a family now.** Its swing was delivered as a
+  // sheet of positions, so the four `ring` frames are authored pictures of a
+  // bell part-way over rather than a rotation CSS puts on a still one, and
+  // `idle` is the bell hanging — before it is rung and after it has settled.
+  // They are registered to each other on the bar, so a frame swap turns the
+  // bell and moves nothing else.
   //
   // There is no `lever` family and no `lever.*` row, because no lever was
   // painted. The room's PULL sits on the altar, which is where the mechanism
   // it works has always been.
   'altar.still': asset('altar.still', 'props/reliquary-altar-still.png', 480, 720),
   'bell.idle': asset('bell.idle', 'props/reliquary-bell-idle.png', 480, 720),
+  'bell.ring-1': asset('bell.ring-1', 'props/reliquary-bell-ring-1.png', 480, 720),
+  'bell.ring-2': asset('bell.ring-2', 'props/reliquary-bell-ring-2.png', 480, 720),
+  'bell.ring-3': asset('bell.ring-3', 'props/reliquary-bell-ring-3.png', 480, 720),
+  'bell.ring-4': asset('bell.ring-4', 'props/reliquary-bell-ring-4.png', 480, 720),
   'brazier.lit': asset('brazier.lit', 'props/reliquary-brazier-lit.png', 480, 720),
   'chest.closed': asset('chest.closed', 'props/reliquary-chest-closed.png', 480, 720),
   // The Chain Vault's objects go here when they land, keyed the same way:

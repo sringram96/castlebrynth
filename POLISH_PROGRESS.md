@@ -510,11 +510,16 @@ the brief says which each set is on:
   cover-crops, keys and resamples, and a frame out of register at 1024 × 1536 is
   out of register on the phone. This is what the Chain Vault is waiting for.
 - **portrait plus a stance** — the object centred in its own frame, and where it
-  stands declared once in `ROOMS[].stances` in `tools/art.mjs`. The Reliquary
-  arrived this way and is built this way. A family delivered like this must have
-  **one silhouette**, because the stance is measured off the plate's own box: a
-  swinging bell in four portraits would walk across the ceiling as it swung, and
-  has to come back registered instead.
+  stands declared once in `ROOMS[].stances` in `tools/art.mjs`. The Reliquary's
+  altar, candles and chest arrived this way and are built this way. A family
+  delivered like this must have **one silhouette**, because the stance is
+  measured off the plate's own box: a swinging bell in four portraits would walk
+  across the ceiling as it swung, and has to come back registered instead.
+- **a contact sheet** — every position on one frame, in a grid, each drawn where
+  the painter felt like drawing it. The bell's swing arrived this way, which is
+  neither of the above: `npm run sheet` cuts it, solves each cell's angle
+  against the rest pose and registers the family **on the bar**, and what comes
+  out the far side is the first shape. See the entry at the end of this file.
 
 A family must be **whole or absent**. `npm run art` throws on a partial family
 rather than shipping an object that freezes mid-swing.
@@ -524,11 +529,22 @@ rather than shipping an object that freezes mid-swing.
 ```
 docs/art-reference/masters/reliquary/background.png      ✅ 1024x1536
 docs/art-reference/masters/reliquary/altar-still.png     ✅ 1024x1536
-docs/art-reference/masters/reliquary/bell-idle.png       ✅ 1024x1536
+docs/art-reference/masters/reliquary/bell-idle.png       ✅ 1024x1536  ← re-cut
+docs/art-reference/masters/reliquary/bell-ring-1.png     ✅ 1024x1536
+docs/art-reference/masters/reliquary/bell-ring-2.png     ✅ 1024x1536
+docs/art-reference/masters/reliquary/bell-ring-3.png     ✅ 1024x1536
+docs/art-reference/masters/reliquary/bell-ring-4.png     ✅ 1024x1536
 docs/art-reference/masters/reliquary/brazier-lit.png     ✅ 1024x1536
-docs/art-reference/masters/reliquary/chest-closed.png    ✅ 1024x1536
 docs/art-reference/masters/chain-vault/background.png    ✅ 1024x1536
+docs/art-reference/masters/reliquary/chest-closed.png    ✅ 1024x1536
 ```
+
+**The bell's five are new**, and they are the first art to land since this file
+was opened. They came on a contact sheet rather than as plates — see
+*The bell, and a sheet that became a family* at the end of this document — and
+`bell-idle` among them is a **replacement**: the bell that hung here was a
+different drawing, on a chain, and a rest pose from one hand with a swing from
+another is two bells.
 
 The four Reliquary plates cost **70 KB** between them at 480 × 720, because a
 plate costs almost exactly its opaque area and these are 2–8% opaque.
@@ -536,10 +552,15 @@ plate costs almost exactly its opaque area and these are 2–8% opaque.
 `docs/art-reference/visual/reliquary/` holds what came with them and is **not**
 runtime art: two paintings of the chapel that were the composition being aimed
 at, a sheet of the objects in states nobody has painted yet, and a four-position
-study of the bell swinging. The study is a *reference for motion*, not four
-frames — the bell swings by rotating its one authored plate about its chain.
+study of the bell swinging — a *reference for motion* of the chained bell that
+used to hang here, and never four frames.
 
-### Still missing — the Reliquary (18 files)
+It also holds `reference-bell-swing-sheet.png`, which is a different thing
+again: the six-position sheet the swing was actually delivered on. It is the
+**source** the five bell masters were cut from rather than a study, and
+`tools/sheet.mjs` is the cut. It stays here because what ships is the masters.
+
+### Still missing — the Reliquary (15 files)
 
 The room plays and paints completely without every one of these. What each buys
 is written beside it, because none of them is a blocker and the order is a
@@ -549,8 +570,6 @@ judgement call.
 brazier-out.png        five candles, dead, wax cold      ← the biggest win
 chest-open.png         the lid up, something inside      ← the second
 lever-up.png           lever-pulling.png   lever-down.png
-
-bell-ring-1.png        bell-ring-2.png     bell-settle.png
 
 ambient-candle-1..3.png   ambient-chain-1..3.png    ambient-drip-1..3.png
 ambient-embers-1..4.png   ambient-window-1..2.png
@@ -574,9 +593,12 @@ beside. If a lever is ever painted it is a *new object* and a product decision,
 not a missing frame. The interaction id stays `reliquary-lever` regardless — it
 is in every save that ever pulled it.
 
-`bell-ring-1/2` and `bell-settle` would replace the CSS swing with authored
-positions. They must arrive **registered to the background**, not as portraits,
-for the reason in the delivery note above.
+**The bell's swing is painted and is no longer on this list.** It did exactly
+what the delivery note above said it would have to: the frames are registered
+rather than seated by their own boxes, and the CSS rotation is gone. What
+`bell-settle` asked for is not owed either — the delivery draws a rung bell and
+an unrung one the same, so one rest plate is both. See the entry at the end of
+this file.
 
 ### Missing — `docs/art-reference/masters/chain-vault/` (30 files)
 
@@ -1745,3 +1767,109 @@ tint through, over untouched pixels, and it comes out the day the plates do.
 
 `npm run typecheck` clean · `npm test` 636 · `npx playwright test` 426 ·
 `npm run balance` every invariant green, the route gate tightened.
+
+---
+
+## The bell, and a sheet that became a family
+
+**The first art to land since this file was opened**, and the first time
+`CLAUDE.md` § *No art in the polish sweep* has been lifted rather than worked
+around. A human painted the Reliquary's bell in six positions and asked for the
+swing. The freeze says an agent may not author, redraw or crop a visual asset;
+it was lifted for this one delivery, and the cut is a committed, deterministic
+tool rather than a thing that happened once in a terminal.
+
+### What arrived, and why it was not a family yet
+
+Six bells on a 1536 × 1024 landscape sheet, a 3 × 2 grid of 512, each cut out
+with soft alpha. Measured off it — the tilt is the angle from the bar to the
+middle of the skirt:
+
+| cell | tilt | pose | ships as |
+| --- | --- | --- | --- |
+| 0 | −0.1° | hanging still | `bell-idle` |
+| 1 | −8.1° | swung left | `bell-ring-3` |
+| 2 | −13.0° | swung far left | `bell-ring-1` |
+| 3 | −0.1° | hanging still | — |
+| 4 | +12.6° | swung far right | `bell-ring-2` |
+| 5 | +4.5° | swung right | `bell-ring-4` |
+
+Neither delivery shape in `BRIEF.md` fits that. It is not registered — nothing
+is painted where the bell hangs — and it cannot be a portrait family, because a
+portrait is seated by its own opaque box and these boxes are 399 to 407 px wide
+and 465 to 473 tall. Seated that way the bell is rescaled on every frame and it
+climbs the ceiling, which is the failure the brief names.
+
+**Cell 3 does not ship.** It is a second render of the rest pose, six pixels
+shorter in the box than cell 0, so ending the swing on it would pop. One rest
+plate is both the bell that has not been rung and the bell that has, which is
+`bell-settle` answered rather than owed.
+
+### The cut: `tools/sheet.mjs`, and the bar
+
+Every frame is the rest pose rotated — but **not about the bar**. The painter
+turned each bell about roughly its own middle, so the headstock itself wanders
+70 px across the six cells: registering on anything but the bar gives a bell
+that wags its own mount.
+
+So the tool solves the **angle** and declares the **axis**:
+
+- the angle is a search — the rest silhouette laid over each cell at every half
+  degree, then a twelfth of one around the answer. It comes back with the
+  overlap it achieved: 93.5%, 94.7%, 96.3%, 97.3%. Under 100 because these are
+  six separate renders rather than one drawing turned six times, which is the
+  measurement of how consistent the delivery is.
+- the axis is read off the rest cell's own bar and written down: `{ 255, 43 }`.
+  Solving it is possible — `P = C + (I − Rθ)⁻¹ t` — and useless, because that
+  determinant is `2(1 − cos θ)`: at the 4° end of the swing a pixel of slop in
+  the shift becomes two hundred pixels of slop in the axis. The first cut did
+  solve it and put the bar 260 px out on the quietest frame.
+
+Moving a drawing from one centre of rotation to another is a translation, so the
+correction multiplies that inverse straight back out and every output pixel is
+still an area-average of the painter's own, composited over black exactly as a
+plate painted on black would have been.
+
+**It works out at four pixels.** Across the five built plates the bar's middle
+sits at 150.0, 152.0, 152.5, 152.5 and 154.0 of a 480-wide scene, and its top
+edge within two. `test/unit/assets.test.ts` holds it under eight, which is far
+inside what a stance-seated cut would show and outside the art's own noise.
+
+### What it cost the room
+
+The bell that hung here was **a different drawing** — a chained bell, painted
+once, swung by `transform-origin: 21.4% 1.6%` and six keyframes of `rotate()`.
+The delivered bell is mounted on a yoke and has no chain, so:
+
+- `bell-idle` is replaced. A swing in one drawing either side of a rest pose in
+  another is two bells.
+- the family is **registered** and `stances.bell` is gone from `tools/art.mjs`.
+  Where it hangs is `{ width: 0.205, at: 0.317, top: 0.028 }` in
+  `tools/sheet.mjs`, read off the rest frame only.
+- **`at` is set for the swing rather than the rest pose.** Registered on the
+  bar, the family sweeps 143 px where the bell standing still occupies 98, and
+  a 320 px phone only sees the scene from x 72. Placed for the rest pose alone
+  the far frame hangs 22 px off the left edge of the screen. It moved right.
+- the RING button moved with it, `{ 0.214, 0.19 }` → `{ 0.317, 0.16 }`, and is
+  on the skirt where it was.
+- `bell-swing` and its `transform-origin` are **deleted** from `src/style.css`.
+  Nothing in the stylesheet turns the bell now, and the swing moved from
+  `movesFor` to `beatsFor` in `content/interactions.ts` — which is the
+  direction that file is meant to travel: when the plates for a move arrive,
+  the move becomes beats.
+
+Five plates at 13 KB each, 65 KB in total against the 18 KB the one portrait
+cost — the bell is 2% of the scene either way, and there are five of it now.
+
+### What is honestly not right about it
+
+Reported rather than fixed, because both are the painter's call:
+
+- **there is no chain.** The old bell hung from one that left the top of the
+  frame; this one is mounted on a bar with nothing above it, so it reads as
+  fixed into the dark rather than hung from anything. A beam, or a chain, is a
+  plate nobody has painted.
+- **the frames are not one drawing turned.** The overlaps above say 93–97%, and
+  what the remaining few per cent look like is the ornament on the skirt
+  shifting very slightly between frames. At 80 ms a frame it reads as a bell
+  ringing; frozen side by side it reads as six bells.

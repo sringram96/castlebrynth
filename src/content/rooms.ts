@@ -309,7 +309,13 @@ export const ROOM_TEMPLATES: Readonly<Record<string, RoomTemplate>> = {
     // reducer's and the save's, and renaming it would migrate every save that
     // ever pulled it for no gain the player could see.
     interactables: [
-      { id: 'reliquary-bell', art: 'bell', at: { x: 0.214, y: 0.19 }, describe: 'Ring the ritual bell' },
+      // On the skirt, which is where a hand would take it — and re-set with the
+      // bell rather than guessed. The swing was painted, so the bell is a
+      // registered family now instead of a portrait on a stance, and a family
+      // that turns about its bar sweeps wider than the bell is: it is seated to
+      // keep all five plates on a 320px screen, which moved it right and up.
+      // `tools/sheet.mjs` prints the box these two numbers are read off.
+      { id: 'reliquary-bell', art: 'bell', at: { x: 0.317, y: 0.16 }, describe: 'Ring the ritual bell' },
       {
         id: 'reliquary-brazier',
         art: 'brazier',

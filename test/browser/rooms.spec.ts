@@ -24,6 +24,8 @@ import {
   tappable,
   toFirstFight,
   walkOn,
+  watch,
+  watched,
   wayLabelled,
   wayTo,
   where,
@@ -437,25 +439,79 @@ test.describe('the room is art, and the art is not the interface', () => {
     await tappable(page, act(page, 'go'))
   })
 
-  test('swings the bell when it is rung, and puts it back down', async ({ page }) => {
+  test('swings the bell when it is rung, on plates a painter drew', async ({ page }) => {
     await boot(page, '?room=reliquary', { motion: true })
     const bell = plate(page, 'reliquary-bell')
     // Still, until it is rung. Nothing in this room moves on arrival.
     expect(await bell.evaluate((el) => el.getAnimations().map((a) => (a as CSSAnimation).animationName))).toEqual([])
+    await expect(bell).toHaveAttribute('src', /bell-idle/)
 
+    // **The swing is four drawings, in order.** It was a CSS rotation of the
+    // one plate that existed until the positions were painted; what a rotation
+    // cannot do is foreshorten the mouth or carry the clapper, so the frames
+    // are the thing and this is the assertion that they are.
+    await watch(page, '[data-prop="reliquary-bell"]', 'src')
     await thing(page, 'reliquary-bell').click()
-    await expect(bell).toHaveAttribute('data-move', 'swing')
-    // Actually turning, not merely labelled as turning.
-    const turned = await bell.evaluate((el) => getComputedStyle(el).transform)
-    expect(turned).not.toBe('none')
+    // Played out rather than settled: `settled()` is the impatient thumb, and
+    // what it skips is exactly the middle this is about. The thumb gets its own
+    // assertion below.
+    await expect
+      .poll(() => page.evaluate(() => window.castlebrynth?.animating() ?? false), { timeout: 8000 })
+      .toBe(false)
+    const played = (await watched(page)).map((src) => src.split('/').pop()?.replace('.png', ''))
+    expect(played).toEqual([
+      'reliquary-bell-idle',
+      'reliquary-bell-ring-1',
+      'reliquary-bell-ring-2',
+      'reliquary-bell-ring-3',
+      'reliquary-bell-ring-4',
+      'reliquary-bell-idle',
+    ])
 
-    // And it settles: the bell is still in the room, still the same drawing,
-    // with nothing left running on it and nothing left rotating it.
-    await settled(page)
+    // And it settles hanging: the bell is still in the room, back on the plate
+    // it started on, with nothing left running on it and — the part that is
+    // new — nothing rotating it, because nothing in this room rotates any more.
     await expect(bell).toBeVisible()
+    await expect(bell).toHaveAttribute('src', /bell-idle/)
     await expect(bell).not.toHaveAttribute('data-move', /.*/)
     await expect(bell).toHaveAttribute('data-look', 'rung')
     expect(await bell.evaluate((el) => getComputedStyle(el).transform)).toBe('none')
+    expect(
+      await bell.evaluate((el) => el.getAnimations().map((a) => (a as CSSAnimation).animationName)),
+    ).toEqual([])
+  })
+
+  test('never leaves the bell part-way over, however the swing ends', async ({ page }) => {
+    // Three ways to miss the middle, and all three land on the same picture:
+    // the swing is ceremony, and a bell frozen at 15° is the one outcome none
+    // of them may leave behind — it is the frame a reload would paint.
+    const hanging = async (): Promise<void> => {
+      const bell = plate(page, 'reliquary-bell')
+      await expect(bell).toHaveAttribute('src', /bell-idle/)
+      await expect(bell).toHaveAttribute('data-look', 'rung')
+    }
+
+    // The impatient thumb, mid-swing.
+    await boot(page, '?room=reliquary', { motion: true })
+    await thing(page, 'reliquary-bell').click()
+    await settled(page)
+    await hanging()
+
+    // Motion off, where there is no swing to interrupt. `boot` without
+    // `motion` settles every sequence in the tick of the press.
+    await boot(page, '?room=reliquary')
+    await thing(page, 'reliquary-bell').click()
+    await settled(page)
+    await hanging()
+
+    // And with the browser's own switch thrown, which is a different route to
+    // the same rule: ceremony vanishes whole, and the frame it vanishes to is
+    // the one the room is in.
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await boot(page, '?room=reliquary', { motion: true })
+    await thing(page, 'reliquary-bell').click()
+    await settled(page)
+    await hanging()
   })
 
   test('takes the light out of the candles, and gives it back', async ({ page }) => {
