@@ -31,7 +31,7 @@ import {
 import { defeatOf } from '../../src/content/defeat.js'
 import { ENEMIES, STAGES } from '../../src/content/enemies.js'
 import { ROOM_LIBRARY, ROOM_TEMPLATES, template } from '../../src/content/rooms.js'
-import { platesFor } from '../../src/content/interactions.js'
+import { beatsFor, platesFor } from '../../src/content/interactions.js'
 import type { RoomInteractionState } from '../../src/game/state.js'
 import { decode } from '../../tools/png.mjs'
 
@@ -510,7 +510,8 @@ describe('every room has a backdrop', () => {
   }
 
   it('gives every room a backdrop, and names the ones that are borrowed', () => {
-    const own = ROOM_LIBRARY.filter((r) => !(r.id in BORROWED)).map((r) => r.art)
+    // Maze cells deliberately reuse room paintings; this is the authored reel's debt list.
+    const own = ROOM_LIBRARY.filter((r) => !r.tags.includes('maze') && !(r.id in BORROWED)).map((r) => r.art)
     expect(new Set(own).size, 'two rooms with their own art share a painting').toBe(own.length)
     for (const id of Object.keys(BORROWED)) {
       expect(ROOM_TEMPLATES[id], `${id} is listed as borrowed and does not exist`).toBeDefined()
@@ -521,9 +522,17 @@ describe('every room has a backdrop', () => {
     }
   })
 
-  it('ships every backdrop at the one scene size', () => {
+  it('ships every backdrop at the scene, and none at master size', () => {
+    // **No exceptions, including for a delivery.** The Bellworks paintings
+    // arrived at 1024 x 1536 and were briefly served that way, which is four
+    // times the pixels a phone can use and ten times what every other room in
+    // the game costs. They are masters now and `npm run art` makes the plates,
+    // so this is back to one rule for every room.
     for (const asset of Object.values(ROOM_ART)) {
-      expect([asset.width, asset.height]).toEqual([480, 720])
+      expect({ id: asset.id, box: [asset.width, asset.height] }).toEqual({
+        id: asset.id,
+        box: [SCENE.width, SCENE.height],
+      })
     }
   })
 
@@ -589,10 +598,16 @@ describe('a room prop is whole, registered, and does not move', () => {
   })
 
   it('names no prop art that no room asks for', () => {
-    // Two kinds of room ask for prop art. A ritual room asks for a face; a room
-    // of worked objects asks for whatever `platesFor` says is up, over every
-    // position its objects can be standing in. A key that neither asks for is a
-    // file the loader downloads on every boot and nothing ever shows.
+    // Three kinds of ask, and the third is new. A ritual room asks for a face;
+    // a room of worked objects asks for whatever `platesFor` says is up, over
+    // every position its objects can be standing in; and **a transition asks
+    // for the frames it passes through**, which no settled state ever names.
+    // The bell's swing is the whole of that third kind: `bell.ring-1` to
+    // `ring-4` are pictures of a bell part-way over, and a bell is never
+    // part-way over once the press has settled.
+    //
+    // A key that none of the three asks for is a file the loader downloads on
+    // every boot and nothing ever shows, which is what this is here to catch.
     const asked = new Set([
       ...ROOM_LIBRARY
         .filter((r) => r.ritual)
@@ -600,8 +615,59 @@ describe('a room prop is whole, registered, and does not move', () => {
       ...EVERY_WORKED_STATE.flatMap((state) =>
         platesFor(state).map((p) => `${p.art}.${p.frame}`),
       ),
+      ...EVERY_WORKED_STATE.flatMap((before) =>
+        EVERY_WORKED_STATE.filter((after) => after.templateId === before.templateId).flatMap(
+          (after) => beatsFor(before, after, '').map((b) => `${b.art}.${b.frame}`),
+        ),
+      ),
     ])
     for (const key of Object.keys(PROP_ART)) expect([...asked]).toContain(key)
+  })
+
+  /**
+   * The bell hangs from the same bar in all five of its plates.
+   *
+   * **This is the invariant the swing exists on.** `BRIEF.md` says a family
+   * that moves must arrive registered, and names this exact object as the case:
+   * a portrait is seated by its own opaque box, a tilted bell's box is wider
+   * and shorter than a hanging one's, and a family seated that way climbs the
+   * ceiling on the way over. `tools/sheet.mjs` registers these on the bar
+   * instead, and re-cutting them with a stance — the one plausible way to
+   * break this — moves the bar by tens of pixels, not by four.
+   *
+   * Measured off the built plates rather than the masters, because what the
+   * player sees is what came out of `npm run art`.
+   */
+  it('hangs the bell from one bar, in every frame of its swing', () => {
+    const bars = ['idle', 'ring-1', 'ring-2', 'ring-3', 'ring-4'].map((frame) => {
+      const file = PROP_ART[`bell.${frame}`]?.file
+      expect(file, `bell.${frame} is not in the manifest`).toBeDefined()
+      const { width, height, rgba } = decode(readFileSync(new URL(file!, PUBLIC)))
+      const solid = (x: number, y: number): boolean => rgba[(y * width + x) * 4 + 3]! >= 128
+      let top = -1
+      for (let y = 0; y < height && top < 0; y++) {
+        for (let x = 0; x < width; x++) if (solid(x, y)) { top = y; break }
+      }
+      // The headstock, which is the twelve rows under the topmost pixel: the
+      // bar with a cap on each end, and the middle of it is the axis.
+      let x0 = width
+      let x1 = -1
+      for (let y = top; y < top + 12; y++) {
+        for (let x = 0; x < width; x++) {
+          if (!solid(x, y)) continue
+          if (x < x0) x0 = x
+          if (x > x1) x1 = x
+        }
+      }
+      return { frame, top, middle: (x0 + x1) / 2 }
+    })
+
+    const spread = (v: readonly number[]): number => Math.max(...v) - Math.min(...v)
+    const across = spread(bars.map((b) => b.middle))
+    const down = spread(bars.map((b) => b.top))
+    const said = bars.map((b) => `${b.frame} ${b.middle}`).join(', ')
+    expect(across, `the bell's bar wanders ${across}px across the swing: ${said}`).toBeLessThan(8)
+    expect(down, `the bell's bar rises ${down}px across the swing`).toBeLessThan(8)
   })
 
   it('answers with nothing rather than throwing when a frame is unpainted', () => {

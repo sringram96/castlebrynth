@@ -41,6 +41,7 @@ import { roomArt, url } from '../render/assets.js'
 import type { GameState } from '../game/state.js'
 import { button, el, faceStripFor, rewardCard } from './components.js'
 import { stripPanel } from './strip.js'
+import { mazeMapPanel } from './mazeMap.js'
 
 export interface ScreenHandlers {
   readonly onStart: () => void
@@ -152,7 +153,7 @@ function dead(state: GameState, on: ScreenHandlers): HTMLElement {
     const carried = carriedNames(run)
     if (carried.length > 0) summary.append(el('p', 'screen-note', `Carried: ${carried.join(' · ')}`))
     summary.append(
-      el('p', 'screen-note', `${run.path.length} ${run.path.length === 1 ? 'room' : 'rooms'} down`),
+      el('p', 'screen-note', `${new Set(run.path).size} ${new Set(run.path).size === 1 ? 'room' : 'rooms'} ${run.map.layout === 'maze' ? 'explored' : 'down'}`),
     )
     panel.append(summary)
   }
@@ -183,7 +184,7 @@ function dead(state: GameState, on: ScreenHandlers): HTMLElement {
   // same frames the count above counts, with the roads it walked past beside
   // them. It is **under** the forward route on purpose — a screen's way on may
   // never be the thing you have to scroll to find.
-  if (run) panel.append(stripPanel(run))
+  if (run) panel.append(run.map.layout === 'maze' ? mazeMapPanel(run) : stripPanel(run))
   box.append(panel)
   return box
 }
@@ -203,7 +204,7 @@ function complete(state: GameState, on: ScreenHandlers): HTMLElement {
       el(
         'p',
         'screen-note',
-        `${run.bones} bones left · ${run.path.length} ${run.path.length === 1 ? 'room' : 'rooms'} down`,
+        `${run.bones} bones left · ${new Set(run.path).size} ${new Set(run.path).size === 1 ? 'room' : 'rooms'} ${run.map.layout === 'maze' ? 'explored' : 'down'}`,
       ),
     )
   }
@@ -412,9 +413,9 @@ function carriedPanel(view: Overlay & { kind: 'carried' }): HTMLElement | null {
 function mapPanel(state: GameState): HTMLElement | null {
   const run = state.run
   if (!run) return null
-  const panel = el('div', 'screen-panel screen-strip')
+  const panel = el('div', run.map.layout === 'maze' ? 'screen-panel screen-maze' : 'screen-panel screen-strip')
   panel.dataset['focus'] = 'map'
-  panel.append(stripPanel(run))
+  panel.append(run.map.layout === 'maze' ? mazeMapPanel(run) : stripPanel(run))
   return panel
 }
 

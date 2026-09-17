@@ -11,7 +11,8 @@ import type { World } from '../render/compositor.js'
 import { enemyArt, handArt, isScenePlate, propArt, roomArt, url } from '../render/assets.js'
 import { STAGES, breakFor, enemy as enemyById, stageForRound, stanceAt } from '../content/enemies.js'
 import { idlePose } from '../content/enemyPresentation.js'
-import { exitsAvailable, roomAt } from '../game/map.js'
+import { exitUnlocked, exitsAvailable, ritualIn, roomAt } from '../game/map.js'
+import { COMPASS, KEYS, areaById } from '../content/areas.js'
 import { actionFor, platesFor, stateOf } from '../content/interactions.js'
 import { reward, thingSaidIn } from '../content/rewards.js'
 import { carriedSaidIn, ladderChips, stripSaid } from '../content/faces.js'
@@ -53,6 +54,7 @@ export interface WorldHandlers {
   readonly onGo: (to: string) => void
   /** One of the things lying in this room, picked up. */
   readonly onTake: (index: number) => void
+  readonly onTakeKey: () => void
   /**
    * A core die on a table or a chain, taken.
    *
@@ -80,7 +82,7 @@ export interface WorldHandlers {
  */
 function resolvedRitual(state: GameState) {
   const run = state.run!
-  return run.ritual?.roomId === run.roomId ? run.ritual : undefined
+  return ritualIn(run)
 }
 
 export function renderWorld(world: World, state: GameState, handlers: WorldHandlers): void {
@@ -403,23 +405,38 @@ function renderHits(world: World, state: GameState, handlers: WorldHandlers): vo
   // **A held exit renders nothing.** Not a greyed arch, not a dimmed label:
   // `exitsOpen` and the reducer's GO guard are the one statement of whether a
   // room lets you leave, and the view obeys it rather than restating it.
+  if (state.mode === 'explore' && here.key && !(run.keys ?? []).includes(here.key)) {
+    const seat = here.spareSeats?.[0]?.at ?? { x: .5, y: .66 }
+    const key = KEYS[here.key]
+    const inspect = button({ act: 'inspect-key', label: key.name, describe: `${key.name}. ${key.purpose}`,
+      onPress: () => handlers.onLook('progression-key'), className: 'hit hit-focal maze-key' })
+    inspect.style.left = `${seat.x * 100}%`; inspect.style.top = `${seat.y * 100}%`
+    const take = button({ act: 'take-key', label: 'TAKE', describe: `Take the ${key.name}. ${key.purpose}`,
+      onPress: handlers.onTakeKey, className: 'hit hit-focal' })
+    take.style.left = `${seat.x * 100}%`; take.style.top = `${(seat.y + LOOT_TAKE_DROP) * 100}%`
+    world.hits.append(inspect, take)
+  }
+
   if (exitsAvailable(run, here)) {
     for (const exit of here.exits) {
       if (!exit.at) continue
+      const locked = !exitUnlocked(run, exit)
+      const requirement = exit.requiresKey ? KEYS[exit.requiresKey].name : ''
       const b = button({
-        act: 'go',
+        act: locked ? 'inspect-lock' : 'go',
         label: '',
-        describe: `${exit.label} — ${exit.sense}`,
-        onPress: () => handlers.onGo(exit.to),
-        className: 'hit hit-focal hit-go',
+        describe: locked ? `${exit.direction ?? exit.label}: locked. Requires ${requirement}. Inspect` : `${exit.direction ?? exit.label} — ${exit.sense}`,
+        onPress: () => locked ? handlers.onLook(`locked:${exit.to}`) : handlers.onGo(exit.to),
+        className: `hit hit-focal hit-go${exit.direction ? ' maze-exit' : ''}${locked ? ' maze-locked' : ''}`,
       })
       b.dataset['to'] = exit.to
-      const arrow = el('span', 'exit-arrow', '↑')
+      if (exit.direction) b.dataset['direction'] = exit.direction
+      const arrow = el('span', 'exit-arrow', locked ? '×' : exit.direction ? COMPASS[exit.direction].arrow : '↑')
       arrow.setAttribute('aria-hidden', 'true')
-      b.append(arrow, el('span', 'exit-label', exit.label))
+      b.append(arrow, el('span', 'exit-label', locked ? 'LOCK' : exit.label))
       // At a fork the consequence belongs to its doorway, before the press.
       // Single exits need only the verb; repeating their prose adds no choice.
-      if (here.exits.length > 1) {
+      if (here.exits.length > 1 && !exit.direction) {
         b.classList.add('hit-choice')
         b.append(el('span', 'exit-sense', exit.sense))
       }
@@ -449,13 +466,17 @@ function renderHits(world: World, state: GameState, handlers: WorldHandlers): vo
 function renderHud(world: World, state: GameState, handlers: WorldHandlers): void {
   const run = state.run!
   world.hud.replaceChildren()
+  const here = roomAt(run)
+  if (here.area && state.mode === 'explore' && (!here.enemy || run.cleared.includes(run.roomId))) {
+    world.hud.append(el('p', 'maze-location', `${areaById(here.area).name} · ${here.name}`))
+  }
 
   // The one teaching line, and it belongs to the room it teaches in: the node
   // the descent starts at. Keyed to the node rather than to `path.length`,
   // because how far the run walked is not what makes a room the first one —
   // and a fixture that stands you in the entry hall would otherwise miss it.
   if (state.mode === 'explore' && run.roomId === run.map.start && !roomAt(run).enemy) {
-    world.hud.append(el('p', 'room-hint', 'Tap ↑ to move · ? to inspect'))
+    world.hud.append(el('p', 'room-hint', run.map.layout === 'maze' ? 'Arrows follow the compass · MAP remembers' : 'Tap ↑ to move · ? to inspect'))
   }
 
   const combat = run.combat

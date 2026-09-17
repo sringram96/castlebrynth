@@ -118,13 +118,18 @@ button {
 /*
  * ── the Reliquary's four objects ─────────────────────────────────────
  *
- * The one room whose art is **a portrait per object** rather than a plate per
+ * The room whose art was **a portrait per object** rather than a plate per
  * position. An altar, a bell, a candle stand and a chest were painted once
  * each; the pipeline seats each one where it stands and the compositor lays
  * them into the same box as the backdrop. So everything below is the room's
  * *other* states drawn out of the plates that exist — the flame going out, the
- * bell answering, the chest taking the knock — and not one of them touches a
- * pixel of the delivered art.
+ * chest taking the knock — and not one of them touches a pixel of the
+ * delivered art.
+ *
+ * **The bell has left this section**, and it left the way every object here is
+ * meant to: its positions were painted, so it stopped being a plate with a
+ * treatment on it and became a family with frames. What is below is what is
+ * still owed a painting.
  *
  * Two attributes carry it, both written by the compositor from state and read
  * by nothing else:
@@ -161,48 +166,20 @@ button {
 }
 
 /*
- * The bell, swung.
+ * **The bell has no rule here any more, and that is the point.**
  *
- * Six stops, on the chain's own pivot. The plate is the whole scene, so
- * rotating it rotates the bell about the point the chain leaves the frame and
- * moves nothing else — every other pixel in the plate is transparent.
+ * It used to swing on `transform-origin: 21.4% 1.6%` — a rotation of the one
+ * plate that existed, about the point the chain left the frame, with six stops
+ * in a keyframe. The swing is painted now: four plates of a bell part-way
+ * over, registered to each other on the bar by `tools/sheet.mjs`, played as
+ * beats by `content/interactions.ts`. A drawing of a bell at 15° is a thing a
+ * rotation of a hanging bell cannot be, because the skirt and the mouth
+ * foreshorten and the clapper is somewhere else.
  *
- * `transform-origin` is where the bell's chain meets the ceiling. It is a
- * fraction of the **element**, which is the world box, not of the painting
- * inside it — the plate is cover-fitted, so the two differ by the width the
- * crop eats. The stance in `tools/art.mjs` puts the bell's box at 0.235 of the
- * scene across and its top at 0.016 down; 0.235 of the scene is 0.214 of the
- * screen, which is the same number `ROOMS.reliquary` seats the bell's button at.
- * Measured, not guessed, and both move if the stance does.
+ * So there is no `bell-swing` keyframe, no pivot in this file, and nothing
+ * here to drift out of agreement with the stance. The one thing CSS still owes
+ * the Reliquary is the two objects that are still portraits, below.
  */
-.prop[data-prop="reliquary-bell"] {
-  transform-origin: 21.4% 1.6%;
-}
-
-.prop[data-prop="reliquary-bell"][data-move="swing"] {
-  animation: bell-swing 380ms ease-in-out 1;
-}
-
-@keyframes bell-swing {
-  0% {
-    transform: rotate(0deg);
-  }
-  18% {
-    transform: rotate(7deg);
-  }
-  38% {
-    transform: rotate(-9deg);
-  }
-  58% {
-    transform: rotate(5deg);
-  }
-  79% {
-    transform: rotate(-3deg);
-  }
-  100% {
-    transform: rotate(0deg);
-  }
-}
 
 /*
  * The chest, knocked by the mechanism under it.
@@ -746,6 +723,7 @@ button {
 #world[data-crossing='left'] { --travel-x: 12px; --travel-y: 0px; }
 #world[data-crossing='right'] { --travel-x: -12px; --travel-y: 0px; }
 #world[data-crossing='down'] { --travel-x: 0px; --travel-y: -10px; }
+#world[data-crossing='up'] { --travel-x: 0px; --travel-y: 10px; }
 
 /*
  * The settle, and **it must finish before `still` takes the class off it.**
@@ -1257,12 +1235,45 @@ body[data-band-off='yes'] #world::after {
    */
   flex-wrap: wrap;
   gap: 2px;
+  flex-wrap: wrap;
   padding: 2px 6px max(2px, env(safe-area-inset-bottom));
   background: var(--void);
   border-top: 1px solid var(--ink-dim);
 }
 
 #explore-controls[hidden] { display: none; }
+
+/* The maze keeps north fixed on both the room compass and the discovered map. */
+.hit-go.maze-exit { min-width: 44px; width: 44px; min-height: 44px; padding: 2px; }
+.maze-exit .exit-arrow { font-size: 22px; line-height: 22px; }
+.maze-exit .exit-label { font-size: 10px; line-height: 12px; }
+.maze-exit.maze-locked { color: var(--gold); }
+.maze-key { color: var(--gold); }
+.maze-location { position: absolute; top: 6px; left: 8px; right: 8px; margin: 0;
+  padding: 4px 6px; text-align: center; font-size: 11px; color: var(--ink);
+  background: var(--void); pointer-events: none; }
+.explore-minimap { display: flex; gap: 2px; align-items: center; padding: 0 3px; font-size: 9px; }
+.maze-map { display: block; width: 192px; height: 384px; max-width: 100%; margin: 0 auto; pointer-events: none; }
+.mini-map { width: 24px; height: 44px; margin: 0; }
+.map-passage { stroke: var(--ink-dim); stroke-width: 4; }
+.map-locked { stroke: var(--gold); stroke-dasharray: 5 5; }
+.map-room { fill: var(--void); stroke: var(--ink); stroke-width: 2; }
+.map-current { stroke: var(--gold); stroke-width: 4; }
+.map-unknown { stroke: var(--ink-dim); stroke-dasharray: 3 3; }
+.map-mark,.map-lock-mark { fill: var(--ink); font: bold 18px monospace; text-anchor: middle; dominant-baseline: central; }
+.map-coordinate { fill: var(--ink-dim); font: 9px monospace; text-anchor: middle; }
+.map-lock-mark { fill: var(--gold); }
+.map-area-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.map-area-tab { min-width: 44px; min-height: 44px; padding: 6px 10px; border: 1px solid var(--ink-dim); color: var(--ink); background: var(--void); }
+.map-area-tab[aria-pressed='true'] { border-color: var(--gold); color: var(--gold); }
+.map-legend { font-size: 10px; line-height: 1.7; text-align: center; color: var(--ink-dim); }
+.map-objective { color: var(--gold); font-size: 12px; line-height: 1.6; }
+.map-room-list { padding-left: 18px; font-size: 11px; line-height: 1.8; }
+.screen-panel.screen-maze { height: 100%; display: flex; flex-direction: column; align-items: stretch; }
+.screen-maze > .maze-map-panel { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.screen-maze > [data-act='close'] { flex: 0 0 auto; }
+.maze-map-panel .map-room-list { text-align: left; }
+.map-keys { border-top: 1px solid var(--ink-dim); padding-top: 10px; font-size: 11px; line-height: 1.6; }
 
 .explore-pile {
   position: relative;

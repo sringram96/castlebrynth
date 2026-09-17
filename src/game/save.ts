@@ -13,6 +13,9 @@
 
 import { EMPTY_META, SAVE_VERSION, TITLE } from './state.js'
 import type { GameState, Mode } from './state.js'
+import { KEYS } from '../content/areas.js'
+import { validateRun } from './mapValidation.js'
+import { roomAt } from './map.js'
 
 const KEY = 'castlebrynth'
 
@@ -63,6 +66,27 @@ export function load(storage: Storage = localStorage): Loaded {
   // the one thing this file has always done with a save it cannot use.
   if (saved.run && !saved.run.map?.nodes?.[saved.run.roomId]) {
     return { state: TITLE, discarded: 'corrupt' }
+  }
+  if (saved.run?.map.layout === 'maze') {
+    const run = saved.run
+    try {
+      if (validateRun(run.map).length || !Array.isArray(run.path) ||
+        run.path.some(id => !run.map.nodes[id]) || run.path.at(-1) !== run.roomId ||
+        (run.keys !== undefined && (!Array.isArray(run.keys) || new Set(run.keys).size !== run.keys.length ||
+          run.keys.some(key => !Object.hasOwn(KEYS, key)))) ||
+        (run.rituals !== undefined && (typeof run.rituals !== 'object' || run.rituals === null || Array.isArray(run.rituals)))) {
+        return { state: TITLE, discarded: 'corrupt' }
+      }
+      for (const [nodeId, ritual] of Object.entries(run.rituals ?? {})) {
+        if (!roomAt(run, nodeId).ritual || ritual.roomId !== nodeId ||
+          !Number.isInteger(ritual.roll) || ritual.roll < 1 || ritual.roll > 6 ||
+          !Number.isInteger(ritual.restored) || ritual.restored < 0 || ritual.restored > 30) {
+          return { state: TITLE, discarded: 'corrupt' }
+        }
+      }
+    } catch {
+      return { state: TITLE, discarded: 'corrupt' }
+    }
   }
 
   const meta = { ...EMPTY_META, ...saved.meta }

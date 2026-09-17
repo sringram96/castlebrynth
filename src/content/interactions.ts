@@ -61,9 +61,13 @@ export interface Plate {
  * The other half of `beatsFor`, for objects that were delivered one plate
  * rather than a family. A beat is *this drawing, now*; a move is **this object
  * is doing this, for this long** — and what "doing this" looks like is a named
- * animation in the stylesheet, because a bell swinging on its chain is a
- * rotation of a plate that has already been painted rather than four more
- * paintings of it.
+ * animation in the stylesheet, because a chest taking a knock from the
+ * mechanism under it is a shove of a plate that has already been painted
+ * rather than three more paintings of it.
+ *
+ * The bell was the other example here until its swing was painted. When the
+ * plates for a move arrive, the move becomes beats and this loses an entry —
+ * which is the direction this file is meant to travel.
  *
  * It obeys every rule a beat does. It is read off the two settled states the
  * reducer already produced, it contains no logic and no randomness, it reveals
@@ -258,10 +262,12 @@ export function platesFor(state: RoomInteractionState): readonly Plate[] {
     // is composition rather than occlusion — but it is stated, because the
     // midground paints in the order it is given.
     //
-    // Every frame below is the one plate that exists for that object. The
-    // position is in `look`, which is why putting the flame out, ringing the
-    // bell and opening the chest all leave the object **on screen** instead of
-    // asking for a plate nobody painted and vanishing.
+    // Three of the frames below are the one plate that exists for that object,
+    // and their position is in `look` — which is why putting the flame out and
+    // opening the chest leave the object **on screen** instead of asking for a
+    // plate nobody painted and vanishing. The bell is the exception and the
+    // shape the other three are waiting for: it has plates of its own, so its
+    // settled frame is `idle` and the swing between them is `beatsFor`.
     return [
       { id: 'reliquary-altar', art: 'altar', frame: 'still', look: state.lever },
       { id: 'reliquary-bell', art: 'bell', frame: 'idle', look: state.bellRung ? 'rung' : 'still' },
@@ -302,11 +308,30 @@ export function beatsFor(
     beats.push({ id, art, frame, at: ms })
   }
 
-  // The Reliquary's objects were delivered one plate each, so nothing in that
-  // room changes drawing and it has no beats at all. What it has is `movesFor`.
-  // The Offertory's plates are portraits too, so it has no beats and its two
-  // moves — the altar taking the offering, the lid grinding back — are in
-  // `movesFor` beside the Reliquary's.
+  // The bell is the Reliquary's one family, and ringing it is the one thing in
+  // that room that is authored rather than treated: four plates of a bell
+  // part-way over, registered to each other on the bar, and then the bell
+  // hanging again. The swing decays — the plates are 15°, 15° back, 7° and 4°
+  // — and the last beat is `idle`, which is also what a reload lands on, so
+  // settling early and never seeing it lose nothing but the middle.
+  //
+  // Eighty milliseconds a frame, which is the 380ms the CSS rotation took plus
+  // the one beat that puts the bell back.
+  if (before.templateId === 'reliquary' && after.templateId === 'reliquary') {
+    if (!before.bellRung && after.bellRung) {
+      at('reliquary-bell', 'bell', 'ring-1', 0)
+      at('reliquary-bell', 'bell', 'ring-2', 80)
+      at('reliquary-bell', 'bell', 'ring-3', 160)
+      at('reliquary-bell', 'bell', 'ring-4', 240)
+      at('reliquary-bell', 'bell', 'idle', 320)
+    }
+    // The altar and the chest are still portraits, and the shock that runs
+    // between them is still a move. See `movesFor`.
+    return beats
+  }
+
+  // The Offertory's plates are portraits, so it has no beats and its two moves
+  // — the altar taking the offering, the lid grinding back — are in `movesFor`.
   if (before.templateId !== 'chain-vault' || after.templateId !== 'chain-vault') return beats
 
   if (before.cage !== after.cage) {
@@ -357,11 +382,12 @@ export function beatsFor(
  * was made. A room whose art is a family of positions wants beats; a room whose
  * art is one portrait per object wants these.
  *
- * The Reliquary is the second kind, and there are exactly three things in it
- * that move. The bell swings on its chain because it was rung. The chest is
- * knocked by the mechanism under it. The altar takes the shock of the mechanism
- * it contains — which is the whole of what "something moves inside the altar"
- * can be shown as, until a lever is painted.
+ * The Reliquary is **both** since the swing was painted. The bell is a family
+ * now and it rings in `beatsFor`, on plates a painter drew. What is left here
+ * is the two objects still delivered as portraits: the chest is knocked by the
+ * mechanism under it, and the altar takes the shock of the mechanism it
+ * contains — which is the whole of what "something moves inside the altar" can
+ * be shown as, until a lever is painted.
  *
  * Putting the flame out is deliberately not here. It is not a movement, it is a
  * change of what the object *is*: the plate goes cold and stays cold, `look`
@@ -387,7 +413,6 @@ export function movesFor(
   }
   if (before.templateId !== 'reliquary' || after.templateId !== 'reliquary') return []
   const moves: Move[] = []
-  if (!before.bellRung && after.bellRung) moves.push({ id: 'reliquary-bell', move: 'swing', ms: 380 })
   if (before.lever !== after.lever) {
     moves.push({ id: 'reliquary-altar', move: 'work', ms: 240 })
     moves.push({ id: 'reliquary-chest', move: 'knock', ms: 330 })

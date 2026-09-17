@@ -24,6 +24,7 @@ import type { RoomTemplate } from '../../src/content/rooms.js'
 import { CONTENT_SPAN, TRAY_ASPECT } from '../../src/content/tray.js'
 import { REWARDS } from '../../src/content/rewards.js'
 import { CORE_DICE } from '../../src/content/dice.js'
+import { enemy } from '../../src/content/enemies.js'
 import { CLEAR_WATER, FOCAL_MOAT } from '../../src/content/roomResolver.js'
 import { actionFor, initialRoomState } from '../../src/content/interactions.js'
 
@@ -107,7 +108,7 @@ function pressesIn(t: RoomTemplate): readonly Press[] {
   for (const anchor of t.exitAnchors ?? []) {
     // A way's label is the plan's, not the template's, so the widest one any
     // plan could put here is what an anchor has to have room for.
-    out.push(at(`exit:${anchor.id}`, anchor.at, WIDEST_WAY))
+    out.push(at(`exit:${anchor.id}`, anchor.at, t.tags.includes('maze') ? TOUCH : WIDEST_WAY))
   }
 
   for (const spot of t.lootAt ?? []) {
@@ -312,7 +313,7 @@ describe('the ways out are in the picture', () => {
     // inventing a coordinate, which is the one thing a view may not do.
     for (const t of ROOM_LIBRARY) {
       if (!t.find && !t.enemy) continue
-      if (t.enemy && !t.find && t.id === 'gate') continue
+      if (t.enemy && !t.find && !enemy(t.enemy).drop && enemy(t.enemy).rewardChance === 0) continue
       expect((t.lootAt?.length ?? 0) > 0, `${t.id} can pay and has nowhere to pay into`).toBe(true)
     }
   })

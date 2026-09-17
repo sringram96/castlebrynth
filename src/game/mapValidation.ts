@@ -9,21 +9,23 @@
  *     lands somewhere and stands somewhere in the picture, every node is
  *     reachable, every room can carry the number of ways the map attached to
  *     it, only a junction forks, nothing was put in art that cannot hold it,
- *     and **there is no cycle**. A failure here is a bug in the resolver or in
- *     a template.
+ *     with acyclicity checked only for historical authored maps. A failure
+ *     here is a bug in the resolver or in a template.
  *   - `validateDescent` — **is this a run worth playing?** One way in,
  *     something paid for before the keeper, somewhere to heal before it, the
  *     keeper before the door, and the optional branch coming back. A failure
  *     here is a bug in the plan.
  *
- * `generateRun` runs both and throws, so a broken descent fails at the press of
- * START rather than four rooms later at a button that leads nowhere.
+ * `generateRun` checks the historical descent; `generateMaze` checks the shared
+ * graph rules and `validateMaze` for spatial loops, key gates and boss routes.
+ * Both fail at START rather than at a button that leads nowhere.
  */
 
 import { canHost, territoriesOf } from '../content/roomResolver.js'
 import { ROOM_TEMPLATES } from '../content/rooms.js'
 import { WAYS } from '../content/runPlans.js'
 import type { RunMap, RunRoom } from './map.js'
+import { validateMaze } from './mazeValidation.js'
 
 export interface MapProblem {
   readonly code: string
@@ -55,16 +57,8 @@ export function reachableFrom(map: RunMap, from: string): ReadonlySet<string> {
 /**
  * The nodes that sit on a cycle, or none because the map is a DAG.
  *
- * **This wave's law, written so that it can be repealed in one line.** The run
- * is an authored reel and it is forward-only: the maze feeling comes from
- * seeing the mouth of a road you cannot take, not from walking back up one. A
- * cycle in a generated descent is therefore a director bug, and the place to
- * find out is the press of START.
- *
- * If a later wave wants loops, it deletes the `cycle` problem from
- * `validateRunMap` and this function goes with it. Nothing else in the
- * codebase assumes acyclicity — `routesFrom` already refuses to revisit a node
- * rather than hanging, and `reachableFrom` is a plain flood fill.
+ * Acyclicity is a regression contract of the explicitly selected old reels.
+ * Normal maze runs deliberately skip this check and validate reciprocal loops.
  */
 export function cyclesIn(map: RunMap): readonly string[] {
   const state = new Map<string, 'open' | 'done'>()
@@ -250,12 +244,12 @@ export function validateRunMap(map: RunMap): readonly MapProblem[] {
 
   // 13. **The DAG law.** Forward-only, this wave, and asserted rather than
   //     assumed. Written to be repealed in one line — see `cyclesIn`.
-  for (const id of cyclesIn(map)) {
+  for (const id of map.layout === 'maze' ? [] : cyclesIn(map)) {
     out.push(problem('cycle', `${id} is on a cycle; this descent is a DAG`, id))
   }
 
   // 14. Something leads back into the start, so the root is not a root.
-  if ((incoming.get(map.start) ?? 0) > 0) {
+  if (map.layout !== 'maze' && (incoming.get(map.start) ?? 0) > 0) {
     out.push(problem('malformed-root', `${map.start} is the start and something leads into it`, map.start))
   }
 
@@ -440,5 +434,5 @@ export function validateDescent(map: RunMap): readonly MapProblem[] {
 
 /** Both questions, for the caller that wants a map or an exception. */
 export function validateRun(map: RunMap): readonly MapProblem[] {
-  return [...validateRunMap(map), ...validateDescent(map)]
+  return [...validateRunMap(map), ...(map.layout === 'maze' ? validateMaze(map) : validateDescent(map))]
 }

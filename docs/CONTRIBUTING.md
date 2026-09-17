@@ -2,9 +2,8 @@
 
 ## Before you change behaviour
 
-Read `PRODUCT.md`, `COMBAT.md` and `ART_DIRECTION.md`. Together they are under
-twenty minutes. They are the whole contract — there is no constitution, no
-article numbers, and no chronicle you have to have read.
+Read `MAZE.md`, then `PRODUCT.md`, `COMBAT.md` and `ART_DIRECTION.md`.
+The maze contract supersedes the earlier reel-only product decisions.
 
 `archive/` holds the pre-reset design stack. It is history. It binds nothing,
 and no active code may import from it.
@@ -18,6 +17,7 @@ npm run build        # typecheck + bundle
 npm test             # unit tests (vitest)
 npm run test:browser # Playwright, Chromium at 390x844
 npm run art          # rebuild public/assets from the masters
+npm run sheet        # cut a delivered contact sheet into registered masters
 npm run balance      # deterministic fight simulation
 ```
 
@@ -68,14 +68,15 @@ npm run balance      # deterministic fight simulation
   pops on the thing that made it.
 - **Movement is in the picture.** There is no GO button in the tray and there
   is nowhere to write one. An open way out is a hotspot seated on the painted
-  feature it passes through; a held one renders nothing at all.
+  feature in authored fixtures, or a compass seat in the generated maze.
+  Enemy-held exits are hidden; key locks are inspectable and name the key.
 - **Loot happens in the world.** There is no reward screen and no `reward`
   mode. What a fight pays falls beside the body and what a chest holds renders
   in the chest — discovered, revealed, inspected, decided on, taken, possessed,
   all of it in the room.
-- **Forward only.** The map is a DAG and the validator asserts it. No
-  backtracking and no cycle without a product decision that repeals the
-  assertion.
+- **Mazes have loops.** The user repealed the forward-only DAG rule. Validate
+  connectivity, reciprocal passages, reachable keys and boss gates. Preserve
+  per-room results when revisiting. Legacy authored fixtures still check DAGs.
 - **A fresh run carries nothing.** Six bare bones. Everything else is found.
 - **Combat chrome obeys the art's pixel grid.** A fill is a whole number of
   cells, a drain steps rather than slides, and the colours are the palette's.

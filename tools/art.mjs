@@ -388,7 +388,30 @@ const REG = 'docs/art-reference/masters/regions/'
 const HALL = `${REG}ossuary/hall.png`
 const DEPTH = `${REG}jungle-hell/depth.png`
 
+const BELLWORKS = 'docs/art-reference/masters/bellworks/'
+
+/**
+ * The Bellworks, delivered as six finished paintings.
+ *
+ * They are **not** composed here. Every other backdrop in this table is a
+ * region master with plates laid over it, because that is what the pre-reset
+ * art gave us; these six arrived already composed, one painting per room, and
+ * the pipeline's job on them is only the job it does on the last step of every
+ * other one — cover-crop to the scene's aspect, resample to 480 × 720,
+ * posterise, and make it opaque.
+ *
+ * That is also why they are masters rather than runtime files. They arrived as
+ * 1024 × 1536 PNGs of 2.3–2.8 MB, which is master shape and master weight, and
+ * `ART_DIRECTION.md` says masters live here and are never served: shipped raw
+ * they would be fifteen megabytes of runtime art, ten times what every other
+ * room costs, decoded on a phone at four times the size it can use. Through
+ * the pipeline they are a quarter of a megabyte each, and no pixel of the
+ * delivery is authored, retouched or recoloured on the way.
+ */
+const BELLWORKS_ROOMS = ['hanging', 'rope', 'weight', 'nest', 'service', 'balcony']
+
 const BACKDROPS = [
+  ...BELLWORKS_ROOMS.map((id) => ({ id: `bellworks-${id}`, base: `${BELLWORKS}${id}.png` })),
   {
     // The front door. The hall, closed off by a gate too big for it.
     id: 'threshold',
@@ -1087,7 +1110,13 @@ const ROOMS = [
     /** `<family>: [frames]`, and a family is built only if it is whole. */
     props: {
       altar: ['still'],
-      bell: ['idle'],
+      // **Registered, and the only family here that is.** The swing was
+      // delivered as a contact sheet and `tools/sheet.mjs` cut it into these
+      // five, each painted where the bell hangs and all five turning about the
+      // same bar — so there is no `stances.bell` below and nothing stages
+      // them. `idle` is the bell at rest, before it is rung and after it has
+      // settled; the four `ring` frames are the swing, in the order they play.
+      bell: ['idle', 'ring-1', 'ring-2', 'ring-3', 'ring-4'],
       brazier: ['lit'],
       chest: ['closed'],
     },
@@ -1105,10 +1134,17 @@ const ROOMS = [
      * the altar is the hero on the floor in front of the steps, the bell hangs
      * upper-left over it, and the candles and the chest sit low on either side
      * with the middle of the room left empty.
+     *
+     * **There is no `bell` here any more**, and its absence is what makes the
+     * swing possible: a stance seats a plate by its own opaque box, a tilted
+     * bell's box is wider and shorter than a hanging one's, and a family seated
+     * that way climbs the ceiling as it swings. The bell arrives registered
+     * instead — where it hangs is baked into the five masters by
+     * `tools/sheet.mjs`, off one placement read against this room — so this
+     * file no longer has an opinion about where it is.
      */
     stances: {
       altar: { width: 0.34, at: 0.5, foot: 0.79 },
-      bell: { width: 0.19, at: 0.235, foot: 0.29 },
       brazier: { width: 0.18, at: 0.185, foot: 0.8 },
       chest: { width: 0.235, at: 0.8, foot: 0.83 },
     },

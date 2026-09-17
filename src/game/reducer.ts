@@ -32,7 +32,7 @@ import type { CoreDieId, TalismanId } from '../content/dice.js'
 import { breakFor, enemy } from '../content/enemies.js'
 import type { Enemy } from '../content/enemies.js'
 import { defeatOf } from '../content/defeat.js'
-import { exitsOpen, legal, stateOf } from '../content/interactions.js'
+import { legal, stateOf } from '../content/interactions.js'
 import {
   legalScores,
   scoreName,
@@ -50,8 +50,10 @@ import {
   totalsFor,
 } from '../combat/loadout.js'
 import { MAX_ROLLS, canonicalHeld, rerollHand, rollHand } from '../combat/roll.js'
-import { roomAt } from './map.js'
-import type { DieOffer, ResolvedRoom } from './map.js'
+import { exitUnlocked, exitsAvailable, ritualIn, roomAt } from './map.js'
+import type { DieOffer, ResolvedRoom, RunMap } from './map.js'
+import { KEYS } from '../content/areas.js'
+import { generateMaze } from './mazeGenerator.js'
 import { generateRun } from './runGenerator.js'
 import { RELIQUARY_CHANNEL, RITUAL_CHANNEL, RNG_CHANNEL, combatSalt, nodeSalt, rngAt } from './rng.js'
 import type { Rng } from './rng.js'
@@ -68,7 +70,8 @@ import type {
 } from './state.js'
 
 export type Action =
-  | { readonly type: 'START_RUN'; readonly seed?: number }
+  | { readonly type: 'START_RUN'; readonly seed?: number; readonly layout?: 'classic' }
+  | { readonly type: 'TAKE_KEY' }
   | { readonly type: 'TITLE' }
   | { readonly type: 'CONTINUE' }
   | { readonly type: 'LOOK'; readonly detailId: string }
@@ -446,10 +449,9 @@ function recover(run: RunState, wanted: number): { readonly run: RunState; reado
  * is absent: `combat`, `offer` and `cause`, which is the invariant the
  * stuck-on-death bug turned on.
  */
-export function newRun(seed: number): RunState {
+export function newRun(seed: number, map: RunMap = generateRun(seed >>> 0)): RunState {
   // The descent is generated here, once, and stored. Everything after this
   // point reads the map; nothing anywhere rebuilds it. See `runGenerator.ts`.
-  const map = generateRun(seed >>> 0)
   const run: RunState = {
     seed: seed >>> 0,
     map,
@@ -715,7 +717,8 @@ export function reduce(state: GameState, action: Action): GameState {
       // it, because there is no longer anything to go back to.
       const seed = action.seed ?? ((Date.now() ^ (state.meta.runs * 2654435761)) >>> 0)
       const meta = { ...state.meta, runs: state.meta.runs + 1 }
-      return { version: SAVE_VERSION, mode: 'explore', meta, run: newRun(seed) }
+      const map = action.layout === 'classic' ? generateRun(seed) : generateMaze(seed)
+      return { version: SAVE_VERSION, mode: 'explore', meta, run: newRun(seed, map) }
     }
 
     case 'CONTINUE': {
@@ -726,6 +729,16 @@ export function reduce(state: GameState, action: Action): GameState {
     case 'LOOK': {
       const run = state.run
       if (!run) return state
+      if (action.detailId === 'progression-key') {
+        const key = roomAt(run).key
+        if (!key || (run.keys ?? []).includes(key)) return state
+        return { ...state, run: { ...run, say: `${KEYS[key].name}. ${KEYS[key].purpose}` } }
+      }
+      if (action.detailId.startsWith('locked:')) {
+        const exit = roomAt(run).exits.find(e => e.to === action.detailId.slice(7))
+        if (!exit?.requiresKey || exitUnlocked(run, exit)) return state
+        return { ...state, run: { ...run, say: `Locked. Find the ${KEYS[exit.requiresKey].name}. ${KEYS[exit.requiresKey].purpose}` } }
+      }
 
       // A found thing is looked at exactly as a carving is: one verb, one
       // answer, nothing committed. What it says is the card — the name and the
@@ -783,27 +796,15 @@ export function reduce(state: GameState, action: Action): GameState {
       const run = state.run
       if (!run || state.mode !== 'explore') return state
       const here = roomAt(run)
-      // A room with a living enemy has no exits. The fight is the way out.
-      if (here.enemy && !run.cleared.includes(run.roomId)) return state
-      // A room with an unresolved ritual has none either, for the same reason:
-      // the thing in the middle of it *is* the room. The exit is withheld here,
-      // in state, rather than hidden by a view — so no dispatch, no fixture and
-      // no reload can walk past it.
-      if (here.ritual && run.ritual?.roomId !== run.roomId) return state
-      // And a room whose machinery is still shut holds its exits the same way,
-      // for the same reason. The check is here, in state, rather than in the
-      // view that draws the button — so no dispatch, no fixture and no reload
-      // can walk through a gate that is down.
-      if (!exitsOpen(stateOf(run.rooms, run.roomId, here.id))) return state
+      if (!exitsAvailable(run, here)) return state
       // The **generated** exits, not the template's — a template has none. The
       // reducer is the authority on where a press may go, and the map is the
       // authority it reads.
-      if (!here.exits.some((e) => e.to === action.to)) return state
+      const exit = here.exits.find(e => e.to === action.to)
+      if (!exit || !exitUnlocked(run, exit)) return state
 
-      // Something is still lying here, and the descent does not come back.
-      // The band says so on the way through — not as a warning before the
-      // press, which would be the game second-guessing a decision it printed
-      // the stakes of, but as the fact it is.
+      // Unclaimed loot stays in this room. A maze can return to it; the old
+      // authored fixtures keep their irreversible departure wording.
       const abandoned = unclaimedIn(run).length > 0
       const next = roomAt(run, action.to)
       const moved: RunState = {
@@ -811,7 +812,9 @@ export function reduce(state: GameState, action: Action): GameState {
         roomId: action.to,
         path: [...run.path, action.to],
         looked: [],
-        say: abandoned ? `I left it. The door does not open twice. ${next.arrival}` : next.arrival,
+        say: abandoned
+          ? `${run.map.layout === 'maze' ? 'It stays where I left it.' : 'I left it. The door does not open twice.'} ${next.arrival}`
+          : next.arrival,
       }
       if (next.ending) {
         return {
@@ -1082,7 +1085,7 @@ export function reduce(state: GameState, action: Action): GameState {
       // Once. The room has already answered, so a second press has nothing
       // left to decide — which is the same sentence that makes a reload
       // unable to reroll it and a held thumb unable to farm it.
-      if (run.ritual?.roomId === run.roomId) return state
+      if (ritualIn(run)) return state
 
       const roll = (rngFor(run, ritualSalt(run)).int(6) + 1) as RitualRoll
       const missingBefore = roomToRecover(run)
@@ -1092,9 +1095,20 @@ export function reduce(state: GameState, action: Action): GameState {
         run: {
           ...filled,
           ritual: { roomId: run.roomId, roll, restored: gave, missingBefore },
+          rituals: { ...run.rituals, [run.roomId]: { roomId: run.roomId, roll, restored: gave, missingBefore } },
           say: ritualSay(roll, gave),
         },
       }
+    }
+
+    case 'TAKE_KEY': {
+      const run = state.run
+      if (!run || state.mode !== 'explore') return state
+      const here = roomAt(run)
+      if (!here.key || (run.keys ?? []).includes(here.key)) return state
+      if (here.enemy && !run.cleared.includes(run.roomId)) return state
+      return { ...state, run: { ...run, keys: [...(run.keys ?? []), here.key],
+        say: `${KEYS[here.key].name}. ${KEYS[here.key].purpose}` } }
     }
 
     case 'INTERACT': {

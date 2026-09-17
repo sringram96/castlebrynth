@@ -33,7 +33,7 @@ const play = (state: GameState, ...actions: Action[]): GameState =>
  * Everything after it is a real press.
  */
 function poised(templateId: string, seed = 1): GameState {
-  const started = reduce(TITLE, { type: 'START_RUN', seed })
+  const started = reduce(TITLE, { type: 'START_RUN', layout: 'classic', seed })
   const opened = reduce(standIn(started, templateId), { type: 'FIGHT' })
   const combat = opened.run!.combat!
   return { ...opened, run: { ...opened.run!, combat: { ...combat, enemyHp: 1 } } }

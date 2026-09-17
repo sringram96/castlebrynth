@@ -59,6 +59,8 @@ export function territoriesOf(template: RoomTemplate): readonly Territory[] {
 
 /** Whether one authored place can take one request. Pure, and total. */
 export function fits(template: RoomTemplate, request: RoomRequest): boolean {
+  // The old authored plans remain explicit regression fixtures, not maze pools.
+  if (template.tags.includes('maze') && !request.requiredTags?.includes('maze')) return false
   if (template.role !== request.role) return false
   // Membership, not equality. The extension is what lets one honest painting
   // stand in two stretches of the descent; it is not a loosening, because a
