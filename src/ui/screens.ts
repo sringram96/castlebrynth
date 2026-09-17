@@ -33,7 +33,7 @@ import {
   talisman as talismanById,
 } from '../content/dice.js'
 import type { CoreDieId } from '../content/dice.js'
-import { carried, stripSaid } from '../content/faces.js'
+import { carried, handSaid, stripSaid } from '../content/faces.js'
 import { enemy as enemyById } from '../content/enemies.js'
 import { roomAt } from '../game/map.js'
 import { carriedNames, claimedIn, refusalForDie } from '../game/reducer.js'
@@ -477,18 +477,25 @@ function scorecardTable(state: GameState): HTMLElement {
 }
 
 /**
- * The six slots, named and counted.
+ * The six, as cards, with their faces.
  *
- * `Bone ×6` while every slot holds the same thing, and each named once they do
- * not — which is what a replacement economy will produce, and is why the count
- * is derived rather than assumed.
+ * One card per *kind* rather than per slot: a run holding six bones is one
+ * thing said once with a count on it, and a run that has swapped two slots is
+ * three cards. The strip is the whole of what a crooked die is, and this is
+ * the one screen between fights where it can be read at a readable size —
+ * which is what the slim row's press opens.
  */
-function handSummary(hand: readonly CoreDieId[]): string {
+function handCards(hand: readonly CoreDieId[]): HTMLElement {
   const counts = new Map<CoreDieId, number>()
   for (const id of hand) counts.set(id, (counts.get(id) ?? 0) + 1)
-  return [...counts]
-    .map(([id, n]) => (n > 1 ? `${coreDie(id).name} ×${n}` : coreDie(id).name))
-    .join(' · ')
+  const cards = el('div', 'offers')
+  cards.id = 'hand-dice'
+  for (const [id, n] of counts) {
+    const die = carried(id)
+    if (!die) continue
+    cards.append(loadoutCard(n > 1 ? { ...die, name: `${die.name} ×${n}` } : die))
+  }
+  return cards
 }
 
 /** MENU: the pile, the loadout, the satchel, the rules, and the scorecard. */
@@ -521,10 +528,11 @@ function menuPanel(state: GameState): HTMLElement | null {
   panel.append(el('h2', 'screen-head', 'THE LOADOUT'))
   const loadout = el('div', 'offers')
   loadout.id = 'loadout'
-  const hand = el('p', 'screen-line', `${HAND_SLOTS} dice: ${handSummary(run.hand)}`)
+  const hand = el('p', 'screen-line', `${HAND_SLOTS} dice: ${handSaid(run.hand)}`)
   hand.id = 'hand-slots'
   hand.dataset['slots'] = String(run.hand.length)
   panel.append(hand)
+  panel.append(handCards(run.hand))
   for (const id of run.ironDice) loadout.append(loadoutCard(ironDieById(id)))
   for (const id of run.itemDice) loadout.append(loadoutCard(itemDieById(id)))
   for (const id of run.talismans) loadout.append(loadoutCard(talismanById(id)))

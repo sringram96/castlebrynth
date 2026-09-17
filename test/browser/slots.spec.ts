@@ -17,7 +17,15 @@ import type { Page } from '@playwright/test'
 import { act, boot, state } from './helpers.js'
 
 const overlay = (page: Page) => page.locator('#overlay')
-const chips = (page: Page) => page.locator('#overlay .faces .face-chip')
+
+/**
+ * The chips on one card, named by the thing they belong to.
+ *
+ * Scoped rather than global: MENU prints the six core dice with their strips
+ * too, so `#overlay .faces` is several cards there and the question these
+ * tests are asking is always about one named object.
+ */
+const chips = (page: Page, id: string) => page.locator(`#overlay [data-reward-id="${id}"] .face-chip`)
 
 /** Everything the loadout rail is offering as a press. */
 const slots = (page: Page) => page.locator('#iron button, #items button')
@@ -29,16 +37,18 @@ test.describe('an occupied slot opens its card', () => {
 
     await expect(overlay(page)).toBeVisible()
     // Name, faces, when-line, flavour — the whole card, in that order.
-    await expect(overlay(page).locator('.card-name')).toHaveText('Grave Candle')
-    await expect(chips(page)).toHaveText(['+3', '+3', '+5', '+5', '·', '·'])
+    await expect(overlay(page).locator('[data-reward-id="grave-candle"] .card-name')).toHaveText(
+      'Grave Candle',
+    )
+    await expect(chips(page, 'grave-candle')).toHaveText(['+3', '+3', '+5', '+5', '·', '·'])
     await expect(overlay(page)).toContainText('Rolls itself at every ATTACK. No press.')
     await expect(overlay(page)).toContainText('It only burns over the dead')
   })
 
   test('reads the iron die in MENU between fights', async ({ page }) => {
-    await boot(page, '?room=fork&iron=3')
+    await boot(page, '?room=fork&iron=2')
     await act(page, 'menu').click()
-    await expect(chips(page)).toHaveText(['0', '0', '3', '3', '5', '7'])
+    await expect(chips(page, 'rustplate')).toHaveText(['0', '0', '0', '0', '1', '2'])
     await expect(overlay(page)).toContainText('Rolls with your six at ROLL')
     await expect(overlay(page)).toContainText('No press.')
   })
@@ -46,14 +56,14 @@ test.describe('an occupied slot opens its card', () => {
   test('reads the talisman, whose faces are the lines it answers to', async ({ page }) => {
     await boot(page, '?room=fork&talismans=pair-talisman')
     await act(page, 'menu').click()
-    await expect(chips(page)).toHaveText(['PAIR', 'TWO PAIR', '+12'])
+    await expect(chips(page, 'pair-talisman')).toHaveText(['PAIR', 'TWO PAIR', '+12'])
     await expect(overlay(page)).toContainText('Fires when the line I score is PAIR or TWO PAIR')
   })
 
   test('reads a slot inside a fight, between sequences', async ({ page }) => {
-    await boot(page, '?room=deep&rolls=1&iron=5&items=splinter-fetish')
+    await boot(page, '?room=deep&rolls=1&iron=2&items=splinter-fetish')
     await page.locator('#items .item-die').first().click()
-    await expect(chips(page)).toHaveText(['+8', '+8', '·', '·', '−2', '−2'])
+    await expect(chips(page, 'splinter-fetish')).toHaveText(['+8', '+8', '·', '·', '−2', '−2'])
     // The cost faces are marked as costs, not merely coloured.
     await expect(page.locator('#overlay .face-chip[data-face="cost"]')).toHaveCount(2)
   })
@@ -119,7 +129,7 @@ test.describe('the faces are drawn everywhere the thing is read', () => {
       'aria-label',
       /\+3, \+3, \+5, \+5, blank, blank/,
     )
-    await boot(page, '?room=hollow&iron=3')
-    await expect(page.locator('#iron button')).toHaveAttribute('aria-label', /0, 0, 3, 3, 5, 7/)
+    await boot(page, '?room=hollow&iron=2')
+    await expect(page.locator('#iron button')).toHaveAttribute('aria-label', /0, 0, 0, 0, 1, 2/)
   })
 })

@@ -187,6 +187,20 @@ export function carried(id: string): CarriedThing | undefined {
   }
 }
 
+/**
+ * The six, named and counted: `Bone ×5 · Jawbone`.
+ *
+ * Derived rather than assumed, because a replacement economy produces a hand
+ * that is six of the same thing on the first floor and six different things on
+ * a lucky one. One sentence, read by the slim row under the picture and by the
+ * loadout in MENU, so the two can never name different builds.
+ */
+export function handSaid(hand: readonly CoreDieId[]): string {
+  const counts = new Map<CoreDieId, number>()
+  for (const id of hand) counts.set(id, (counts.get(id) ?? 0) + 1)
+  return [...counts].map(([id, n]) => (n > 1 ? `${coreDie(id).name} ×${n}` : coreDie(id).name)).join(' · ')
+}
+
 /** What it is called, for a pop that carries its own cause. */
 export function carriedName(id: string): string {
   return carried(id)?.name ?? id

@@ -255,7 +255,10 @@ export interface IronDie {
 const RUSTPLATE: IronDie = {
   id: 'rustplate',
   name: 'Rustplate',
-  faces: [0, 0, 3, 3, 5, 7],
+  // Useful terrain, not a second health bar. The old 0/0/3/3/5/7 table made
+  // the route that charged a toll and added a fight dramatically safer than
+  // the short route because it erased most of the Warden's answer.
+  faces: [0, 0, 0, 0, 1, 2],
   rule: 'Rolls with your six at ROLL. Blocks its face off the answer. No press.',
   flavour: 'Two thirds of a breastplate and most of a century of rain.',
 }

@@ -48,7 +48,7 @@ const animating = (page: Page): Promise<boolean> =>
  * A fight standing on six known faces, with an item die that fires a **flat**.
  *
  * Seed 5 rolls `+8` on the Splinter Fetish at this position in the stream, and
- * `?iron=5` stands the plate on a five. `6 6 6 4 4 3` sums to 29.
+ * `?iron=2` stands the plate on its top face. `6 6 6 4 4 3` sums to 29.
  *
  * The whole loadout is named. A fresh run starts with **nothing** now — the
  * iron is in the cage and the talisman is in the Reliquary — so a fixture that
@@ -56,10 +56,10 @@ const animating = (page: Page): Promise<boolean> =>
  * honest shape: every one of them is a thing the run found somewhere.
  */
 const CARRYING = 'items=splinter-fetish&talismans=pair-talisman'
-const FLAT = `?seed=1&room=deep&bones=26&rolls=3&dice=6,6,6,4,4,3&${CARRYING}&iron=5`
+const FLAT = `?seed=1&room=deep&bones=26&rolls=3&dice=6,6,6,4,4,3&${CARRYING}&iron=2`
 
 /** The same, on a seed whose Splinter Fetish comes up on a **cost** face. */
-const COST = `?seed=3&room=deep&bones=26&rolls=3&dice=6,6,6,4,4,3&${CARRYING}&iron=5`
+const COST = `?seed=3&room=deep&bones=26&rolls=3&dice=6,6,6,4,4,3&${CARRYING}&iron=2`
 
 /** The same, with the iron come up **empty**. */
 const BLANK = `?seed=4&room=deep&bones=26&rolls=3&dice=6,6,6,4,4,3&${CARRYING}&iron=0`
@@ -111,9 +111,23 @@ test.describe('the beats, in order', () => {
     await boot(page, FLAT)
     // Before the press. The caption is the settled terrain of the turn, and it
     // is readable while the decision is still open.
-    await expect(page.locator('#iron-caption')).toContainText('Rustplate holds: blocks 5 this turn.')
-    await expect(page.locator('#iron .iron-die')).toHaveAttribute('data-block', '5')
+    await expect(page.locator('#iron-caption')).toContainText('Rustplate holds: blocks 2 this turn.')
+    await expect(page.locator('#iron .iron-die')).toHaveAttribute('data-block', '2')
     await expect(page.locator('.score-entry[data-hand="pair"]')).toBeVisible()
+  })
+
+  test('takes the whole answer when what it shows covers it', async ({ page }) => {
+    // The iron's top face is a two, so the answer it can erase is a two: the
+    // Gnawing's, at the rung it opens on. Against anything heavier it narrows
+    // the blow and never deletes it — which is the whole of what the cage is
+    // worth, and is asserted at the other end in `warden.spec.ts`.
+    await boot(page, '?room=hollow&bones=26&rolls=3&dice=1,1,2,3,4,6&iron=2')
+    await expect(page.locator('#enemy-hits')).toHaveAttribute('data-damage', '2')
+    await page.locator('.score-entry[data-hand="pair"]').click()
+    expect((await state(page)).run!.combat!.lastAttack!.retaliation).toBe(0)
+    expect(await livingBones(page)).toBe(26)
+    await act(page, 'menu').click()
+    await expect(page.locator('.combat-history')).toContainText('The iron takes all of it')
   })
 
   test('says the iron came up empty, in the same place, when it did', async ({ page }) => {
@@ -172,9 +186,9 @@ test.describe('a cost is a cost', () => {
     const record = (await state(page)).run!.combat!.lastAttack!
     expect(record.itemCost).toBe(2)
     expect(record.landed).toBe(true)
-    // Two for the cost, and the Marrow's five less the iron's five: nothing.
-    expect(record.retaliation).toBe(0)
-    expect(await livingBones(page)).toBe(24)
+    // Two for the cost, and the Marrow's five less the iron's two: three.
+    expect(record.retaliation).toBe(3)
+    expect(await livingBones(page)).toBe(21)
     // The cost landed on the player's health, which is where a cost is paid.
     expect(
       (await pops(page)).some((p) => p.on === 'item-die:0' && p.text === 'Splinter Fetish−2'),
@@ -185,7 +199,7 @@ test.describe('a cost is a cost', () => {
     // Two bones and a cost face. The pile empties before the blow, so the
     // enemy is untouched and the line is not spent. Revisable ruling,
     // asserted: see docs/COMBAT.md § Costs.
-    await boot(page, `?seed=3&room=deep&bones=2&rolls=3&dice=6,6,6,4,4,3&${CARRYING}&iron=5`)
+    await boot(page, `?seed=3&room=deep&bones=2&rolls=3&dice=6,6,6,4,4,3&${CARRYING}&iron=2`)
     const full = (await state(page)).run!.combat!.enemyHp
 
     await page.locator('.score-entry[data-hand="pair"]').click()
@@ -232,7 +246,7 @@ test.describe('a reload lands on the settled truth', () => {
     expect(during.damage).toBe(49)
     expect(during.itemFlats).toBe(8)
     expect(during.talismanFlat).toBe(12)
-    expect(during.block).toBe(5)
+    expect(during.block).toBe(2)
 
     const settledBefore = JSON.stringify((await state(page)).run)
     await settle(page)
@@ -250,15 +264,15 @@ test.describe('motion off reaches the same numbers, in the same tick', () => {
     // Every number the cascade would have shown is stated, at once, as text.
     await expect(page.locator('#readout')).toHaveAttribute('data-total', '49')
     await expect(page.locator('#enemy-hp')).toHaveAttribute('data-hp', '71')
-    expect(await livingBones(page)).toBe(26)
+    expect(await livingBones(page)).toBe(23)
     // Over the art the exchange is one line: what was dealt, and what it cost.
     await expect(page.locator('#say')).toContainText('49')
-    await expect(page.locator('#say')).toContainText('0 bones lost')
+    await expect(page.locator('#say')).toContainText('3 bones lost')
     // The prose receipt is not lost with it — it is one press away, whole, and
-    // still names the beat that made the loss nothing.
+    // still names the beat that took two of the Marrow's five off the pile.
     await act(page, 'menu').click()
     const receipt = page.locator('.combat-history')
-    await expect(receipt).toContainText('The iron takes all of it')
+    await expect(receipt).toContainText('The iron held 2')
   })
 
   test('the same presses produce the same exchange with motion on', async ({ page }) => {
@@ -280,16 +294,16 @@ test.describe('motion off reaches the same numbers, in the same tick', () => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await boot(page, COST, { motion: true })
     await page.locator('.score-entry[data-hand="pair"]').click()
-    expect(await livingBones(page)).toBe(24)
+    expect(await livingBones(page)).toBe(21)
   })
 })
 
 test.describe('an item die has no press that changes anything', () => {
   test('there is no verb for it anywhere, in any position of an attack', async ({ page }) => {
     const positions = [
-      '?seed=5&room=deep&mode=combat&iron=5&items=grave-candle,splinter-fetish',
-      '?seed=5&room=deep&rolls=1&iron=5&items=grave-candle,splinter-fetish',
-      '?seed=5&room=deep&rolls=3&iron=5&items=grave-candle,splinter-fetish',
+      '?seed=5&room=deep&mode=combat&iron=2&items=grave-candle,splinter-fetish',
+      '?seed=5&room=deep&rolls=1&iron=2&items=grave-candle,splinter-fetish',
+      '?seed=5&room=deep&rolls=3&iron=2&items=grave-candle,splinter-fetish',
     ]
     for (const fixture of positions) {
       await boot(page, fixture)
@@ -346,7 +360,7 @@ test.describe('an item die has no press that changes anything', () => {
   })
 
   test('REROLL throws the six and leaves the iron exactly as it was', async ({ page }) => {
-    await boot(page, '?seed=5&room=deep&rolls=1&iron=3&items=splinter-fetish')
+    await boot(page, '?seed=5&room=deep&rolls=1&iron=2&items=splinter-fetish')
     const block = await page.locator('#iron .iron-die').getAttribute('data-block')
     const caption = await page.locator('#iron-caption').textContent()
     await dice(page).nth(0).click()

@@ -24,7 +24,7 @@
  *   ?rolls=1                    the dice down, with two throws still in hand
  *   ?dice=6,6,6,4,4,3           exactly these faces on the table
  *   ?used=pair,triple           those two categories already spent
- *   ?iron=5                     an iron die on, standing on an exact block
+ *   ?iron=2                     an iron die on, standing on an exact block
  *   ?iron=none                  a run carrying no iron die at all (the default)
  *   ?items=splinter-fetish      that item die in the loadout (two at most)
  *   ?items=none                 an empty item loadout

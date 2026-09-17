@@ -44,7 +44,7 @@ import type { Rng } from '../game/rng.js'
  *
  * The face index is recorded alongside the block so the presentation can name
  * *which face* without re-deriving it from a number that several faces share —
- * `[0, 0, 3, 3, 5, 7]` has two zeroes and two threes.
+ * `[0, 0, 0, 0, 1, 2]` is four zeroes and two that are not.
  */
 export interface IronRoll {
   readonly id: IronDieId

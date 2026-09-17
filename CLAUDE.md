@@ -165,7 +165,7 @@ that does not need it continues.
 
 Any mode is reachable from a URL, which is what keeps the ends of the game
 testable: `?room=gate&bones=4&mode=combat`, `?mode=dead`, `?rolls=1`,
-`?dice=6,6,6,4,4,3`, `?used=pair,triple`, `?enemyHp=20`, `?iron=5`,
+`?dice=6,6,6,4,4,3`, `?used=pair,triple`, `?enemyHp=20`, `?iron=2`,
 `?iron=none`, `?items=splinter-fetish`, `?talismans=pair-talisman`,
 `?offertory=paid`, `?vault=solved`. `?room=` names an authored template and
 stands you in the first room of the run that used it; `?node=a8b` names one

@@ -84,3 +84,49 @@ test('a talisman stays visible and inspectable while the tray is hidden', async 
   await expect(page.locator('#overlay')).toBeVisible()
   expect((await state(page)).run).toEqual(before.run)
 })
+
+test('the six-die build stays visible and readable between fights', async ({ page }) => {
+  // The tray is what a fight is played on and it goes away with the fight. The
+  // build does not: a slot bought with a bone and given up for is on screen in
+  // the room, in slot order, with the crooked ones marked as crooked.
+  await boot(page, '?room=entry&hand=jawbone,bone,long-bone,bone,bone,bone')
+  const hand = page.locator('#explore-hand')
+  await expect(hand).toBeVisible()
+  await expect(hand.locator('.explore-die')).toHaveCount(6)
+  await expect(hand.locator('[data-slot="0"]')).toHaveAttribute('data-die-id', 'jawbone')
+  await expect(hand.locator('[data-slot="0"]')).toHaveAttribute('data-plain', 'no')
+  await expect(hand.locator('[data-slot="1"]')).toHaveAttribute('data-plain', 'yes')
+  await expect(hand.locator('[data-slot="2"]')).toHaveAttribute('data-die-id', 'long-bone')
+  // The strip says the whole build out loud, because six marks are a picture.
+  await expect(hand).toHaveAccessibleName(/Jawbone · Bone ×4 · Long Bone/)
+  // And it is a readout, not a verb: nothing in the row is a press that is not
+  // one of the verbs beside it.
+  await expect(hand.locator('button')).toHaveCount(0)
+
+  // MENU, two along, is where each of the six is read at a size a person can
+  // read — name, faces and the one sentence they all share.
+  await act(page, 'menu').click()
+  const overlay = page.locator('#overlay')
+  await expect(overlay).toBeVisible()
+  await expect(overlay.locator('#hand-slots')).toContainText('Jawbone')
+  const jaw = overlay.locator('#hand-dice [data-reward-id="jawbone"]')
+  await expect(jaw.locator('.face-chip')).toHaveText(['1', '1', '1', '6', '6', '6'])
+  await expect(overlay.locator('#hand-dice [data-reward-id="bone"] .card-name')).toHaveText('Bone ×4')
+})
+
+test('every control in the row is still reachable with a full satchel on a small phone', async ({
+  page,
+}) => {
+  // The narrowest case the row has: the pile, the six, a Vial, a talisman and
+  // the three verbs, at 320px. Nothing may be pushed off the right edge.
+  await page.setViewportSize({ width: 320, height: 740 })
+  await boot(page, '?room=entry&bones=12&vials=2&talismans=pair-talisman')
+  for (const button of await page.locator('#explore-controls button').all()) {
+    await tappable(page, button)
+  }
+  // The six are what yields at this width, and only here: a readout gives way
+  // to a verb, never the other way round. MENU is still in the row and still
+  // names the build.
+  await expect(page.locator('#explore-hand')).toBeHidden()
+  await expect(act(page, 'menu')).toBeVisible()
+})

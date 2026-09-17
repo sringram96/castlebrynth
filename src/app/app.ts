@@ -700,6 +700,18 @@ export class App {
       return
     }
 
+    const destination = after.run?.roomId
+    const exit = destination
+      ? roomAt(before.run!).exits.find((candidate) => candidate.to === destination)
+      : undefined
+    this.world.root.dataset['crossing'] = !exit?.at
+      ? 'down'
+      : exit.at.x < 0.42
+        ? 'left'
+        : exit.at.x > 0.58
+          ? 'right'
+          : 'down'
+
     this.presenting = { ...before, run: { ...before.run!, say: '' } }
     this.render()
 
@@ -1183,6 +1195,7 @@ export class App {
     this.sequence = undefined
     clearCascade(this.tray)
     this.world.root.classList.remove('crossing', 'dark', 'arriving')
+    delete this.world.root.dataset['crossing']
     weaponThrust(this.world, 'rest')
     enemyAdvance(this.world, 'arrive')
     this.render()
