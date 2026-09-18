@@ -1895,3 +1895,76 @@ Reported rather than fixed, because both are the painter's call:
   what the remaining few per cent look like is the ornament on the skirt
   shifting very slightly between frames. At 80 ms a frame it reads as a bell
   ringing; frozen side by side it reads as six bells.
+
+---
+
+## What a shut way looks like
+
+**The third delivery, and the first that arrived without its code.** Two
+paintings of the hall with its way on shut, two seated barriers for every other
+painting's openings, and a playable build. No branch, no bundle, no patch — so
+the integration below is written here rather than cherry-picked, against the
+build as the specification.
+
+### The hole it fills
+
+A maze room seats four compass ways and a seeded maze rarely gives it four.
+Until now the ones it did not have were drawn as nothing at all, so *there is
+no road north* and *the road north is gated* were the same picture: a wall. The
+map knew the difference, the reducer knew it, and the room did not say it.
+
+Measured over forty seeds, that is not a corner case. Of 916 rooms with a
+painted opening, **395 openings are sealed, 75 locked and 80 guarded** against
+613 open — a maze shuts about two fifths of what it paints.
+
+### What was read off the build
+
+The delivery's own build is the contract, and it was read rather than guessed:
+
+- `PASSAGE_SEATS` — a box per painted opening, per backdrop, in the scene's own
+  fractions. Fourteen paintings, twenty seats, lifted exactly.
+- the four states, and that `guarded` draws the gate rather than the rubble: a
+  way with something standing in it is a way, not a collapse.
+- the hall's repaint, and that the north seat then draws **no** overlay — the
+  backdrop is carrying it.
+- the plane inside the midground rather than a seventh compositor layer.
+
+### Four things differ from the delivery
+
+- **The art is built rather than served.** Four masters at 1024 × 1536 —
+  8.6 MB — were being served raw again. They are masters now, and the pipeline
+  makes them: the halls are backdrops like every other backdrop, the barriers
+  are a new step at 240 × 360. **8.6 MB becomes 582 KB.**
+- **The barriers keep their soft alpha, and that is a decision.** Every other
+  seated plate in the game is a figure cut from the scene it was painted in and
+  is held to binary alpha, because that is what keeps an edge from crawling.
+  These two arrived with an authored halo that falls off into the dark of
+  whatever room they land in; `cutout: true` would replace that falloff with a
+  hard oval, so it is not passed, and `untouched.test.ts` now says out loud
+  that a seated overlay is the one family that is not scene-sized.
+- **A lock is pressed where the lock is drawn.** The build leaves the LOCK verb
+  at the compass seat, which was right while a shut way was invisible and is
+  wrong the moment a gate is painted into the opening: in the Hanging Bell the
+  verb sat on the bell and the gate was half a frame below it. A locked way now
+  pulls its own press onto its barrier. An open way keeps its compass seat — a
+  direction is not a thing and does not want a place in the painting.
+- **It is tested.** Six unit tests and four browser tests, including the one
+  that matters: over twelve seeded mazes, every drawn state agrees with what
+  `exitsAvailable` and `exitUnlocked` say, so a gate cannot appear on a way that
+  opens or be missing from one that does not.
+
+### Gates
+
+`npm run typecheck` and `npm run build` clean · **755** unit · **436** browser
+at 390 × 844, the full suite · 16 balance invariants · `npm run art` a no-op on
+a clean tree. Runtime art is 7.9 MB across 55 files, 117 KB of it barriers.
+
+### What is honestly not right about it
+
+- **The seats are eyeballed, and two of them are close.** They were read off
+  the delivery, which read them off the paintings; the Bellworks balcony's east
+  opening sits at the very edge of its frame (`x: 0.934`) and is the one most
+  likely to want a nudge on a real phone.
+- **`guarded` and `locked` share a plate.** A way held by something alive and a
+  way that wants a key are different facts wearing the same gate. The word band
+  and the verb tell them apart; the picture does not.

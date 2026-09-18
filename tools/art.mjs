@@ -410,8 +410,19 @@ const BELLWORKS = 'docs/art-reference/masters/bellworks/'
  */
 const BELLWORKS_ROOMS = ['hanging', 'rope', 'weight', 'nest', 'service', 'balcony']
 
+/**
+ * The hall, with its north way shut.
+ *
+ * Two more finished paintings of a room that already exists, rather than two
+ * more rooms: the Remembered Stair with its arch fallen in, and the same arch
+ * gated. They are backdrops and are built as backdrops — what makes them
+ * special is only *when* they go up, which is `render/passages.ts`.
+ */
+const HALL_STATES = ['collapsed', 'locked']
+
 const BACKDROPS = [
   ...BELLWORKS_ROOMS.map((id) => ({ id: `bellworks-${id}`, base: `${BELLWORKS}${id}.png` })),
+  ...HALL_STATES.map((id) => ({ id: `hall-${id}`, base: `docs/art-reference/masters/hall/${id}.png` })),
   {
     // The front door. The hall, closed off by a gate too big for it.
     id: 'threshold',
@@ -582,6 +593,43 @@ function buildBackdrops() {
     for (let i = 3; i < finished.rgba.length; i += 4) finished.rgba[i] = 255
     const path = write(`rooms/${b.id}.png`, finished)
     report.push({ id: `room.${b.id}`, path, width: SCENE_WIDTH, height: SCENE_HEIGHT })
+  }
+  return report
+}
+
+/**
+ * The passage barriers: rubble, and a gate.
+ *
+ * Two overlays that are seated into a painting rather than composited into it,
+ * so they are built like a sprite and not like a backdrop — resampled, kept at
+ * the master's own 2:3, and **kept soft**.
+ *
+ * `cutout: true` is deliberately not passed. Every other seated plate in the
+ * game is a figure cut from the scene it was painted in, and binary alpha is
+ * what keeps its edge from crawling; these two arrived with an authored halo
+ * of their own — a glow that falls off into the dark of whatever room they are
+ * dropped into — and thresholding it would replace that falloff with a hard
+ * oval. The alpha is the painter's and it is carried through.
+ *
+ * One size serves every seat. `content/passages.ts` gives each painted opening
+ * a box in the scene's own fractions and the stylesheet stretches the plate to
+ * it, exactly as the delivery does: the widest of them is the gate's 0.36 of
+ * the scene, so 240 x 360 is above every use and a quarter of the master.
+ */
+const PASSAGE_WIDTH = 240
+const PASSAGE_HEIGHT = 360
+
+function buildPassages() {
+  const report = []
+  for (const id of ['rubble', 'locked']) {
+    const master = read(`docs/art-reference/masters/passages/${id}.png`)
+    const plate = posterise(resample(master, PASSAGE_WIDTH, PASSAGE_HEIGHT), 32)
+    report.push({
+      id: `passage.${id}`,
+      path: write(`passages/${id}.png`, plate),
+      width: PASSAGE_WIDTH,
+      height: PASSAGE_HEIGHT,
+    })
   }
   return report
 }
@@ -1419,6 +1467,7 @@ function main() {
   }
   const built = [
     ...buildBackdrops(),
+    ...buildPassages(),
     ...buildEnemies(),
     ...buildCrawling(),
     ...buildWarden(),

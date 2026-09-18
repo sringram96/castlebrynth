@@ -109,3 +109,35 @@ The next design check is human pacing: whether nine
 rooms per area creates satisfying exploration, how often paintings repeat, and
 whether fonts are worth returning to. Those questions need play, not more
 mechanics or a survival percentage inferred from a small automated sample.
+
+## What a shut way looks like
+
+A room seats four compass ways and a seeded maze rarely gives it four, so for
+as long as the barriers were missing the game could not tell the player the
+difference between *there is no road north* and *the road north is gated*. Both
+were an absence.
+
+Now every painting declares the openings it has — `content/passages.ts`, a box
+per direction in the scene's own fractions, read off the painting by eye — and
+what fills one is decided by the state the reducer already settled:
+
+| state | what it means | what is drawn |
+| --- | --- | --- |
+| `open` | a way out, and it works | nothing; the hotspot is the way |
+| `sealed` | no exit in that direction at all | rubble, the arch fallen in |
+| `locked` | an exit that wants a key you have not got | a gate, with LOCK on it |
+| `guarded` | an exit the room is holding while something lives in it | the same gate |
+
+Two rules keep it honest. **It decides nothing**: the state comes from
+`exitsAvailable` and `exitUnlocked`, which is what the reducer's own GO guard
+asks, so a drawn gate and a refused press cannot come apart. And **it is never
+a press**: the plane is `aria-hidden` and takes no pointer events, because the
+lock already has a real button — which now sits on the gate rather than at the
+compass seat, since a verb and the thing it is about belong in one place.
+
+**The hall is the exception.** Its arch is most of its frame, so a plate laid
+over it would read as a patch on a wall. Two whole repaints of the room were
+delivered instead — the arch fallen in, and the arch gated — and the backdrop
+swaps for them. Nothing else in the game does this, and the rule for when
+something else should is the same one: a patch that would cover half a painting
+is a repaint.

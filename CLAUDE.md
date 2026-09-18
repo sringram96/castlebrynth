@@ -95,6 +95,15 @@ that produces a `GameState`.
   painted feature in authored fixtures, or a fixed compass seat in mazes.
   Fight loot falls beside the body with its own LOOK and TAKE. A live enemy
   holds exits hidden. A key lock remains inspectable and names its requirement.
+- **A way that is shut is drawn shut.** A maze room seats four compass ways and
+  rarely has four, so a wall you cannot pass must not look like a wall that was
+  never a way: an opening with no road behind it is filled with rubble, one that
+  wants a key or has something standing in it is gated, and the lock's verb sits
+  on the gate rather than at the compass seat. `content/passages.ts` declares
+  each painting's openings and `render/passages.ts` reads the state off the same
+  two functions the reducer's GO guard uses — it decides nothing. The hall is the
+  one room whose shut state is a **repaint** rather than a plate, because its
+  arch is most of its frame.
 - **A run starts with six bare bones and nothing else.** Every carried thing is
   found somewhere, and which route a run takes is which build it gets.
 - **Every draw is positioned by the node it happens in**, never by how far the

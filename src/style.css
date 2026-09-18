@@ -116,6 +116,34 @@ button {
 }
 
 /*
+ * ── what is standing in the way ──────────────────────────────────────
+ *
+ * A maze room has four compass seats and rarely four exits, so the ways it
+ * does *not* offer used to be invisible — a wall you cannot pass looked
+ * exactly like a wall that was never a way. Two paintings answer it, seated
+ * into the opening each one fills: rubble where an arch has fallen in, a gate
+ * where one is shut against you.
+ *
+ * The plane is inside the midground and under the props, so a barrier is
+ * behind whatever the room is holding. It is never a press: the lock's own
+ * verb is a real button in `#hits`, and this is the picture it sits on.
+ */
+.passage-plane {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.passage-barrier {
+  position: absolute;
+  /* Seated by its centre, like every other thing this game puts in a picture,
+     so a box read off a painting is the opening rather than its top-left. */
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  image-rendering: pixelated;
+}
+
+/*
  * ── the Reliquary's four objects ─────────────────────────────────────
  *
  * The room whose art was **a portrait per object** rather than a plate per
