@@ -74,8 +74,10 @@ function baseRef(): string | undefined {
  * breaks it the way the freeze always said art would arrive: a human painted
  * the frames, `CLAUDE.md` § *No art in the polish sweep* was lifted for that
  * one asset, and every file below is the painter's pixels measured, scaled,
- * shifted and composited by `tools/sheet.mjs` — not drawn, retouched or
- * recoloured by anything in this repository.
+ * shifted, resampled or composited by `npm run sheet` and `npm run art` — not
+ * drawn, retouched or recoloured by anything in this repository. Three
+ * deliveries have landed that way now: a bell's swing, the Bellworks, and what
+ * a shut way looks like.
  *
  * So the promise is now a list rather than a zero, and the list is the point:
  * a change that touches one other pixel of art fails here and has to say so in
@@ -113,6 +115,17 @@ const ART_THAT_MOVED = [
   'public/assets/rooms/bellworks-rope.png',
   'public/assets/rooms/bellworks-service.png',
   'public/assets/rooms/bellworks-weight.png',
+  // The third delivery: what a shut way looks like. Two whole repaints of the
+  // hall — its arch fallen in, and its arch gated — and two seated overlays
+  // for every other painting's openings. Masters again, plates again.
+  'docs/art-reference/masters/hall/collapsed.png',
+  'docs/art-reference/masters/hall/locked.png',
+  'docs/art-reference/masters/passages/locked.png',
+  'docs/art-reference/masters/passages/rubble.png',
+  'public/assets/rooms/hall-collapsed.png',
+  'public/assets/rooms/hall-locked.png',
+  'public/assets/passages/locked.png',
+  'public/assets/passages/rubble.png',
 ]
 
 describe('no pixel was authored here', () => {
@@ -134,13 +147,13 @@ describe('no pixel was authored here', () => {
       .filter((file) => /\.(png|jpe?g|webp|gif|svg)$/i.test(file))
   }
 
-  it('moves nothing under public/ but the two deliveries', () => {
+  it('moves nothing under public/ but the delivered paintings', () => {
     for (const file of moved('public/')) {
       expect(ART_THAT_MOVED, `${file} moved and is not a delivered painting`).toContain(file)
     }
   })
 
-  it('moves nothing under the masters but the two deliveries', () => {
+  it('moves nothing under the masters but the delivered paintings', () => {
     for (const file of moved('docs/art-reference/')) {
       expect(ART_THAT_MOVED, `${file} moved and is not a delivered painting`).toContain(file)
     }
@@ -162,7 +175,18 @@ describe('no pixel was authored here', () => {
       const plate = new URL(`../../${file}`, import.meta.url)
       expect(statSync(plate).size, `${file} was named but never built`).toBeGreaterThan(0)
       const { width, height } = decode(readFileSync(plate))
-      expect({ file, width, height }).toEqual({ file, width: SCENE.width, height: SCENE.height })
+      // A backdrop and a prop are the whole scene, because the compositor
+      // cover-fits them and that is what removes every coordinate from a room.
+      // A **seated overlay** is not: a barrier is stretched into whichever
+      // painted opening it fills, so it is sized for the widest of them. What
+      // both are held to is being far under the master they came from.
+      const seated = file.includes('/passages/')
+      if (seated) {
+        expect(width, file).toBeLessThan(SCENE.width)
+        expect(height, file).toBeLessThanOrEqual(SCENE.height)
+      } else {
+        expect({ file, width, height }).toEqual({ file, width: SCENE.width, height: SCENE.height })
+      }
     }
   })
 })

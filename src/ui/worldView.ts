@@ -9,6 +9,7 @@
 import { hideEnemy, hideProp, holdWeapon, placeEnemy, showProp, showProps } from '../render/compositor.js'
 import type { World } from '../render/compositor.js'
 import { enemyArt, handArt, isScenePlate, propArt, roomArt, url } from '../render/assets.js'
+import { barrierSeat, hallBackdrop, showPassages } from '../render/passages.js'
 import { STAGES, breakFor, enemy as enemyById, stageForRound, stanceAt } from '../content/enemies.js'
 import { idlePose } from '../content/enemyPresentation.js'
 import { exitUnlocked, exitsAvailable, ritualIn, roomAt } from '../game/map.js'
@@ -91,6 +92,8 @@ export function renderWorld(world: World, state: GameState, handlers: WorldHandl
     world.backdrop.src = url(roomArt('threshold'))
     hideEnemy(world)
     hideProp(world)
+    // The title screen is nobody's room, so nothing is standing in its way.
+    showPassages(world, state)
     delete world.grade.dataset['territory']
     delete world.grade.dataset['place']
     world.hits.replaceChildren()
@@ -102,8 +105,15 @@ export function renderWorld(world: World, state: GameState, handlers: WorldHandl
   // The room, resolved: authored place joined to generated topology, in one
   // call. Nothing in this file knows a map exists, which is the point.
   const here = roomAt(run)
-  const backdrop = url(roomArt(here.art))
+  // The room's own painting — unless it is the hall with its way on shut, in
+  // which case the painting *is* the shut way: two repaints of the same room
+  // arrived, one with the arch fallen in and one with it gated, and a plate
+  // laid over an arch that fills half the frame would read as a patch.
+  const shutHall = hallBackdrop(state)
+  const backdrop = url(shutHall ?? roomArt(here.art))
   if (world.backdrop.getAttribute('src') !== backdrop) world.backdrop.src = backdrop
+  // And what is standing in every other way this room does not offer.
+  showPassages(world, state)
 
   // The air of the stretch of the descent this room is in.
   //
@@ -440,8 +450,17 @@ function renderHits(world: World, state: GameState, handlers: WorldHandlers): vo
         b.classList.add('hit-choice')
         b.append(el('span', 'exit-sense', exit.sense))
       }
-      b.style.left = `${exit.at.x * 100}%`
-      b.style.top = `${exit.at.y * 100}%`
+      // **A lock is pressed where the lock is drawn.** A compass seat is where
+      // a way *is*, which was the best this could do while a shut way was
+      // invisible; now that a gate is painted into the opening it fills, a
+      // LOCK floating at the top of the frame is the verb and its object in
+      // two different places. An open way keeps its compass seat — it is a
+      // direction, not a thing — and only the barrier pulls its press onto
+      // itself.
+      const seat = locked ? barrierSeat(state, exit.direction) : undefined
+      const at = seat ?? exit.at
+      b.style.left = `${at.x * 100}%`
+      b.style.top = `${at.y * 100}%`
       world.hits.append(b)
     }
   }

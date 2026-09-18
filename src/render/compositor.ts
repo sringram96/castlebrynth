@@ -48,6 +48,16 @@ export interface World {
    * depends on and the one these rooms depend on four times over.
    */
   readonly midground: HTMLElement
+
+  /**
+   * What is standing in the way, inside the midground and under the props.
+   *
+   * A room the run cannot leave in some direction is drawn as such — rubble in
+   * a fallen arch, a gate in a shut one — and `render/passages.ts` is what
+   * decides which. It is `aria-hidden`: the lock's own verb is a real button
+   * `worldView` seats over it, and this is the picture behind that press.
+   */
+  readonly passages: HTMLElement
   /**
    * The font's basin, which is simply the first plate.
    *
@@ -111,6 +121,14 @@ export function mountWorld(root: HTMLElement): World {
   backdrop.alt = ''
 
   const midground = layer('div', 'midground', Layer.Midground)
+  // The barriers, under everything the room is holding. Not a layer of its own
+  // — the compositor's order is an enum and stays six deep — but a plane
+  // inside the midground, appended first so a shut arch is behind the altar
+  // standing in front of it and in front of the painting it fills.
+  const passages = document.createElement('div')
+  passages.className = 'passage-plane'
+  passages.setAttribute('aria-hidden', 'true')
+  midground.append(passages)
   const prop = document.createElement('img')
   prop.id = 'prop'
   prop.className = 'prop'
@@ -188,6 +206,7 @@ export function mountWorld(root: HTMLElement): World {
     root,
     backdrop,
     midground,
+    passages,
     prop,
     enemy,
     foreground,

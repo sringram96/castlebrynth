@@ -139,6 +139,22 @@ object actually turns about rather than on its own box. The bell is the worked
 example, and `tools/sheet.mjs` is where a sheet's grid, frame order and
 placement are declared.
 
+**A barrier is the third kind, and it is neither.** What stands in a way that
+is shut — rubble in a fallen arch, a gate in a locked one — is not a backdrop
+and not a prop: it is one plate *stretched into the painted opening it fills*,
+seated by a box in `content/passages.ts` rather than by its own silhouette or
+by the whole scene. That is why it is built at 240 × 360 rather than at the
+scene, and why it is the one family whose alpha is left soft: the delivery
+painted a halo that falls off into the dark of whatever room it is dropped
+into, and thresholding it would replace that falloff with a hard oval. It
+lives in a plane inside the midground, under the props, and takes no pointer
+events — the lock's verb is a real button seated on the same box.
+
+One painting answers the same question with a repaint instead. The hall's arch
+is most of its frame, so a plate over it would read as a patch on a wall; two
+whole paintings of the room arrived, arch fallen and arch gated, and the
+backdrop swaps.
+
 When an object has one authored plate and more than one position — a candle
 stand that is lit and also out — the position is carried as `look` on the plate
 and the difference is a **treatment in the stylesheet**, never an invented

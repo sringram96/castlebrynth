@@ -243,6 +243,31 @@ export function url(a: Asset): string {
   return `${ASSET_ROOT}${a.file}`
 }
 
+/**
+ * The way a blocked passage is drawn, and the hall's two shut states.
+ *
+ * **Two manifests rather than one, because they are two different kinds of
+ * picture.** A barrier is a seated overlay — one plate stretched over whichever
+ * painted opening it is filling, the way a prop is seated — and there are two
+ * of them for the two reasons a way can be shut: fallen in, or gated. The hall
+ * is the exception that proves it: its north arch is most of its painting, so
+ * a plate laid over it would be a patch on a wall, and what the delivery gave
+ * instead is **the whole room repainted** with the arch collapsed and with it
+ * gated. So the hall swaps its backdrop and every other room takes an overlay.
+ *
+ * `guarded` — a live thing in the room holding the way — draws the gate, not
+ * the rubble: the passage is there and something is standing in it.
+ */
+export const PASSAGE_ART: Readonly<Record<'rubble' | 'locked', Asset>> = {
+  rubble: asset('passage.rubble', 'passages/rubble.png', 240, 360),
+  locked: asset('passage.locked', 'passages/locked.png', 240, 360),
+}
+
+export const HALL_ART: Readonly<Record<'sealed' | 'locked', Asset>> = {
+  sealed: asset('hall.sealed', 'rooms/hall-collapsed.png', 480, 720),
+  locked: asset('hall.locked', 'rooms/hall-locked.png', 480, 720),
+}
+
 export function roomArt(id: string): Asset {
   const found = ROOM_ART[id]
   if (!found) throw new Error(`no backdrop for room art "${id}"`)
@@ -318,6 +343,8 @@ export function allAssets(): readonly Asset[] {
   const seen = new Set<string>()
   return [
     ...Object.values(ROOM_ART),
+    ...Object.values(PASSAGE_ART),
+    ...Object.values(HALL_ART),
     ...Object.values(ENEMY_ART),
     ...Object.values(PROP_ART),
     ...Object.values(AMBIENT_ART),

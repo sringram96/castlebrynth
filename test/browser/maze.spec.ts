@@ -141,3 +141,69 @@ test('all three areas, keys and section bosses lead to the ending through real p
   await expect(page.locator('#screen')).toHaveAttribute('data-screen', 'complete')
   expect((await runOf(page)).keys).toHaveLength(3)
 })
+
+test.describe('a way that is shut looks shut', () => {
+  const barriers = (page: Page) => page.locator('.passage-barrier')
+  const backdrop = (page: Page) => page.locator('#backdrop')
+
+  test('fills a fallen arch with rubble, and a gated one with a gate', async ({ page }) => {
+    // Seed 1's Chained Alcove has no way north and the painting has an arch
+    // there, so the arch is full of stone. Before this it was a corridor that
+    // simply offered no button, which reads as a wall that was never a way.
+    await boot(page, '?maze=1&seed=1&node=ossuary:2:0')
+    await expect(barriers(page)).toHaveCount(1)
+    const rubble = barriers(page).first()
+    await expect(rubble).toHaveAttribute('data-passage', 'north')
+    await expect(rubble).toHaveAttribute('data-state', 'sealed')
+    await expect(rubble).toHaveAttribute('src', /passages\/rubble/)
+
+    // And a way that exists but wants a key is a gate rather than a hole.
+    await boot(page, '?maze=1&seed=1&node=bellworks:2:0')
+    const gate = barriers(page).first()
+    await expect(gate).toHaveAttribute('data-state', 'locked')
+    await expect(gate).toHaveAttribute('src', /passages\/locked/)
+  })
+
+  test('is art and never a press: the lock keeps its own button', async ({ page }) => {
+    await boot(page, '?maze=1&seed=1&node=bellworks:2:0')
+    // Every barrier is inert, and the verb that *is* live sits on it rather
+    // than at the compass seat a direction would have.
+    for (const plate of await barriers(page).all()) {
+      expect(await plate.evaluate((el) => getComputedStyle(el).pointerEvents)).toBe('none')
+    }
+    const lock = act(page, 'inspect-lock').first()
+    await tappable(page, lock)
+    const [seat, press] = await Promise.all([
+      barriers(page).first().boundingBox(),
+      lock.boundingBox(),
+    ])
+    // The press is on the thing it is about: the gate's box contains the
+    // button's middle.
+    expect(press!.x + press!.width / 2).toBeGreaterThan(seat!.x)
+    expect(press!.x + press!.width / 2).toBeLessThan(seat!.x + seat!.width)
+    expect(press!.y + press!.height / 2).toBeGreaterThan(seat!.y)
+    expect(press!.y + press!.height / 2).toBeLessThan(seat!.y + seat!.height)
+  })
+
+  test('repaints the hall rather than patching it, and puts it back', async ({ page }) => {
+    // The hall's arch is most of its frame, so its shut state is a painting of
+    // the room rather than a plate over it — and no barrier is drawn on top.
+    await boot(page, '?maze=1&seed=1&node=ossuary:0:0')
+    await expect(backdrop(page)).toHaveAttribute('src', /hall-locked/)
+    await expect(backdrop(page)).toHaveAttribute('data-passage', 'north')
+    await expect(backdrop(page)).toHaveAttribute('data-state', 'locked')
+    await expect(barriers(page)).toHaveCount(0)
+    // The door is the picture, so the lock's press is on the door.
+    await tappable(page, act(page, 'inspect-lock').first())
+
+    // A hall you can walk out of is the hall, unmarked.
+    await boot(page, '?maze=1&seed=1&node=ossuary:1:1')
+    await expect(backdrop(page)).not.toHaveAttribute('data-passage', /.*/)
+  })
+
+  test('draws nothing in an authored fixture, where the doors are painted open', async ({ page }) => {
+    await boot(page, '?room=reliquary')
+    await expect(barriers(page)).toHaveCount(0)
+    await expect(backdrop(page)).not.toHaveAttribute('data-passage', /.*/)
+  })
+})
